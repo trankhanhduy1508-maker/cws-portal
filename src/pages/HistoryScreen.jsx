@@ -1,16 +1,15 @@
-import { ArrowLeft, FileBox, Loader2, Clock3, XOctagon, Ban } from 'lucide-react';
+import { ArrowLeft, FileBox, Loader2, XOctagon, Ban } from 'lucide-react';
 import StepCard from '../components/StepCard';
 import { formatRelativeTime, formatDuration } from '../utils/timeUtils';
-import { JOB_HISTORY_STATUS, JOB_HISTORY_STATUS_LABEL } from '../constants/renderConstants';
+import { JOB_STATUS, JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL, RENDER_PROFILES } from '../constants/renderConstants';
 import './HistoryScreen.css';
 
-const STATUS_STYLE = {
-  [JOB_HISTORY_STATUS.COMPLETED]: { bg: '#E3F7ED', color: '#2AB673', icon: FileBox },
-  [JOB_HISTORY_STATUS.RENDERING]: { bg: '#EEF0FF', color: '#3B5BFF', icon: Loader2 },
-  [JOB_HISTORY_STATUS.WAITING]: { bg: '#FBF0DF', color: '#A66A1E', icon: Clock3 },
-  [JOB_HISTORY_STATUS.FAILED]: { bg: '#FDECEC', color: '#E5484D', icon: XOctagon },
-  [JOB_HISTORY_STATUS.CANCELLED]: { bg: '#F0F0F1', color: '#6B6B70', icon: Ban },
-};
+function getStatusStyle(status) {
+  if (status === JOB_STATUS.FINISHED) return { bg: '#E3F7ED', color: '#2AB673', icon: FileBox };
+  if (status === JOB_STATUS.ERROR) return { bg: '#FDECEC', color: '#E5484D', icon: XOctagon };
+  if (status === JOB_STATUS.CANCELLED) return { bg: '#F0F0F1', color: '#6B6B70', icon: Ban };
+  return { bg: '#EEF0FF', color: '#3B5BFF', icon: Loader2 }; // mọi trạng thái đang xử lý
+}
 
 export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
   return (
@@ -24,43 +23,36 @@ export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
         </h2>
       </div>
 
-      {isLoading && (
-        <div className="history-empty">Đang tải...</div>
-      )}
+      {isLoading && <div className="history-empty">Đang tải...</div>}
 
       {!isLoading && jobs.length === 0 && (
-        <div className="history-empty">
-          <p>Chưa có job nào</p>
-        </div>
+        <div className="history-empty"><p>Chưa có job nào</p></div>
       )}
 
       {!isLoading && jobs.length > 0 && (
         <div>
           {jobs.map((job) => {
-            const style = STATUS_STYLE[job.status] ?? STATUS_STYLE[JOB_HISTORY_STATUS.COMPLETED];
+            const style = getStatusStyle(job.status);
             const StatusIcon = style.icon;
+            const profileLabel = RENDER_PROFILES.find((p) => p.id === job.profileId)?.label;
             return (
-              <button
-                key={job.id}
-                className="history-item"
-                onClick={() => onOpenJob(job)}
-                type="button"
-              >
+              <button key={job.id} className="history-item" onClick={() => onOpenJob(job)} type="button">
                 <div className="history-item__icon" style={{ background: style.bg, color: style.color }}>
                   <StatusIcon size={18} strokeWidth={1.75} />
                 </div>
                 <div className="history-item__info">
-                  <p className="history-item__name">{job.fileName}</p>
+                  <p className="history-item__name">{job.projectName}</p>
                   <p className="history-item__meta">
+                    {profileLabel ? `${profileLabel} · ` : ''}
                     {formatRelativeTime(job.createdAt)}
                     {job.durationSec != null ? ` · ${formatDuration(job.durationSec)}` : ''}
                   </p>
+                  <p className="history-item__meta" style={{ marginTop: 1 }}>
+                    {PAYMENT_STATUS_LABEL[job.paymentStatus]}
+                  </p>
                 </div>
-                <span
-                  className="history-item__badge"
-                  style={{ background: style.bg, color: style.color }}
-                >
-                  {JOB_HISTORY_STATUS_LABEL[job.status]}
+                <span className="history-item__badge" style={{ background: style.bg, color: style.color }}>
+                  {JOB_STATUS_LABEL[job.status]}
                 </span>
               </button>
             );

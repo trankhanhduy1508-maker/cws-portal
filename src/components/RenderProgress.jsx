@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
-import { Check, Upload, Cog, Clock3, Cpu, PackageCheck } from 'lucide-react';
+import { Check, Clock3, Search, Network, Link2, Cpu, PackageCheck } from 'lucide-react';
 import { STAGE_SEQUENCE as STAGES, JOB_STATUS } from '../constants/renderConstants';
 import './RenderProgress.css';
 
 const STAGE_ICONS = {
-  [JOB_STATUS.UPLOADING]: Upload,
-  [JOB_STATUS.PREPARING]: Cog,
-  [JOB_STATUS.WAITING_WORKER]: Clock3,
+  [JOB_STATUS.QUEUED]: Clock3,
+  [JOB_STATUS.SEARCHING_WORKERS]: Search,
+  [JOB_STATUS.ALLOCATING_WORKERS]: Network,
+  [JOB_STATUS.WORKERS_CONNECTED]: Link2,
   [JOB_STATUS.RENDERING]: Cpu,
   [JOB_STATUS.PACKAGING]: PackageCheck,
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getJobHistory } from '../services/RenderService';
+import { listJobs } from '../services/RenderService';
 
 export function useJobHistory() {
   const [jobs, setJobs] = useState([]);
@@ -9,9 +9,9 @@ export function useJobHistory() {
   const reload = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    getJobHistory()
+    listJobs()
       .then(setJobs)
-      .catch((err) => setError(err.message || 'Không lấy được lịch sử'))
+      .catch((err) => setError(err.message || 'Không lấy được danh sách job'))
       .finally(() => setIsLoading(false));
   }, []);
 

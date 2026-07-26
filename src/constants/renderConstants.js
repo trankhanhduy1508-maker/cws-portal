@@ -1,11 +1,17 @@
 // Hằng số dùng chung — tách riêng để Service và UI cùng tham chiếu
 // 1 nguồn sự thật duy nhất, không lặp lại định nghĩa ở nhiều nơi.
 
+// ============================================================
+// JOB STATUS — vòng đời 1 job TỪ SAU KHI THANH TOÁN xong (bước Upload/
+// Validate/Chọn Profile/Thanh toán nằm TRƯỚC khi job thật sự được tạo,
+// nên không có mặt trong sequence này).
+// ============================================================
 export const JOB_STATUS = {
   IDLE: 'idle',
-  UPLOADING: 'uploading',
-  PREPARING: 'preparing',
-  WAITING_WORKER: 'waiting_worker',
+  QUEUED: 'queued',                     // đang chờ trong hàng đợi trước khi tìm máy
+  SEARCHING_WORKERS: 'searching_workers',
+  ALLOCATING_WORKERS: 'allocating_workers',
+  WORKERS_CONNECTED: 'workers_connected',
   RENDERING: 'rendering',
   PACKAGING: 'packaging',
   FINISHED: 'finished',
@@ -14,20 +20,99 @@ export const JOB_STATUS = {
 };
 
 export const STAGE_SEQUENCE = [
-  { key: JOB_STATUS.UPLOADING, label: 'Đang tải lên' },
-  { key: JOB_STATUS.PREPARING, label: 'Đang chuẩn bị' },
-  { key: JOB_STATUS.WAITING_WORKER, label: 'Đang chờ xử lý' },
+  { key: JOB_STATUS.QUEUED, label: 'Đang chờ trong hàng đợi' },
+  { key: JOB_STATUS.SEARCHING_WORKERS, label: 'Đang tìm máy xử lý' },
+  { key: JOB_STATUS.ALLOCATING_WORKERS, label: 'Đang phân bổ máy' },
+  { key: JOB_STATUS.WORKERS_CONNECTED, label: 'Đã kết nối máy xử lý' },
   { key: JOB_STATUS.RENDERING, label: 'Đang render' },
   { key: JOB_STATUS.PACKAGING, label: 'Đang đóng gói kết quả' },
   { key: JOB_STATUS.FINISHED, label: 'Hoàn thành' },
 ];
 
-export const RENDER_SPEEDS = [
-  { id: 'eco', label: 'Tiết kiệm', desc: 'Chậm nhất, chi phí thấp nhất', bolts: 1 },
-  { id: 'standard', label: 'Tiêu chuẩn', desc: 'Cân bằng tốc độ và chi phí', bolts: 2 },
-  { id: 'fast', label: 'Nhanh', desc: 'Ưu tiên tốc độ', bolts: 3 },
-  { id: 'ultra', label: 'Siêu nhanh', desc: 'Nhanh nhất có thể', bolts: 4 },
+// Nhãn hiển thị cho MỌI trạng thái có thể có của 1 job — dùng chung cho
+// Progress Screen (qua STAGE_SEQUENCE ở trên) lẫn Job Dashboard/History
+// (cần thêm cả ERROR/CANCELLED mà STAGE_SEQUENCE không có, vì đó không
+// phải "giai đoạn" mà là điểm kết thúc bất thường).
+export const JOB_STATUS_LABEL = {
+  ...Object.fromEntries(STAGE_SEQUENCE.map((s) => [s.key, s.label])),
+  [JOB_STATUS.ERROR]: 'Lỗi',
+  [JOB_STATUS.CANCELLED]: 'Đã hủy',
+};
+
+// ============================================================
+// RENDER PROFILE — thay cho speed selector đơn giản trước đây. Mỗi
+// profile có hệ số riêng cho ETA/giá/hàng đợi — dùng để mock ước tính,
+// Backend thật sẽ thay bằng số liệu tính từ Scheduler/Worker Pool thật.
+// ============================================================
+export const RENDER_PROFILES = [
+  {
+    id: 'economy',
+    label: 'Economy',
+    tagline: 'Rẻ nhất, phù hợp render qua đêm',
+    durationMultiplier: 1.8,
+    costMultiplier: 0.6,
+    queueMultiplier: 2.2,
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    tagline: 'Cân bằng giá và tốc độ',
+    durationMultiplier: 1.0,
+    costMultiplier: 1.0,
+    queueMultiplier: 1.0,
+    recommended: true,
+  },
+  {
+    id: 'priority',
+    label: 'Priority',
+    tagline: 'Ưu tiên máy xử lý, nhanh hơn',
+    durationMultiplier: 0.65,
+    costMultiplier: 1.6,
+    queueMultiplier: 0.4,
+  },
+  {
+    id: 'turbo',
+    label: 'Turbo',
+    tagline: 'Nhanh nhất, dùng tối đa số máy khả dụng',
+    durationMultiplier: 0.4,
+    costMultiplier: 2.4,
+    queueMultiplier: 0.1,
+  },
 ];
+
+// ============================================================
+// PAYMENT — chuẩn bị sẵn giao diện cho nhiều phương thức. Stripe/PayPal
+// đánh dấu "sắp ra mắt" vì cần tài khoản merchant + API key thật, dựng
+// UI giả cho chúng chạy được sẽ gây hiểu lầm nghiêm trọng hơn cả việc
+// giả lập tiến trình render — đây là ranh giới KHÔNG được giả.
+// ============================================================
+export const PAYMENT_METHOD = {
+  WALLET: 'wallet',
+  QR_BANK: 'qr_bank',
+  STRIPE: 'stripe',
+  PAYPAL: 'paypal',
+};
+
+export const PAYMENT_METHODS = [
+  { id: PAYMENT_METHOD.WALLET, label: 'Ví CWS', available: true },
+  { id: PAYMENT_METHOD.QR_BANK, label: 'Quét mã QR ngân hàng', available: true },
+  { id: PAYMENT_METHOD.STRIPE, label: 'Thẻ quốc tế (Stripe)', available: false },
+  { id: PAYMENT_METHOD.PAYPAL, label: 'PayPal', available: false },
+];
+
+export const PAYMENT_STATUS = {
+  UNPAID: 'unpaid',
+  PROCESSING: 'processing',
+  PAID: 'paid',
+  FAILED: 'failed',
+};
+
+export const PAYMENT_STATUS_LABEL = {
+  [PAYMENT_STATUS.UNPAID]: 'Chưa thanh toán',
+  [PAYMENT_STATUS.PROCESSING]: 'Đang xử lý thanh toán',
+  [PAYMENT_STATUS.PAID]: 'Đã thanh toán',
+  [PAYMENT_STATUS.FAILED]: 'Thanh toán thất bại',
+};
 
 // Định dạng file được chấp nhận — đổi ở đây khi Backend hỗ trợ thêm định dạng
 export const ACCEPTED_FILE_EXTENSIONS = ['.blend'];
@@ -44,21 +129,3 @@ export const FILE_SOURCE = {
 // tại/có quyền truy cập hay không, việc đó cần Backend thật kiểm tra.
 export const GOOGLE_DRIVE_LINK_PATTERN =
   /^https:\/\/drive\.google\.com\/(file\/d\/[\w-]+|open\?id=[\w-]+|uc\?id=[\w-]+)/;
-
-// Trạng thái Job trong lịch sử — rộng hơn JOB_STATUS vì bao gồm cả
-// Cancelled (người dùng tự hủy, không phải lỗi hệ thống)
-export const JOB_HISTORY_STATUS = {
-  COMPLETED: 'completed',
-  RENDERING: 'rendering',
-  WAITING: 'waiting',
-  FAILED: 'failed',
-  CANCELLED: 'cancelled',
-};
-
-export const JOB_HISTORY_STATUS_LABEL = {
-  [JOB_HISTORY_STATUS.COMPLETED]: 'Hoàn thành',
-  [JOB_HISTORY_STATUS.RENDERING]: 'Đang render',
-  [JOB_HISTORY_STATUS.WAITING]: 'Đang chờ',
-  [JOB_HISTORY_STATUS.FAILED]: 'Thất bại',
-  [JOB_HISTORY_STATUS.CANCELLED]: 'Đã hủy',
-};

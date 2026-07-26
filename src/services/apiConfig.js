@@ -1,20 +1,26 @@
 // Cấu hình kết nối Backend — hiện tại CHƯA có Backend thật nên để trống.
-// Khi Backend CWS hoàn thành, chỉ cần điền BASE_URL vào đây (hoặc đọc từ
-// biến môi trường .env), KHÔNG cần sửa bất kỳ Component hay Service nào khác.
+// Khi Backend CWS hoàn thành, chỉ cần điền BASE_URL/WS_BASE_URL vào đây
+// (hoặc đọc từ biến môi trường .env), KHÔNG cần sửa bất kỳ Component
+// hay Service nào khác.
 
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_CWS_API_BASE_URL || '',
-  // Khi có Backend thật, các endpoint dự kiến (đặt tên trước để dễ đối chiếu
-  // khi Backend hoàn thành, KHÔNG có nghĩa là các endpoint này đã tồn tại):
+  WS_BASE_URL: import.meta.env.VITE_CWS_WS_BASE_URL || '',
+
+  // Endpoint dự kiến khi Backend hoàn thành (đặt tên trước để dễ đối
+  // chiếu, KHÔNG có nghĩa là các endpoint này đã tồn tại thật).
   ENDPOINTS: {
-    CREATE_JOB: '/jobs',
-    JOB_STATUS: (jobId) => `/jobs/${jobId}/status`,
-    JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
-    JOB_CANCEL: (jobId) => `/jobs/${jobId}/cancel`,
-    JOB_ESTIMATE: '/jobs/estimate',
-    JOB_HISTORY: '/jobs/history',
-    QUEUE_STATUS: '/queue/status',
+    UPLOAD_FILE: '/files/upload',
     DRIVE_RESOLVE: '/drive/resolve',
+    ESTIMATE_JOB: '/jobs/estimate',
+    CREATE_PAYMENT: '/payments',
+    CONFIRM_PAYMENT: (paymentId) => `/payments/${paymentId}/confirm`,
+    CREATE_JOB: '/jobs',
+    GET_JOB: (jobId) => `/jobs/${jobId}`,
+    LIST_JOBS: '/jobs',
+    CANCEL_JOB: (jobId) => `/jobs/${jobId}/cancel`,
+    JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
+    JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
   },
 };
 

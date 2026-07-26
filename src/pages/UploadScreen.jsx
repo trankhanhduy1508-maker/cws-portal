@@ -6,7 +6,6 @@ import SourceTabs from '../components/SourceTabs';
 import UploadZone from '../components/UploadZone';
 import DriveLinkCard from '../components/DriveLinkCard';
 import GoogleDriveModal from '../components/GoogleDriveModal';
-import SpeedPicker from '../components/SpeedPicker';
 import Button from '../components/Button';
 import { FILE_SOURCE } from '../constants/renderConstants';
 
@@ -14,13 +13,11 @@ export default function UploadScreen({
   source, setSource,
   file, fileError, onFileSelected,
   driveLink, linkError, resolvedInfo, isResolving, onDriveLinkSubmit,
-  speed, setSpeed,
-  onContinue,
+  onContinue, isContinuing,
 }) {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
 
   const hasValidInput = source === FILE_SOURCE.UPLOAD ? !!file && !fileError : !!driveLink && !linkError;
-  const canContinue = hasValidInput && !!speed;
 
   return (
     <StepCard>
@@ -66,17 +63,8 @@ export default function UploadScreen({
         )
       )}
 
-      {hasValidInput && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 600 }}>
-            Chọn tốc độ render
-          </p>
-          <SpeedPicker selected={speed} onSelect={setSpeed} />
-        </div>
-      )}
-
-      <Button icon={ArrowRight} disabled={!canContinue} onClick={onContinue}>
-        Tiếp tục
+      <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
+        {isContinuing ? 'Đang tải lên...' : 'Tiếp tục'}
       </Button>
 
       {isDriveModalOpen && (

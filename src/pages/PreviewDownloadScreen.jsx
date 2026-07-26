@@ -1,4 +1,4 @@
-import { CheckCircle2, Download } from 'lucide-react';
+import { CheckCircle2, Download, BadgeCheck } from 'lucide-react';
 import StepCard from '../components/StepCard';
 import StepDots from '../components/StepDots';
 import { formatDuration } from '../utils/timeUtils';
@@ -20,6 +20,10 @@ export default function PreviewDownloadScreen({ fileName, downloadUrl, isPlaceho
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
           {fileName}
+        </p>
+        <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12.5, color: '#2AB673', fontWeight: 600, marginTop: 6 }}>
+          <BadgeCheck size={14} strokeWidth={2} />
+          Đã thanh toán
         </p>
       </div>
 
