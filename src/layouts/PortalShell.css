@@ -1,0 +1,60 @@
+.portal-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-shell__header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.portal-shell__history-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B6B70;
+}
+
+.portal-shell__history-btn:hover {
+  background: #F0F0F1;
+  color: #1C1C1E;
+}
+
+.portal-shell__logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1C1C1E;
+  letter-spacing: 0.02em;
+}
+
+.portal-shell__logo-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #3B5BFF, #6B8AFF);
+}
+
+.portal-shell__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px 48px;
+}
+
+@media (min-width: 768px) {
+  .portal-shell__header {
+    padding: 28px 40px;
+  }
+}

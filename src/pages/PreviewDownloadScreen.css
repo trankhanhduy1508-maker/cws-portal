@@ -1,0 +1,65 @@
+.preview-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2A2F4A 0%, #1C2038 100%);
+}
+
+.preview-frame__gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(59,91,255,0.35), transparent 55%),
+    radial-gradient(circle at 75% 65%, rgba(107,138,255,0.28), transparent 50%);
+}
+
+.preview-frame__watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.preview-frame__watermark-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.12em;
+  transform: rotate(-18deg);
+  white-space: nowrap;
+}
+
+.preview-frame__badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  background: rgba(0,0,0,0.28);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.download-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #E3F7ED;
+  color: #2AB673;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.download-expiry-note {
+  font-size: 13px;
+  color: #B0B0B5;
+  text-align: center;
+}

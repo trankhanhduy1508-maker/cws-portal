@@ -1,0 +1,24 @@
+.step-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #E8E8EA;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-dot.is-done {
+  background: #3B5BFF;
+  width: 8px;
+}
+
+.step-dot.is-active {
+  background: #3B5BFF;
+  width: 24px;
+}

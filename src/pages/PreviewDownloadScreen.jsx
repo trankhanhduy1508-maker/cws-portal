@@ -1,0 +1,74 @@
+import { CheckCircle2, Download } from 'lucide-react';
+import StepCard from '../components/StepCard';
+import StepDots from '../components/StepDots';
+import { formatDuration } from '../utils/timeUtils';
+import { formatBytes } from '../utils/fileUtils';
+import './PreviewDownloadScreen.css';
+
+export default function PreviewDownloadScreen({ fileName, downloadUrl, isPlaceholder, durationSec, resultSizeBytes }) {
+  return (
+    <StepCard>
+      <StepDots total={5} current={4} />
+
+      <div className="download-success-icon">
+        <CheckCircle2 size={30} strokeWidth={1.75} />
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
+          Render xong rồi!
+        </h2>
+        <p style={{ fontSize: 14, color: '#6B6B70' }}>
+          {fileName}
+        </p>
+      </div>
+
+      <div className="preview-frame">
+        <div className="preview-frame__gradient" />
+        <div className="preview-frame__watermark">
+          <span className="preview-frame__watermark-text">CWS PREVIEW · CWS PREVIEW</span>
+        </div>
+        <span className="preview-frame__badge">Xem trước</span>
+      </div>
+
+      {(durationSec != null || resultSizeBytes != null) && (
+        <div style={{ display: 'flex', gap: 10 }}>
+          {durationSec != null && (
+            <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px', background: '#F7F7F8', borderRadius: 12 }}>
+              <p style={{ fontSize: 11.5, color: '#6B6B70', marginBottom: 2 }}>Thời gian render</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 13.5, fontWeight: 500, color: '#1C1C1E' }}>
+                {formatDuration(durationSec)}
+              </p>
+            </div>
+          )}
+          {resultSizeBytes != null && (
+            <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px', background: '#F7F7F8', borderRadius: 12 }}>
+              <p style={{ fontSize: 11.5, color: '#6B6B70', marginBottom: 2 }}>Dung lượng</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 13.5, fontWeight: 500, color: '#1C1C1E' }}>
+                {formatBytes(resultSizeBytes)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <a
+        href={downloadUrl || '#'}
+        download={fileName ? `render-${fileName}` : true}
+        className="btn btn--primary btn--full"
+        style={{ textDecoration: 'none' }}
+        aria-disabled={!downloadUrl}
+        onClick={(e) => { if (!downloadUrl) e.preventDefault(); }}
+      >
+        <Download size={18} strokeWidth={2} />
+        Tải thành phẩm
+      </a>
+
+      <p className="download-expiry-note">
+        {isPlaceholder
+          ? 'Bản demo: đang tải lại chính file bạn đã gửi (chưa có kết quả render thật từ Backend)'
+          : 'Link tải có hiệu lực trong 3 ngày'}
+      </p>
+    </StepCard>
+  );
+}
