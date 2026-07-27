@@ -1,0 +1,55 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { B2StorageService } from './b2-storage.service';
+import { GoogleDriveService } from './google-drive.service';
+import { ResolveDriveDto } from './dto/resolve-drive.dto';
+
+// LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
+// cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
+// MAX_FILE_SIZE_BYTES). Portal (Frontend) và Backend là 2 dự án
+// TypeScript/JavaScript tách biệt (không dùng chung 1 package), nên
+// không thể import thẳng — nếu đổi 1 bên, PHẢI đổi bên kia theo.
+const ACCEPTED_EXTENSIONS = ['.blend'];
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+
+@Controller()
+export class FilesController {
+  constructor(
+    private readonly b2StorageService: B2StorageService,
+    private readonly googleDriveService: GoogleDriveService,
+  ) {}
+
+  @Post('files/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Thiếu file trong request (field "file")');
+
+    const ext = file.originalname.slice(file.originalname.lastIndexOf('.')).toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException(
+        `Định dạng không được hỗ trợ. Chỉ chấp nhận: ${ACCEPTED_EXTENSIONS.join(', ')}`,
+      );
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      throw new BadRequestException(
+        `File quá lớn (tối đa ${(MAX_FILE_SIZE_BYTES / 1024 / 1024 / 1024).toFixed(0)}GB)`,
+      );
+    }
+
+    const { key } = await this.b2StorageService.uploadFile(file);
+    return { fileRef: key, fileName: file.originalname, fileSizeBytes: file.size };
+  }
+
+  @Post('drive/resolve')
+  async resolveDrive(@Body() dto: ResolveDriveDto) {
+    const result = await this.googleDriveService.resolve(dto.driveLink);
+    return { driveLink: dto.driveLink, ...result };
+  }
+}
