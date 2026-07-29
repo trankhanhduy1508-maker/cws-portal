@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getOperationsOverview, getOperationsTimeline, listOperationsOrders } from '../services/OperationsService';
+import { requestOutputAccess } from '../services/OutputService';
 import './OperationsConsoleScreen.css';
 
 const JOB_FILTERS = ['', 'queued', 'rendering', 'packaging', 'finished', 'error'];
@@ -28,6 +29,13 @@ export default function OperationsConsoleScreen() {
     return () => clearTimeout(timer);
   }, [filters, refreshKey]);
 
+  async function requestSecureOutput() {
+    try {
+      const grant = await requestOutputAccess(selected.orderId);
+      window.location.assign(grant.url);
+    } catch (e) { setError(e.message); }
+  }
+
   async function openDetail(order) {
     setSelected(order); setTimeline([]);
     try { setTimeline(await getOperationsTimeline(order.orderId)); }
@@ -54,6 +62,6 @@ export default function OperationsConsoleScreen() {
       {loading ? <p className="ops-state" aria-live="polite">Loading operational state…</p> : result.items.length === 0 ? <p className="ops-state">No orders match the current filters.</p> : <div className="ops-table-wrap"><table><thead><tr><th>Customer / Order</th><th>Upload</th><th>Payment</th><th>Job</th><th>Worker</th><th>Progress</th><th>Last update</th><th>Failure</th><th>Output / Download</th></tr></thead><tbody>{result.items.map((order) => <tr key={order.orderId} onClick={() => openDetail(order)} tabIndex="0" onKeyDown={(e) => { if (e.key === 'Enter') openDetail(order); }}><td><strong>{order.customerId}</strong><small>{order.projectName}<br />{order.orderId}</small></td><td>{order.uploadStatus}</td><td>{order.paymentStatus}</td><td>{order.jobStatus}</td><td>{order.assignedWorker || 'Unassigned'}</td><td>{order.progressPercent}%</td><td>{new Date(order.lastUpdatedAt).toLocaleString()}</td><td>{order.failureReason || '—'}</td><td>{order.outputStatus}<small>{order.downloadedAt ? `Downloaded ${new Date(order.downloadedAt).toLocaleString()}` : 'Not downloaded'}</small></td></tr>)}</tbody></table></div>}
       <nav className="ops-pagination" aria-label="Pagination"><button disabled={filters.page <= 1} onClick={() => setFilters((v) => ({ ...v, page: v.page - 1 }))}>Previous</button><span>Page {filters.page} / {pages} · {result.total} orders</span><button disabled={filters.page >= pages} onClick={() => setFilters((v) => ({ ...v, page: v.page + 1 }))}>Next</button></nav>
     </section>
-    {selected && <aside className="ops-detail" aria-label="Job detail"><button className="ops-close" onClick={() => setSelected(null)}>Close</button><h2>{selected.projectName}</h2><dl><dt>Customer</dt><dd>{selected.customerId}</dd><dt>Order</dt><dd>{selected.orderId}</dd><dt>Status</dt><dd>{selected.jobStatus}</dd><dt>Worker</dt><dd>{selected.assignedWorker || 'Unassigned'}</dd><dt>Output</dt><dd>{selected.outputStatus}</dd><dt>Attention</dt><dd>{selected.attentionReasons?.join(', ') || 'None'}</dd></dl><h3>Event timeline</h3>{timeline.length ? <ol>{timeline.map((event, index) => <li key={`${event.at}-${index}`}><strong>{event.type}</strong><span>{event.source} · {new Date(event.at).toLocaleString()}</span></li>)}</ol> : <p>No canonical payment/output events yet.</p>}<p className="ops-note">Secure output access uses the existing Outputs API. This console never exposes object keys or persistent URLs.</p></aside>}
+    {selected && <aside className="ops-detail" aria-label="Job detail"><button className="ops-close" onClick={() => setSelected(null)}>Close</button><h2>{selected.projectName}</h2><dl><dt>Customer</dt><dd>{selected.customerId}</dd><dt>Order</dt><dd>{selected.orderId}</dd><dt>Status</dt><dd>{selected.jobStatus}</dd><dt>Worker</dt><dd>{selected.assignedWorker || 'Unassigned'}</dd><dt>Output</dt><dd>{selected.outputStatus} {selected.outputStatus === 'unlocked' && <button onClick={requestSecureOutput}>Secure access</button>}</dd><dt>Attention</dt><dd>{selected.attentionReasons?.join(', ') || 'None'}</dd></dl><h3>Event timeline</h3>{timeline.length ? <ol>{timeline.map((event, index) => <li key={`${event.at}-${index}`}><strong>{event.type}</strong><span>{event.source} · {new Date(event.at).toLocaleString()}</span></li>)}</ol> : <p>No canonical payment/output events yet.</p>}<p className="ops-note">Secure output access uses the existing Outputs API. This console never exposes object keys or persistent URLs.</p></aside>}
   </main>;
 }
