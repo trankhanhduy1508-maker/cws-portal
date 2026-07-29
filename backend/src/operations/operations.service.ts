@@ -80,10 +80,11 @@ export class OperationsService {
   async timeline(orderId: string) {
     await this.detail(orderId);
     const client = this.supabase.getClient();
-    const [{ data: payment }, { data: downloads, error: downloadError }] = await Promise.all([
+    const [{ data: payment, error: paymentError }, { data: downloads, error: downloadError }] = await Promise.all([
       client.from('payments').select('id').eq('order_id', orderId).maybeSingle(),
       client.from('download_events').select('action,actor_type,created_at').eq('order_id', orderId),
     ]);
+    if (paymentError) throw new Error(paymentError.message);
     if (downloadError) throw new Error(downloadError.message);
     let paymentEvents: { action: string; from_status: string | null; to_status: string; actor_type: string; created_at: string }[] = [];
     if (payment?.id) {
@@ -104,11 +105,16 @@ export class OperationsService {
     const client = this.supabase.getClient();
     const orderIds = rows.map((r) => r.id);
     const jobIds = rows.map((r) => r.internal_job_id).filter(Boolean) as string[];
-    const [{ data: outputs }, { data: downloads }, tasksResult] = await Promise.all([
+    const [outputsResult, downloadsResult, tasksResult] = await Promise.all([
       client.from('outputs').select('order_id,status').in('order_id', orderIds),
       client.from('download_events').select('order_id,action,created_at').in('order_id', orderIds).eq('action', 'DOWNLOAD_REDEEMED'),
       jobIds.length ? client.from('tasks').select('job_id,worker_id,status').in('job_id', jobIds) : Promise.resolve({ data: [] }),
     ]);
+    if (outputsResult.error) throw new Error(outputsResult.error.message);
+    if (downloadsResult.error) throw new Error(downloadsResult.error.message);
+    if ('error' in tasksResult && tasksResult.error) throw new Error(tasksResult.error.message);
+    const outputs = outputsResult.data;
+    const downloads = downloadsResult.data;
     const outputMap = new Map(((outputs ?? []) as OutputRow[]).map((o) => [o.order_id, o.status]));
     const taskRows = (tasksResult.data ?? []) as TaskRow[];
     return rows.map((row) => {
@@ -127,7 +133,7 @@ export class OperationsService {
         assignedWorker: tasks.find((t) => t.worker_id)?.worker_id ?? null,
         progressPercent: Math.round(Math.max(0, Math.min(1, row.stage_progress)) * 100),
         lastUpdatedAt: row.updated_at,
-        failureReason: row.failure_message,
+        failureReason: row.failure_message ? row.failure_message.replace(/(?:https?:\/\/|b2:\/\/|[A-Za-z]:\\\\)[^\s]+/g, '[redacted]').slice(0, 240) : null,
         outputStatus: outputMap.get(row.id) ?? 'not_ready',
         downloadedAt: lastDownload,
         durationSec: row.duration_sec,
