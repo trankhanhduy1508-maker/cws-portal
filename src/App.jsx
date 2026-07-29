@@ -32,8 +32,7 @@ const SCREEN = {
   HISTORY: 'history',
 };
 
-export default function App() {
-  if (window.location.pathname === '/operations') return <OperationsConsoleScreen />;
+function CustomerApp() {
   const [screen, setScreen] = useState(SCREEN.LANDING);
   const [screenBeforeHistory, setScreenBeforeHistory] = useState(SCREEN.LANDING);
   const [source, setSource] = useState(FILE_SOURCE.UPLOAD);
@@ -211,4 +210,9 @@ export default function App() {
       </AnimatePresence>
     </PortalShell>
   );
+}
+
+
+export default function App() {
+  return window.location.pathname === '/operations' ? <OperationsConsoleScreen /> : <CustomerApp />;
 }
