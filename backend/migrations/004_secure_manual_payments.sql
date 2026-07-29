@@ -94,3 +94,8 @@ REVOKE ALL ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,te
 REVOKE ALL ON FUNCTION consume_payment_p2(uuid,text,uuid,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION consume_payment_p2(uuid,text,uuid,integer) TO service_role;
+
+ALTER TABLE render_orders DROP CONSTRAINT IF EXISTS render_orders_payment_status_check;
+ALTER TABLE render_orders ADD CONSTRAINT render_orders_payment_status_check
+  CHECK (payment_status IN ('awaiting_transfer','under_review','confirmed','original_unlocked',
+    'expired','underpaid','overpaid','rejected','refund_pending','refunded'));

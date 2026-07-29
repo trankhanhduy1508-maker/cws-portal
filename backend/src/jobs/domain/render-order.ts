@@ -27,7 +27,7 @@ export interface RenderOrder {
   stageProgress: number; // 0..1 trong giai đoạn hiện tại
 
   paymentId: string | null;
-  paymentStatus: 'unpaid' | 'processing' | 'paid' | 'failed';
+  paymentStatus: 'awaiting_transfer' | 'under_review' | 'confirmed' | 'original_unlocked' | 'expired' | 'underpaid' | 'overpaid' | 'rejected' | 'refund_pending' | 'refunded';
 
   estimate: JobEstimate;
 

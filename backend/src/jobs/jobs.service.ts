@@ -9,6 +9,7 @@ import { JobStatus } from './domain/job-status.enum';
 import { RENDER_PROFILES, RenderProfileId } from './domain/render-profile';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PaymentsService } from '../payments/payments.service';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -38,6 +39,7 @@ export class JobsService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
@@ -53,7 +55,7 @@ export class JobsService {
     return { ...baseEstimate, queueSeconds };
   }
 
-  async createOrder(dto: CreateJobDto): Promise<{ jobId: string }> {
+  async createOrder(dto: CreateJobDto, customerId: string): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
     }
@@ -66,6 +68,13 @@ export class JobsService {
     });
 
     const id = randomUUID();
+    const verifiedPayment = await this.paymentsService.consumeForOrder(
+      dto.paymentId,
+      customerId,
+      id,
+      estimate.costVnd,
+    );
+
     const projectName =
       dto.fileName || (dto.driveLink ? '(File từ Google Drive)' : 'Không rõ tên file');
 
@@ -78,7 +87,7 @@ export class JobsService {
       status: initialStatus,
       stageProgress: 0,
       paymentId: dto.paymentId,
-      paymentStatus: 'paid', // Backend chỉ nhận request tạo job SAU khi PaymentsService xác nhận paid ở tầng Controller
+      paymentStatus: verifiedPayment.status
       estimate,
       driveLink: dto.driveLink ?? null,
       uploadedFileB2Key: dto.fileRef ?? null,
