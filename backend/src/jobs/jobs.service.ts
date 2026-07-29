@@ -87,7 +87,7 @@ export class JobsService {
       status: initialStatus,
       stageProgress: 0,
       paymentId: dto.paymentId,
-      paymentStatus: verifiedPayment.status
+      paymentStatus: verifiedPayment.status,
       estimate,
       driveLink: dto.driveLink ?? null,
       uploadedFileB2Key: dto.fileRef ?? null,

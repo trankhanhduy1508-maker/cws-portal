@@ -7,7 +7,7 @@ import { formatPriceVnd } from '../utils/timeUtils';
 import { PAYMENT_STATUS } from '../constants/renderConstants';
 
 export default function PaymentScreen({
-  amountVnd, method, setMethod, status, error,
+  amountVnd, method, setMethod, status, error, intent,
   onPay, onBack,
 }) {
   const isProcessing = status === PAYMENT_STATUS.PROCESSING;
@@ -34,6 +34,18 @@ export default function PaymentScreen({
 
       <PaymentMethodPicker selected={method} onSelect={setMethod} />
 
+      {intent && (
+        <div style={{ padding: 14, borderRadius: 12, background: '#F7F7F8', fontSize: 13 }}>
+          <p><strong>Mã thanh toán:</strong> {intent.paymentReference}</p>
+          <p><strong>Số tiền:</strong> {formatPriceVnd(intent.expectedAmountVnd)}</p>
+          <p><strong>Người nhận:</strong> {intent.instructions?.recipient}</p>
+          <p><strong>Tài khoản:</strong> {intent.instructions?.accountLabel}</p>
+          {intent.instructions?.vietQrUrl && <img src={intent.instructions.vietQrUrl} alt="VietQR thanh toán" style={{ width: 220, maxWidth: '100%' }} />}
+          <p>Hết hạn: {new Date(intent.expiresAt).toLocaleString('vi-VN')}</p>
+          <p>Customer chỉ gửi bằng chứng; quản trị viên mới có quyền xác nhận.</p>
+        </div>
+      )}
+
       {status === PAYMENT_STATUS.FAILED && (
         <p style={{ fontSize: 13.5, color: '#E5484D', textAlign: 'center' }}>
           {error || 'Thanh toán thất bại, vui lòng thử lại'}
@@ -46,7 +58,7 @@ export default function PaymentScreen({
           disabled={!method || isProcessing}
           onClick={onPay}
         >
-          {isProcessing ? 'Đang xử lý thanh toán...' : 'Xác nhận thanh toán'}
+          {isProcessing ? 'Đang tạo hướng dẫn...' : intent ? 'Tôi đã chuyển khoản' : 'Tạo hướng dẫn thanh toán'}
         </Button>
         <button
           onClick={onBack}

@@ -115,21 +115,39 @@ export async function estimateJob(input, profileId) {
 /**
  * @returns {Promise<{ paymentId: string, status: string }>}
  */
-export async function createPaymentIntent({ amountVnd, method }) {
+function paymentAuthHeaders() {
+  const token = sessionStorage.getItem('cws_access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function createPaymentIntent({ profileId, fileSizeBytes, method }) {
   if (IS_BACKEND_CONFIGURED) {
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_PAYMENT}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amountVnd, method }),
+      headers: { 'Content-Type': 'application/json', ...paymentAuthHeaders() },
+      body: JSON.stringify({ profileId, fileSizeBytes, method }),
     });
     if (!res.ok) throw new Error('Không tạo được giao dịch thanh toán');
     return res.json();
   }
-  return mock.mockCreatePaymentIntent({ amountVnd, method });
+  return mock.mockCreatePaymentIntent({ amountVnd: 0, method });
+}
+
+export async function submitPaymentEvidence({ paymentId, claimedAmountVnd }) {
+  if (!IS_BACKEND_CONFIGURED) {
+    return { paymentId, status: 'under_review' };
+  }
+  const res = await fetch(`${API_CONFIG.BASE_URL}/payments/${paymentId}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...paymentAuthHeaders() },
+    body: JSON.stringify({ claimedAmountVnd }),
+  });
+  if (!res.ok) throw new Error('Không gửi được xác nhận chuyển khoản');
+  return res.json();
 }
 
 /**
- * @returns {Promise<{ paymentId: string, status: string }>}
+ * Customer không có quyền xác nhận payment. Hàm legacy này fail-closed.
  */
 export async function confirmPayment({ paymentId, method }) {
   if (IS_BACKEND_CONFIGURED) {

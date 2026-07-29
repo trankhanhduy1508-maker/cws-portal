@@ -73,12 +73,11 @@ export default function App() {
 
   // ---- Bước 3: Payment -> Processing (tạo job thật sau khi thanh toán) ----
   const handlePay = useCallback(async () => {
-    const amountVnd = estimates[selectedProfileId]?.costVnd;
-    const paymentId = await payment.pay(amountVnd);
-    if (paymentId) {
-      setScreen(SCREEN.PROCESSING);
-      job.start({ input: resolvedInput, profileId: selectedProfileId, paymentId });
+    if (!payment.intent) {
+      await payment.pay({ profileId: selectedProfileId, input: resolvedInput });
+      return;
     }
+    await payment.submitEvidence();
   }, [estimates, selectedProfileId, payment, job, resolvedInput]);
 
   const handleCancelJob = useCallback(() => { job.cancel(); }, [job]);
@@ -159,6 +158,7 @@ export default function App() {
             setMethod={payment.setMethod}
             status={payment.status}
             error={payment.error}
+            intent={payment.intent}
             onPay={handlePay}
             onBack={() => setScreen(SCREEN.PROFILE)}
           />
