@@ -1,11 +1,2 @@
-import { Module } from '@nestjs/common';
-import { FilesController } from './files.controller';
-import { B2StorageService } from './b2-storage.service';
-import { GoogleDriveService } from './google-drive.service';
-
-@Module({
-  controllers: [FilesController],
-  providers: [B2StorageService, GoogleDriveService],
-  exports: [B2StorageService, GoogleDriveService],
-})
-export class FilesModule {}
+import { Module } from '@nestjs/common';import { FilesController } from './files.controller';import { B2StorageService } from './b2-storage.service';import { GoogleDriveService } from './google-drive.service';import { STORAGE_ADAPTER } from './storage-adapter.interface';
+@Module({controllers:[FilesController],providers:[B2StorageService,GoogleDriveService,{provide:STORAGE_ADAPTER,useExisting:B2StorageService}],exports:[B2StorageService,GoogleDriveService,STORAGE_ADAPTER]}) export class FilesModule {}

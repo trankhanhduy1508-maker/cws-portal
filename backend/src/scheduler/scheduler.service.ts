@@ -9,6 +9,7 @@ import { JobStatus } from '../jobs/domain/job-status.enum';
 import { RenderOrder } from '../jobs/domain/render-order';
 import { PackagingService } from './packaging.service';
 import { WakeService } from './wake/wake.service';
+import { OutputsService } from '../outputs/outputs.service';
 
 const TASK_EXPANSION_CHUNK_SIZE = 10;
 
@@ -41,6 +42,7 @@ export class SchedulerService {
     private readonly workerFleetGateway: WorkerFleetGateway,
     private readonly packagingService: PackagingService,
     private readonly wakeService: WakeService,
+    private readonly outputsService: OutputsService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -159,22 +161,24 @@ export class SchedulerService {
 
     await this.updateStatus(order, JobStatus.PACKAGING, 0);
 
-    const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
+    const { objectKey, resultSizeBytes } = await this.packagingService.packageRenderResult(
       internalJobId,
       order.id,
     );
 
     const durationSec = Math.round((Date.now() - order.createdAt) / 1000);
 
+    await this.outputsService.registerReadyOutput(order.id, objectKey, resultSizeBytes);
+
     await this.ordersRepository.updateResult(order.id, {
-      downloadUrl,
+      downloadUrl: null,
       durationSec,
       resultSizeBytes,
       isPlaceholder: false,
     });
 
     this.logger.log(
-      `Order ${order.id}: hoàn thành đóng gói ${taskCount} task, kết quả tại ${downloadUrl}`,
+      `Order ${order.id}: hoàn thành đóng gói ${taskCount} task`,
     );
   }
 }

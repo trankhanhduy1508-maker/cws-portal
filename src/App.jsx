@@ -103,7 +103,9 @@ export default function App() {
   const handleOpenHistoryJob = useCallback((historyJob) => {
     const isTerminal = [JOB_STATUS.FINISHED, JOB_STATUS.ERROR, JOB_STATUS.CANCELLED].includes(historyJob.status);
     if (isTerminal) {
-      if (historyJob.downloadUrl) window.open(historyJob.downloadUrl, '_blank', 'noopener');
+      job.attach(historyJob.id);
+      setActiveProjectName(historyJob.projectName);
+      setScreen(SCREEN.PROCESSING);
       return;
     }
     // Job đang chạy — mở lại (subscribe), KHÔNG tạo job mới.
@@ -175,8 +177,8 @@ export default function App() {
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.FINISHED && (
           <PreviewDownloadScreen
             key="done"
+            jobId={job.jobId}
             fileName={activeProjectName}
-            downloadUrl={job.result?.downloadUrl}
             isPlaceholder={job.result?.isPlaceholder}
             durationSec={job.result?.durationSec}
             resultSizeBytes={job.result?.resultSizeBytes}
