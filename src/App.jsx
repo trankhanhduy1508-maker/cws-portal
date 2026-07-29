@@ -9,6 +9,7 @@ import ProgressScreen from './pages/ProgressScreen';
 import PreviewDownloadScreen from './pages/PreviewDownloadScreen';
 import ErrorScreen from './pages/ErrorScreen';
 import HistoryScreen from './pages/HistoryScreen';
+import OperationsConsoleScreen from './pages/OperationsConsoleScreen';
 import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
 import { useFileUploadResolver } from './hooks/useFileUploadResolver';
@@ -32,6 +33,7 @@ const SCREEN = {
 };
 
 export default function App() {
+  if (window.location.pathname === '/operations') return <OperationsConsoleScreen />;
   const [screen, setScreen] = useState(SCREEN.LANDING);
   const [screenBeforeHistory, setScreenBeforeHistory] = useState(SCREEN.LANDING);
   const [source, setSource] = useState(FILE_SOURCE.UPLOAD);
