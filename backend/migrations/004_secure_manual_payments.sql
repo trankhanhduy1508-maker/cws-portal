@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS payment_events (
   received_amount_vnd integer,
   note text,
   idempotency_key text NOT NULL,
+  request_fingerprint text,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(payment_id, idempotency_key)
 );
@@ -53,7 +54,8 @@ FOR EACH ROW EXECUTE FUNCTION deny_payment_event_mutation();
 
 CREATE OR REPLACE FUNCTION transition_payment_p2(
   p_payment_id uuid, p_actor_id text, p_actor_type text, p_action text,
-  p_to_status text, p_received_amount_vnd integer, p_note text, p_idempotency_key text
+  p_to_status text, p_received_amount_vnd integer, p_note text, p_idempotency_key text,
+  p_request_fingerprint text
 ) RETURNS SETOF payments LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE current_payment payments%ROWTYPE; prior_event payment_events%ROWTYPE;
 BEGIN
@@ -61,7 +63,12 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'payment not found'; END IF;
   SELECT * INTO prior_event FROM payment_events
     WHERE payment_id = p_payment_id AND idempotency_key = p_idempotency_key;
-  IF FOUND THEN RETURN QUERY SELECT * FROM payments WHERE id = p_payment_id; RETURN; END IF;
+  IF FOUND THEN
+    IF prior_event.request_fingerprint IS DISTINCT FROM p_request_fingerprint THEN
+      RAISE EXCEPTION 'idempotency key reused with different request';
+    END IF;
+    RETURN QUERY SELECT * FROM payments WHERE id = p_payment_id; RETURN;
+  END IF;
 
   IF p_actor_type = 'customer' AND NOT (
     current_payment.status = 'awaiting_transfer' AND p_to_status = 'under_review'
@@ -75,8 +82,8 @@ BEGIN
     operator_note = p_note, confirmation_actor_id = CASE WHEN p_to_status='confirmed' THEN p_actor_id ELSE confirmation_actor_id END,
     confirmed_at = CASE WHEN p_to_status='confirmed' THEN now() ELSE confirmed_at END, updated_at = now()
     WHERE id = p_payment_id;
-  INSERT INTO payment_events(payment_id,actor_id,actor_type,action,from_status,to_status,received_amount_vnd,note,idempotency_key)
-    VALUES(p_payment_id,p_actor_id,p_actor_type,p_action,current_payment.status,p_to_status,p_received_amount_vnd,p_note,p_idempotency_key);
+  INSERT INTO payment_events(payment_id,actor_id,actor_type,action,from_status,to_status,received_amount_vnd,note,idempotency_key,request_fingerprint)
+    VALUES(p_payment_id,p_actor_id,p_actor_type,p_action,current_payment.status,p_to_status,p_received_amount_vnd,p_note,p_idempotency_key,p_request_fingerprint);
   RETURN QUERY SELECT * FROM payments WHERE id = p_payment_id;
 END $$;
 
@@ -99,13 +106,13 @@ BEGIN
   RETURN QUERY SELECT * FROM payments WHERE id=p_payment_id;
 END $$;
 
-REVOKE ALL ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,text,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION consume_payment_p2(uuid,text,uuid,integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION transition_payment_p2(uuid,text,text,text,text,integer,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION consume_payment_p2(uuid,text,uuid,integer) TO service_role;
 
 UPDATE render_orders SET payment_status = CASE
-  WHEN payment_status = 'paid' THEN 'confirmed'
+  WHEN payment_status = 'paid' THEN 'expired'
   ELSE 'expired'
 END
 WHERE payment_status NOT IN ('awaiting_transfer','under_review','confirmed','original_unlocked',

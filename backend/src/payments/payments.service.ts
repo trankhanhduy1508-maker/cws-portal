@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { AppConfig } from '../config/configuration';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { calculateExpectedAmountVnd } from './payment-quote';
@@ -52,7 +52,10 @@ export class PaymentsService {
 
   async submitEvidence(paymentId: string, customerId: string, claimedAmountVnd: number) {
     const payment = await this.requireOwned(paymentId, customerId);
-    if (payment.expiresAt <= Date.now()) throw new BadRequestException('Payment đã hết hạn');
+    if (payment.expiresAt <= Date.now()) {
+      await this.expire(payment, customerId);
+      throw new BadRequestException('Payment đã hết hạn');
+    }
     if (payment.status !== PaymentStatus.AWAITING_TRANSFER) {
       throw new BadRequestException('Payment không ở trạng thái chờ chuyển khoản');
     }
@@ -65,12 +68,16 @@ export class PaymentsService {
       receivedAmountVnd: claimedAmountVnd,
       note: null,
       idempotencyKey: `evidence:${paymentId}:${claimedAmountVnd}`,
+      requestFingerprint: this.fingerprint({ action: 'EVIDENCE_SUBMITTED', actor: customerId, claimedAmountVnd }),
     }));
   }
 
   async confirm(paymentId: string, adminId: string, receivedAmountVnd: number, note: string | undefined, key: string) {
     const payment = await this.requirePayment(paymentId);
-    if (payment.expiresAt <= Date.now()) throw new BadRequestException('Payment đã hết hạn');
+    if (payment.expiresAt <= Date.now()) {
+      await this.expire(payment, adminId);
+      throw new BadRequestException('Payment đã hết hạn');
+    }
     if (![PaymentStatus.UNDER_REVIEW, PaymentStatus.UNDERPAID, PaymentStatus.OVERPAID].includes(payment.status)) {
       throw new BadRequestException('Payment chưa sẵn sàng để quản trị viên xác nhận');
     }
@@ -82,6 +89,7 @@ export class PaymentsService {
     return this.toPublic(await this.repository.transition({
       paymentId, actorId: adminId, actorType: 'admin', action: 'ADMIN_REVIEWED',
       toStatus: status, receivedAmountVnd, note: this.safeNote(note), idempotencyKey: this.requireKey(key),
+      requestFingerprint: this.fingerprint({ action: 'ADMIN_REVIEWED', actor: adminId, receivedAmountVnd, note: this.safeNote(note) }),
     }));
   }
 
@@ -90,6 +98,7 @@ export class PaymentsService {
       paymentId, actorId: adminId, actorType: 'admin', action: 'REJECTED',
       toStatus: PaymentStatus.REJECTED, receivedAmountVnd: null,
       note: this.safeNote(note), idempotencyKey: this.requireKey(key),
+      requestFingerprint: this.fingerprint({ action: 'REJECTED', actor: adminId, note: this.safeNote(note) }),
     }));
   }
 
@@ -98,6 +107,7 @@ export class PaymentsService {
       paymentId, actorId: adminId, actorType: 'admin', action: 'REFUND_RECORDED',
       toStatus: PaymentStatus.REFUNDED, receivedAmountVnd: null,
       note: this.safeNote(note), idempotencyKey: this.requireKey(key),
+      requestFingerprint: this.fingerprint({ action: 'REFUND_RECORDED', actor: adminId, note: this.safeNote(note) }),
     }));
   }
 
@@ -126,6 +136,25 @@ export class PaymentsService {
     const payment = await this.requirePayment(id);
     if (payment.customerId !== customerId) throw new ForbiddenException('Payment không thuộc khách hàng');
     return payment;
+  }
+
+  private async expire(payment: PaymentRecord, actorId: string) {
+    if (payment.status === PaymentStatus.EXPIRED) return;
+    await this.repository.transition({
+      paymentId: payment.paymentId,
+      actorId,
+      actorType: 'system',
+      action: 'EXPIRED',
+      toStatus: PaymentStatus.EXPIRED,
+      receivedAmountVnd: null,
+      note: null,
+      idempotencyKey: `expired:${payment.paymentId}`,
+      requestFingerprint: this.fingerprint({ action: 'EXPIRED', paymentId: payment.paymentId }),
+    });
+  }
+
+  private fingerprint(value: object) {
+    return createHash('sha256').update(JSON.stringify(value)).digest('hex');
   }
 
   private requireKey(key: string) {

@@ -62,4 +62,4 @@ Run migration in staging, execute the complete auth/idempotency/mismatch/refund/
 
 
 ## Final QA Review
-Final QA found and the leader corrected: a syntax error in JobsService, missing customer ownership on jobs, consume-before-order ordering, idempotency race re-check, legacy migration constraint failure, missing creation audit, and malformed note/amount validation. Remaining canonical quote/upload verification and executable security-test coverage keep overall status PARTIAL, not COMPLETE.
+Final QA found and the leader corrected: a syntax error in JobsService, missing customer ownership on jobs, consume-before-order ordering, idempotency race re-check, legacy migration constraint failure, missing creation audit, and malformed note/amount validation. Remaining canonical quote/upload verification and executable security-test coverage keep overall status PARTIAL, not COMPLETE. Final follow-up also added request-fingerprint idempotency checks, audited EXPIRED transitions, and fail-closed legacy render-order payment migration.

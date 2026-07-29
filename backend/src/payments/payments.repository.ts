@@ -80,6 +80,7 @@ export class PaymentsRepository {
     receivedAmountVnd: number | null;
     note: string | null;
     idempotencyKey: string;
+    requestFingerprint: string;
   }): Promise<PaymentRecord> {
     const { data, error } = await this.supabaseService.getClient().rpc('transition_payment_p2', {
       p_payment_id: input.paymentId,
@@ -90,6 +91,7 @@ export class PaymentsRepository {
       p_received_amount_vnd: input.receivedAmountVnd,
       p_note: input.note,
       p_idempotency_key: input.idempotencyKey,
+      p_request_fingerprint: input.requestFingerprint,
     });
     if (error) throw new Error('Không thể chuyển trạng thái payment');
     const row = Array.isArray(data) ? data[0] : data;
