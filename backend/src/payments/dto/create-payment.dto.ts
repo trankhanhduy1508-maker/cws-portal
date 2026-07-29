@@ -1,9 +1,9 @@
 import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { RenderProfileId } from '../../jobs/domain/render-profile';
-import { PaymentMethod } from '../payment.types';
+import { PaymentMethod, VIETNAM_MVP_PAYMENT_METHODS } from '../payment.types';
 
 export class CreatePaymentDto {
-  @IsIn(Object.values(PaymentMethod))
+  @IsIn(VIETNAM_MVP_PAYMENT_METHODS)
   method!: PaymentMethod;
 
   @IsIn(Object.values(RenderProfileId))

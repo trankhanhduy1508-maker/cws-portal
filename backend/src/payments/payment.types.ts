@@ -3,6 +3,11 @@ export enum PaymentMethod {
   MOMO_MANUAL = 'momo_manual',
 }
 
+export const VIETNAM_MVP_PAYMENT_METHODS = Object.freeze([
+  PaymentMethod.MB_BANK_TRANSFER,
+  PaymentMethod.MOMO_MANUAL,
+]);
+
 export enum PaymentStatus {
   AWAITING_TRANSFER = 'awaiting_transfer',
   UNDER_REVIEW = 'under_review',
