@@ -1,24 +1,9 @@
-// Hằng số dùng chung — tách riêng để Service và UI cùng tham chiếu
-// 1 nguồn sự thật duy nhất, không lặp lại định nghĩa ở nhiều nơi.
-
-// ============================================================
-// JOB STATUS — vòng đời 1 job TỪ SAU KHI THANH TOÁN xong (bước Upload/
-// Validate/Chọn Profile/Thanh toán nằm TRƯỚC khi job thật sự được tạo,
-// nên không có mặt trong sequence này).
-// ============================================================
 export const JOB_STATUS = {
-  IDLE: 'idle',
-  QUEUED: 'queued',                     // đang chờ trong hàng đợi trước khi tìm máy
-  SEARCHING_WORKERS: 'searching_workers',
-  ALLOCATING_WORKERS: 'allocating_workers',
-  WORKERS_CONNECTED: 'workers_connected',
-  RENDERING: 'rendering',
-  PACKAGING: 'packaging',
-  FINISHED: 'finished',
-  ERROR: 'error',
-  CANCELLED: 'cancelled',
+  IDLE: 'idle', QUEUED: 'queued', SEARCHING_WORKERS: 'searching_workers',
+  ALLOCATING_WORKERS: 'allocating_workers', WORKERS_CONNECTED: 'workers_connected',
+  RENDERING: 'rendering', PACKAGING: 'packaging', FINISHED: 'finished',
+  ERROR: 'error', CANCELLED: 'cancelled',
 };
-
 export const STAGE_SEQUENCE = [
   { key: JOB_STATUS.QUEUED, label: 'Đang chờ trong hàng đợi' },
   { key: JOB_STATUS.SEARCHING_WORKERS, label: 'Đang tìm máy xử lý' },
@@ -28,104 +13,33 @@ export const STAGE_SEQUENCE = [
   { key: JOB_STATUS.PACKAGING, label: 'Đang đóng gói kết quả' },
   { key: JOB_STATUS.FINISHED, label: 'Hoàn thành' },
 ];
-
-// Nhãn hiển thị cho MỌI trạng thái có thể có của 1 job — dùng chung cho
-// Progress Screen (qua STAGE_SEQUENCE ở trên) lẫn Job Dashboard/History
-// (cần thêm cả ERROR/CANCELLED mà STAGE_SEQUENCE không có, vì đó không
-// phải "giai đoạn" mà là điểm kết thúc bất thường).
 export const JOB_STATUS_LABEL = {
   ...Object.fromEntries(STAGE_SEQUENCE.map((s) => [s.key, s.label])),
-  [JOB_STATUS.ERROR]: 'Lỗi',
-  [JOB_STATUS.CANCELLED]: 'Đã hủy',
+  [JOB_STATUS.ERROR]: 'Lỗi', [JOB_STATUS.CANCELLED]: 'Đã hủy',
 };
-
-// ============================================================
-// RENDER PROFILE — thay cho speed selector đơn giản trước đây. Mỗi
-// profile có hệ số riêng cho ETA/giá/hàng đợi — dùng để mock ước tính,
-// Backend thật sẽ thay bằng số liệu tính từ Scheduler/Worker Pool thật.
-// ============================================================
 export const RENDER_PROFILES = [
-  {
-    id: 'economy',
-    label: 'Economy',
-    tagline: 'Rẻ nhất, phù hợp render qua đêm',
-    durationMultiplier: 1.8,
-    costMultiplier: 0.6,
-    queueMultiplier: 2.2,
-  },
-  {
-    id: 'standard',
-    label: 'Standard',
-    tagline: 'Cân bằng giá và tốc độ',
-    durationMultiplier: 1.0,
-    costMultiplier: 1.0,
-    queueMultiplier: 1.0,
-    recommended: true,
-  },
-  {
-    id: 'priority',
-    label: 'Priority',
-    tagline: 'Ưu tiên máy xử lý, nhanh hơn',
-    durationMultiplier: 0.65,
-    costMultiplier: 1.6,
-    queueMultiplier: 0.4,
-  },
-  {
-    id: 'turbo',
-    label: 'Turbo',
-    tagline: 'Nhanh nhất, dùng tối đa số máy khả dụng',
-    durationMultiplier: 0.4,
-    costMultiplier: 2.4,
-    queueMultiplier: 0.1,
-  },
+  { id:'economy',label:'Economy',tagline:'Rẻ nhất, phù hợp render qua đêm',durationMultiplier:1.8,costMultiplier:.6,queueMultiplier:2.2 },
+  { id:'standard',label:'Standard',tagline:'Cân bằng giá và tốc độ',durationMultiplier:1,costMultiplier:1,queueMultiplier:1,recommended:true },
+  { id:'priority',label:'Priority',tagline:'Ưu tiên máy xử lý, nhanh hơn',durationMultiplier:.65,costMultiplier:1.6,queueMultiplier:.4 },
+  { id:'turbo',label:'Turbo',tagline:'Nhanh nhất, dùng tối đa số máy khả dụng',durationMultiplier:.4,costMultiplier:2.4,queueMultiplier:.1 },
 ];
-
-// ============================================================
-// PAYMENT — chuẩn bị sẵn giao diện cho nhiều phương thức. Stripe/PayPal
-// đánh dấu "sắp ra mắt" vì cần tài khoản merchant + API key thật, dựng
-// UI giả cho chúng chạy được sẽ gây hiểu lầm nghiêm trọng hơn cả việc
-// giả lập tiến trình render — đây là ranh giới KHÔNG được giả.
-// ============================================================
-export const PAYMENT_METHOD = {
-  WALLET: 'wallet',
-  QR_BANK: 'qr_bank',
-  STRIPE: 'stripe',
-  PAYPAL: 'paypal',
-};
-
+export const PAYMENT_METHOD = { MB_BANK_TRANSFER:'mb_bank_transfer', MOMO_MANUAL:'momo_manual' };
 export const PAYMENT_METHODS = [
-  { id: PAYMENT_METHOD.WALLET, label: 'Ví CWS', available: true },
-  { id: PAYMENT_METHOD.QR_BANK, label: 'Quét mã QR ngân hàng', available: true },
-  { id: PAYMENT_METHOD.STRIPE, label: 'Thẻ quốc tế (Stripe)', available: false },
-  { id: PAYMENT_METHOD.PAYPAL, label: 'PayPal', available: false },
+  { id:PAYMENT_METHOD.MB_BANK_TRANSFER,label:'Chuyển khoản MB / VietQR',available:true },
+  { id:PAYMENT_METHOD.MOMO_MANUAL,label:'MoMo thủ công',available:true },
 ];
-
 export const PAYMENT_STATUS = {
-  UNPAID: 'unpaid',
-  PROCESSING: 'processing',
-  PAID: 'paid',
-  FAILED: 'failed',
+  UNPAID:'unpaid', PROCESSING:'processing', AWAITING_TRANSFER:'awaiting_transfer',
+  UNDER_REVIEW:'under_review', CONFIRMED:'confirmed', UNDERPAID:'underpaid',
+  OVERPAID:'overpaid', REJECTED:'rejected', REFUNDED:'refunded', FAILED:'failed',
+  PAID:'confirmed',
 };
-
 export const PAYMENT_STATUS_LABEL = {
-  [PAYMENT_STATUS.UNPAID]: 'Chưa thanh toán',
-  [PAYMENT_STATUS.PROCESSING]: 'Đang xử lý thanh toán',
-  [PAYMENT_STATUS.PAID]: 'Đã thanh toán',
-  [PAYMENT_STATUS.FAILED]: 'Thanh toán thất bại',
+  unpaid:'Chưa thanh toán',processing:'Đang tạo hướng dẫn',awaiting_transfer:'Chờ chuyển khoản',
+  under_review:'Đang chờ quản trị viên xác nhận',confirmed:'Đã xác nhận',
+  underpaid:'Thiếu tiền',overpaid:'Thừa tiền',rejected:'Bị từ chối',refunded:'Đã hoàn tiền',failed:'Lỗi',
 };
-
-// Định dạng file được chấp nhận — đổi ở đây khi Backend hỗ trợ thêm định dạng
-export const ACCEPTED_FILE_EXTENSIONS = ['.blend'];
-export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB, điều chỉnh khi có giới hạn thật từ Backend
-
-// Nguồn file đầu vào — người dùng chọn 1 trong 2
-export const FILE_SOURCE = {
-  UPLOAD: 'upload',
-  GOOGLE_DRIVE: 'google_drive',
-};
-
-// Regex nhận diện link Google Drive hợp lệ (dạng /file/d/<id>/... hoặc
-// ?id=<id>). Đây chỉ là validate CÚ PHÁP — không xác nhận file có tồn
-// tại/có quyền truy cập hay không, việc đó cần Backend thật kiểm tra.
-export const GOOGLE_DRIVE_LINK_PATTERN =
-  /^https:\/\/drive\.google\.com\/(file\/d\/[\w-]+|open\?id=[\w-]+|uc\?id=[\w-]+)/;
+export const ACCEPTED_FILE_EXTENSIONS=['.blend'];
+export const MAX_FILE_SIZE_BYTES=2*1024*1024*1024;
+export const FILE_SOURCE={UPLOAD:'upload',GOOGLE_DRIVE:'google_drive'};
+export const GOOGLE_DRIVE_LINK_PATTERN=/^https:\/\/drive\.google\.com\/(file\/d\/[\w-]+|open\?id=[\w-]+|uc\?id=[\w-]+)/;
