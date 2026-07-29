@@ -101,6 +101,17 @@ export class PaymentsService {
     }));
   }
 
+  async validateForOrder(paymentId: string, customerId: string, expectedAmountVnd: number) {
+    const payment = await this.requireOwned(paymentId, customerId);
+    if (payment.status !== PaymentStatus.CONFIRMED || payment.expiresAt <= Date.now()) {
+      throw new BadRequestException('Payment chưa được xác nhận hoặc đã hết hạn');
+    }
+    if (payment.expectedAmountVnd !== expectedAmountVnd || payment.orderId) {
+      throw new BadRequestException('Payment sai số tiền hoặc đã được sử dụng');
+    }
+    return payment;
+  }
+
   async consumeForOrder(paymentId: string, customerId: string, orderId: string, expectedAmountVnd: number) {
     return this.repository.consumeForOrder({ paymentId, customerId, orderId, expectedAmountVnd });
   }
@@ -124,6 +135,7 @@ export class PaymentsService {
 
   private safeNote(note?: string) {
     if (!note) return null;
+    if (typeof note !== 'string') throw new BadRequestException('Ghi chú không hợp lệ');
     return note.replace(/[\r\n]/g, ' ').slice(0, 500);
   }
 

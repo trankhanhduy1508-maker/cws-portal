@@ -68,10 +68,9 @@ export class JobsService {
     });
 
     const id = randomUUID();
-    const verifiedPayment = await this.paymentsService.consumeForOrder(
+    const verifiedPayment = await this.paymentsService.validateForOrder(
       dto.paymentId,
       customerId,
-      id,
       estimate.costVnd,
     );
 
@@ -82,6 +81,7 @@ export class JobsService {
 
     const order: RenderOrder = {
       id,
+      customerId,
       projectName,
       profileId: dto.profileId,
       status: initialStatus,
@@ -101,6 +101,7 @@ export class JobsService {
     };
 
     await this.ordersRepository.create(order);
+    await this.paymentsService.consumeForOrder(dto.paymentId, customerId, id, estimate.costVnd);
 
     // Dispatch cho Worker Fleet ngay (Model 1) — SchedulerService (chạy
     // định kỳ) sẽ tiếp tục theo dõi và xử lý Model 2 nếu cần Wake.
@@ -125,17 +126,19 @@ export class JobsService {
     await this.ordersRepository.attachInternalJobId(order.id, internalJobId);
   }
 
-  async getById(id: string): Promise<RenderOrder> {
+  async getById(id: string, principal?: { userId: string; role: string }): Promise<RenderOrder> {
     const order = await this.ordersRepository.findById(id);
-    if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
+    if (!order || (principal && principal.role !== 'admin' && order.customerId !== principal.userId)) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return order;
   }
 
-  async listAll(): Promise<RenderOrder[]> {
-    return this.ordersRepository.findAll();
+  async listAll(principal?: { userId: string; role: string }): Promise<RenderOrder[]> {
+    const orders = await this.ordersRepository.findAll();
+    return principal && principal.role !== 'admin' ? orders.filter((order) => order.customerId === principal.userId) : orders;
   }
 
-  async cancel(id: string): Promise<RenderOrder> {
+  async cancel(id: string, principal?: { userId: string; role: string }): Promise<RenderOrder> {
+    await this.getById(id, principal);
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return order;

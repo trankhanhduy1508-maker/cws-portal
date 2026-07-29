@@ -9,6 +9,16 @@ ALTER TABLE payments
   ADD COLUMN IF NOT EXISTS confirmation_actor_id text,
   ADD COLUMN IF NOT EXISTS operator_note text;
 
+UPDATE payments SET
+  customer_id = COALESCE(customer_id, 'legacy-unassigned'),
+  payment_reference = COALESCE(payment_reference, 'LEGACY-' || id::text),
+  expires_at = COALESCE(expires_at, now()),
+  method = CASE WHEN method IN ('mb_bank_transfer','momo_manual') THEN method ELSE 'mb_bank_transfer' END,
+  status = CASE WHEN status IN ('awaiting_transfer','under_review','confirmed','original_unlocked','expired','underpaid','overpaid','rejected','refund_pending','refunded') THEN status ELSE 'expired' END;
+ALTER TABLE payments ALTER COLUMN customer_id SET NOT NULL;
+ALTER TABLE payments ALTER COLUMN payment_reference SET NOT NULL;
+ALTER TABLE payments ALTER COLUMN expires_at SET NOT NULL;
+
 ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_method_check;
 ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_status_check;
 ALTER TABLE payments ADD CONSTRAINT payments_method_check
@@ -47,12 +57,11 @@ CREATE OR REPLACE FUNCTION transition_payment_p2(
 ) RETURNS SETOF payments LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE current_payment payments%ROWTYPE; prior_event payment_events%ROWTYPE;
 BEGIN
+  SELECT * INTO current_payment FROM payments WHERE id = p_payment_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'payment not found'; END IF;
   SELECT * INTO prior_event FROM payment_events
     WHERE payment_id = p_payment_id AND idempotency_key = p_idempotency_key;
   IF FOUND THEN RETURN QUERY SELECT * FROM payments WHERE id = p_payment_id; RETURN; END IF;
-
-  SELECT * INTO current_payment FROM payments WHERE id = p_payment_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'payment not found'; END IF;
 
   IF p_actor_type = 'customer' AND NOT (
     current_payment.status = 'awaiting_transfer' AND p_to_status = 'under_review'
@@ -99,3 +108,19 @@ ALTER TABLE render_orders DROP CONSTRAINT IF EXISTS render_orders_payment_status
 ALTER TABLE render_orders ADD CONSTRAINT render_orders_payment_status_check
   CHECK (payment_status IN ('awaiting_transfer','under_review','confirmed','original_unlocked',
     'expired','underpaid','overpaid','rejected','refund_pending','refunded'));
+
+ALTER TABLE render_orders ADD COLUMN IF NOT EXISTS customer_id text;
+UPDATE render_orders SET customer_id='legacy-unassigned' WHERE customer_id IS NULL;
+ALTER TABLE render_orders ALTER COLUMN customer_id SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_render_orders_customer ON render_orders(customer_id, created_at DESC);
+
+CREATE OR REPLACE FUNCTION audit_payment_created_p2() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+BEGIN
+  INSERT INTO payment_events(payment_id,actor_id,actor_type,action,from_status,to_status,idempotency_key)
+  VALUES(NEW.id,NEW.customer_id,'customer','PAYMENT_CREATED',NULL,NEW.status,'created:'||NEW.id);
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS payments_created_audit ON payments;
+CREATE TRIGGER payments_created_audit AFTER INSERT ON payments
+FOR EACH ROW EXECUTE FUNCTION audit_payment_created_p2();

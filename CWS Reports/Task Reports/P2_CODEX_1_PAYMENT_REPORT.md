@@ -7,7 +7,7 @@
 `agent-1-payment-p2`
 
 ## Commit
-Commit message: `fix(p2): secure payment authorization`.
+Current GitHub branch HEAD is recorded in the session result. Commit message: `fix(p2): secure payment authorization`.
 
 ## Agents
 - Payment Repository Analyst: COMPLETE.
@@ -36,10 +36,10 @@ JWT payload establishes a trusted subject and server-side admin role. Customer c
 Manual MB Bank/VietQR and Manual MoMo only. No automatic confirmation. Exact amount becomes CONFIRMED; mismatch becomes UNDERPAID/OVERPAID. Reject/refund states are explicit.
 
 ## Tests
-- Build: NOT RUN — Windows local execution backend unavailable.
-- Lint: NOT RUN — Windows local execution backend unavailable.
-- Unit: NOT RUN — Windows local execution backend unavailable.
-- Integration/security: NOT RUN — Windows local execution backend unavailable.
+- Build: BLOCKED / NOT RUN — Windows local execution backend unavailable.
+- Lint: BLOCKED / NOT RUN — Windows local execution backend unavailable.
+- Unit: BLOCKED / NOT RUN — Windows local execution backend unavailable.
+- Integration/security: BLOCKED / NOT RUN — Windows local execution backend unavailable.
 No PASS claim is made. A pure quote unit test was added but not executed.
 
 ## GitHub Actions
@@ -59,3 +59,7 @@ The credential-shaped values in `backend/.env.example` were replaced with placeh
 
 ## Next Step
 Run migration in staging, execute the complete auth/idempotency/mismatch/refund/job-bypass test matrix, then implement the admin manual-payment review UI.
+
+
+## Final QA Review
+Final QA found and the leader corrected: a syntax error in JobsService, missing customer ownership on jobs, consume-before-order ordering, idempotency race re-check, legacy migration constraint failure, missing creation audit, and malformed note/amount validation. Remaining canonical quote/upload verification and executable security-test coverage keep overall status PARTIAL, not COMPLETE.

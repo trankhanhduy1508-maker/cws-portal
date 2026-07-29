@@ -12,6 +12,7 @@ const TABLE = 'render_orders';
  * NHẤT chuyển đổi 2 chiều, phần còn lại của app không biết tới snake_case. */
 interface RenderOrderRow {
   id: string;
+  customer_id: string;
   project_name: string;
   profile_id: string;
   status: string;
@@ -35,6 +36,7 @@ interface RenderOrderRow {
 function rowToDomain(row: RenderOrderRow): RenderOrder {
   return {
     id: row.id,
+    customerId: row.customer_id,
     projectName: row.project_name,
     profileId: row.profile_id as RenderProfileId,
     status: row.status as JobStatus,
@@ -61,6 +63,7 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
 function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at'> {
   return {
     id: order.id,
+    customer_id: order.customerId,
     project_name: order.projectName,
     profile_id: order.profileId,
     status: order.status,

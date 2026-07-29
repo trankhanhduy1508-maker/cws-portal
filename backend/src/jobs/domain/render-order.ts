@@ -21,6 +21,7 @@ export interface JobEstimate {
  */
 export interface RenderOrder {
   id: string;
+  customerId: string;
   projectName: string;
   profileId: RenderProfileId;
   status: JobStatus;
