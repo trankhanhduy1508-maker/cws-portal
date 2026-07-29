@@ -149,15 +149,8 @@ export async function submitPaymentEvidence({ paymentId, claimedAmountVnd }) {
 /**
  * Customer không có quyền xác nhận payment. Hàm legacy này fail-closed.
  */
-export async function confirmPayment({ paymentId, method }) {
-  if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CONFIRM_PAYMENT(paymentId)}`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error('Xác nhận thanh toán thất bại');
-    return res.json();
-  }
-  return mock.mockConfirmPayment({ paymentId, method });
+export async function confirmPayment() {
+  throw new Error('Customer không có quyền xác nhận payment; chỉ quản trị viên được xác nhận sau khi đối soát');
 }
 
 // ============================================================
@@ -172,7 +165,7 @@ export async function createJob({ input, profileId, paymentId }) {
   if (IS_BACKEND_CONFIGURED) {
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...paymentAuthHeaders() },
       body: JSON.stringify({ ...input, profileId, paymentId }),
     });
     if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
@@ -209,7 +202,7 @@ export function subscribeToJobUpdates(jobId, { onUpdate, onComplete, onError }) 
 /** @returns {Promise<boolean>} */
 export async function cancelJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, { method: 'POST' });
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, { method: 'POST', headers: paymentAuthHeaders() });
     return res.ok;
   }
   return mock.mockCancelJob(jobId);
@@ -218,7 +211,7 @@ export async function cancelJob(jobId) {
 /** Lấy snapshot hiện tại của 1 job (dùng khi mở lại từ Job Dashboard). */
 export async function getJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`);
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`, { headers: paymentAuthHeaders() });
     if (!res.ok) throw new Error('Không lấy được thông tin job');
     return res.json();
   }
@@ -228,7 +221,7 @@ export async function getJob(jobId) {
 /** Danh sách toàn bộ job (Job Dashboard / History). */
 export async function listJobs() {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`);
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`, { headers: paymentAuthHeaders() });
     if (!res.ok) throw new Error('Không lấy được danh sách job');
     return res.json();
   }
