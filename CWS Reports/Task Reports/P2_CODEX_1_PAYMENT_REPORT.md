@@ -1,5 +1,52 @@
 # P2 CODEX 1 — PAYMENT REPORT
 
+## 0. Executive Summary
+
+| Item | Result |
+|---|---|
+| Roadmap Phase | P2 — Core MVP Control Layer |
+| Task | Secure Vietnam manual-payment foundation |
+| Status | PARTIAL |
+| Branch | `agent-1-payment-p2` |
+| Commit Hash | Pre-standardization HEAD: `22ef35ef2d7693e24ef98616b032b73348fdbfe4`; final commit is the PR HEAD printed in the session result |
+| Pull Request | [#3](https://github.com/trankhanhduy1508-maker/cws-portal/pull/3) — Draft |
+| Files Changed | 29 before this standardization commit; final count verified after push |
+| Backend | Manual payment API, admin authorization, ownership, audited/idempotent transitions implemented |
+| Frontend | MB/VietQR and Manual MoMo UI; customer confirmation disabled |
+| Database/Migration | Migration 004 adds secure payment state, ownership and append-only events |
+| Tests | Added but NOT RUN |
+| Build | BLOCKED / NOT RUN |
+| GitHub Actions | NOT RUN |
+| Ready to Merge | NO |
+
+## Acceptance Checklist
+
+| Acceptance | Status |
+|---|---|
+| Manual MB Bank instructions | ✅ |
+| VietQR instructions | ✅ |
+| Manual MoMo instructions | ✅ |
+| Unique payment reference | ✅ |
+| Expected amount recorded | ⚠️ Server-calculated, but not yet bound to durable canonical Quote/verified upload |
+| Payment expiry | ✅ |
+| Admin-only confirmation | ✅ |
+| Reject workflow | ✅ |
+| Refund state tracking | ✅ |
+| Underpaid/overpaid classification | ✅ |
+| Immutable audit events | ✅ |
+| Idempotent confirmation and duplicate protection | ⚠️ Implemented; concurrency suite NOT RUN |
+| Server-side authorization | ⚠️ Implemented; JWT issuer/audience/algorithm hardening remains |
+| Ownership checks | ✅ for payment and HTTP job paths |
+| Customer cannot self-confirm | ✅ |
+| Frontend payment ID cannot bypass job payment gate | ✅ in code; integration/security tests NOT RUN |
+| Stripe absent from Vietnam customer MVP | ✅ |
+| Credential example contains placeholders only | ✅ |
+| Build passes | ❌ NOT RUN |
+| Lint passes | ❌ NOT RUN |
+| Unit/integration/security tests pass | ❌ NOT RUN |
+| GitHub Actions pass | ❌ NOT RUN |
+| Ready to merge | ❌ |
+
 ## 1. Thông tin
 
 - Ngày giờ: 2026-07-30, Asia/Saigon
@@ -185,3 +232,22 @@ Chưa đạt:
 - Operational admin review UI
 
 **Kết luận cuối: PARTIAL — Pull Request #3 chưa sẵn sàng Merge.** PR phải giữ trạng thái Draft cho đến khi migration và toàn bộ validation gates có bằng chứng PASS.
+
+
+## Next Owner / Dependency
+
+**Next Owner:**
+
+- CODEX 1 — Payment Leader follow-up for durable Quote/verified-upload binding and executable validation.
+- CODEX 2 — Secure Output Leader only after the payment eligibility contract is validated.
+
+**Dependencies for the next owner:**
+
+- `PaymentStatus` and `PAYMENT_OUTPUT_ELIGIBLE_STATUSES`
+- Payment ownership contract based on trusted JWT subject
+- Admin-only payment transition API
+- Migration 004 payment state machine
+- Append-only `payment_events`
+- `transition_payment_p2` and `consume_payment_p2` RPC contracts
+- Durable canonical Quote or verified-upload source for authoritative expected amount
+- Staging migration and concurrency/security test evidence

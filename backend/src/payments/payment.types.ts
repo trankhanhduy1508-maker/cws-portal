@@ -21,6 +21,11 @@ export enum PaymentStatus {
   REFUNDED = 'refunded',
 }
 
+export const PAYMENT_OUTPUT_ELIGIBLE_STATUSES = Object.freeze([
+  PaymentStatus.CONFIRMED,
+  PaymentStatus.ORIGINAL_UNLOCKED,
+]);
+
 export interface PaymentInstructions {
   recipient: string;
   accountLabel: string;
