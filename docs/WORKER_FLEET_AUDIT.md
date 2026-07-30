@@ -187,6 +187,57 @@ oxlint + vite build PASS.
 
 ---
 
+## Phase 6 — Incident tracking (TỐI THIỂU, ĐÃ TEST BUILD THẬT phần Backend/Frontend)
+
+Commit `3cfb241`. **MỞ RỘNG TRÊN NỀN CÓ** (giữ nguyên tinh thần quyết định
+Dy 2026-07-31 cho Phase 3): `report_worker_crash()` RPC ĐÃ CÓ SẴN (đang
+chạy thật, cập nhật `workers.crash_count`/`last_crash_message`) — CHỈ
+thêm 1 lời gọi `report_worker_incident()` ở cuối RPC đó, nên **WORKER_CRASH
+tự động có dữ liệu structured trong `worker_incidents` mà KHÔNG cần sửa 1
+dòng Python nào**.
+
+- `worker_migrations/004_worker_incidents_schema.sql` (đã apply lên
+  Supabase qua MCP trước khi commit): bảng `worker_incidents` đúng cột
+  roadmap section 9 (event_type/severity/error_code/summary/details/
+  first_seen_at/last_seen_at/occurrence_count/resolved_at/resolution) +
+  RPC `report_worker_incident()` (upsert dedup theo worker_id+event_type+
+  error_code+task_id, CHỈ xét incident chưa `resolved_at`) + mở rộng
+  `report_worker_crash()`. RLS enabled, không có policy (đúng quy ước nội
+  bộ đã dùng cho `worker_leases`/`worker_state_events`/`task_attempts`).
+- `cws_worker_full.py` — CHỈ 1 điểm wiring Python MỚI: hàm `report_incident()`
+  (best-effort y hệt `report_state()`), gọi tại `except` của
+  `attempt_job_video_merge()` (đã có try/except sẵn từ Phase 2) →
+  `event_type="MERGE_FAIL"`. KHÔNG động vào các loại sự cố còn lại trong
+  "Lỗi tối thiểu" của roadmap (GPU/CPU quá nhiệt, disk full, mất
+  heartbeat, network disconnect...) — CHƯA có code phát hiện các lỗi này
+  ở đâu cả, thêm detection mới sẽ vượt quá phạm vi "refactor nhỏ", để lại
+  vòng sau.
+- Backend: `WorkerFleetGateway.listIncidents()` + `GET /fleet/incidents`
+  (lọc `workerId`/`severity`/`resolved`, `AdminKeyGuard`, CHỈ đọc).
+- Frontend: `AdminScreen.jsx` — bảng "Sự cố Worker Fleet" ngay dưới bảng
+  Worker Fleet, lọc theo severity + checkbox "Hiện cả đã xử lý".
+
+**CHƯA làm ở round này:** nút retry/requeue/quarantine/drain (Admin
+Dashboard mục "cần" của Phase 6) — đây là hành động đụng vào chính luồng
+dispatch Worker Fleet (task/worker status), rủi ro cao hơn hẳn 1 bảng
+chỉ-đọc, để lại vòng sau sau khi Phase 2/3/4 đã được xác nhận trên máy
+thật; audit log hành động admin (phụ thuộc các nút trên, chưa có); các
+loại sự cố khác (GPU/CPU quá nhiệt, disk full, mất heartbeat, network
+disconnect, stale generation, lease expired, duplicate Worker,
+auto-update fail, config thiếu, file khách hàng lỗi, thiếu
+renderer/plugin) — không có code phát hiện, sẽ không xuất hiện trong
+`worker_incidents` cho tới khi được làm riêng.
+
+Build/test backend (37/37) + lint PASS (chỉ 2 file Backend có diff thật,
+phần còn lại là CRLF-noise quen thuộc đã restore). Frontend oxlint + vite
+build PASS. Phần Python (`report_incident()` + 1 điểm wiring) — vẫn
+KHÔNG có Python/Blender trong môi trường này để chạy thử thật, chỉ kiểm
+tra tĩnh (cân bằng ngoặc cả file, không còn lỗi f-string `%%`, đối chiếu
+scope biến `task_id`/indent với code xung quanh) — CỘNG DỒN vào rủi ro
+"chưa test trên máy thật" đã nêu ở các Phase 2/3/4.
+
+---
+
 ## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
 ## không bao giờ được ghi cho job tạo qua Backend hiện tại
 
@@ -277,6 +328,9 @@ duy nhất. Commit `a28f8df`.
 - `a1aadbd` — feat(worker): Active Idle Power Management (Phase 4).
 - `092441e` — feat(admin): hiển thị observed_state trong Worker Fleet
   dashboard (Phase 5, ĐÃ build/test/lint/boot thật).
+- `ad08903` — docs: sửa placeholder commit hash + Phase 5 vào tổng hợp.
+- `3cfb241` — feat(worker+admin): incident tracking tối thiểu (Phase 6,
+  Backend/Frontend ĐÃ build/test/lint thật; Python chỉ kiểm tra tĩnh).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -289,18 +343,25 @@ hiện có trong repo thay vì tiếp tục chờ.
 2. ~~Wiring observed_state (Phase 3 phần code)~~ — ĐÃ XONG (`487aee3` +
    `f313e93`).
 3. ~~Active Idle Power Management (Phase 4)~~ — ĐÃ XONG (`a1aadbd`).
-4. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 5
-   commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`,
-   cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh, chưa từng chạy qua
-   Python/Blender/B2/Windows thật. Đây là rủi ro lớn nhất hiện tại —
-   BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước khi coi là sẵn
-   sàng production.
-5. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
+4. ~~Backend/Admin Dashboard đọc `observed_state` (Phase 5)~~ — ĐÃ XONG
+   (`092441e`).
+5. ~~Incident tracking tối thiểu (Phase 6)~~ — ĐÃ XONG PHẦN TỐI THIỂU
+   (`3cfb241`): WORKER_CRASH (tự động) + MERGE_FAIL (wiring mới). Còn
+   thiếu: các loại sự cố khác (GPU/CPU quá nhiệt, disk full, mất
+   heartbeat...) chưa có code phát hiện, và nút retry/requeue/
+   quarantine/drain trên Admin Dashboard.
+6. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 6
+   commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
+   `3cfb241`, cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh, chưa từng
+   chạy qua Python/Blender/B2/Windows thật. Đây là rủi ro lớn nhất hiện
+   tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước khi coi
+   là sẵn sàng production. Rủi ro này đang CỘNG DỒN theo từng phase, chưa
+   được giảm bớt.
+7. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
    Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
    đó không.
-6. Backend/Admin Dashboard đọc `observed_state`/`worker_state_events`
-   (Phase 5) — schema/RPC đã sẵn sàng, chưa có code Backend nào đọc tới.
-7. Tiếp tục Phase 5 (Admin Dashboard) trở đi theo đúng thứ tự
-   `CWS_WORKER_ROADMAP.md`.
-8. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+8. Tiếp theo theo đúng thứ tự `CWS_WORKER_ROADMAP.md`: Phase 7 (mất
+   điện/tự điều phối — có race condition/fencing thật, cần cẩn trọng hơn
+   các phase trước) rồi Phase 8 (thống kê thời gian thuê host/billing).
+9. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
    tạo qua website có tự động sinh đủ task ngoài probe hay không.
