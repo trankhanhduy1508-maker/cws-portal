@@ -307,6 +307,19 @@ Worker khác nhau (không phải mỗi task). Thêm
 file test riêng cho `PricingService`) — 5 test case. Tổng test backend:
 37 → 42, PASS. Xem commit `97f0ac3` trên `main`.
 
+### Race hiển thị sai giá tạm thời trên PaymentScreen (phát hiện 2026-07-31, mức độ thấp)
+
+Cùng đợt rà soát trên, phát hiện `PaymentScreen` (qua `App.jsx`) trước
+đây dùng `job.paymentInfo?.amountVnd ?? estimates[...].costVnd` — nếu
+WebSocket báo `status=AWAITING_PAYMENT` TRƯỚC KHI `approve()` (REST) kịp
+set `paymentInfo` (khoảng trống rất ngắn, mili-giây), màn hình hiện SỐ
+TIỀN ƯỚC TÍNH (heuristic trước render, SAI) thay vì giá thật, rồi tự sửa
+lại gần như ngay lập tức. Mức độ THẤP hơn hẳn bug `PricingService` ở
+trên — QR/nội dung chuyển khoản cũng đang trống lúc đó nên khách không
+thể chuyển tiền được trong khoảng sai đó. Đã hỏi Dy, xác nhận sửa: bỏ
+fallback về ước tính, `PaymentScreen` hiện "đang tải" cho tới khi
+`paymentInfo` thật sự có. Xem commit `ba02e5b`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
