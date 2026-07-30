@@ -135,6 +135,27 @@ describe('JobsRealtimeServer — kiểm tra quyền sở hữu qua WebSocket (ID
     expect(client.send).toHaveBeenCalledTimes(1);
   });
 
+  it('đóng kết nối (4004), KHÔNG mở kênh Realtime, nếu job KHÔNG tồn tại', async () => {
+    const { server } = makeServer(null, {
+      data: { user: null },
+      error: { message: 'no token' },
+    });
+    const client = makeClient();
+
+    await (
+      server as unknown as {
+        handleConnection: (
+          c: unknown,
+          id: string,
+          t: string | null,
+        ) => Promise<void>;
+      }
+    ).handleConnection(client, 'job-khong-ton-tai', null);
+
+    expect(client.close).toHaveBeenCalledWith(4004, expect.any(String));
+    expect(client.send).not.toHaveBeenCalled();
+  });
+
   it('gửi snapshot cho bất kỳ ai (kể cả không có token) nếu job CHƯA có chủ — luồng khách vãng lai', async () => {
     const { server } = makeServer(baseOrder({ customerId: null }), {
       data: { user: null },
