@@ -2,6 +2,21 @@
 
 Base URL: `{VITE_CWS_API_BASE_URL}` (xem BACKEND_SETUP.md)
 
+## Auth
+
+Facebook Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth
+(`supabase.auth.signInWithOAuth({ provider: 'facebook' })` phía Portal)
+— Backend KHÔNG tự code OAuth strategy, KHÔNG nhận/xử lý mật khẩu
+Facebook ở bất kỳ đâu. Sau khi đăng nhập, Portal gửi
+`Authorization: Bearer <supabase-access-token>` cho các route cần biết
+khách là ai; Backend xác minh token qua `supabase.auth.getUser(token)`.
+`customer_profiles` tự tạo/cập nhật qua trigger Postgres
+`handle_new_auth_user()` (không có route Backend nào tạo profile).
+
+Các route admin (Giai đoạn 7) yêu cầu header `x-admin-key` khớp
+`ADMIN_API_KEY` (env Backend) — xem `AdminKeyGuard`, đánh dấu rõ bên
+dưới ở từng route.
+
 ## Jobs
 
 ### POST /jobs
@@ -38,18 +53,15 @@ Response: `{ "etaSeconds": 900, "costVnd": 45000, "queueSeconds": 0 }`
 ### GET /jobs
 Danh sách render order (Job Dashboard/History).
 
-Nếu request có `Authorization: Bearer <token>` hợp lệ (đăng nhập
-Facebook) — chỉ trả job của đúng khách đó (`findByCustomerId`).
-
-**Lưu ý bảo mật còn lại:** nếu KHÔNG có token (khách chưa đăng nhập,
-hoặc gọi thẳng API không qua Portal) — trả về TOÀN BỘ order của mọi
-khách, không có cách nào chặn việc này ở route công khai chừng nào
-Portal chưa bắt buộc đăng nhập. KHÔNG build UI admin công khai dựa
-trên route này.
+Nếu request có `Authorization: Bearer <supabase-access-token>` hợp lệ
+— chỉ trả job của đúng khách đó (`findByCustomerId`). Nếu KHÔNG có
+token, route yêu cầu header `x-admin-key` khớp `ADMIN_API_KEY`, nếu
+không sẽ trả 401 — route này KHÔNG còn công khai toàn bộ order như
+trước.
 
 ### GET /jobs/by-storage-code/:storageCode
-Tra cứu 1 job theo Storage Code (Giai đoạn 7 — cùng lưu ý bảo mật như
-`GET /jobs`, chưa có auth).
+Tra cứu 1 job theo Storage Code (Giai đoạn 7). **Yêu cầu header
+`x-admin-key`** (`AdminKeyGuard`).
 
 ### GET /jobs/:id
 Chi tiết 1 render order — bao gồm `storageCode`.
@@ -65,6 +77,15 @@ khi job ở `review_ready` trở về sau. Response: `{ "images": [{ "url", "dis
 Khách duyệt bản preview — CHỈ hợp lệ khi `status === review_ready`.
 Đóng gói kết quả cuối (zip các frame từ B2) rồi set `downloadUrl` +
 status `finished`. Đây là điểm DUY NHẤT mở khóa file gốc.
+
+### POST /jobs/:id/request-changes
+Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ hợp lệ khi
+`status === review_ready`. Request: `{ "note"?: string }`.
+
+Ghi 1 notification + 1 worker_log để admin liên hệ khách thủ công —
+**KHÔNG đổi status** (job vẫn `review_ready`, khách vẫn duyệt được
+sau nếu đổi ý), **KHÔNG tự động re-render hay hoàn tiền** (quyết định
+nghiệp vụ, ngoài phạm vi route này). Response: `{ "ok": true }`.
 
 ### GET /jobs/:id/download
 Ghi log vào bảng `downloads` (job_id + IP) rồi redirect (302) sang URL
@@ -97,10 +118,13 @@ Tạo giao dịch thanh toán.
 
 Request: `{ "amountVnd": 45000, "method": "qr_bank" }`
 
-Response: `{ "paymentId": "uuid", "status": "processing", "transferContent": "CWS AB12CD34", "amountVnd": 45000 }`
+Response: `{ "paymentId": "uuid", "status": "processing", "paymentCode": "AB12CD34", "transferContent": "CWS AB12CD34", "qrImageUrl": "https://img.vietqr.io/...", "amountVnd": 45000 }`
 
 `transferContent` là nội dung khách cần ghi khi chuyển khoản — đây là
-CƠ SỞ DUY NHẤT để webhook đối chiếu và set PAID.
+CƠ SỞ DUY NHẤT để webhook đối chiếu và set PAID. `qrImageUrl` là ảnh
+VietQR quét được thật (qua `img.vietqr.io`, MB Bank BIN `970422`) —
+chỉ có giá trị khi đã cấu hình `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME`,
+ngược lại trả `null` (không bịa ảnh QR trỏ tới tài khoản không tồn tại).
 
 ### GET /payments/:id
 Trạng thái thanh toán hiện tại — Portal poll route này để chờ webhook
@@ -109,8 +133,8 @@ xác nhận (`RenderService.confirmPayment()` poll mỗi 3s, timeout 10 phút).
 Response: `{ "paymentId": "uuid", "status": "unpaid" | "processing" | "paid" | "failed" }`
 
 ### GET /payments/by-code/:paymentCode
-Tra cứu payment theo mã (Giai đoạn 7, admin — chưa có auth, xem lưu ý
-bảo mật ở `GET /jobs`).
+Tra cứu payment theo mã (Giai đoạn 7). **Yêu cầu header `x-admin-key`**
+(`AdminKeyGuard`).
 
 ### POST /payments/:id/confirm
 **KHÔNG còn set PAID được cho `qr_bank`** — `QrBankProvider.confirm()`
@@ -128,9 +152,9 @@ payment theo `payment_code`, đối chiếu `amountVnd` khớp tuyệt đối, c
 khi khớp mới set PAID. Sai định dạng/không tìm thấy/không khớp số tiền
 → lỗi rõ ràng, không âm thầm bỏ qua.
 
-**CHƯA nối cổng MB Bank thật** — cần số tài khoản/BIN thật (business
-info) để: (1) dựng ảnh VietQR quét được thay vì chỉ hiển thị text, (2)
-có webhook thật từ MB Bank gọi vào route này thay vì gọi tay/giả lập.
+Ảnh QR (VietQR) đã dựng thật khi có `MB_BANK_ACCOUNT_NUMBER` — phần
+CÒN THIẾU duy nhất là webhook thật từ MB Bank/cổng trung gian gọi vào
+route này (hiện chưa nối, cần thao tác trên tài khoản ngân hàng thật).
 
 ## Files
 

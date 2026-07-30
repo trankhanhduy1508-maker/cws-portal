@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.2.0] - Supabase Auth + RLS + VietQR + Admin Dashboard (2026-07-30)
+
+### Thêm mới
+- Facebook Login chuyển hoàn toàn sang Supabase Auth built-in OAuth
+  (`supabase.auth.signInWithOAuth({ provider: 'facebook' })`) — Backend
+  không tự code OAuth strategy nào, không nhận/xử lý mật khẩu Facebook.
+  Trigger Postgres `handle_new_auth_user()` tự tạo/cập nhật
+  `customer_profiles` khi có user mới (ON CONFLICT tránh trùng hồ sơ
+  khi đăng nhập lại). `customer_profiles.id` giờ = `auth.users.id`.
+- RLS owner-scoped bật cho customer_profiles/render_orders/payments/
+  sites/machine_capability/review_images/downloads/notifications —
+  khách chỉ đọc được dữ liệu của chính mình (`auth.uid()`); Backend
+  (service_role) không bị ảnh hưởng. `get_advisors(security)` xác nhận
+  không còn ERROR nào trên các bảng MVP.
+- `AdminKeyGuard` (shared secret qua header `x-admin-key`): khóa
+  `GET /jobs` (khi gọi ẩn danh), `GET /jobs/by-storage-code/:code`,
+  `GET /payments/by-code/:code` — trước đây các route này công khai
+  hoàn toàn.
+- Ảnh QR MB Bank thật (`img.vietqr.io`, BIN `970422`) khi đã cấu hình
+  `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` — trước chỉ hiển thị
+  text placeholder.
+- Admin Dashboard tối giản (`AdminScreen.jsx`, chỉ vào qua `#admin`,
+  không có link nào từ UI khách hàng) — list job, tra cứu theo storage
+  code/payment code.
+- "Yêu cầu chỉnh sửa" trong Review flow: `POST /jobs/:id/request-changes`
+  ghi notification + worker_log, KHÔNG đổi status/tiền — job vẫn
+  `review_ready`, khách vẫn duyệt được nếu đổi ý. Re-render/hoàn tiền
+  thật là quyết định nghiệp vụ, admin xử lý thủ công sau khi nhận yêu cầu.
+
+### Giới hạn còn lại (ghi rõ, không che giấu)
+- Facebook Provider CHƯA bật thật trong Supabase Dashboard (cần App
+  ID/Secret thật — chỉ người dùng làm được).
+- Webhook thật từ MB Bank chưa nối (route `/payments/webhook` đã sẵn
+  sàng, chờ cấu hình phía ngân hàng/cổng trung gian).
+- Supabase service-role key và B2 application key từng lộ trong
+  `.env.example` cũ — cần xác nhận đã rotate trên dashboard.
+- Toàn bộ UI (đặc biệt `AdminScreen.jsx`, `ReviewScreen.jsx`) chưa được
+  xác nhận bằng mắt trên trình duyệt thật.
+
 ## [1.1.0] - MVP alignment pass (2026-07-30)
 
 ### Thêm mới
@@ -30,7 +69,7 @@
   `PaymentsService`, `PaymentsModule`, `renderConstants.js` — MVP chỉ
   dùng MB Bank QR (`qr_bank`).
 
-### Giới hạn còn lại (ghi rõ, không che giấu)
+### Giới hạn còn lại (ghi rõ, không che giấu — ĐÃ FIX ở [1.2.0] phía trên, giữ nguyên đoạn dưới làm lịch sử)
 - QR MB Bank vẫn là placeholder text, chưa có ảnh VietQR quét được —
   cần số tài khoản/BIN thật (business info) để nối cổng thật.
 - Facebook Login: hoàn toàn chưa implement — cần FACEBOOK_APP_ID/SECRET
