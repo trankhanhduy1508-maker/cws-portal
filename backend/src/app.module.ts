@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { loadConfig } from './config/configuration';
 import { AppController } from './app.controller';
 import { SupabaseModule } from './supabase/supabase.module';
+import { CustomersModule } from './customers/customers.module';
 import { JobsModule } from './jobs/jobs.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FilesModule } from './files/files.module';
@@ -15,6 +16,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     ConfigModule.forRoot({ isGlobal: true, load: [loadConfig] }),
     ScheduleModule.forRoot(),
     SupabaseModule,
+    CustomersModule,
     JobsModule,
     PaymentsModule,
     FilesModule,
