@@ -1314,6 +1314,16 @@ def attempt_job_video_merge(job_id, worker_id):
         print(f"[MERGE] Job {job_id} thieu fps/frame_start tu get_job_render_summary - khong the ghep an toan, bo qua.")
         return
 
+    # KHOA LAC QUAN (them - sua "GIOI HAN DA BIET" ghi trong docstring o
+    # tren): tu day tro di, TAT CA dieu kien merge da xac nhan xong (fully
+    # done + du frame + co fps) - neu 2 Worker cung toi day gan nhu dong
+    # thoi, CHI 1 worker duoc RPC tra ve True (UPDATE ... WHERE
+    # merge_lock_at IS NULL la atomic ben Postgres), worker con lai BO QUA
+    # NGAY, tranh ffmpeg + upload B2 song song lang phi cho cung 1 video.
+    if not rpc_call("try_acquire_merge_lock", {"p_job_id": job_id}):
+        print(f"[MERGE] Job {job_id} da/dang duoc worker khac merge - bo qua lan nay.")
+        return
+
     merge_root = BASE_DIR / "video_merge" / job_id
     flat_dir = merge_root / "flat"
     output_mp4 = merge_root / f"{job_id}.mp4"
