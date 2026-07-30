@@ -62,7 +62,7 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
 
   return (
     <StepCard>
-      <StepDots total={5} current={4} />
+      <StepDots total={5} current={3} />
 
       <div style={{ textAlign: 'center' }}>
         <Eye size={26} strokeWidth={1.75} style={{ marginBottom: 6 }} />

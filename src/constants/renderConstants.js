@@ -2,9 +2,11 @@
 // 1 nguồn sự thật duy nhất, không lặp lại định nghĩa ở nhiều nơi.
 
 // ============================================================
-// JOB STATUS — vòng đời 1 job TỪ SAU KHI THANH TOÁN xong (bước Upload/
-// Validate/Chọn Profile/Thanh toán nằm TRƯỚC khi job thật sự được tạo,
-// nên không có mặt trong sequence này).
+// JOB STATUS — vòng đời 1 job TỪ SAU KHI TẠO job (không cần thanh toán
+// trước — render MIỄN PHÍ, khách chỉ trả tiền để MỞ TẢI file gốc sau
+// khi đã duyệt bản xem trước, đúng CWS_MVP_WORKFLOW_FINAL.md: Job →
+// Upload → Render → Preview → Khách duyệt → Sinh QR → Webhook → PAID
+// → Mở tải).
 // ============================================================
 export const JOB_STATUS = {
   IDLE: 'idle',
@@ -14,6 +16,10 @@ export const JOB_STATUS = {
   WORKERS_CONNECTED: 'workers_connected',
   RENDERING: 'rendering',
   REVIEW_READY: 'review_ready',
+  /** Khách đã duyệt preview — QR MB Bank đã sinh, chờ webhook xác nhận
+   * PAID trước khi mở tải (KHÔNG chặn việc render, chỉ chặn việc tải
+   * file gốc — render đã xong từ trước bước này). */
+  AWAITING_PAYMENT: 'awaiting_payment',
   PACKAGING: 'packaging',
   FINISHED: 'finished',
   ERROR: 'error',
@@ -27,6 +33,7 @@ export const STAGE_SEQUENCE = [
   { key: JOB_STATUS.WORKERS_CONNECTED, label: 'Đã kết nối máy xử lý' },
   { key: JOB_STATUS.RENDERING, label: 'Đang render' },
   { key: JOB_STATUS.REVIEW_READY, label: 'Chờ bạn duyệt bản xem trước' },
+  { key: JOB_STATUS.AWAITING_PAYMENT, label: 'Chờ thanh toán' },
   { key: JOB_STATUS.PACKAGING, label: 'Đang đóng gói kết quả' },
   { key: JOB_STATUS.FINISHED, label: 'Hoàn thành' },
 ];
@@ -84,17 +91,10 @@ export const RENDER_PROFILES = [
 
 // ============================================================
 // PAYMENT — MVP chỉ dùng MB Bank QR (CWS_ROADMAP_MVP_V1.md, Giai đoạn
-// 5). Wallet/Stripe/PayPal/MoMo không thuộc MVP — không dựng UI cho
-// các phương thức chưa/không dùng.
+// 5), sinh SAU khi khách duyệt preview — không có lựa chọn phương thức
+// nào để chọn (chỉ 1 phương thức duy nhất), nên không cần hằng số
+// PAYMENT_METHOD/PAYMENT_METHODS nữa.
 // ============================================================
-export const PAYMENT_METHOD = {
-  QR_BANK: 'qr_bank',
-};
-
-export const PAYMENT_METHODS = [
-  { id: PAYMENT_METHOD.QR_BANK, label: 'Quét mã QR ngân hàng (MB Bank)', available: true },
-];
-
 export const PAYMENT_STATUS = {
   UNPAID: 'unpaid',
   PROCESSING: 'processing',

@@ -26,6 +26,9 @@ const DEMO_STAGE_DURATION_MS = {
   [JOB_STATUS.ALLOCATING_WORKERS]: 1000,
   [JOB_STATUS.WORKERS_CONNECTED]: 700,
   [JOB_STATUS.RENDERING]: 3500,
+  // Giả lập thời gian chờ webhook ngân hàng xác nhận — Backend thật chờ
+  // thật sự (có thể vài phút), demo rút ngắn để test được ngay.
+  [JOB_STATUS.AWAITING_PAYMENT]: 2000,
   [JOB_STATUS.PACKAGING]: 1000,
 };
 
@@ -120,44 +123,36 @@ export async function mockFacebookLogin() {
 }
 
 // ============================================================
-// PAYMENT (mock)
+// PAYMENT (mock) — payment chỉ được tạo BÊN TRONG mockApproveJob(),
+// khớp Backend thật (JobsService.approve() mới là nơi sinh QR, không
+// phải 1 API tạo payment độc lập gọi trước khi có job).
 // ============================================================
-export async function mockCreatePaymentIntent({ amountVnd, method }) {
-  await new Promise((r) => setTimeout(r, 300));
-  const paymentCode = Math.random().toString(36).slice(2, 10).toUpperCase();
-  return {
-    paymentId: `pay-${Date.now()}`,
-    amountVnd,
-    method,
-    status: PAYMENT_STATUS.PROCESSING,
-    transferContent: `CWS ${paymentCode}`,
-    qrImageUrl: null, // mock không có tài khoản MB Bank thật để dựng QR — honest, không bịa
-  };
-}
+const paymentsStore = new Map(); // paymentId -> payment record (chỉ sống trong memory, đủ cho demo)
 
-export async function mockConfirmPayment({ paymentId }) {
-  // QR ngân hàng (MB Bank, duy nhất trong MVP): giả lập độ trễ như đang
-  // chờ khách quét mã xong. Đây là DEMO — không có giao dịch tiền thật
-  // nào xảy ra.
-  await new Promise((r) => setTimeout(r, 1800));
-  return { paymentId, status: PAYMENT_STATUS.PAID };
+export async function mockGetPaymentDetails(paymentId) {
+  await new Promise((r) => setTimeout(r, 150));
+  const record = paymentsStore.get(paymentId);
+  if (!record) throw new Error(`Không tìm thấy payment ${paymentId}`);
+  return record;
 }
 
 // ============================================================
 // JOB LIFECYCLE (mock)
 // ============================================================
-export function mockCreateJob({ fileName, fileSizeBytes, driveLink, profileId, paymentId, downloadSourceFile }) {
+export function mockCreateJob({ fileName, fileSizeBytes, driveLink, profileId, downloadSourceFile }) {
   const jobId = `job-${Date.now()}`;
+  const storageCode = `CWS-${jobId.slice(-8).toUpperCase()}`;
   const estimate = computeEstimate({ fileSizeBytes, profileId });
 
   jobsStore[jobId] = {
     id: jobId,
     projectName: fileName || (driveLink ? '(File từ Google Drive)' : 'Không rõ tên file'),
+    storageCode,
     profileId,
     status: estimate.queueSeconds > 0 ? JOB_STATUS.QUEUED : JOB_STATUS.SEARCHING_WORKERS,
     stageProgress: 0,
-    paymentId,
-    paymentStatus: PAYMENT_STATUS.PAID,
+    paymentId: null,
+    paymentStatus: PAYMENT_STATUS.UNPAID,
     estimate,
     createdAt: Date.now(),
     downloadUrl: null,
@@ -222,6 +217,17 @@ function runSimulation(jobId, downloadSourceFile) {
         persist();
         notify(jobId);
         resumeAfterReviewByJob.set(jobId, () => { stageIdx += 1; step(); });
+      } else if (stageKey === JOB_STATUS.AWAITING_PAYMENT) {
+        // Giả lập webhook ngân hàng xác nhận PAID sau khi đã "chờ" đủ
+        // DEMO_STAGE_DURATION_MS — Backend thật chờ webhook thật, ở đây
+        // không có giao dịch tiền thật nào nên tự đánh dấu PAID.
+        const paymentId = jobsStore[jobId].paymentId;
+        const payment = paymentId ? paymentsStore.get(paymentId) : null;
+        if (payment) paymentsStore.set(paymentId, { ...payment, status: PAYMENT_STATUS.PAID });
+        jobsStore[jobId] = { ...jobsStore[jobId], paymentStatus: PAYMENT_STATUS.PAID };
+        persist();
+        stageIdx += 1;
+        step();
       } else {
         stageIdx += 1;
         step();
@@ -267,11 +273,36 @@ export async function mockGetJobPreview(jobId) {
   return { images: jobsStore[jobId]?.previewImages ?? [] };
 }
 
+/** Khách duyệt bản preview -> sinh QR MB Bank (mock), job chuyển sang
+ * AWAITING_PAYMENT — khớp hành vi Backend thật (JobsService.approve()),
+ * KHÔNG đóng gói/mở tải ngay. */
 export async function mockApproveJob(jobId) {
   const job = jobsStore[jobId];
   if (!job || job.status !== JOB_STATUS.REVIEW_READY) {
     throw new Error(`Job ${jobId} chưa sẵn sàng để duyệt`);
   }
+
+  const paymentId = `pay-${Date.now()}`;
+  const paymentCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const amountVnd = job.estimate.costVnd;
+  const transferContent = `CWS ${job.storageCode} ${paymentCode}`;
+  const payment = {
+    paymentId,
+    status: PAYMENT_STATUS.PROCESSING,
+    paymentCode,
+    transferContent,
+    amountVnd,
+    qrImageUrl: null, // mock không có tài khoản MB Bank thật để dựng QR — honest, không bịa
+  };
+  paymentsStore.set(paymentId, payment);
+
+  jobsStore[jobId] = {
+    ...jobsStore[jobId],
+    paymentId,
+    paymentStatus: PAYMENT_STATUS.PROCESSING,
+  };
+  persist();
+
   const resume = resumeAfterReviewByJob.get(jobId);
   resumeAfterReviewByJob.delete(jobId);
   if (resume) {
@@ -279,19 +310,16 @@ export async function mockApproveJob(jobId) {
   } else {
     // Trang vừa refresh giữa lúc chờ duyệt — closure runSimulation() đã
     // mất (resumeAfterReviewByJob chỉ sống trong memory, không persist).
-    // Hoàn tất job ngay thay vì treo im lặng chờ 1 resume() không còn tồn tại.
-    jobsStore[jobId] = {
-      ...jobsStore[jobId],
-      status: JOB_STATUS.FINISHED,
-      stageProgress: 1,
-      durationSec: Math.round((Date.now() - job.createdAt) / 1000),
-      isPlaceholder: true,
-    };
+    // Đẩy status sang AWAITING_PAYMENT trước rồi mới chạy lại
+    // runSimulation() — nếu không, nó sẽ đọc lại status cũ (REVIEW_READY)
+    // và lặp lại y hệt bước chờ duyệt vừa xong.
+    jobsStore[jobId] = { ...jobsStore[jobId], status: JOB_STATUS.AWAITING_PAYMENT, stageProgress: 0 };
     persist();
     notify(jobId);
-    notifyComplete(jobId);
+    runSimulation(jobId, null);
   }
-  return { id: jobId, status: jobsStore[jobId].status };
+
+  return { id: jobId, status: jobsStore[jobId].status, payment };
 }
 
 /** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi log, KHÔNG đổi

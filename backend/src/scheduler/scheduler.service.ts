@@ -5,6 +5,7 @@ import {
   RENDER_ORDERS_REPOSITORY,
 } from '../jobs/repositories/render-orders.repository.interface';
 import { WorkerFleetGateway } from '../jobs/worker-fleet.gateway';
+import { JobsService } from '../jobs/jobs.service';
 import { JobStatus } from '../jobs/domain/job-status.enum';
 import { RenderOrder } from '../jobs/domain/render-order';
 import { PreviewService } from '../storage/preview.service';
@@ -40,6 +41,7 @@ export class SchedulerService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
+    private readonly jobsService: JobsService,
     private readonly previewService: PreviewService,
     private readonly storageService: StorageService,
     private readonly wakeService: WakeService,
@@ -69,6 +71,22 @@ export class SchedulerService {
   private async processOrder(order: RenderOrder): Promise<void> {
     if (!order.internalJobId) {
       this.logger.warn(`Order ${order.id} chưa có internalJobId — bỏ qua tick này`);
+      return;
+    }
+
+    // Render đã xong từ trước, chỉ còn chờ webhook ngân hàng xác nhận
+    // PAID (CWS_MVP_WORKFLOW_FINAL.md) — không cần đọc lại tasks Worker
+    // Fleet nữa cho các order ở trạng thái này.
+    if (order.status === JobStatus.AWAITING_PAYMENT) {
+      const finalized = await this.jobsService.finalizeDelivery(order.id);
+      if (finalized) {
+        await this.storageService.notify(
+          order.id,
+          'Thanh toán thành công',
+          `Job "${order.projectName}" đã thanh toán xong, file gốc đã sẵn sàng tải.`,
+        );
+        this.logger.log(`Order ${order.id}: thanh toán PAID, đã đóng gói + mở tải`);
+      }
       return;
     }
 

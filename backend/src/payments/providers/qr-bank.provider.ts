@@ -9,6 +9,7 @@ import { AppConfig } from '../../config/configuration';
  * tin công khai của ngành ngân hàng, không phải secret. Dùng để dựng
  * VietQR qua dịch vụ ảnh công khai img.vietqr.io (không cần API key). */
 const MB_BANK_BIN = '970422';
+const MB_BANK_NAME = 'MB Bank';
 
 /**
  * GIỚI HẠN THẬT (ghi rõ, không giả vờ): chưa có số tài khoản MB Bank
@@ -26,15 +27,20 @@ const MB_BANK_BIN = '970422';
 export class QrBankProvider implements IPaymentProvider {
   constructor(private readonly configService: ConfigService<AppConfig, true>) {}
 
-  async createIntent(amountVnd: number): Promise<{
+  async createIntent(
+    amountVnd: number,
+    storageCode?: string | null,
+  ): Promise<{
     providerRef: string;
     status: PaymentStatus;
     paymentCode: string | null;
     transferContent: string | null;
     qrImageUrl: string | null;
+    bankName: string | null;
+    accountNumber: string | null;
   }> {
     const paymentCode = randomBytes(4).toString('hex').toUpperCase();
-    const transferContent = `CWS ${paymentCode}`;
+    const transferContent = storageCode ? `CWS ${storageCode} ${paymentCode}` : `CWS ${paymentCode}`;
     const { accountNumber, accountName } = this.configService.get('mbBank', { infer: true });
 
     const qrImageUrl = accountNumber
@@ -47,6 +53,8 @@ export class QrBankProvider implements IPaymentProvider {
       paymentCode,
       transferContent,
       qrImageUrl,
+      bankName: accountNumber ? MB_BANK_NAME : null,
+      accountNumber: accountNumber || null,
     };
   }
 

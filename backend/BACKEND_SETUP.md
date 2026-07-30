@@ -45,13 +45,14 @@ Kiểm tra: `curl http://localhost:3000/health` → `{"status":"ok",...}`
 
 ## 3. Chạy Migration (CHỈ CẦN LÀM 1 LẦN)
 
-Migration 001-007 đã được chạy thật trên Supabase project
+Migration 001-008 đã được chạy thật trên Supabase project
 `ynhxlxetwuiyejcjypsi` (render_orders, payments, sites,
 machine_capability, customer_profiles, storage_objects, review_images,
 downloads, worker_logs, notifications, RLS owner-scoped + trigger
-Supabase Auth — không đụng bảng jobs/tasks/workers cũ của Worker
+Supabase Auth, payments.job_id/storage_code/bank_name/account_number/
+qr_image_url — không đụng bảng jobs/tasks/workers cũ của Worker
 Fleet). Nếu deploy sang Supabase project khác, chạy lần lượt các file
-trong `migrations/` theo đúng thứ tự số (001 đến 007) qua Supabase SQL
+trong `migrations/` theo đúng thứ tự số (001 đến 008) qua Supabase SQL
 Editor, **và** bật Facebook Provider trong Authentication > Providers
 (xem mục 3b).
 
@@ -108,17 +109,21 @@ bất kỳ dòng code nào ở Portal.
   .zip — CHƯA tự động dựng thành video MP4 (vẫn cần Dy làm tay bằng
   ffmpeg như quy trình cũ nếu cần video).
 - Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
-  gỡ hoàn toàn. Webhook thật (`POST /payments/webhook`) đã đối chiếu
-  đúng nội dung+số tiền. Ảnh VietQR quét được ĐÃ dựng thật khi có
-  `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` (env) — chỉ còn thiếu
-  webhook thật từ ngân hàng gọi vào (cần thao tác phía ngân hàng/cổng
-  trung gian, chưa nối).
+  gỡ hoàn toàn. **Render là MIỄN PHÍ** — thanh toán chỉ diễn ra SAU khi
+  khách duyệt bản preview (`POST /jobs/:id/approve` sinh QR ngay trong
+  response, job chuyển `awaiting_payment`), KHÔNG chặn việc tạo
+  job/render. Webhook thật (`POST /payments/webhook`) đối chiếu
+  storage_code + payment_code + số tiền. Ảnh VietQR quét được ĐÃ dựng
+  thật khi có `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` (env) —
+  chỉ còn thiếu webhook thật từ ngân hàng gọi vào (cần thao tác phía
+  ngân hàng/cổng trung gian, chưa nối).
 - Preview/duyệt: render xong dừng ở `review_ready`, tạo 3-5 ảnh
-  preview watermark thật — chỉ `POST /jobs/:id/approve` mới mở
-  `downloadUrl`. Tải file PHẢI qua `GET /jobs/:id/download` (có ghi
-  log), không dùng thẳng `downloadUrl` raw. Khách có thể
-  `POST /jobs/:id/request-changes` để yêu cầu chỉnh sửa thay vì duyệt
-  (chỉ ghi nhận, không tự động re-render/hoàn tiền).
+  preview watermark thật. Khách duyệt → `awaiting_payment` (chờ webhook)
+  → webhook PAID → `packaging` → `finished` (mở `downloadUrl`). Tải file
+  PHẢI qua `GET /jobs/:id/download` (có ghi log), không dùng thẳng
+  `downloadUrl` raw. Khách có thể `POST /jobs/:id/request-changes` để
+  yêu cầu chỉnh sửa thay vì duyệt (chỉ ghi nhận, không tự động
+  re-render/hoàn tiền).
 - Facebook Login: dùng Supabase Auth built-in OAuth (xem mục 3b) — cần
   bật Provider thật trong Supabase Dashboard, KHÔNG cần code Backend
   riêng. RLS owner-scoped đã bật (migration 007) nên khách chỉ đọc

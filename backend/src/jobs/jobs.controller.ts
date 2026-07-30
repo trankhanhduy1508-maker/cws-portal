@@ -102,12 +102,13 @@ export class JobsController {
     return { images };
   }
 
-  /** Khách duyệt bản preview -> đóng gói kết quả cuối + mở link tải. */
+  /** Khách duyệt bản preview -> sinh QR MB Bank, chờ webhook xác nhận
+   * PAID rồi mới đóng gói + mở link tải (xem JobsService.finalizeDelivery()). */
   @Post(':id/approve')
   @HttpCode(200)
   async approve(@Param('id') id: string) {
-    const order = await this.jobsService.approve(id);
-    return toPublicJson(order);
+    const { order, payment } = await this.jobsService.approve(id);
+    return { ...toPublicJson(order), payment };
   }
 
   /** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi nhận yêu cầu (thông

@@ -217,6 +217,40 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
     }
   }
 
+  async attachPayment(id: string, paymentId: string): Promise<RenderOrder | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .update({
+        payment_id: paymentId,
+        payment_status: 'processing',
+        status: JobStatus.AWAITING_PAYMENT,
+        stage_progress: 0,
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`attachPayment(${id}) thất bại: ${error.message}`);
+      throw new Error(`Không gắn được payment vào render order: ${error.message}`);
+    }
+    return data ? rowToDomain(data as RenderOrderRow) : null;
+  }
+
+  async markPaymentPaid(id: string): Promise<void> {
+    const { error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .update({ payment_status: 'paid' })
+      .eq('id', id);
+
+    if (error) {
+      this.logger.error(`markPaymentPaid(${id}) thất bại: ${error.message}`);
+      throw new Error(`Không cập nhật được payment_status: ${error.message}`);
+    }
+  }
+
   async findByStorageCode(storageCode: string): Promise<RenderOrder | null> {
     const { data, error } = await this.supabaseService
       .getClient()

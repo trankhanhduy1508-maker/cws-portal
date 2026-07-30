@@ -31,6 +31,12 @@ export interface IRenderOrdersRepository {
   ): Promise<RenderOrder | null>;
   markCancelled(id: string): Promise<RenderOrder | null>;
   attachInternalJobId(id: string, internalJobId: string): Promise<void>;
+  /** Khách vừa duyệt preview — gắn payment mới sinh + chuyển sang chờ
+   * thanh toán (JobsService.approve(), CWS_MVP_WORKFLOW_FINAL.md). */
+  attachPayment(id: string, paymentId: string): Promise<RenderOrder | null>;
+  /** Webhook đã xác nhận PAID cho payment của job này — đồng bộ lại
+   * payment_status trên chính render_orders (JobsService.finalizeDelivery()). */
+  markPaymentPaid(id: string): Promise<void>;
   /** Các order đang ở trạng thái "chưa xong việc" — Scheduler dùng để
    * quét định kỳ (Model 1/2 quyết định bước tiếp theo). */
   findActiveOrders(): Promise<RenderOrder[]>;

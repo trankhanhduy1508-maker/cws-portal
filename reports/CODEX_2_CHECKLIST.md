@@ -59,6 +59,7 @@ Supabase • Database • Backblaze B2
 - Migration 004: giới hạn payments.method chỉ còn 'qr_bank' (đã apply lên Supabase thật).
 - Backend module storage_objects/review_images/downloads (StorageService: recordPaths/getPaths/publishReviewImages/logDownload, enforce 3-5 ảnh preview theo MVP). Xem PR #7. Bảng đã được tạo qua migration 005 (đã apply lên Supabase thật).
 - Payment webhook thật: QrBankProvider sinh payment_code/transfer_content, POST /payments/webhook xác nhận PAID duy nhất qua nội dung+số tiền khớp. Xem PR #6.
+- Migration 008 (audit cuối 2026-07-30): thêm payments.job_id/storage_code/bank_name/account_number/qr_image_url — khớp đủ field CWS_DATABASE_SCHEMA.md cho bảng payments (trước đó thiếu hoàn toàn liên kết tới job). Đã apply lên Supabase thật. Đi kèm sửa mismatch thứ tự thanh toán ở domain Workflow (xem CODEX_3_CHECKLIST.md).
 
 ---
 

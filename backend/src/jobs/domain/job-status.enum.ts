@@ -15,6 +15,12 @@ export enum JobStatus {
   /** Render xong, đã có 3-5 ảnh preview watermark — chờ khách bấm duyệt
    * (CWS_ROADMAP_MVP_V1.md, Giai đoạn 4) trước khi đóng gói/mở tải. */
   REVIEW_READY = 'review_ready',
+  /** Khách đã duyệt preview — QR MB Bank đã sinh (JobsService.approve()),
+   * chờ webhook ngân hàng xác nhận PAID (CWS_MVP_WORKFLOW_FINAL.md:
+   * "Khách duyệt → Sinh QR → Webhook → PAID → Mở link tải"). Render đã
+   * xong từ TRƯỚC bước này — thanh toán không chặn việc render, chỉ
+   * chặn việc MỞ TẢI file gốc. */
+  AWAITING_PAYMENT = 'awaiting_payment',
   PACKAGING = 'packaging',
   FINISHED = 'finished',
   ERROR = 'error',
@@ -31,6 +37,7 @@ export const JOB_STAGE_SEQUENCE: JobStatus[] = [
   JobStatus.WORKERS_CONNECTED,
   JobStatus.RENDERING,
   JobStatus.REVIEW_READY,
+  JobStatus.AWAITING_PAYMENT,
   JobStatus.PACKAGING,
   JobStatus.FINISHED,
 ];

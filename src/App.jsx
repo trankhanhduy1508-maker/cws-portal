@@ -16,22 +16,24 @@ import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
 import { useFileUploadResolver } from './hooks/useFileUploadResolver';
 import { useProfileEstimates } from './hooks/useProfileEstimates';
-import { usePayment } from './hooks/usePayment';
 import { useRenderJob } from './hooks/useRenderJob';
 import { useJobHistory } from './hooks/useJobHistory';
 import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 
 // Screen điều hướng — tuyến tính theo đúng end-to-end workflow:
-// Facebook Login -> Upload -> Render Profile -> Payment -> Processing
-// (Job chạy thật, bao gồm cả lúc xong/lỗi/hủy - xem điều kiện render
-// bên trong PROCESSING). History có thể mở từ bất kỳ đâu qua nút ở header.
+// Facebook Login -> Upload -> Render Profile -> Processing (Job chạy
+// thật, MIỄN PHÍ, bao gồm cả lúc xong/lỗi/hủy/preview/CHỜ THANH TOÁN —
+// xem điều kiện render bên trong PROCESSING). Thanh toán (QR MB Bank)
+// chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
+// nên KHÔNG phải 1 SCREEN riêng trước Processing nữa — nó là 1 trạng
+// thái con của Processing (job.status === AWAITING_PAYMENT), giống
+// REVIEW_READY/FINISHED. History có thể mở từ bất kỳ đâu qua nút ở header.
 const SCREEN = {
   LANDING: 'landing',
   LOGIN: 'login',
   UPLOAD: 'upload',
   PROFILE: 'profile',
-  PAYMENT: 'payment',
   PROCESSING: 'processing',
   HISTORY: 'history',
 };
@@ -64,7 +66,6 @@ function CustomerPortalApp() {
   const { estimates, isLoading: isLoadingEstimates } = useProfileEstimates(
     screen === SCREEN.PROFILE ? resolvedInput : null
   );
-  const payment = usePayment();
   const job = useRenderJob();
   const jobHistory = useJobHistory();
   const auth = useAuth();
@@ -102,31 +103,25 @@ function CustomerPortalApp() {
     }
   }, [source, file, driveLink, resolvedInfo, fileUploadResolver]);
 
-  // ---- Bước 2: Render Profile -> Payment ----
-  const handleContinueToPayment = useCallback(() => setScreen(SCREEN.PAYMENT), []);
-
-  // ---- Bước 3: Payment -> Processing (tạo job thật sau khi thanh toán) ----
-  const handlePay = useCallback(async () => {
-    const amountVnd = estimates[selectedProfileId]?.costVnd;
-    const paymentId = await payment.pay(amountVnd);
-    if (paymentId) {
-      setScreen(SCREEN.PROCESSING);
-      job.start({ input: resolvedInput, profileId: selectedProfileId, paymentId });
-    }
-  }, [estimates, selectedProfileId, payment, job, resolvedInput]);
+  // ---- Bước 2: Render Profile -> Processing (tạo job NGAY, render miễn
+  // phí — thanh toán chỉ diễn ra sau khi khách duyệt preview, xem
+  // job.status === AWAITING_PAYMENT bên dưới). ----
+  const handleContinueToProcessing = useCallback(() => {
+    setScreen(SCREEN.PROCESSING);
+    job.start({ input: resolvedInput, profileId: selectedProfileId });
+  }, [job, resolvedInput, selectedProfileId]);
 
   const handleCancelJob = useCallback(() => { job.cancel(); }, [job]);
 
   const handleRetry = useCallback(() => {
     job.reset();
-    payment.reset();
     clearFile();
     clearLink();
     setResolvedInput(null);
     setActiveProjectName(null);
     setSelectedProfileId(null);
     setScreen(SCREEN.UPLOAD);
-  }, [job, payment, clearFile, clearLink]);
+  }, [job, clearFile, clearLink]);
 
   // ---- Job Dashboard / History (chỉ khách đã đăng nhập mới xem được) ----
   const handleOpenHistory = useCallback(() => {
@@ -198,23 +193,8 @@ function CustomerPortalApp() {
             isLoadingEstimates={isLoadingEstimates}
             selectedProfileId={selectedProfileId}
             onSelectProfile={setSelectedProfileId}
-            onContinue={handleContinueToPayment}
+            onContinue={handleContinueToProcessing}
             onBack={() => setScreen(SCREEN.UPLOAD)}
-          />
-        )}
-
-        {screen === SCREEN.PAYMENT && (
-          <PaymentScreen
-            key="payment"
-            amountVnd={estimates[selectedProfileId]?.costVnd}
-            method={payment.method}
-            setMethod={payment.setMethod}
-            status={payment.status}
-            error={payment.error}
-            transferContent={payment.transferContent}
-            qrImageUrl={payment.qrImageUrl}
-            onPay={handlePay}
-            onBack={() => setScreen(SCREEN.PROFILE)}
           />
         )}
 
@@ -235,6 +215,16 @@ function CustomerPortalApp() {
           />
         )}
 
+        {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.AWAITING_PAYMENT && (
+          <PaymentScreen
+            key="payment"
+            amountVnd={job.paymentInfo?.amountVnd ?? estimates[selectedProfileId]?.costVnd}
+            transferContent={job.paymentInfo?.transferContent}
+            qrImageUrl={job.paymentInfo?.qrImageUrl}
+            onCancel={handleCancelJob}
+          />
+        )}
+
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.FINISHED && (
           <PreviewDownloadScreen
             key="done"
@@ -248,7 +238,7 @@ function CustomerPortalApp() {
         )}
 
         {screen === SCREEN.PROCESSING &&
-          ![JOB_STATUS.ERROR, JOB_STATUS.CANCELLED, JOB_STATUS.FINISHED, JOB_STATUS.REVIEW_READY].includes(job.status) && (
+          ![JOB_STATUS.ERROR, JOB_STATUS.CANCELLED, JOB_STATUS.FINISHED, JOB_STATUS.REVIEW_READY, JOB_STATUS.AWAITING_PAYMENT].includes(job.status) && (
           <ProgressScreen
             key="progress"
             stageIndex={job.stageIndex}

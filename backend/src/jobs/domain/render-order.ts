@@ -51,12 +51,13 @@ export interface RenderOrder {
   isPlaceholder: boolean;
 }
 
-/** Input để tạo 1 RenderOrder mới — khớp shape Portal gửi lên qua POST /jobs */
+/** Input để tạo 1 RenderOrder mới — khớp shape Portal gửi lên qua POST /jobs.
+ * KHÔNG có paymentId: thanh toán chỉ diễn ra SAU khi khách duyệt preview
+ * (CWS_MVP_WORKFLOW_FINAL.md), không phải điều kiện để tạo job. */
 export interface CreateRenderOrderInput {
   fileRef: string | null;
   driveLink: string | null;
   fileName: string | null;
   fileSizeBytes: number | null;
   profileId: RenderProfileId;
-  paymentId: string;
 }

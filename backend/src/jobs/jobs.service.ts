@@ -13,7 +13,7 @@ import { PACKAGING_SERVICE, IPackagingService } from './services/packaging.inter
 import { StorageService } from '../storage/storage.service';
 import { B2StorageService } from '../files/b2-storage.service';
 import { PaymentsService } from '../payments/payments.service';
-import { PaymentStatus } from '../payments/payment.types';
+import { PaymentMethod, PaymentStatus } from '../payments/payment.types';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -62,18 +62,16 @@ export class JobsService {
     return { ...baseEstimate, queueSeconds };
   }
 
+  /**
+   * Tạo job NGAY, không cần thanh toán trước — render là miễn phí, chỉ
+   * việc MỞ TẢI file gốc mới cần thanh toán (CWS_MVP_WORKFLOW_FINAL.md:
+   * Facebook Login → Job → Upload → Render → Preview → Khách duyệt →
+   * Sinh QR → Webhook → PAID → Mở tải). Payment chỉ được tạo sau, tại
+   * approve() — xem ghi chú ở đó.
+   */
   async createOrder(dto: CreateJobDto, customerId: string | null = null): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
-    }
-
-    // Chỉ tạo job nếu paymentId thật sự đã PAID — tránh việc Client tự
-    // gửi 1 paymentId bất kỳ (chưa thanh toán) để tạo job miễn phí.
-    const paymentStatus = await this.paymentsService.getStatus(dto.paymentId);
-    if (paymentStatus !== PaymentStatus.PAID) {
-      throw new BadRequestException(
-        `Payment ${dto.paymentId} chưa ở trạng thái PAID (hiện tại: ${paymentStatus})`,
-      );
     }
 
     const estimate = await this.estimate({
@@ -99,8 +97,8 @@ export class JobsService {
       profileId: dto.profileId,
       status: initialStatus,
       stageProgress: 0,
-      paymentId: dto.paymentId,
-      paymentStatus: paymentStatus as unknown as RenderOrder['paymentStatus'],
+      paymentId: null,
+      paymentStatus: 'unpaid',
       estimate,
       driveLink: dto.driveLink ?? null,
       uploadedFileB2Key: dto.fileRef ?? null,
@@ -167,21 +165,61 @@ export class JobsService {
   }
 
   /**
-   * Khách duyệt bản preview (CWS_ROADMAP_MVP_V1.md, Giai đoạn 4) — CHỈ
-   * từ đây mới đóng gói kết quả cuối + mở link tải. Gọi trước đó (khi
-   * order chưa ở REVIEW_READY) là lỗi rõ ràng, không âm thầm bỏ qua.
+   * Khách duyệt bản preview (CWS_MVP_WORKFLOW_FINAL.md, mục Review:
+   * "Đồng ý → Sinh QR thanh toán"). KHÔNG đóng gói/mở tải ngay — chỉ
+   * SAU KHI webhook xác nhận PAID (xem finalizeDelivery()) mới mở tải.
+   * Gọi trước đó (khi order chưa ở REVIEW_READY) là lỗi rõ ràng, không
+   * âm thầm bỏ qua.
    */
-  async approve(id: string): Promise<RenderOrder> {
+  async approve(id: string): Promise<{
+    order: RenderOrder;
+    payment: {
+      paymentId: string;
+      paymentCode: string | null;
+      transferContent: string | null;
+      qrImageUrl: string | null;
+      amountVnd: number;
+    };
+  }> {
     const order = await this.getById(id);
     if (order.status !== JobStatus.REVIEW_READY) {
       throw new BadRequestException(
         `Job ${id} chưa sẵn sàng để duyệt (trạng thái hiện tại: ${order.status})`,
       );
     }
+
+    const amountVnd = order.estimate.costVnd;
+    const { paymentId, paymentCode, transferContent, qrImageUrl } = await this.paymentsService.createIntent(
+      { amountVnd, method: PaymentMethod.QR_BANK },
+      { jobId: order.id, storageCode: order.storageCode },
+    );
+
+    const updated = await this.ordersRepository.attachPayment(id, paymentId);
+    if (!updated) throw new NotFoundException(`Không tìm thấy job ${id}`);
+
+    return { order: updated, payment: { paymentId, paymentCode, transferContent, qrImageUrl, amountVnd } };
+  }
+
+  /**
+   * Webhook đã xác nhận PAID cho payment của job này (gọi từ
+   * SchedulerService.tick() khi phát hiện 1 job AWAITING_PAYMENT) — đến
+   * đây mới thật sự đóng gói kết quả cuối + mở link tải
+   * (CWS_MVP_WORKFLOW_FINAL.md, mục Bàn giao). Trả về `null` (KHÔNG
+   * throw) khi payment CHƯA PAID — đây là trạng thái bình thường ở mỗi
+   * tick trong lúc khách chưa chuyển khoản xong, không phải lỗi.
+   */
+  async finalizeDelivery(id: string): Promise<RenderOrder | null> {
+    const order = await this.getById(id);
+    if (order.status !== JobStatus.AWAITING_PAYMENT || !order.paymentId) return null;
+
+    const paymentStatus = await this.paymentsService.getStatus(order.paymentId);
+    if (paymentStatus !== PaymentStatus.PAID) return null;
+
     if (!order.internalJobId) {
       throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể đóng gói`);
     }
 
+    await this.ordersRepository.markPaymentPaid(id);
     await this.ordersRepository.updateStatus(id, JobStatus.PACKAGING, 0);
 
     const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(

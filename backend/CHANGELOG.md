@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.3.0] - Sửa mismatch thứ tự thanh toán (2026-07-30)
+
+### Sửa lỗi nghiêm trọng (mismatch với roadmap)
+- **Trước bản này, `POST /jobs` bắt buộc `paymentId` đã PAID mới tạo
+  được job** — hoàn toàn ngược với CWS_MVP_WORKFLOW_FINAL.md/
+  CWS_ROADMAP_MVP_V1.md: cả 2 tài liệu đều ghi rõ thứ tự "Job → Upload
+  → Render → Preview → **Khách duyệt** → Sinh QR → Webhook → PAID →
+  Mở tải" — nghĩa là render MIỄN PHÍ, thanh toán chỉ chặn việc MỞ TẢI
+  file gốc, không chặn việc tạo job/render. Đây là mismatch lớn nhất
+  tìm thấy khi audit lại toàn bộ repo theo đúng 3 tài liệu gốc.
+- Đã sửa: `POST /jobs` không còn nhận/yêu cầu `paymentId`. Job tạo và
+  render ngay. `POST /jobs/:id/approve` (khách duyệt preview) mới là
+  nơi sinh payment (QR MB Bank) — trả thẳng `paymentCode`/`transferContent`/
+  `qrImageUrl` trong response, chuyển job sang trạng thái mới
+  `awaiting_payment`. `SchedulerService` phát hiện payment đã PAID (qua
+  tick định kỳ) thì mới gọi `JobsService.finalizeDelivery()` để đóng
+  gói + mở `downloadUrl`.
+- `payments` table: thêm cột `job_id`, `storage_code`, `bank_name`,
+  `account_number`, `qr_image_url` (migration 008) — khớp
+  CWS_DATABASE_SCHEMA.md (trước đây bảng này thiếu hết các field liên
+  kết tới job). `transferContent` giờ đúng định dạng
+  `"CWS {storage_code} {payment_code}"` (trước chỉ có payment_code).
+- `POST /payments/webhook`: giờ đối chiếu CẢ `storage_code` lẫn
+  `payment_code` + số tiền (CWS_MVP_WORKFLOW_FINAL.md: "Kiểm tra
+  payment_code. Kiểm tra storage_code.") — trước chỉ kiểm tra payment_code
+  + số tiền.
+- Trạng thái job `awaiting_payment` — tận dụng đúng giá trị đã có sẵn
+  trong CHECK constraint của `render_orders.status` (migration 006 đã
+  thêm sẵn nhưng chưa từng được code TypeScript dùng tới).
+- Frontend: bỏ hẳn màn Payment TRƯỚC khi render (SCREEN.PAYMENT cũ) —
+  Payment giờ là 1 trạng thái con của Processing
+  (`job.status === 'awaiting_payment'`), hiển thị QR + tự động chuyển
+  tiếp khi webhook xác nhận, không còn nút "Xác nhận thanh toán" thủ
+  công nào (đúng "Webhook tự xác nhận" — Frontend không tự đặt PAID).
+  Xóa `usePayment.js`/`PaymentMethodPicker` (dead code sau khi bỏ màn
+  Payment độc lập — MVP chỉ có 1 phương thức nên không cần picker).
+
 ## [1.2.0] - Supabase Auth + RLS + VietQR + Admin Dashboard (2026-07-30)
 
 ### Thêm mới

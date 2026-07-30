@@ -10,14 +10,21 @@ export const PAYMENT_PROVIDER_REGISTRY = Symbol('PAYMENT_PROVIDER_REGISTRY');
 export interface IPaymentProvider {
   /** Bắt đầu 1 giao dịch — trả về trạng thái ban đầu (thường PROCESSING).
    * paymentCode/transferContent chỉ có ý nghĩa với phương thức có nội
-   * dung chuyển khoản tra cứu được (vd QR ngân hàng) — null nếu không áp dụng. */
-  createIntent(amountVnd: number): Promise<{
+   * dung chuyển khoản tra cứu được (vd QR ngân hàng) — null nếu không áp dụng.
+   * `storageCode` (nếu có) được nhúng vào transferContent theo đúng định
+   * dạng "CWS {storageCode} {paymentCode}" (CWS_MVP_WORKFLOW_FINAL.md). */
+  createIntent(
+    amountVnd: number,
+    storageCode?: string | null,
+  ): Promise<{
     providerRef: string;
     status: PaymentStatus;
     paymentCode: string | null;
     transferContent: string | null;
     /** Ảnh QR quét được (VietQR) — null nếu chưa cấu hình tài khoản nhận tiền thật. */
     qrImageUrl: string | null;
+    bankName: string | null;
+    accountNumber: string | null;
   }>;
   /** Xác nhận giao dịch đã hoàn tất qua hành động TRỰC TIẾP của provider
    * (vd ví trừ tiền ngay) — QR ngân hàng KHÔNG implement thật vì việc

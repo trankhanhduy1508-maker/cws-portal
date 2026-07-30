@@ -22,8 +22,7 @@ export class PaymentsController {
 
   @Get(':id')
   async getById(@Param('id') id: string) {
-    const status = await this.paymentsService.getStatus(id);
-    return { paymentId: id, status };
+    return this.paymentsService.getPublicDetails(id);
   }
 
   @Post(':id/confirm')

@@ -42,11 +42,12 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Phase 4 - Payment
 
-- [x] Kiểm tra MB QR — TRƯỚC: mock setTimeout, không QR thật. Đã fix: QrBankProvider sinh payment_code + transfer_content ("CWS {code}") thật. VẪN THIẾU: số tài khoản MB Bank thật (business info) nên chưa dựng được ảnh VietQR quét được — hiện chỉ hiển thị nội dung chuyển khoản dạng text ở PaymentScreen.
-- [x] Kiểm tra Webhook — TRƯỚC: MISSING, confirm() tự set PAID không kiểm tra gì. Đã fix: POST /payments/webhook xác nhận theo content+amount khớp payment_code, là đường DUY NHẤT set PAID. QrBankProvider.confirm() giờ luôn throw. Xem PR #6.
+- [x] Kiểm tra MB QR — QrBankProvider sinh payment_code + transfer_content thật, ảnh VietQR thật qua img.vietqr.io khi có MB_BANK_ACCOUNT_NUMBER.
+- [x] Kiểm tra Webhook — POST /payments/webhook xác nhận theo storage_code + payment_code + amount khớp, là đường DUY NHẤT set PAID. QrBankProvider.confirm() luôn throw.
 - [x] Kiểm tra Payment Status — enum PAID/UNPAID/PROCESSING/FAILED đã khớp CWS_DATABASE_SCHEMA.md.
-- [x] Kiểm tra Delivery — GET /jobs/:id/download ghi log rồi redirect sang B2, thay vì lộ downloadUrl raw không kiểm soát được. Xem PR #7.
+- [x] Kiểm tra Delivery — GET /jobs/:id/download ghi log rồi redirect sang B2, thay vì lộ downloadUrl raw không kiểm soát được.
 - [x] Kiểm tra Download — bảng `downloads` đã tạo (migration 005) + có StorageService.logDownload ghi mỗi lượt tải.
+- [x] **[SỬA LỖI NGHIÊM TRỌNG — audit lần cuối 2026-07-30]** Kiểm tra thứ tự Thanh toán vs Render — PHÁT HIỆN: `POST /jobs` trước đây bắt buộc `paymentId` đã PAID mới tạo được job, tức là bắt khách trả tiền TRƯỚC KHI render — ngược hoàn toàn với CWS_MVP_WORKFLOW_FINAL.md/CWS_ROADMAP_MVP_V1.md (cả 2 đều ghi rõ: Job → Render → Preview → Khách duyệt → MỚI sinh QR → Webhook → PAID → Mở tải; render phải MIỄN PHÍ). Đây là mismatch lớn nhất từng bị bỏ sót trong toàn bộ dự án. Đã sửa toàn diện: `POST /jobs` không còn cần paymentId; `POST /jobs/:id/approve` mới sinh payment (trả `payment` trong response), chuyển job sang `awaiting_payment` (dùng đúng giá trị đã có sẵn trong CHECK constraint từ migration 006 nhưng chưa từng được code dùng); `SchedulerService` phát hiện PAID qua tick mới gọi `JobsService.finalizeDelivery()` để đóng gói + mở tải. `payments` table bổ sung job_id/storage_code/bank_name/account_number/qr_image_url (migration 008) để webhook đối chiếu được storage_code. Frontend: bỏ hẳn màn Payment đứng trước Processing, Payment giờ là trạng thái con của Processing, không còn nút "xác nhận thanh toán" thủ công. Xem `backend/CHANGELOG.md` mục [1.3.0] và `docs/MVP_GAP_REPORT.md`. Build/test/lint + boot thật (node dist/main.js) đã xác nhận PASS sau khi sửa.
 
 ---
 
@@ -122,14 +123,16 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Next Task
 
-Code MVP coi như đã xong hết phần tự làm được không cần credential (xem PR #6/#7/#8). Còn lại hoàn toàn phụ thuộc:
+Audit toàn diện lần cuối (2026-07-30) đã xong — xem báo cáo đầy đủ
+DONE/PARTIAL/BLOCKED tại `docs/MVP_GAP_REPORT.md`. Code MVP coi như đã
+xong hết phần tự làm được không cần credential, kể cả mismatch thanh
+toán nghiêm trọng vừa phát hiện + sửa. Còn lại hoàn toàn phụ thuộc:
 1. Bạn bật Facebook Provider trong Supabase Dashboard.
-2. Bạn rotate 2 secret đã lộ.
+2. Bạn rotate 2 secret đã lộ (Supabase service_role, B2 application key).
 3. Bạn điền số tài khoản MB Bank thật + ADMIN_API_KEY thật vào env Render.
-4. Bạn (hoặc phiên có browser tool) xác nhận toàn bộ UI bằng mắt, đặc biệt AdminScreen.jsx và ReviewScreen.jsx mới chưa từng được xem qua trình duyệt thật.
-5. Merge PR #6/#7/#8 vào main.
-
-"Yêu cầu chỉnh sửa" preview flow đã code xong (ghi nhận yêu cầu, không đụng nghiệp vụ). Sau khi có 1 trong các mục trên, việc còn lại chỉ là polish UI + xác nhận UI bằng mắt.
+4. Bạn (hoặc phiên có browser tool) xác nhận toàn bộ UI bằng mắt.
+5. Merge nhánh `codex/storage-review-images` (+ `codex/ci-workflow`,
+   `codex/mvp-payment-qr-only`) vào main.
 
 ---
 

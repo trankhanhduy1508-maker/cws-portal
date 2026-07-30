@@ -20,9 +20,9 @@ dưới ở từng route.
 ## Jobs
 
 ### POST /jobs
-Tạo 1 render order mới. CHỈ tạo được nếu `paymentId` đã ở trạng thái
-PAID (JobsService kiểm tra qua PaymentsService.getStatus() trước khi
-tạo — không tin `paymentId` do client tự gửi).
+Tạo 1 render order mới — MIỄN PHÍ, KHÔNG cần thanh toán trước
+(CWS_MVP_WORKFLOW_FINAL.md: Job → Upload → Render → Preview → Khách
+duyệt → mới sinh QR thanh toán). Không có field `paymentId` nào ở đây.
 
 Request body:
 ```json
@@ -31,8 +31,7 @@ Request body:
   "driveLink": null,
   "fileName": "scene.blend",
   "fileSizeBytes": 52428800,
-  "profileId": "standard",
-  "paymentId": "uuid-payment-id"
+  "profileId": "standard"
 }
 ```
 `fileRef` và `driveLink` — chỉ cần 1 trong 2 (tùy nguồn khách chọn).
@@ -75,8 +74,26 @@ khi job ở `review_ready` trở về sau. Response: `{ "images": [{ "url", "dis
 
 ### POST /jobs/:id/approve
 Khách duyệt bản preview — CHỈ hợp lệ khi `status === review_ready`.
-Đóng gói kết quả cuối (zip các frame từ B2) rồi set `downloadUrl` +
-status `finished`. Đây là điểm DUY NHẤT mở khóa file gốc.
+Sinh 1 payment mới (QR MB Bank) NGAY trong response này, chuyển job
+sang `awaiting_payment`. KHÔNG đóng gói/mở tải ngay — chỉ khi webhook
+xác nhận PAID (SchedulerService phát hiện qua tick, gọi
+`JobsService.finalizeDelivery()`) job mới chuyển tiếp `packaging` →
+`finished` kèm `downloadUrl`.
+
+Response: toàn bộ field của job (như `GET /jobs/:id`) + field `payment`:
+```json
+{
+  "...": "...",
+  "status": "awaiting_payment",
+  "payment": {
+    "paymentId": "uuid",
+    "paymentCode": "AB12CD34",
+    "transferContent": "CWS CWS-A1B2C3D4 AB12CD34",
+    "qrImageUrl": "https://img.vietqr.io/...",
+    "amountVnd": 45000
+  }
+}
+```
 
 ### POST /jobs/:id/request-changes
 Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ hợp lệ khi
@@ -114,23 +131,29 @@ MVP chỉ hỗ trợ `method: "qr_bank"` (MB Bank QR) — Wallet/Stripe/PayPal
 đã bị gỡ hoàn toàn khỏi enum `PaymentMethod`.
 
 ### POST /payments
-Tạo giao dịch thanh toán.
+Tạo giao dịch thanh toán ĐỘC LẬP, không gắn job nào — route này tồn
+tại để tương thích/testing, luồng thật của Portal KHÔNG gọi route này
+(payment thật được `JobsService.approve()` tạo nội bộ, gắn kèm `job_id`/
+`storage_code`). Payment tạo qua đây có `transferContent` dạng
+`"CWS {payment_code}"` (không có storage_code) nên `POST /payments/webhook`
+sẽ LUÔN từ chối nó (webhook bắt buộc định dạng 3 phần, xem bên dưới).
 
 Request: `{ "amountVnd": 45000, "method": "qr_bank" }`
 
 Response: `{ "paymentId": "uuid", "status": "processing", "paymentCode": "AB12CD34", "transferContent": "CWS AB12CD34", "qrImageUrl": "https://img.vietqr.io/...", "amountVnd": 45000 }`
 
-`transferContent` là nội dung khách cần ghi khi chuyển khoản — đây là
-CƠ SỞ DUY NHẤT để webhook đối chiếu và set PAID. `qrImageUrl` là ảnh
-VietQR quét được thật (qua `img.vietqr.io`, MB Bank BIN `970422`) —
-chỉ có giá trị khi đã cấu hình `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME`,
-ngược lại trả `null` (không bịa ảnh QR trỏ tới tài khoản không tồn tại).
+`qrImageUrl` là ảnh VietQR quét được thật (qua `img.vietqr.io`, MB Bank
+BIN `970422`) — chỉ có giá trị khi đã cấu hình
+`MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME`, ngược lại trả `null`
+(không bịa ảnh QR trỏ tới tài khoản không tồn tại).
 
 ### GET /payments/:id
-Trạng thái thanh toán hiện tại — Portal poll route này để chờ webhook
-xác nhận (`RenderService.confirmPayment()` poll mỗi 3s, timeout 10 phút).
+Chi tiết đầy đủ 1 payment (không chỉ status) — Portal dùng để hiển thị
+lại QR/nội dung chuyển khoản nếu khách tải lại trang lúc đang chờ
+thanh toán (`useRenderJob.js` tự gọi lại khi thấy job ở `awaiting_payment`
+mà chưa có `paymentInfo`).
 
-Response: `{ "paymentId": "uuid", "status": "unpaid" | "processing" | "paid" | "failed" }`
+Response: `{ "paymentId": "uuid", "status": "unpaid" | "processing" | "paid" | "failed", "paymentCode": "AB12CD34", "transferContent": "CWS CWS-A1B2C3D4 AB12CD34", "amountVnd": 45000, "qrImageUrl": "https://img.vietqr.io/..." }`
 
 ### GET /payments/by-code/:paymentCode
 Tra cứu payment theo mã (Giai đoạn 7). **Yêu cầu header `x-admin-key`**
@@ -145,12 +168,17 @@ không phải cách hợp lệ để xác nhận thanh toán.
 Endpoint DUY NHẤT hợp lệ để set PAID. Ngân hàng/cổng trung gian gọi
 vào đây khi có giao dịch chuyển khoản mới.
 
-Request: `{ "transferContent": "CWS AB12CD34", "amountVnd": 45000 }`
+Request: `{ "transferContent": "CWS CWS-A1B2C3D4 AB12CD34", "amountVnd": 45000 }`
 
-Logic: parse mã từ `transferContent` (regex `CWS\s+([A-Z0-9]+)`), tìm
-payment theo `payment_code`, đối chiếu `amountVnd` khớp tuyệt đối, chỉ
-khi khớp mới set PAID. Sai định dạng/không tìm thấy/không khớp số tiền
-→ lỗi rõ ràng, không âm thầm bỏ qua.
+Logic: parse `storage_code` + `payment_code` từ `transferContent` (regex
+`CWS\s+(\S+)\s+([A-Za-z0-9]+)` — bắt buộc ĐỦ 2 phần, đúng
+CWS_MVP_WORKFLOW_FINAL.md: "CWS {storage_code} {payment_code}"), tìm
+payment theo `payment_code`, đối chiếu `storage_code` khớp với
+`payments.storage_code` đã lưu lúc tạo, rồi đối chiếu `amountVnd` khớp
+tuyệt đối — CHỈ khi cả 3 khớp mới set PAID. Sai định dạng/không tìm
+thấy/storage_code không khớp/số tiền không khớp → lỗi rõ ràng, không
+âm thầm bỏ qua. Payment tạo qua `POST /payments` trực tiếp (không qua
+job) không có `storage_code` nên webhook cho payment đó luôn bị từ chối.
 
 Ảnh QR (VietQR) đã dựng thật khi có `MB_BANK_ACCOUNT_NUMBER` — phần
 CÒN THIẾU duy nhất là webhook thật từ MB Bank/cổng trung gian gọi vào

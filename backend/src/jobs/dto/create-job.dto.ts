@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 import { RenderProfileId } from '../domain/render-profile';
 
 export class CreateJobDto {
@@ -20,10 +20,6 @@ export class CreateJobDto {
 
   @IsIn(Object.values(RenderProfileId))
   profileId!: RenderProfileId;
-
-  @IsString()
-  @IsNotEmpty()
-  paymentId!: string;
 }
 
 export class EstimateJobDto {

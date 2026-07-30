@@ -13,6 +13,11 @@ interface PaymentRow {
   confirmed_at: string | null;
   payment_code: string | null;
   transfer_content: string | null;
+  job_id: string | null;
+  storage_code: string | null;
+  bank_name: string | null;
+  account_number: string | null;
+  qr_image_url: string | null;
 }
 
 function rowToDomain(row: PaymentRow): PaymentRecord {
@@ -25,6 +30,11 @@ function rowToDomain(row: PaymentRow): PaymentRecord {
     confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).getTime() : null,
     paymentCode: row.payment_code,
     transferContent: row.transfer_content,
+    jobId: row.job_id,
+    storageCode: row.storage_code,
+    bankName: row.bank_name,
+    accountNumber: row.account_number,
+    qrImageUrl: row.qr_image_url,
   };
 }
 
@@ -45,6 +55,11 @@ export class PaymentsRepository {
         status: record.status,
         payment_code: record.paymentCode,
         transfer_content: record.transferContent,
+        job_id: record.jobId,
+        storage_code: record.storageCode,
+        bank_name: record.bankName,
+        account_number: record.accountNumber,
+        qr_image_url: record.qrImageUrl,
       })
       .select()
       .single();

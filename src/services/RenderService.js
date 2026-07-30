@@ -110,53 +110,23 @@ export async function estimateJob(input, profileId) {
 }
 
 // ============================================================
-// 3. THANH TOÁN
+// 3. THANH TOÁN — CHỈ tra cứu chi tiết 1 payment ĐÃ TỒN TẠI (payment
+// được Backend tự tạo bên trong approveJob(), Portal không tự tạo
+// payment độc lập nữa — xem CWS_MVP_WORKFLOW_FINAL.md: QR chỉ sinh SAU
+// khi khách duyệt preview, không phải trước khi tạo job).
 // ============================================================
 
-/**
- * @returns {Promise<{ paymentId: string, status: string }>}
+/** Chi tiết 1 payment (QR/nội dung chuyển khoản) — dùng khi cần hiển
+ * thị lại (vd khách tải lại trang lúc đang chờ thanh toán).
+ * @returns {Promise<{ paymentId: string, status: string, paymentCode: string|null, transferContent: string|null, amountVnd: number, qrImageUrl: string|null }>}
  */
-export async function createPaymentIntent({ amountVnd, method }) {
+export async function getPaymentDetails(paymentId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_PAYMENT}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amountVnd, method }),
-    });
-    if (!res.ok) throw new Error('Không tạo được giao dịch thanh toán');
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`);
+    if (!res.ok) throw new Error('Không lấy được thông tin thanh toán');
     return res.json();
   }
-  return mock.mockCreatePaymentIntent({ amountVnd, method });
-}
-
-/** @returns {Promise<{ paymentId: string, status: string }>} */
-export async function getPaymentStatus(paymentId) {
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`);
-  if (!res.ok) throw new Error('Không lấy được trạng thái thanh toán');
-  return res.json();
-}
-
-const PAYMENT_POLL_INTERVAL_MS = 3000;
-const PAYMENT_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút — đủ thời gian khách mở app ngân hàng chuyển khoản
-
-/**
- * Backend thật: KHÔNG có nút "xác nhận" nào để Frontend tự đặt PAID —
- * chỉ webhook ngân hàng mới làm được việc đó (xem payments.controller.ts).
- * Hàm này chờ bằng cách poll trạng thái, giữ nguyên chữ ký/hành vi cũ
- * (trả về khi PAID) để usePayment.js không cần đổi gì.
- * @returns {Promise<{ paymentId: string, status: string }>}
- */
-export async function confirmPayment({ paymentId, method }) {
-  if (IS_BACKEND_CONFIGURED) {
-    const start = Date.now();
-    while (Date.now() - start < PAYMENT_POLL_TIMEOUT_MS) {
-      const { status } = await getPaymentStatus(paymentId);
-      if (status === 'paid' || status === 'failed') return { paymentId, status };
-      await new Promise((r) => setTimeout(r, PAYMENT_POLL_INTERVAL_MS));
-    }
-    throw new Error('Hết thời gian chờ xác nhận thanh toán — vui lòng thử lại');
-  }
-  return mock.mockConfirmPayment({ paymentId, method });
+  return mock.mockGetPaymentDetails(paymentId);
 }
 
 // ============================================================
@@ -164,10 +134,11 @@ export async function confirmPayment({ paymentId, method }) {
 // ============================================================
 
 /**
- * Tạo job render — CHỈ gọi sau khi thanh toán thành công.
+ * Tạo job render — miễn phí, không cần thanh toán trước (thanh toán
+ * chỉ diễn ra sau khi khách duyệt preview, xem approveJob()).
  * @returns {Promise<{ jobId: string }>}
  */
-export async function createJob({ input, profileId, paymentId }) {
+export async function createJob({ input, profileId }) {
   if (IS_BACKEND_CONFIGURED) {
     const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
@@ -176,7 +147,7 @@ export async function createJob({ input, profileId, paymentId }) {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ ...input, profileId, paymentId }),
+      body: JSON.stringify({ ...input, profileId }),
     });
     if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
     const data = await res.json();
@@ -189,7 +160,6 @@ export async function createJob({ input, profileId, paymentId }) {
     fileSizeBytes: input.fileSizeBytes,
     driveLink: input.driveLink,
     profileId,
-    paymentId,
     downloadSourceFile,
   });
   return { jobId };
@@ -254,7 +224,9 @@ export async function getJobPreview(jobId) {
   return mock.mockGetJobPreview(jobId);
 }
 
-/** Khách duyệt bản preview -> đóng gói kết quả cuối + mở link tải. */
+/** Khách duyệt bản preview -> Backend sinh QR MB Bank ngay trong response
+ * này (field `payment`); đóng gói + mở link tải chỉ diễn ra SAU khi
+ * webhook xác nhận PAID (job tự chuyển AWAITING_PAYMENT -> FINISHED). */
 export async function approveJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.APPROVE_JOB(jobId)}`, { method: 'POST' });

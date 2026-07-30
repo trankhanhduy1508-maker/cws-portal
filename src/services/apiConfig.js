@@ -13,9 +13,9 @@ export const API_CONFIG = {
     UPLOAD_FILE: '/files/upload',
     DRIVE_RESOLVE: '/drive/resolve',
     ESTIMATE_JOB: '/jobs/estimate',
-    CREATE_PAYMENT: '/payments',
+    // Payment (QR MB Bank) chỉ tra cứu lại qua đây — Portal không tự
+    // tạo payment độc lập nữa, Backend tự tạo bên trong APPROVE_JOB.
     GET_PAYMENT_STATUS: (paymentId) => `/payments/${paymentId}`,
-    CONFIRM_PAYMENT: (paymentId) => `/payments/${paymentId}/confirm`,
     CREATE_JOB: '/jobs',
     GET_JOB: (jobId) => `/jobs/${jobId}`,
     LIST_JOBS: '/jobs',

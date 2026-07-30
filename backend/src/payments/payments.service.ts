@@ -22,9 +22,20 @@ export class PaymentsService {
     };
   }
 
-  async createIntent(dto: CreatePaymentDto): Promise<{
+  /**
+   * `jobContext` gắn payment với 1 job cụ thể (JobsService.approve() —
+   * CWS_MVP_WORKFLOW_FINAL.md: QR chỉ sinh SAU khi khách duyệt preview)
+   * để transferContent chứa storage_code và webhook đối chiếu được cả
+   * 2 mã. Không bắt buộc — POST /payments gọi trực tiếp (không qua job)
+   * vẫn hoạt động, chỉ không có storage_code trong nội dung chuyển khoản.
+   */
+  async createIntent(
+    dto: CreatePaymentDto,
+    jobContext?: { jobId: string; storageCode: string },
+  ): Promise<{
     paymentId: string;
     status: PaymentStatus;
+    paymentCode: string | null;
     transferContent: string | null;
     amountVnd: number;
     qrImageUrl: string | null;
@@ -36,9 +47,8 @@ export class PaymentsService {
       );
     }
 
-    const { providerRef, status, paymentCode, transferContent, qrImageUrl } = await provider.createIntent(
-      dto.amountVnd,
-    );
+    const { providerRef, status, paymentCode, transferContent, qrImageUrl, bankName, accountNumber } =
+      await provider.createIntent(dto.amountVnd, jobContext?.storageCode ?? null);
     const paymentId = randomUUID();
 
     const record: PaymentRecord = {
@@ -50,6 +60,11 @@ export class PaymentsService {
       confirmedAt: null,
       paymentCode,
       transferContent,
+      jobId: jobContext?.jobId ?? null,
+      storageCode: jobContext?.storageCode ?? null,
+      bankName,
+      accountNumber,
+      qrImageUrl,
     };
     await this.paymentsRepository.create(record);
 
@@ -57,13 +72,35 @@ export class PaymentsService {
     // đơn giản hoá: dùng chính paymentId làm khóa tra cứu, providerRef giữ
     // nội bộ provider (qr-*) đủ để suy luận lại provider nào xử lý.
     void providerRef;
-    return { paymentId, status, transferContent, amountVnd: dto.amountVnd, qrImageUrl };
+    return { paymentId, status, paymentCode, transferContent, amountVnd: dto.amountVnd, qrImageUrl };
   }
 
   async getStatus(paymentId: string): Promise<PaymentStatus> {
     const record = await this.paymentsRepository.findById(paymentId);
     if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
     return record.status;
+  }
+
+  /** Chi tiết đầy đủ cho Portal hiển thị lại QR/nội dung chuyển khoản
+   * (vd khách tải lại trang lúc đang chờ thanh toán) — không chỉ status. */
+  async getPublicDetails(paymentId: string): Promise<{
+    paymentId: string;
+    status: PaymentStatus;
+    paymentCode: string | null;
+    transferContent: string | null;
+    amountVnd: number;
+    qrImageUrl: string | null;
+  }> {
+    const record = await this.paymentsRepository.findById(paymentId);
+    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    return {
+      paymentId: record.paymentId,
+      status: record.status,
+      paymentCode: record.paymentCode,
+      transferContent: record.transferContent,
+      amountVnd: record.amountVnd,
+      qrImageUrl: record.qrImageUrl,
+    };
   }
 
   /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
@@ -89,18 +126,26 @@ export class PaymentsService {
 
   /**
    * Webhook ngân hàng báo giao dịch thành công (CWS_MVP_WORKFLOW_FINAL.md,
-   * mục Webhook): kiểm tra số tiền + nội dung + payment_code, CHỈ khi
-   * khớp mới set PAID. Đây là đường DUY NHẤT hợp lệ để đặt PAID cho
-   * qr_bank — không có endpoint nào khác cho phép client tự đặt PAID.
+   * mục Webhook): kiểm tra số tiền + nội dung + payment_code + storage_code,
+   * CHỈ khi khớp mới set PAID. Đây là đường DUY NHẤT hợp lệ để đặt PAID
+   * cho qr_bank — không có endpoint nào khác cho phép client tự đặt PAID.
+   *
+   * Định dạng bắt buộc: "CWS {storage_code} {payment_code}" — payment
+   * nào không gắn job (jobContext rỗng lúc tạo, chỉ xảy ra khi gọi thẳng
+   * POST /payments không qua JobsService.approve()) sẽ không có
+   * storage_code để đối chiếu, webhook cho payment đó luôn bị từ chối
+   * (không phải luồng thật của MVP nên chấp nhận giới hạn này).
    */
   async confirmViaWebhook(dto: WebhookPaymentDto): Promise<{ paymentId: string; status: PaymentStatus }> {
-    const match = dto.transferContent.match(/CWS\s+([A-Z0-9]+)/i);
+    const match = dto.transferContent.match(/CWS\s+(\S+)\s+([A-Za-z0-9]+)/);
     if (!match) {
       throw new BadRequestException(
-        `Nội dung chuyển khoản không đúng định dạng "CWS {payment_code}": "${dto.transferContent}"`,
+        `Nội dung chuyển khoản không đúng định dạng "CWS {storage_code} {payment_code}": "${dto.transferContent}"`,
       );
     }
-    const paymentCode = match[1].toUpperCase();
+    const [, storageCodeRaw, paymentCodeRaw] = match;
+    const paymentCode = paymentCodeRaw.toUpperCase();
+    const storageCode = storageCodeRaw.toUpperCase();
 
     const record = await this.paymentsRepository.findByPaymentCode(paymentCode);
     if (!record) {
@@ -108,6 +153,11 @@ export class PaymentsService {
     }
     if (record.status === PaymentStatus.PAID) {
       return { paymentId: record.paymentId, status: record.status }; // đã xử lý trước đó, tránh double-confirm
+    }
+    if (!record.storageCode || record.storageCode.toUpperCase() !== storageCode) {
+      throw new BadRequestException(
+        `Storage code không khớp cho payment ${record.paymentId}: kỳ vọng ${record.storageCode ?? '(không có)'}, nhận ${storageCode}`,
+      );
     }
     if (record.amountVnd !== dto.amountVnd) {
       throw new BadRequestException(

@@ -22,6 +22,7 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
 - Chạy lại thật `nest build`, `jest`, `oxlint`, `vite build` để xác nhận build/test còn PASS sau các thay đổi mới nhất của Codex 2/3 (request-changes, docs) — không tin log cũ.
 - Cập nhật `backend/BACKEND_SETUP.md`: mục 3 (migration 001→007 + hướng dẫn bật Facebook Provider qua Supabase Dashboard thay vì code Backend riêng), mục 6 (Giới hạn thật) sửa lại các thông tin đã lỗi thời (VietQR đã có ảnh thật, Facebook Login dùng Supabase Auth, thêm route Admin cần `x-admin-key`, thêm `request-changes`).
 - Cập nhật `backend/API_DOCUMENTATION.md` + `backend/CHANGELOG.md` (xem chi tiết ở CODEX_3_CHECKLIST.md — làm chung 1 lượt vì cùng phạm vi Documentation).
+- Audit toàn diện lần cuối (2026-07-30): tạo `docs/MVP_GAP_REPORT.md` (DONE/PARTIAL/BLOCKED đối chiếu 3 tài liệu gốc). Phát hiện + sửa 1 mismatch nghiêm trọng (thứ tự thanh toán vs render — xem CODEX_3_CHECKLIST.md), cập nhật `backend/API_DOCUMENTATION.md`/`backend/BACKEND_SETUP.md`/`backend/CHANGELOG.md` theo đúng thay đổi đó (migration 008). Build/test/lint chạy lại thật (backend `nest build`+`jest`, frontend `oxlint`+`vite build`) đều PASS sau khi sửa; đã verify boot thật (`node dist/main.js`) để chắc chắn không có lỗi DI ẩn.
 
 ---
 
