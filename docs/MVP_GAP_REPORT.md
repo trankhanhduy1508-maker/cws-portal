@@ -150,6 +150,14 @@ boot thật (`node dist/main.js`, xác nhận "Nest application successfully
 started" + đầy đủ route map) để chắc chắn không có lỗi DI circular do
 thêm `JobsService` vào `SchedulerService`.
 
+Đã bổ sung 11 unit test THẬT (không chỉ verify qua đọc code/build) bảo
+vệ đúng logic đã sửa — `jobs.service.spec.ts` (approve()/finalizeDelivery():
+ném lỗi khi chưa review_ready, sinh payment đúng storageCode, không
+đóng gói sớm khi payment chưa PAID) + `payments.service.spec.ts` (file
+mới — confirmViaWebhook(): xác nhận cụ thể rằng storage_code KHÔNG khớp
+sẽ bị từ chối dù payment_code+số tiền đúng, đây chính là lỗ hổng đã sửa).
+Tổng test backend: 9 → 20, tất cả PASS.
+
 ### 2 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
@@ -196,10 +204,12 @@ thiếu công cụ trình duyệt hoặc thiếu credential thật trong môi tr
 làm việc này:
 
 - **Toàn bộ luồng end-to-end thật** (Facebook Login → ... → COMPLETED)
-  — code đã đúng theo audit tĩnh (đọc code + build/test PASS), nhưng
-  CHƯA từng chạy thật với Facebook Provider bật + Backend deploy thật +
-  trình duyệt thật. Không có gì mâu thuẫn phát hiện được qua audit tĩnh,
-  nhưng "chạy thật OK" chỉ xác nhận được khi có đủ 3 điều kiện đó.
+  — code đã đúng theo audit tĩnh + 20 unit test PASS (bao gồm 11 test
+  mới cho riêng logic thanh toán), nhưng CHƯA từng chạy thật với
+  Facebook Provider bật + Backend deploy thật + trình duyệt thật. Không
+  có gì mâu thuẫn phát hiện được, nhưng "chạy thật OK" (network thật,
+  Supabase Realtime thật, timing thật giữa các service) chỉ xác nhận
+  được khi có đủ 3 điều kiện đó — unit test không thay thế được E2E thật.
 - **`AdminScreen.jsx` / `ReviewScreen.jsx` (kể cả nút "Yêu cầu chỉnh
   sửa" mới) / `PaymentScreen.jsx` (vừa viết lại)** — build/lint PASS,
   nhưng chưa xem qua trình duyệt thật (không có browser tool trong
