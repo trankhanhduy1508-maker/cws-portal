@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { WebhookPaymentDto } from './dto/webhook-payment.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -11,9 +12,23 @@ export class PaymentsController {
     return this.paymentsService.createIntent(dto);
   }
 
+  @Get(':id')
+  async getById(@Param('id') id: string) {
+    const status = await this.paymentsService.getStatus(id);
+    return { paymentId: id, status };
+  }
+
   @Post(':id/confirm')
   @HttpCode(200)
   async confirm(@Param('id') id: string) {
     return this.paymentsService.confirm(id);
+  }
+
+  /** Ngân hàng (hoặc cổng trung gian) gọi vào đây khi có giao dịch
+   * chuyển khoản mới — endpoint DUY NHẤT được phép set payment = PAID. */
+  @Post('webhook')
+  @HttpCode(200)
+  async webhook(@Body() dto: WebhookPaymentDto) {
+    return this.paymentsService.confirmViaWebhook(dto);
   }
 }

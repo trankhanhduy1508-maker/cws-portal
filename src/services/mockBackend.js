@@ -94,7 +94,14 @@ export function computeEstimate({ fileSizeBytes, profileId }) {
 // ============================================================
 export async function mockCreatePaymentIntent({ amountVnd, method }) {
   await new Promise((r) => setTimeout(r, 300));
-  return { paymentId: `pay-${Date.now()}`, amountVnd, method, status: PAYMENT_STATUS.PROCESSING };
+  const paymentCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  return {
+    paymentId: `pay-${Date.now()}`,
+    amountVnd,
+    method,
+    status: PAYMENT_STATUS.PROCESSING,
+    transferContent: `CWS ${paymentCode}`,
+  };
 }
 
 export async function mockConfirmPayment({ paymentId }) {

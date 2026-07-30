@@ -128,16 +128,32 @@ export async function createPaymentIntent({ amountVnd, method }) {
   return mock.mockCreatePaymentIntent({ amountVnd, method });
 }
 
+/** @returns {Promise<{ paymentId: string, status: string }>} */
+export async function getPaymentStatus(paymentId) {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`);
+  if (!res.ok) throw new Error('Không lấy được trạng thái thanh toán');
+  return res.json();
+}
+
+const PAYMENT_POLL_INTERVAL_MS = 3000;
+const PAYMENT_POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 phút — đủ thời gian khách mở app ngân hàng chuyển khoản
+
 /**
+ * Backend thật: KHÔNG có nút "xác nhận" nào để Frontend tự đặt PAID —
+ * chỉ webhook ngân hàng mới làm được việc đó (xem payments.controller.ts).
+ * Hàm này chờ bằng cách poll trạng thái, giữ nguyên chữ ký/hành vi cũ
+ * (trả về khi PAID) để usePayment.js không cần đổi gì.
  * @returns {Promise<{ paymentId: string, status: string }>}
  */
 export async function confirmPayment({ paymentId, method }) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CONFIRM_PAYMENT(paymentId)}`, {
-      method: 'POST',
-    });
-    if (!res.ok) throw new Error('Xác nhận thanh toán thất bại');
-    return res.json();
+    const start = Date.now();
+    while (Date.now() - start < PAYMENT_POLL_TIMEOUT_MS) {
+      const { status } = await getPaymentStatus(paymentId);
+      if (status === 'paid' || status === 'failed') return { paymentId, status };
+      await new Promise((r) => setTimeout(r, PAYMENT_POLL_INTERVAL_MS));
+    }
+    throw new Error('Hết thời gian chờ xác nhận thanh toán — vui lòng thử lại');
   }
   return mock.mockConfirmPayment({ paymentId, method });
 }
