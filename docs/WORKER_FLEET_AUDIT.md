@@ -275,6 +275,70 @@ rõ ràng.
 
 ---
 
+## Phase 8 — Thống kê thời gian/tiền thuê host (ĐÃ TEST TRÊN DỮ LIỆU THẬT + BUILD THẬT)
+
+Commit `120104b` (schema), `df5f364` (sửa lỗi `render_started_at`),
+`0bec9a6` (wiring Python), `0454861` (Admin Dashboard). Đây là phase RỦI
+RO CAO NHẤT trong toàn bộ roadmap — vừa cần nhiều điểm ghi timestamp mới
+trong `cws_worker_full.py` (không thể chỉ dùng Postgres như Phase 7), vừa
+là tính năng tính TIỀN. **Đã hỏi và được người dùng xác nhận làm đầy đủ
+ngay** (`AskUserQuestion`, chấp nhận rủi ro Python tăng thêm) thay vì chỉ
+làm phần Postgres/Backend.
+
+**Quyết định thiết kế quan trọng (ghi rõ vì roadmap không đủ chi tiết
+cho hệ thống cụ thể này):**
+- "Khởi động 7 phút" trong hệ thống này KHÁC ví dụ Wake-on-LAN/cold-boot
+  roadmap hình dung — Phase 4 đã xác định máy không sleep/hibernate/wake,
+  chỉ tắt màn hình lúc rảnh, nên máy hầu như LUÔN chạy. "Khởi động" thực
+  tế = lúc process Python VỪA được khởi động lại (crash/update/tay) và
+  claim task ĐẦU TIÊN — dùng `_WORKER_PROCESS_STARTED_AT` (hằng số
+  module-level, không đổi suốt vòng đời process) gửi kèm RPC đầu tiên để
+  Postgres tự suy ra.
+- Kiến trúc checkpoint-per-frame (render+upload TỪNG frame, không có
+  "pha upload" tách biệt) khiến `upload_completed_at` = `render_completed_at`
+  CÙNG thời điểm — ghi rõ trong migration, không bịa 1 "pha" không tồn tại.
+- `merge_completed_at` CHƯA wiring — `attempt_job_video_merge()` không trả
+  về giá trị để biết nó THẬT SỰ chạy merge hay no-op, cần sửa contract
+  riêng, để lại vòng sau tránh đoán sai.
+- KHÔNG có cấu hình giá nào tồn tại sẵn (`fleets`/`partners`/`workers`,
+  kiểm tra qua `information_schema` trước khi thêm) — thêm `fleets.hourly_rate`
+  (nullable, KHÔNG đặt giá mặc định). Chưa có giá → `estimated_amount`/
+  `hourlyRate` = `null` (hiện `—` ở Frontend), status=`awaiting_rate` —
+  KHÔNG hiện `0` gây hiểu lầm miễn phí.
+- `final_amount` LUÔN `null` — xác nhận cuối là hành động Admin riêng
+  (chưa làm UI, ngoài phạm vi vòng này). Đúng nguyên tắc roadmap "Worker
+  không được tự quyết định billing", mở rộng thêm: hệ thống tự động cũng
+  không tự quyết định "cuối cùng", chỉ ước tính.
+- `compute_host_usage_sessions()` (tính billable_seconds/tiền) CHỈ được
+  gọi qua cron mới (5 phút/lần) — Worker KHÔNG BAO GIỜ gọi hàm này, đây
+  là ranh giới "Backend tính tiền" của toàn bộ Phase 8.
+
+**Sự cố quy trình xảy ra khi làm phase này (ghi lại đầy đủ, đã khắc
+phục):** (1) tự phát hiện+sửa 1 lỗi do chính migration 006 gây ra —
+`report_worker_ready()` quên ghi `render_started_at`, khiến
+`waiting_seconds`/`render_seconds` luôn tính ra 0 sai — phát hiện TRƯỚC
+khi wiring Python, sửa bằng migration 007 riêng. (2) Lệnh `git checkout`
+dọn dẹp CRLF-noise sau bước lint Backend đã VÔ Ý xoá mất toàn bộ wiring
+Python chưa commit (bộ lọc loại trừ không tính đến `cws_worker_full.py`
+đang có thay đổi chưa lưu) — phát hiện ngay qua `git diff --stat` trả về
+rỗng bất thường, làm lại TOÀN BỘ wiring lần 2, xác nhận khớp 100% với lần
+đầu (đếm ngoặc/số dòng giống hệt) trước khi commit — và ĐỔI quy trình từ
+đây: mỗi thay đổi commit + push NGAY sau khi verify, trước khi chạy thêm
+lệnh lint/checkout khác.
+
+**Test:** Không chỉ kiểm tra tĩnh — đã mô phỏng ĐẦY ĐỦ 1 vòng đời
+task_attempt qua MCP trên dữ liệu thật (`WORKER-119EBE66` + task `775`,
+không đụng bảng `tasks`): `start_task_attempt` → `report_worker_ready` →
+3 stage → `finalize_task_attempt('completed')` → `compute_host_usage_sessions()`
+→ xác nhận đúng 1 dòng `host_usage_sessions` với `startup_seconds≈295`,
+`billable_seconds≈6`, `status='awaiting_rate'` (đúng, chưa cấu hình giá).
+Đã XOÁ SẠCH dữ liệu test. Backend `nest build`+`jest` (37/37)+eslint +
+Frontend oxlint+`vite build` đều PASS thật. Phần Python (9 điểm wiring +
+4 hàm) vẫn CHỈ kiểm tra tĩnh (cân bằng ngoặc cả file, không còn `%%`) —
+CHƯA chạy qua Worker thật, cộng dồn vào rủi ro lớn nhất đã nêu.
+
+---
+
 ## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
 ## không bao giờ được ghi cho job tạo qua Backend hiện tại
 
@@ -372,6 +436,15 @@ duy nhất. Commit `a28f8df`.
 - `285e6b6` — feat(database): incident/state visibility cho requeue +
   offline thật (Phase 7, KHÔNG sửa Python, ĐÃ test trực tiếp trên dữ
   liệu thật qua MCP).
+- `05a82a1` — docs: thêm Phase 7 vào audit doc.
+- `120104b` — feat(database): host usage billing schema + RPC (Phase 8).
+- `df5f364` — fix(database): sửa lỗi `render_started_at` (Phase 8, tự
+  phát hiện trước khi wiring Python).
+- `0bec9a6` — feat(worker): wiring báo cáo timestamp billing (Phase 8,
+  làm lại lần 2 sau sự cố `git checkout` xoá mất lần đầu — xem ghi chú
+  trong message commit).
+- `0454861` — feat(admin): dashboard thống kê thời gian/tiền thuê host
+  (Phase 8, Backend/Frontend ĐÃ build/test/lint thật).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -397,18 +470,36 @@ hiện có trong repo thay vì tiếp tục chờ.
    resume xác nhận ĐÃ có sẵn từ trước (không cần code mới). "Thứ tự ưu
    tiên máy thay thế" xác nhận KHÔNG áp dụng được cho kiến trúc pull-based
    hiện tại (ghi rõ lý do, không ép code).
-7. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 6
+7. ~~Thống kê thời gian/tiền thuê host (Phase 8)~~ — ĐÃ XONG
+   (`120104b`/`df5f364`/`0bec9a6`/`0454861`): schema + 4 RPC ghi
+   timestamp + cron tính billing (KHÔNG BAO GIỜ Worker tự tính) + 9 điểm
+   wiring Python + Admin Dashboard. Đây là commit Python THỨ 7 chưa test
+   máy thật, và là commit đầu tiên có ý nghĩa TÀI CHÍNH (ước tính tiền
+   thuê host) — mức độ cẩn trọng khi kiểm tra trước khi tin dùng cần CAO
+   HƠN các phase trước.
+8. **ĐÂY LÀ ROADMAP PHASE CUỐI CÙNG (`CWS_WORKER_ROADMAP.md` chỉ có tới
+   Phase 8)** — toàn bộ 8 phase đã được triển khai (một số phần được ghi
+   rõ là "chưa làm/để lại vòng sau" thay vì đoán, xem từng mục Phase ở
+   trên). Việc còn lại từ đây là XÁC NHẬN TRÊN MÁY THẬT, không phải viết
+   thêm code theo roadmap.
+9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 7
    commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
-   `3cfb241`, cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh, chưa từng
-   chạy qua Python/Blender/B2/Windows thật. Đây là rủi ro lớn nhất hiện
-   tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước khi coi
-   là sẵn sàng production. Riêng `285e6b6` (Phase 7) KHÔNG cộng thêm vào
-   rủi ro này vì không đụng Python, đã test trực tiếp trên Postgres thật.
-8. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
-   Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
-   đó không.
-9. Tiếp theo theo đúng thứ tự `CWS_WORKER_ROADMAP.md`: Phase 8 (thống kê
-   thời gian thuê host/billing) — cần wiring `task_attempts` (schema đã
-   có từ Phase 3, chưa có code nào ghi).
-10. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+   `3cfb241`/`0bec9a6`, cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh,
+   chưa từng chạy qua Python/Blender/B2/Windows thật. Đây là rủi ro lớn
+   nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước
+   khi coi là sẵn sàng production, ĐẶC BIỆT với `0bec9a6` (Phase 8) vì
+   liên quan trực tiếp tới số liệu billing sẽ hiển thị cho Admin.
+10. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
+    Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
+    đó không.
+11. Cấu hình `fleets.hourly_rate` (hiện `null` cho mọi fleet) khi có giá
+    thật — nếu không, `host_usage_sessions.status` sẽ mãi là
+    `awaiting_rate`, không bao giờ tính ra `estimated_amount`.
+12. Xây UI/RPC riêng cho hành động "xác nhận final_amount" của Admin
+    (hiện luôn `null`) và cho retry/requeue/quarantine/drain (Phase 6) —
+    2 hạng mục Admin-action còn thiếu, chưa có trong roadmap chi tiết đủ
+    để tự triển khai mà không đoán.
+13. `merge_completed_at` chưa wiring (cần sửa contract trả về của
+    `attempt_job_video_merge()` trước).
+14. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
     tạo qua website có tự động sinh đủ task ngoài probe hay không.
