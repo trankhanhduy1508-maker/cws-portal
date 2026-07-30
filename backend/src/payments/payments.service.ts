@@ -60,6 +60,13 @@ export class PaymentsService {
     return record.status;
   }
 
+  /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  async getByPaymentCode(paymentCode: string): Promise<PaymentRecord> {
+    const record = await this.paymentsRepository.findByPaymentCode(paymentCode.toUpperCase());
+    if (!record) throw new NotFoundException(`Không tìm thấy payment với mã ${paymentCode}`);
+    return record;
+  }
+
   async confirm(paymentId: string): Promise<{ paymentId: string; status: PaymentStatus }> {
     const record = await this.paymentsRepository.findById(paymentId);
     if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);

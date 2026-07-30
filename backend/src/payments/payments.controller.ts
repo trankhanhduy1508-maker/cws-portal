@@ -12,6 +12,12 @@ export class PaymentsController {
     return this.paymentsService.createIntent(dto);
   }
 
+  /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  @Get('by-code/:paymentCode')
+  async getByPaymentCode(@Param('paymentCode') paymentCode: string) {
+    return this.paymentsService.getByPaymentCode(paymentCode);
+  }
+
   @Get(':id')
   async getById(@Param('id') id: string) {
     const status = await this.paymentsService.getStatus(id);
