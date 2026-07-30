@@ -127,9 +127,22 @@ task active của đúng job đó. `SchedulerService.processOrder()` (không đ�
 đã có sẵn cơ chế tự tạo task còn lại đúng khi `getTotalFrames()` trả về
 khác null — chỉ thiếu đúng 1 đường để Worker báo lại giá trị thật.
 
-**Chưa làm (cần baseline Worker đúng):** Scene Analyzer đọc
-`scene.frame_start`/`scene.frame_end` thật từ Blender, gọi RPC
-`set_job_total_frames()` sau khi xác định được.
+**✅ ĐÃ SỬA XONG phần Python (commit `a728763`, 2026-07-31):** theo xác
+nhận của người dùng, tiếp tục trên baseline `1.14.0` hiện có trong repo
+(chưa nhận được bản `1.16.5` thật do người dùng gặp khó khăn khi upload).
+`analyze_blend_scene()` giờ đọc thẳng `scene.frame_start`/`scene.frame_end`/
+`scene.render.fps` (chia `fps_base` để ra FPS thật) ngay từ đầu hàm, đưa vào
+`report` dict trả về. Hàm mới `report_total_frames_if_known()` gọi RPC
+`set_job_total_frames()` ngay sau khi `_load_job_context()` lấy được
+`optimization_plan` — an toàn gọi nhiều lần/nhiều worker (RPC idempotent),
+không làm gián đoạn render nếu lỗi.
+
+⚠️ **CHƯA test được bằng Worker thật** (môi trường làm việc không có
+Python/Blender để chạy thử) — chỉ kiểm tra tĩnh (cân bằng ngoặc, không còn
+lỗi f-string). Khuyến nghị: xác nhận trên 1 máy Worker thật trước khi tin
+tưởng hoàn toàn. Nếu bản `1.16.5` thật sau này được upload, cần đối chiếu
+lại xem tính năng này có bị trùng/xung đột với cơ chế nào đã có sẵn trong
+đó hay không.
 
 ---
 
@@ -163,15 +176,23 @@ duy nhất. Commit `a28f8df`.
 - `d31cd58` — feat(database): add worker lease and state event schema.
 - `a28f8df` — fix: nâng ngưỡng countOnlineWorkers() 30s → 180s.
 - `27d8235` — fix(database): thêm RPC set_job_total_frames.
-- `c6d64f3` — feat(worker): tích hợp ghép video (CẦN PORT LẠI trên
-  baseline 1.16.5 đúng).
+- `f74211f` — docs: thêm file audit này.
+- `a728763` — fix(worker): đọc frame range thật, gọi RPC set_job_total_frames.
+- `c6d64f3` — feat(worker): tích hợp ghép video.
 
-## Việc tiếp theo (chờ baseline Worker `1.16.5` đúng)
+**Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
+bản `1.16.5` thật, tiếp tục toàn bộ công việc trên baseline `1.14.0`
+hiện có trong repo thay vì tiếp tục chờ.
 
-1. Đối chiếu file `.py` mới với các thay đổi trong `c6d64f3`, port lại
-   nếu cần.
-2. Scene Analyzer đọc `scene.frame_start`/`scene.frame_end`, gọi RPC
-   `set_job_total_frames()`.
+## Việc tiếp theo
+
+1. ~~Scene Analyzer đọc frame range, gọi RPC~~ — ĐÃ XONG (`a728763`),
+   chưa test bằng Worker thật.
+2. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại với `c6d64f3`
+   (video merge) và `a728763` (total_frames) xem có trùng/xung đột gì
+   với tính năng đã có sẵn trong đó không.
 3. Wiring `desired_state`/`observed_state`/`worker_leases`/
-   `worker_state_events` (Phase 3 phần code).
+   `worker_state_events` (Phase 3 phần code, schema đã có từ `d31cd58`).
 4. Tiếp tục Phase 4 trở đi theo đúng thứ tự `CWS_WORKER_ROADMAP.md`.
+5. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+   tạo qua website có tự động sinh đủ task ngoài probe hay không.
