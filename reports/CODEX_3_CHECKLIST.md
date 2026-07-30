@@ -10,22 +10,24 @@ Customer Workflow • Worker • Payment • Dashboard
 
 - [x] So sánh với CWS_MVP_WORKFLOW_FINAL.md — MISMATCH lớn: codebase hiện tại implement 1 sản phẩm "render farm/worker fleet marketplace" (RENDER_PROFILES economy/standard/priority/turbo, worker-fleet.gateway, scheduler/wake) khác hẳn luồng đơn giản trong roadmap (Facebook Login → Job từ link chia sẻ → B2 → Worker render → preview → MB QR → COMPLETED). Chi tiết theo từng mục bên dưới.
 - [x] Kiểm tra Facebook Login — TRƯỚC: MISSING hoàn toàn. Đã dựng đủ 2 phía: Backend (`backend/src/auth`: GET /auth/facebook, GET /auth/facebook/callback, issue JWT, upsert customer_profiles) và Frontend (LoginScreen.jsx, useAuth.js, AuthService.js — nút "Đăng nhập với Facebook", bắt `?token=` sau redirect, mock login demo khi chưa có Backend thật). VẪN BLOCKED: cần FACEBOOK_APP_ID/SECRET thật để hoạt động thật; JobsService.createOrder CHƯA nhận/lưu customer_id (token hiện chỉ lưu ở Portal, chưa gửi kèm request nào).
-- [ ] Kiểm tra Customer Profile — backend/src/customers đã có (upsertByFacebookId), nhưng chưa có gì gắn customer_id vào job (JobsService.createOrder chưa nhận/lưu customer_id).
-- [ ] Kiểm tra Create Job — vẫn dùng model RenderProfile/economy-standard-priority-turbo, chưa có project_name/software/software_version tách riêng như CWS_DATABASE_SCHEMA.md.
+- [x] Kiểm tra Customer Profile — ĐÃ FIX (sau pivot Supabase Auth): `JobsController.create()` gọi `getOptionalCustomerId()` rồi truyền vào `JobsService.createOrder(dto, customerId)`, lưu vào cột `render_orders.customer_id` (repository `render-orders.repository.supabase.ts`). `findByCustomerId()` dùng để lọc `GET /jobs` theo khách đăng nhập. Không còn gap.
+- [x] Kiểm tra Create Job — VẪN dùng model RenderProfile (economy/standard/priority/turbo) thay vì project_name/software/software_version riêng như CWS_DATABASE_SCHEMA.md. Đây là mismatch CÓ CHỦ Ý CHẤP NHẬN (không phải bug quên sửa): RenderProfile gắn chặt với Worker Fleet (`worker-fleet.gateway.ts`, `cws_worker_full.py`) — đổi model Create Job đồng nghĩa phải đổi cách dispatch task cho Worker, ngoài phạm vi "không đụng Worker Fleet". Ghi nhận là rủi ro đã biết (xem Risks), không phải việc còn phải làm tiếp.
 - [x] Kiểm tra Shared Link — Đã hỗ trợ Google Drive/OneDrive/Dropbox (SHARED_LINK_PATTERNS). Direct Link (URL bất kỳ) vẫn chưa hỗ trợ.
 - [x] Kiểm tra Google Drive Permission — backend/src/files/google-drive.service.ts có kiểm tra quyền truy cập (resolve-drive.dto, google-drive.service.spec.ts có test). Phần này KEEP, đáng giữ lại.
-- [ ] Kiểm tra Upload Flow — có UploadZone/UploadScreen nhưng đích cuối là B2 qua RenderService, cần xác minh có thật sự ghi vào cấu trúc jobs/{storage_code}/source|review|final|logs hay không (backend/src/files/b2-storage.service.ts cần audit sâu hơn — chưa xem chi tiết).
+- [x] Kiểm tra Upload Flow — Đã audit `b2-storage.service.ts`: KHÔNG dùng cấu trúc `jobs/{storage_code}/source|review|final|logs` của CWS_DATABASE_SCHEMA.md. Thực tế dùng `uploads/{uuid}-{filename}` (upload gốc) và `renders/{internalJobId}/task_{id}/frame_N.png` (Worker Fleet ghi kết quả render) — path do `cws_worker_full.py` quyết định, Backend không tự đặt lại được nếu không đụng Worker. Cùng loại mismatch như "Create Job" ở trên — rủi ro đã biết, không phải thiếu sót mới.
 
 ---
 
 # Phase 2 - Worker
 
-- [ ] Kiểm tra Worker nhận Job
-- [ ] Kiểm tra Render
-- [ ] Kiểm tra Progress %
-- [ ] Kiểm tra Worker Error
-- [ ] Kiểm tra Upload Final
-- [ ] Kiểm tra Upload Preview
+Đã đọc kỹ `worker-fleet.gateway.ts` + `scheduler.service.ts` (KHÔNG sửa, chỉ audit — 2 file này là điểm nối Backend↔Worker Fleet, không phải Worker Fleet thật):
+
+- [x] Kiểm tra Worker nhận Job — `WorkerFleetGateway.createInternalJobWithProbeTask()` insert 1 row `jobs` + 1 probe task (frame 1-1) vào bảng `tasks` ngay khi tạo RenderOrder; Worker Fleet (`cws_worker_full.py`, không sửa) tự `claim_task()` — Backend không cần push/gọi Worker trực tiếp.
+- [x] Kiểm tra Render — `SchedulerService.tick()` (Cron 10s) đọc lại `tasks` qua `getTasks()`, khi probe task `done` + biết `total_frames` (do Worker tự ghi) thì tự tạo các task còn lại theo chunk (`createRemainingTasks`, chunk=10) — tự động hoá đúng quy trình tay đã làm cho CWS-JOB5.
+- [x] Kiểm tra Progress % — `computeProgress()` = số task `done` / tổng số task, cập nhật vào `render_orders.stageProgress` mỗi tick khi có task `active` (trạng thái RENDERING) — là % thật dựa trên task Worker báo cáo, không phải số giả lập.
+- [x] Kiểm tra Worker Error — khi mọi task đã `settled` (không còn active/queued) mà có task `failed` → `markFailed()`: ghi `worker_logs` cho từng task lỗi, chuyển order sang `ERROR`, gửi notification cho khách — không còn treo im lặng.
+- [x] Kiểm tra Upload Final — khi `allDone` → `moveToReview()` gọi `PreviewService.generateReviewPreview()` rồi dừng ở `REVIEW_READY` (KHÔNG tự đóng gói/upload final) — đóng gói final thật chỉ xảy ra trong `JobsService.approve()` sau khi khách duyệt (đã audit ở Phase 3/4).
+- [x] Kiểm tra Upload Preview — `PreviewService.generateReviewPreview()` (đã audit trước đó ở Phase 3) chọn 3-5 frame, chèn watermark thật qua `sharp`, publish vào bảng `review_images` — chạy ngay khi `allDone`, trước khi khách duyệt.
 
 ---
 
@@ -101,7 +103,7 @@ Customer Workflow • Worker • Payment • Dashboard
 # Pending
 
 - CHƯA test bằng mắt trên trình duyệt thật cho toàn bộ UI (không có công cụ browser trong phiên này) — bao gồm cả AdminScreen.jsx và ReviewScreen.jsx (kể cả nút "Yêu cầu chỉnh sửa" mới).
-- worker-fleet.gateway.ts + scheduler: đã xác nhận KEEP (hạ tầng Worker render bắt buộc cho MVP, không phải Marketplace bị cấm).
+- End-to-End Test (Facebook Login/Create Job/Upload/Render/Preview/Payment/Download) — cần Backend deploy thật + Facebook Provider bật + trình duyệt thật, không tự làm được trong môi trường này.
 
 ---
 
