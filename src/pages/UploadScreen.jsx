@@ -54,7 +54,7 @@ export default function UploadScreen({
             type="button"
           >
             <p style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 600 }}>
-              Dán link Google Drive
+              Dán link chia sẻ (Google Drive/OneDrive/Dropbox)
             </p>
             <p style={{ fontSize: 13, color: '#6B6B70', marginTop: 4 }}>
               Bấm để nhập link

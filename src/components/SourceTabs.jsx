@@ -4,7 +4,7 @@ import './SourceTabs.css';
 
 const TABS = [
   { id: FILE_SOURCE.UPLOAD, label: 'Tải file lên', icon: UploadCloud },
-  { id: FILE_SOURCE.GOOGLE_DRIVE, label: 'Google Drive', icon: HardDriveDownload },
+  { id: FILE_SOURCE.GOOGLE_DRIVE, label: 'Link chia sẻ', icon: HardDriveDownload },
 ];
 
 export default function SourceTabs({ active, onChange }) {

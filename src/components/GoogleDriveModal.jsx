@@ -12,7 +12,7 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
   };
 
   return (
-    <Modal title="Dán link Google Drive" onClose={onClose}>
+    <Modal title="Dán link chia sẻ" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ position: 'relative' }}>
           <Link2
@@ -24,7 +24,7 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="https://drive.google.com/file/d/..."
+            placeholder="https://drive.google.com/file/d/... hoặc OneDrive/Dropbox"
             style={{
               width: '100%',
               padding: '14px 14px 14px 40px',
@@ -46,7 +46,9 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
         )}
 
         <p style={{ fontSize: 13, color: '#B0B0B5', lineHeight: 1.5 }}>
-          Đảm bảo file đã bật chia sẻ "Bất kỳ ai có link" trên Google Drive
+          Đảm bảo file đã bật chia sẻ "Bất kỳ ai có link". Lưu ý: chỉ Google
+          Drive được kiểm tra quyền truy cập tự động — OneDrive/Dropbox
+          chưa kiểm tra được, hãy tự xác nhận link đã mở chia sẻ đúng.
         </p>
 
         <Button onClick={handleSubmit} disabled={!value.trim() || isResolving}>
