@@ -222,4 +222,10 @@ export class JobsService {
     await this.getById(id); // 404 nếu job không tồn tại
     return this.storageService.getWorkerLogs(id);
   }
+
+  /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
+  async getNotifications(id: string) {
+    await this.getById(id); // 404 nếu job không tồn tại
+    return this.storageService.getNotifications(id);
+  }
 }

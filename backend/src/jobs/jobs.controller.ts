@@ -99,6 +99,13 @@ export class JobsController {
     return { logs };
   }
 
+  /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
+  @Get(':id/notifications')
+  async getNotifications(@Param('id') id: string) {
+    const notifications = await this.jobsService.getNotifications(id);
+    return { notifications };
+  }
+
   /** Alias REST chuẩn (DELETE) — cùng logic với route POST ở trên,
    * thêm để khớp convention REST nếu có client khác gọi kiểu DELETE. */
   @Delete(':id')

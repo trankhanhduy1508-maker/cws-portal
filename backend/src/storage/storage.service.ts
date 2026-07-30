@@ -9,7 +9,8 @@ import {
 } from './repositories/review-images.repository.interface';
 import { DOWNLOADS_REPOSITORY, IDownloadsRepository } from './repositories/downloads.repository.interface';
 import { WORKER_LOGS_REPOSITORY, IWorkerLogsRepository } from './repositories/worker-logs.repository.interface';
-import { StorageObject, ReviewImage, DownloadLog, WorkerLog } from './domain/storage-object';
+import { NOTIFICATIONS_REPOSITORY, INotificationsRepository } from './repositories/notifications.repository.interface';
+import { StorageObject, ReviewImage, DownloadLog, WorkerLog, Notification } from './domain/storage-object';
 
 @Injectable()
 export class StorageService {
@@ -22,6 +23,8 @@ export class StorageService {
     private readonly downloadsRepository: IDownloadsRepository,
     @Inject(WORKER_LOGS_REPOSITORY)
     private readonly workerLogsRepository: IWorkerLogsRepository,
+    @Inject(NOTIFICATIONS_REPOSITORY)
+    private readonly notificationsRepository: INotificationsRepository,
   ) {}
 
   async recordPaths(
@@ -66,5 +69,14 @@ export class StorageService {
 
   async getWorkerLogs(jobId: string): Promise<WorkerLog[]> {
     return this.workerLogsRepository.findByJobId(jobId);
+  }
+
+  /** Thông báo hệ thống (CWS_DATABASE_SCHEMA.md, bảng notifications). */
+  async notify(jobId: string | null, title: string, content: string): Promise<Notification> {
+    return this.notificationsRepository.create(jobId, title, content);
+  }
+
+  async getNotifications(jobId: string): Promise<Notification[]> {
+    return this.notificationsRepository.findByJobId(jobId);
   }
 }

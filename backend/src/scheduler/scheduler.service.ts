@@ -182,6 +182,11 @@ export class SchedulerService {
     }
 
     await this.updateStatus(order, JobStatus.ERROR, order.stageProgress);
+    await this.storageService.notify(
+      order.id,
+      'Render thất bại',
+      `Job "${order.projectName}" gặp lỗi khi render và không thể tiếp tục. Vui lòng thử tạo lại job.`,
+    );
     this.logger.error(`Order ${order.id}: ${failedTasks.length} task thất bại, chuyển sang ERROR`);
   }
 
@@ -203,6 +208,11 @@ export class SchedulerService {
 
     await this.previewService.generateReviewPreview(internalJobId, order.id);
     await this.updateStatus(order, JobStatus.REVIEW_READY, 1);
+    await this.storageService.notify(
+      order.id,
+      'Render xong, mời bạn duyệt',
+      `Job "${order.projectName}" đã render xong. Xem 3-5 ảnh xem trước và bấm duyệt để mở tải file gốc.`,
+    );
 
     this.logger.log(`Order ${order.id}: render xong, đã tạo preview — chờ khách duyệt`);
   }

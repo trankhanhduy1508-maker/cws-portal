@@ -11,6 +11,8 @@ import { DOWNLOADS_REPOSITORY } from './repositories/downloads.repository.interf
 import { SupabaseDownloadsRepository } from './repositories/downloads.repository.supabase';
 import { WORKER_LOGS_REPOSITORY } from './repositories/worker-logs.repository.interface';
 import { SupabaseWorkerLogsRepository } from './repositories/worker-logs.repository.supabase';
+import { NOTIFICATIONS_REPOSITORY } from './repositories/notifications.repository.interface';
+import { SupabaseNotificationsRepository } from './repositories/notifications.repository.supabase';
 
 @Module({
   imports: [SupabaseModule, FilesModule],
@@ -21,6 +23,7 @@ import { SupabaseWorkerLogsRepository } from './repositories/worker-logs.reposit
     { provide: REVIEW_IMAGES_REPOSITORY, useClass: SupabaseReviewImagesRepository },
     { provide: DOWNLOADS_REPOSITORY, useClass: SupabaseDownloadsRepository },
     { provide: WORKER_LOGS_REPOSITORY, useClass: SupabaseWorkerLogsRepository },
+    { provide: NOTIFICATIONS_REPOSITORY, useClass: SupabaseNotificationsRepository },
   ],
   exports: [StorageService, PreviewService],
 })

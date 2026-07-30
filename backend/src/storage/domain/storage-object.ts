@@ -32,3 +32,13 @@ export interface WorkerLog {
   level: string;
   createdAt: number;
 }
+
+export interface Notification {
+  id: string;
+  customerId: string | null;
+  jobId: string | null;
+  title: string;
+  content: string;
+  isRead: boolean;
+  createdAt: number;
+}
