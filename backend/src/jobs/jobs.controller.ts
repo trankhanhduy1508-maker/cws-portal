@@ -110,6 +110,15 @@ export class JobsController {
     return toPublicJson(order);
   }
 
+  /** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi nhận yêu cầu (thông
+   * báo + worker_log), KHÔNG đổi status/tiền, xem jobs.service.ts. */
+  @Post(':id/request-changes')
+  @HttpCode(200)
+  async requestChanges(@Param('id') id: string, @Body() body: { note?: string }) {
+    await this.jobsService.requestChanges(id, body?.note ?? null);
+    return { ok: true };
+  }
+
   /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi
    * redirect sang link B2 thật — Portal KHÔNG được dùng thẳng downloadUrl
    * raw (xem getDownloadUrl() trong RenderService.js), phải qua route

@@ -22,6 +22,7 @@ export const API_CONFIG = {
     CANCEL_JOB: (jobId) => `/jobs/${jobId}/cancel`,
     JOB_PREVIEW: (jobId) => `/jobs/${jobId}/preview`,
     APPROVE_JOB: (jobId) => `/jobs/${jobId}/approve`,
+    REQUEST_CHANGES_JOB: (jobId) => `/jobs/${jobId}/request-changes`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
     // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.

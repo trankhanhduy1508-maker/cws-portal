@@ -100,8 +100,7 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Pending
 
-- CHƯA test bằng mắt trên trình duyệt thật cho toàn bộ UI (không có công cụ browser trong phiên này) — bao gồm cả AdminScreen.jsx mới.
-- "Yêu cầu chỉnh sửa" (khách từ chối preview) — chưa implement (hiện chỉ có approve, chưa có reject/re-render) — cần quyết định nghiệp vụ (refund/re-render ra sao).
+- CHƯA test bằng mắt trên trình duyệt thật cho toàn bộ UI (không có công cụ browser trong phiên này) — bao gồm cả AdminScreen.jsx và ReviewScreen.jsx (kể cả nút "Yêu cầu chỉnh sửa" mới).
 - worker-fleet.gateway.ts + scheduler: đã xác nhận KEEP (hạ tầng Worker render bắt buộc cho MVP, không phải Marketplace bị cấm).
 
 ---
@@ -128,7 +127,7 @@ Code MVP coi như đã xong hết phần tự làm được không cần credent
 4. Bạn (hoặc phiên có browser tool) xác nhận toàn bộ UI bằng mắt, đặc biệt AdminScreen.jsx và ReviewScreen.jsx mới chưa từng được xem qua trình duyệt thật.
 5. Merge PR #6/#7/#8 vào main.
 
-Sau khi có 1 trong các mục trên, việc còn lại chỉ là polish UI + "yêu cầu chỉnh sửa" preview flow (cần quyết định nghiệp vụ riêng).
+"Yêu cầu chỉnh sửa" preview flow đã code xong (ghi nhận yêu cầu, không đụng nghiệp vụ). Sau khi có 1 trong các mục trên, việc còn lại chỉ là polish UI + xác nhận UI bằng mắt.
 
 ---
 

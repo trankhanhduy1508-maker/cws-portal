@@ -264,6 +264,23 @@ export async function approveJob(jobId) {
   return mock.mockApproveJob(jobId);
 }
 
+/** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi nhận yêu cầu để
+ * admin liên hệ khách, KHÔNG tự động re-render hay hoàn tiền (đó là
+ * quyết định nghiệp vụ, xem jobs.service.ts#requestChanges). Job vẫn
+ * ở REVIEW_READY sau khi gọi hàm này. */
+export async function requestJobChanges(jobId, note) {
+  if (IS_BACKEND_CONFIGURED) {
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REQUEST_CHANGES_JOB(jobId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: note || undefined }),
+    });
+    if (!res.ok) throw new Error('Gửi yêu cầu chỉnh sửa thất bại');
+    return res.json();
+  }
+  return mock.mockRequestChanges(jobId, note);
+}
+
 /** URL tải file kết quả theo jobId. */
 export function getDownloadUrl(jobId) {
   if (IS_BACKEND_CONFIGURED) {

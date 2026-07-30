@@ -201,6 +201,37 @@ export class JobsService {
     return updated;
   }
 
+  /**
+   * Khách yêu cầu chỉnh sửa thay vì duyệt (CWS_MVP_WORKFLOW_FINAL.md,
+   * mục Review: "Đồng ý. Hoặc yêu cầu chỉnh sửa."). CHỦ Ý KHÔNG tự
+   * động re-render hay hoàn tiền — job vẫn ở REVIEW_READY (khách vẫn
+   * duyệt được nếu đổi ý), chỉ ghi lại yêu cầu để admin liên hệ khách
+   * và xử lý thủ công (re-render hoặc hoàn tiền là quyết định nghiệp
+   * vụ, không phải việc tự động hoá được).
+   */
+  async requestChanges(id: string, note: string | null): Promise<void> {
+    const order = await this.getById(id);
+    if (order.status !== JobStatus.REVIEW_READY) {
+      throw new BadRequestException(
+        `Job ${id} chưa ở trạng thái chờ duyệt (hiện tại: ${order.status})`,
+      );
+    }
+
+    await this.storageService.notify(
+      id,
+      'Khách yêu cầu chỉnh sửa',
+      note?.trim()
+        ? `Job "${order.projectName}": ${note.trim()}`
+        : `Job "${order.projectName}": khách yêu cầu chỉnh sửa (không có ghi chú thêm). Cần liên hệ khách để xác nhận thay đổi.`,
+    );
+    await this.storageService.logWorkerEvent(
+      id,
+      null,
+      note?.trim() || 'Khách yêu cầu chỉnh sửa, chưa có ghi chú',
+      'info',
+    );
+  }
+
   /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */
   async getReviewImages(id: string): Promise<{ url: string; displayOrder: number | null }[]> {
     await this.getById(id); // 404 nếu job không tồn tại

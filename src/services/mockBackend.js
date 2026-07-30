@@ -294,6 +294,18 @@ export async function mockApproveJob(jobId) {
   return { id: jobId, status: jobsStore[jobId].status };
 }
 
+/** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi log, KHÔNG đổi
+ * status (job vẫn REVIEW_READY, khách vẫn có thể duyệt nếu đổi ý sau),
+ * khớp hành vi Backend thật (jobs.service.ts#requestChanges). */
+export async function mockRequestChanges(jobId, _note) {
+  const job = jobsStore[jobId];
+  if (!job || job.status !== JOB_STATUS.REVIEW_READY) {
+    throw new Error(`Job ${jobId} chưa ở trạng thái chờ duyệt`);
+  }
+  await new Promise((r) => setTimeout(r, 200));
+  return { ok: true };
+}
+
 export function mockListJobs() {
   return Object.values(jobsStore).sort((a, b) => b.createdAt - a.createdAt);
 }
