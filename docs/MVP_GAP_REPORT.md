@@ -169,7 +169,7 @@ mới — confirmViaWebhook(): xác nhận cụ thể rằng storage_code KHÔNG
 sẽ bị từ chối dù payment_code+số tiền đúng, đây chính là lỗ hổng đã sửa).
 Tổng test backend: 9 → 20, tất cả PASS.
 
-### 2 mismatch nhỏ hơn phát hiện cùng đợt audit
+### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
   `CreateJobDto` + `UploadScreen.jsx`) — xem chi tiết ở mục DONE và
@@ -291,17 +291,19 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
 
 ## Kết luận
 
-Tổng cộng **10 mismatch với roadmap** đã tìm và sửa trong đợt audit
+Tổng cộng **9 mismatch với roadmap** đã tìm và sửa trong đợt audit
 này: (1) thứ tự thanh toán vs render (nghiêm trọng nhất), (2) "Tạo Job"
 thiếu Phần mềm/Phiên bản/Ghi chú, (3) Admin thiếu "Danh sách khách
 hàng", (4) Admin thiếu "Tìm kiếm theo Customer", (5) Admin thiếu cột
 "Tiến độ", (6) Admin thiếu theo dõi "Worker", (7) Admin thiếu xem
 "Preview", (8) thiếu nguồn "Direct Link" trong 4 nguồn Tạo Job, (9) 7
-RLS policy + 2 index thiếu (cảnh báo performance), (10) — không tính
-là mismatch nhưng cùng đợt: đã tự phát hiện qua self-review và sửa 3
-bug do chính các fix trên gây ra (tên file tải về sai định dạng, tải
-frame không giới hạn số lượng song song, ghép video vô nghĩa cho render
-1 frame).
+RLS policy + 2 index thiếu (cảnh báo performance).
+
+Ngoài 9 mismatch trên (không tính chung vào số đếm vì không phải lỗi so
+với roadmap, mà là lỗi tự mình gây ra rồi tự phát hiện): qua self-review
+đã tìm và sửa thêm 3 bug do chính các fix trên gây ra (tên file tải về
+sai định dạng, tải frame không giới hạn số lượng song song, ghép video
+vô nghĩa cho render 1 frame).
 
 Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
 Login → Customer Profile → Job → Upload → Render → Progress → Preview
