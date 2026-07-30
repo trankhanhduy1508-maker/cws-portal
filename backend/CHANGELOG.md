@@ -1,5 +1,68 @@
 # Changelog
 
+## [1.13.0] - Sửa bug nghiêm trọng nhất phiên: huỷ job không kiểm tra trạng thái (2026-07-31)
+
+**Phát hiện qua tự rà soát MVP sau khi hoàn tất `CWS_WORKER_ROADMAP.md`
+(có thể là bug nghiêm trọng nhất tìm được trong toàn bộ dự án tới nay):**
+`JobsService.cancel()` (`POST /jobs/:id/cancel`, `DELETE /jobs/:id`)
+KHÔNG kiểm tra `order.status` trước khi huỷ. Nút "Huỷ job" hiện diện
+ngay trên `PaymentScreen` (lúc đang `AWAITING_PAYMENT`, QR đã sinh). Nếu
+khách bấm huỷ đúng lúc webhook ngân hàng xác nhận PAID sắp/vừa tới,
+`finalizeDelivery()` (điều kiện `status===AWAITING_PAYMENT`) từ chối
+đóng gói/mở tải vì status đã là CANCELLED — khách CÓ THỂ ĐÃ CHUYỂN
+KHOẢN THẬT nhưng KHÔNG BAO GIỜ nhận được file, không có cơ chế hoàn
+tiền/cảnh báo nào.
+
+Đã hỏi Dy, xác nhận sửa: `cancel()` giờ CHỈ cho phép huỷ khi job còn ở
+giai đoạn MIỄN PHÍ (trước khi sinh QR — `QUEUED`/`SEARCHING_WORKERS`/
+`ALLOCATING_WORKERS`/`WORKERS_CONNECTED`/`RENDERING`/`REVIEW_READY`), từ
+`AWAITING_PAYMENT` trở đi trả lỗi rõ ràng "liên hệ Admin".
+
+Kéo theo sửa 2 bug phụ (nếu không, khách bấm nút lúc bị chặn sẽ không
+thấy gì): `RenderService.js#cancelJob()` là hàm DUY NHẤT trong file
+`return res.ok` thay vì throw khi thất bại (mọi hàm khác đều throw đúng
+quy ước chung); `App.jsx#handleCancelJob` gọi `job.cancel()` (async)
+không await/catch. Thêm 3 test mới cho `cancel()`. Tổng test backend:
+43 → 46, PASS. Xem `docs/MVP_GAP_REPORT.md`.
+
+## [1.12.0] - Đóng rò rỉ tài nguyên nhỏ ở WebSocket Realtime (2026-07-31)
+
+Phát hiện qua cùng đợt tự rà soát: `JobsRealtimeServer.handleConnection()`
+mở 1 kênh Supabase Realtime SỐNG MÃI (tới khi client tự đóng) ngay cả
+khi job KHÔNG TỒN TẠI (id sai/không có thật) — không rò rỉ dữ liệu gì
+nhưng lãng phí tài nguyên, 1 bề mặt DoS nhỏ. Đã sửa: đóng kết nối ngay
+(mã 4004), không mở kênh, nếu job không tồn tại. Thêm 1 test mới. Tổng
+test backend: 42 → 43, PASS.
+
+## [1.11.0] - Sửa race hiển thị sai giá tạm thời trên PaymentScreen (2026-07-31)
+
+Phát hiện qua cùng đợt tự rà soát: `PaymentScreen` trước đây dùng
+`job.paymentInfo?.amountVnd ?? estimates[...].costVnd` — nếu WebSocket
+báo `status=AWAITING_PAYMENT` TRƯỚC KHI `approve()` (REST) kịp set
+`paymentInfo` (khoảng trống rất ngắn, mili-giây), màn hình hiện SỐ TIỀN
+ƯỚC TÍNH (heuristic trước render, SAI) thay vì giá thật, rồi tự sửa lại
+gần như ngay lập tức. Mức độ THẤP (QR/nội dung chuyển khoản cũng đang
+trống lúc đó, khách không thể chuyển tiền được). Đã sửa: bỏ fallback về
+ước tính, `PaymentScreen` hiện "đang tải" cho tới khi `paymentInfo` thật
+sự có.
+
+## [1.10.0] - Sửa bug tính giá thật quá cao khi 1 Worker nhận nhiều task rời rạc (2026-07-31)
+
+**Phát hiện qua tự rà soát MVP, sau khi hoàn tất `CWS_WORKER_ROADMAP.md`:**
+`PricingService.computeFinalPriceVnd()` (gọi từ `JobsService.approve()`,
+tính TIỀN THẬT khách phải trả qua QR bank) gộp `claimedAt`/`lastHeartbeat`
+của MỌI task cùng 1 `workerId` thành 1 khoảng DUY NHẤT
+`[min(claimedAt), max(lastHeartbeat)]` cho cả job — nếu 1 Worker nhận 2
+task KHÔNG LIÊN TỤC của CÙNG job (hoàn toàn có thể xảy ra, Worker Fleet
+poll job gần như ngẫu nhiên), thời gian RẢNH giữa 2 lần claim bị tính
+NHẦM là thời gian làm việc thật, khiến khách bị tính tiền quá cao đáng
+kể.
+
+Đã sửa: cộng dồn runtime CỦA TỪNG task riêng lẻ, chỉ cộng phí khởi động
+1 lần cho MỖI Worker khác nhau (không phải mỗi task). Thêm
+`pricing.service.spec.ts` (trước đây CHƯA có file test riêng cho
+`PricingService`) — 5 test case. Tổng test backend: 37 → 42, PASS.
+
 ## [1.9.0] - Sửa regression nghiêm trọng từ fix IDOR + presigned URL cho B2 (2026-07-31)
 
 **Regression nghiêm trọng phát hiện qua kiểm tra chéo sau [1.6.0]/[1.8.0]:**
