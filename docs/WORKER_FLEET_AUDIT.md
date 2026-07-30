@@ -238,6 +238,43 @@ scope biến `task_id`/indent với code xung quanh) — CỘNG DỒN vào rủi
 
 ---
 
+## Phase 7 — Mất điện và tự điều phối (CHỈ Postgres, ĐÃ TEST TRÊN DỮ LIỆU THẬT)
+
+Commit `285e6b6`. Rủi ro thấp hơn hẳn Phase 2-6 vì **KHÔNG cần sửa 1 dòng
+Python nào** — toàn bộ nằm ở `worker_migrations/005_requeue_incident_visibility.sql`,
+mở rộng 2 RPC cron ĐÃ CHẠY THẬT (`requeue_stale_tasks()`,
+`mark_stale_workers_offline()`), giữ nguyên 100% logic/ngưỡng cũ (240s/180s),
+chỉ thêm ghi `worker_incidents`/`worker_state_events` cho mỗi dòng bị ảnh
+hưởng (`STALE_HEARTBEAT_REQUEUE`/`WORKER_OFFLINE_UNRESPONSIVE`, severity
+`warning` — đúng nguyên tắc roadmap "không kết luận chắc chắn cúp điện
+ngay khi mất heartbeat, có thể là mất mạng").
+
+**Đã TEST TRỰC TIẾP trên dữ liệu thật qua MCP** (không chỉ đọc code tĩnh):
+gọi thật cả 2 RPC, và làm 1 thử nghiệm có kiểm soát/reversible trên 1
+worker thật (`WORKER-119EBE66`) + 1 task thật (`id=775`) — xác nhận đúng
+incident/state event được tạo với đúng nội dung, sau đó xoá sạch dữ liệu
+test (không để lại sự cố giả trong Admin Dashboard) và trả worker về đúng
+trạng thái cũ.
+
+**2 mục còn lại của Phase 7 KHÔNG cần code mới — đã thoả mãn từ trước:**
+- *Chống zombie/split-brain qua fencing token*: `complete_task()`/
+  `fail_task()`/`report_heartbeat()` đã kiểm tra `tasks.generation` từ
+  trước (xác nhận lại qua `pg_get_functiondef`, không đổi gì).
+- *Chỉ dùng checkpoint đã xác minh trên storage*: Incremental Recovery
+  (`get_existing_frames_on_b2()`/`validate_existing_frame_on_b2()`, có từ
+  trước phiên làm việc này) đã làm đúng điều này.
+
+**Không áp dụng được cho kiến trúc hiện tại (ghi rõ, không ép code mới):**
+"Thứ tự ưu tiên máy thay thế" (`IDLE_WAITING_JOB` → `ONLINE_AVAILABLE` →
+đúng GPU/RAM/software → đủ disk → ...) giả định có 1 bộ điều phối trung
+tâm CHỌN máy — nhưng kiến trúc hiện tại là **pull-based**: Worker tự
+`claim_task()` khi rảnh, không ai "chọn" máy nào cả. Xây một tầng điều
+phối/chấm điểm mới để mô phỏng thứ tự ưu tiên này sẽ là 1 thay đổi kiến
+trúc lớn, vượt xa phạm vi "refactor nhỏ" — không làm khi chưa có yêu cầu
+rõ ràng.
+
+---
+
 ## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
 ## không bao giờ được ghi cho job tạo qua Backend hiện tại
 
@@ -331,6 +368,10 @@ duy nhất. Commit `a28f8df`.
 - `ad08903` — docs: sửa placeholder commit hash + Phase 5 vào tổng hợp.
 - `3cfb241` — feat(worker+admin): incident tracking tối thiểu (Phase 6,
   Backend/Frontend ĐÃ build/test/lint thật; Python chỉ kiểm tra tĩnh).
+- `84067a9` — docs: thêm Phase 6 vào audit doc.
+- `285e6b6` — feat(database): incident/state visibility cho requeue +
+  offline thật (Phase 7, KHÔNG sửa Python, ĐÃ test trực tiếp trên dữ
+  liệu thật qua MCP).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -350,18 +391,24 @@ hiện có trong repo thay vì tiếp tục chờ.
    thiếu: các loại sự cố khác (GPU/CPU quá nhiệt, disk full, mất
    heartbeat...) chưa có code phát hiện, và nút retry/requeue/
    quarantine/drain trên Admin Dashboard.
-6. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 6
+6. ~~Mất điện/tự điều phối (Phase 7)~~ — ĐÃ XONG phần khả thi KHÔNG cần
+   sửa Python (`285e6b6`): incident/state visibility cho requeue + offline
+   thật, đã test trực tiếp trên dữ liệu thật. Fencing token + checkpoint
+   resume xác nhận ĐÃ có sẵn từ trước (không cần code mới). "Thứ tự ưu
+   tiên máy thay thế" xác nhận KHÔNG áp dụng được cho kiến trúc pull-based
+   hiện tại (ghi rõ lý do, không ép code).
+7. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 6
    commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
    `3cfb241`, cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh, chưa từng
    chạy qua Python/Blender/B2/Windows thật. Đây là rủi ro lớn nhất hiện
    tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước khi coi
-   là sẵn sàng production. Rủi ro này đang CỘNG DỒN theo từng phase, chưa
-   được giảm bớt.
-7. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
+   là sẵn sàng production. Riêng `285e6b6` (Phase 7) KHÔNG cộng thêm vào
+   rủi ro này vì không đụng Python, đã test trực tiếp trên Postgres thật.
+8. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
    Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
    đó không.
-8. Tiếp theo theo đúng thứ tự `CWS_WORKER_ROADMAP.md`: Phase 7 (mất
-   điện/tự điều phối — có race condition/fencing thật, cần cẩn trọng hơn
-   các phase trước) rồi Phase 8 (thống kê thời gian thuê host/billing).
-9. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
-   tạo qua website có tự động sinh đủ task ngoài probe hay không.
+9. Tiếp theo theo đúng thứ tự `CWS_WORKER_ROADMAP.md`: Phase 8 (thống kê
+   thời gian thuê host/billing) — cần wiring `task_attempts` (schema đã
+   có từ Phase 3, chưa có code nào ghi).
+10. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+    tạo qua website có tự động sinh đủ task ngoài probe hay không.
