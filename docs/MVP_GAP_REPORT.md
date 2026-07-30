@@ -268,10 +268,11 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
    dùng chọn dừng cài) — cần 1 phiên có browser tool, hoặc người dùng
    tự kiểm tra bằng mắt, đặc biệt `AdminScreen.jsx`/`ReviewScreen.jsx`/
    `PaymentScreen.jsx`.
-9. **Merge Pull Request** — nhánh `codex/storage-review-images` (chứa
-   toàn bộ sửa lỗi trong báo cáo này), `codex/ci-workflow`,
-   `codex/mvp-payment-qr-only` đều đang chờ người dùng duyệt merge vào
-   `main` (không tự merge — đây là hành động ảnh hưởng dùng chung).
+9. ~~Merge Pull Request~~ — **ĐÃ XONG (2026-07-30)**, theo yêu cầu trực
+   tiếp của người dùng. `codex/storage-review-images` (đã bao gồm
+   `codex/mvp-payment-qr-only`) merge fast-forward vào `main`;
+   `codex/ci-workflow` merge 3-way sạch (chỉ thêm 1 file). Build/test/lint
+   PASS trên `main` sau merge, đã push GitHub (`a7ffb80..21ac183`).
 
 ---
 

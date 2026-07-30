@@ -23,20 +23,20 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
 - Cập nhật `backend/BACKEND_SETUP.md`: mục 3 (migration 001→007 + hướng dẫn bật Facebook Provider qua Supabase Dashboard thay vì code Backend riêng), mục 6 (Giới hạn thật) sửa lại các thông tin đã lỗi thời (VietQR đã có ảnh thật, Facebook Login dùng Supabase Auth, thêm route Admin cần `x-admin-key`, thêm `request-changes`).
 - Cập nhật `backend/API_DOCUMENTATION.md` + `backend/CHANGELOG.md` (xem chi tiết ở CODEX_3_CHECKLIST.md — làm chung 1 lượt vì cùng phạm vi Documentation).
 - Audit toàn diện lần cuối (2026-07-30): tạo `docs/MVP_GAP_REPORT.md` (DONE/PARTIAL/BLOCKED đối chiếu 3 tài liệu gốc). Phát hiện + sửa 1 mismatch nghiêm trọng (thứ tự thanh toán vs render — xem CODEX_3_CHECKLIST.md), cập nhật `backend/API_DOCUMENTATION.md`/`backend/BACKEND_SETUP.md`/`backend/CHANGELOG.md` theo đúng thay đổi đó (migration 008). Build/test/lint chạy lại thật (backend `nest build`+`jest`, frontend `oxlint`+`vite build`) đều PASS sau khi sửa; đã verify boot thật (`node dist/main.js`) để chắc chắn không có lỗi DI ẩn.
+- **Merge vào main (2026-07-30, theo yêu cầu người dùng)**: kiểm tra quan hệ ancestry bằng `git merge-base --is-ancestor` trước khi merge — phát hiện `codex/mvp-payment-qr-only` ĐÃ LÀ ancestor của `codex/storage-review-images` (không cần merge riêng), `main` cũng đã là ancestor của `codex/storage-review-images` (fast-forward an toàn, không có commit nào trên `main` bị mất). Thực hiện: `git merge --ff-only origin/codex/storage-review-images` rồi `git merge --no-ff origin/codex/ci-workflow` (chỉ thêm 1 file `.github/workflows/ci.yml`, không xung đột). Build/test/lint chạy lại thật trên `main` sau merge — PASS toàn bộ. Đã push `main` lên GitHub (`a7ffb80..21ac183`).
 
 ---
 
 # Pending
 
 - Dọn nhánh Git cũ: nhiều nhánh remote không rõ trạng thái (đã merge? bỏ dở? còn cần giữ?) — CẦN NGƯỜI DÙNG xác nhận trước khi xoá bất kỳ nhánh nào (xoá nhánh là hành động khó hoàn tác, không tự ý làm).
-- Merge `codex/ci-workflow`, `codex/mvp-payment-qr-only`, `codex/storage-review-images` vào `main` — đang chờ người dùng duyệt (đã nêu ở CODEX_3_CHECKLIST.md).
 - Xác nhận cấu hình thật trên Vercel (env `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL`) và Render.com (toàn bộ biến trong `backend/.env.example`, đặc biệt `ADMIN_API_KEY`/`MB_BANK_ACCOUNT_NUMBER` không được để trống ở production) — CLOUD_VERIFICATION_REQUIRED, không có Dashboard access.
 
 ---
 
 # Risks
 
-- Nhiều nhánh PR song song (`codex/ci-workflow`, `codex/mvp-payment-qr-only`, `codex/storage-review-images`) đều dựa trên `main` cũ — khi merge cần kiểm tra kỹ xung đột thứ tự (migration số, CHANGELOG) vì cả 3 Codex đều từng sửa các file chung (`CHANGELOG.md`, `API_DOCUMENTATION.md`).
+- (ĐÃ XONG — xem Completed) 3 nhánh PR song song đã merge vào `main` an toàn: `codex/mvp-payment-qr-only` hoá ra đã là ancestor của `codex/storage-review-images` (fast-forward, không xung đột), `codex/ci-workflow` chỉ thêm 1 file `.github/workflows/ci.yml` (merge 3-way sạch, không đụng file nào khác).
 
 ---
 
@@ -48,10 +48,19 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
 
 # Next Task
 
-Toàn bộ phần Documentation/Build tự làm được không cần Dashboard access đã xong. Còn lại phụ thuộc người dùng:
-1. Xác nhận Vercel/Render đã cấu hình đủ biến môi trường thật.
-2. Quyết định merge 3 nhánh PR đang chờ vào `main`.
-3. Xác nhận có cần dọn các nhánh cũ (agent-1/2/3-*, backend/nestjs-implementation, claude/cws-zero-manual-operation-wtzbrt) hay giữ nguyên.
+Đã merge cả 3 nhánh vào `main` theo yêu cầu người dùng (2026-07-30) —
+xem Completed. Build/test/lint đã chạy lại thật trên `main` sau merge:
+tất cả PASS (backend `nest build` + `jest` 20/20, frontend `oxlint` +
+`vite build`). `main` hiện là bản MVP đầy đủ nhất, đã lên GitHub
+(`a7ffb80..21ac183`).
+
+Còn lại phụ thuộc người dùng:
+1. Xác nhận Vercel/Render đã cấu hình đủ biến môi trường thật (Vercel
+   sẽ tự deploy `main` mới nếu đã connect — kiểm tra deploy có build
+   được không).
+2. Xác nhận có cần dọn các nhánh cũ (agent-1/2/3-*, backend/nestjs-implementation,
+   claude/cws-zero-manual-operation-wtzbrt, codex/3-business-workflow-cleanup)
+   hay giữ nguyên — KHÔNG tự xoá.
 
 ---
 

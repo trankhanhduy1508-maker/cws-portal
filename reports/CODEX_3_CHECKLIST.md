@@ -131,8 +131,11 @@ toán nghiêm trọng vừa phát hiện + sửa. Còn lại hoàn toàn phụ t
 2. Bạn rotate 2 secret đã lộ (Supabase service_role, B2 application key).
 3. Bạn điền số tài khoản MB Bank thật + ADMIN_API_KEY thật vào env Render.
 4. Bạn (hoặc phiên có browser tool) xác nhận toàn bộ UI bằng mắt.
-5. Merge nhánh `codex/storage-review-images` (+ `codex/ci-workflow`,
-   `codex/mvp-payment-qr-only`) vào main.
+
+**Đã merge vào `main` (2026-07-30, theo yêu cầu người dùng)** —
+`codex/storage-review-images` (đã bao gồm `codex/mvp-payment-qr-only`)
++ `codex/ci-workflow`, build/test/lint PASS trên `main` sau merge, đã
+push GitHub. Chi tiết xem CODEX_1_CHECKLIST.md.
 
 ---
 
