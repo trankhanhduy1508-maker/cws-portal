@@ -73,7 +73,16 @@ export default function AdminScreen() {
     if (!window.confirm(confirmMessage)) return;
     setError(null);
     actionPromise
-      .then(() => loadAll(adminKey))
+      .then((result) => {
+        // Backend tra ve { ok: false } (HTTP 200 binh thuong, khong throw)
+        // khi RPC tu choi vi dieu kien khong dung (vd retry task chua o
+        // trang thai failed) - neu khong kiem tra rieng, Admin se KHONG
+        // biet hanh dong vua bam co that su co tac dung hay khong.
+        if (result && result.ok === false) {
+          setError('Hành động không có tác dụng — điều kiện không đúng (ví dụ task/worker đã đổi trạng thái từ trước). Kiểm tra lại dữ liệu bên dưới.');
+        }
+        return loadAll(adminKey);
+      })
       .catch((err) => setError(err.message));
   }, [adminKey, loadAll]);
 
@@ -118,7 +127,12 @@ export default function AdminScreen() {
     }
     setError(null);
     adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey)
-      .then(() => loadAll(adminKey))
+      .then((result) => {
+        if (result && result.ok === false) {
+          setError('Không xác nhận được final_amount — phiên host usage có thể không còn tồn tại.');
+        }
+        return loadAll(adminKey);
+      })
       .catch((err) => setError(err.message));
   }, [adminKey, loadAll]);
 
