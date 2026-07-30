@@ -5,6 +5,23 @@ Tài liệu theo dõi tiến độ thực hiện `CWS_WORKER_ROADMAP.md`, tươn
 
 ---
 
+## ⚠️ RỦI RO TỔNG QUÁT CẦN ĐỌC TRƯỚC: chưa test bất kỳ thay đổi Worker nào bằng máy thật
+
+Toàn bộ Phase 2/3/4 (video merge, state machine, power management —
+commit `c6d64f3`, `a728763`, `487aee3`, `f313e93`, `a1aadbd`) mới chỉ
+được kiểm tra TĨNH (đọc lại thủ công, cân bằng ngoặc, không còn lỗi
+f-string) do môi trường làm việc này KHÔNG có Python/Blender/ffmpeg để
+chạy thử thật. Phase 4 đặc biệt dùng trực tiếp Windows API qua `ctypes`
+(`SetThreadExecutionState`, `SendMessageW`) — đây là lần ĐẦU TIÊN trong
+toàn phiên có code động vào hệ điều hành thật của máy Worker. **Bắt buộc
+xác nhận trên ít nhất 1 máy Worker Windows thật trước khi coi bất kỳ
+phần nào trong số này là sẵn sàng production** — đặc biệt kiểm tra
+không có lỗi cú pháp ẩn nào khiến `cws_worker_full.py` không chạy được
+(nếu vậy, `cws_worker.bat` sẽ cứ restart liên tục, không có cách nào
+biết từ xa).
+
+---
+
 ## Phase 0 — Xác nhận MVP hoàn tất
 
 Đã xác nhận đủ điều kiện mở khóa Worker (theo yêu cầu trực tiếp của người
@@ -114,9 +131,30 @@ commit — rút kinh nghiệm cần đọc lại kỹ hơn mỗi lần thêm f-s
 `worker_state_events` (Phase 5); `worker_leases` (chưa có code nào ghi —
 để dành cho Phase 7 fencing/split-brain).
 
-**Chưa làm:** wiring code Python (Worker báo cáo desired_state/
-observed_state) và Backend (đọc các cột/bảng mới cho Admin Dashboard
-Phase 5) — cần baseline Worker đúng trước.
+---
+
+## Phase 4 — Active Idle Power Management (XONG, CHƯA TEST THẬT)
+
+Commit `a1aadbd`. Chỉ dùng 2 Windows API chuẩn qua `ctypes` (không cần
+quyền Admin, không đụng registry/powercfg/Task Scheduler):
+- `prevent_windows_sleep()` — `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)`,
+  gọi lúc bắt đầu có task (`PREPARING`) — ngăn Windows tự Sleep giữa
+  chừng lúc đang render.
+- `allow_windows_sleep_and_turn_off_monitor_once()` — trả lại quyền tự
+  quản lý idle cho Windows + tắt màn hình ĐÚNG 1 LẦN (`SendMessageW` +
+  `SC_MONITORPOWER`) khi bắt đầu rảnh, dùng biến module
+  `_monitor_turned_off_while_idle` để không gọi lặp lại mỗi vòng poll
+  (đúng yêu cầu roadmap).
+- `reset_monitor_off_flag_on_new_task()` — reset cờ khi claim task mới.
+
+KHÔNG đụng GPU clock/voltage/power limit — đúng phạm vi Phase 4. "Dừng
+Blender lúc rảnh" không cần code thêm — kiến trúc hiện tại (Blender chỉ
+chạy ngắn hạn qua `subprocess.run()` mỗi frame) đã tự nhiên đúng yêu cầu
+này.
+
+**⚠️ Đây là lần ĐẦU TIÊN trong toàn phiên có code động vào Windows API
+thật** (khác các thay đổi trước chỉ là logic Python/RPC thuần) — rủi ro
+cao nhất trong tất cả các Phase đã làm, xem mục cảnh báo ở đầu file.
 
 ---
 
@@ -207,6 +245,7 @@ duy nhất. Commit `a28f8df`.
 - `487aee3` — feat(database): thêm RPC report_worker_state_transition.
 - `f313e93` — feat(worker): wiring báo cáo observed_state (5 điểm chuyển
   trạng thái tự nhiên trong `worker_loop()`).
+- `a1aadbd` — feat(worker): Active Idle Power Management (Phase 4).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -218,17 +257,19 @@ hiện có trong repo thay vì tiếp tục chờ.
 1. ~~Scene Analyzer đọc frame range, gọi RPC~~ — ĐÃ XONG (`a728763`).
 2. ~~Wiring observed_state (Phase 3 phần code)~~ — ĐÃ XONG (`487aee3` +
    `f313e93`).
-3. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ
-   commit `a728763`/`487aee3`/`f313e93` mới chỉ kiểm tra tĩnh (cân bằng
-   ngoặc, không còn lỗi f-string), chưa từng chạy qua Python/Blender/B2
-   thật. Đây là rủi ro lớn nhất hiện tại — cần xác nhận trên ít nhất 1
-   máy Worker thật trước khi coi là sẵn sàng production.
-4. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ 4
-   commit Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn
-   trong đó không.
-5. Backend/Admin Dashboard đọc `observed_state`/`worker_state_events`
+3. ~~Active Idle Power Management (Phase 4)~~ — ĐÃ XONG (`a1aadbd`).
+4. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 5
+   commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`,
+   cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh, chưa từng chạy qua
+   Python/Blender/B2/Windows thật. Đây là rủi ro lớn nhất hiện tại —
+   BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước khi coi là sẵn
+   sàng production.
+5. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
+   Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
+   đó không.
+6. Backend/Admin Dashboard đọc `observed_state`/`worker_state_events`
    (Phase 5) — schema/RPC đã sẵn sàng, chưa có code Backend nào đọc tới.
-6. Tiếp tục Phase 4 (Active Idle Power Management) trở đi theo đúng thứ
-   tự `CWS_WORKER_ROADMAP.md`.
-7. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+7. Tiếp tục Phase 5 (Admin Dashboard) trở đi theo đúng thứ tự
+   `CWS_WORKER_ROADMAP.md`.
+8. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
    tạo qua website có tự động sinh đủ task ngoài probe hay không.
