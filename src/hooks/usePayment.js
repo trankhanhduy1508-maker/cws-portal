@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import { createPaymentIntent, confirmPayment } from '../services/RenderService';
-import { PAYMENT_STATUS } from '../constants/renderConstants';
+import { PAYMENT_STATUS, PAYMENT_METHOD } from '../constants/renderConstants';
 
 export function usePayment() {
-  const [method, setMethod] = useState(null);
+  // MVP chỉ có 1 phương thức (MB Bank QR) — chọn sẵn để khách không phải
+  // bấm chọn 1 lựa chọn duy nhất trên PaymentMethodPicker.
+  const [method, setMethod] = useState(PAYMENT_METHOD.QR_BANK);
   const [status, setStatus] = useState(PAYMENT_STATUS.UNPAID);
   const [paymentId, setPaymentId] = useState(null);
   const [transferContent, setTransferContent] = useState(null);
@@ -30,7 +32,7 @@ export function usePayment() {
   }, [method]);
 
   const reset = useCallback(() => {
-    setMethod(null);
+    setMethod(PAYMENT_METHOD.QR_BANK);
     setStatus(PAYMENT_STATUS.UNPAID);
     setPaymentId(null);
     setTransferContent(null);
