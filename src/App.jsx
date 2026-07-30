@@ -249,7 +249,11 @@ function CustomerPortalApp() {
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.AWAITING_PAYMENT && (
           <PaymentScreen
             key="payment"
-            amountVnd={job.paymentInfo?.amountVnd ?? estimates[selectedProfileId]?.costVnd}
+            // SỬA LỖI (31/07/2026): KHÔNG fallback về estimates[...] (ước
+            // tính heuristic trước render) nữa — nếu paymentInfo (giá
+            // THẬT vừa tính từ approve()) chưa tải xong, PaymentScreen tự
+            // hiện "đang tải" thay vì hiện nhầm số ước tính SAI cho khách.
+            amountVnd={job.paymentInfo?.amountVnd}
             transferContent={job.paymentInfo?.transferContent}
             qrImageUrl={job.paymentInfo?.qrImageUrl}
             onCancel={handleCancelJob}

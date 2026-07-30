@@ -9,6 +9,34 @@ import { formatPriceVnd } from '../utils/timeUtils';
  * từ webhook ngân hàng, khách chỉ quét mã rồi chờ. Job tự chuyển sang
  * màn tải file khi Backend phát hiện webhook PAID (qua job.status). */
 export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl, onCancel }) {
+  // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây App.jsx
+  // truyền `job.paymentInfo?.amountVnd ?? estimates[...].costVnd` - nếu
+  // WebSocket báo status=AWAITING_PAYMENT TRƯỚC KHI approve() (REST) kịp
+  // set paymentInfo (khoảng trống rất ngắn, tính bằng mili-giây), màn
+  // hình sẽ hiện SỐ TIỀN ƯỚC TÍNH (heuristic trước render, SAI) thay vì
+  // giá thật vừa tính xong — dù tự sửa lại gần như ngay lập tức. Giờ
+  // KHÔNG còn fallback nào ở App.jsx nữa (xem App.jsx) — CHỈ hiện QR/số
+  // tiền khi `transferContent` (dữ liệu THẬT từ payment) đã có, còn
+  // không thì hiện "đang tải", KHÔNG BAO GIỜ hiện số tiền chưa chắc đúng.
+  if (!transferContent) {
+    return (
+      <StepCard>
+        <StepDots total={5} current={3} />
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <Loader2 size={20} strokeWidth={2} style={{ marginBottom: 10 }} />
+          <p style={{ fontSize: 14, color: '#6B6B70' }}>Đang tải thông tin thanh toán...</p>
+        </div>
+        <button
+          onClick={onCancel}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, color: '#6B6B70', fontWeight: 600, padding: 8 }}
+          type="button"
+        >
+          Hủy job
+        </button>
+      </StepCard>
+    );
+  }
+
   return (
     <StepCard>
       <StepDots total={5} current={3} />
