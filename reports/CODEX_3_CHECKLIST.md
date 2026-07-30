@@ -85,7 +85,7 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Completed
 
-- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp). Xem PR (nhánh codex/storage-review-images).
+- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp). Backend + Frontend đã nối đủ đầu-cuối (ReviewScreen.jsx mới, wired vào App.jsx khi status=REVIEW_READY). mockBackend.js cũng dừng thật ở REVIEW_READY (không chỉ lướt qua) để demo khớp hành vi thật. Xem nhánh codex/storage-review-images (PR #7).
 
 ---
 
@@ -97,9 +97,9 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Pending
 
-- Frontend UI: PreviewDownloadScreen.jsx vẫn giả định downloadUrl có sẵn ngay — cần sửa để hiển thị GET /jobs/:id/preview (3-5 ảnh watermark thật) + nút "Duyệt" gọi POST /jobs/:id/approve, chỉ hiện nút tải khi status=FINISHED.
-- ProgressScreen.jsx/StepDots: kiểm tra có xử lý đúng trạng thái REVIEW_READY mới hay không (chưa test bằng mắt vì chưa chạy dev server thật với 1 job render xong).
+- CHƯA test bằng mắt trên trình duyệt thật (dev server đã chạy được, build/lint PASS, nhưng không có công cụ browser trong phiên này để click qua luồng Upload → Profile → Payment → Render → Review → Approve → Download). Cần người dùng hoặc phiên sau tự kiểm tra bằng mắt trước khi coi tính năng này hoàn toàn xong.
 - "Yêu cầu chỉnh sửa" (khách từ chối preview) — CWS_MVP_WORKFLOW_FINAL.md có nhắc tới nhưng chưa implement (hiện chỉ có approve, chưa có reject/re-render).
+- ProgressScreen.jsx/StepDots hiển thị nhãn REVIEW_READY qua STAGE_SEQUENCE label có sẵn, chưa xác nhận bằng mắt có hiển thị đẹp không.
 
 ---
 
