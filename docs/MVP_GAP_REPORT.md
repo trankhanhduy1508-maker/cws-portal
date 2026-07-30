@@ -320,6 +320,17 @@ thể chuyển tiền được trong khoảng sai đó. Đã hỏi Dy, xác nh�
 fallback về ước tính, `PaymentScreen` hiện "đang tải" cho tới khi
 `paymentInfo` thật sự có. Xem commit `ba02e5b`.
 
+### Rò rỉ tài nguyên nhỏ ở WebSocket Realtime (phát hiện 2026-07-31, mức độ thấp)
+
+Cùng đợt rà soát, phát hiện `JobsRealtimeServer.handleConnection()` mở 1
+kênh Supabase Realtime SỐNG MÃI (tới khi client tự đóng) ngay cả khi job
+KHÔNG TỒN TẠI (id sai/không có thật, vd ai đó dò URL ngẫu nhiên tại
+`/ws/jobs/{fake-id}`) — không rò rỉ dữ liệu gì (không có job để gửi),
+nhưng lãng phí tài nguyên không cần thiết, 1 bề mặt DoS nhỏ. Đã sửa:
+đóng kết nối ngay (mã 4004), không mở kênh, nếu job không tồn tại —
+không đổi hành vi cho client thật (luôn có job thật vì `createJob()`
+await xong mới gọi subscribe). Thêm 1 test mới. Xem commit `d0005fd`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
