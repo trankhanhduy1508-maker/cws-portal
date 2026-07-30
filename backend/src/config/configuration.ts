@@ -14,6 +14,7 @@ export interface AppConfig {
     accountNumber: string | null;
     accountName: string | null;
   };
+  adminApiKey: string | null;
 }
 
 /**
@@ -49,6 +50,9 @@ export function loadConfig(): AppConfig {
       accountNumber: process.env.MB_BANK_ACCOUNT_NUMBER ?? null,
       accountName: process.env.MB_BANK_ACCOUNT_NAME ?? null,
     },
+    // Shared secret đơn giản cho route Admin (Giai đoạn 7) — KHÔNG phải
+    // hệ thống phân quyền enterprise, xem common/guards/admin-key.guard.ts.
+    adminApiKey: process.env.ADMIN_API_KEY ?? null,
   };
 }
 

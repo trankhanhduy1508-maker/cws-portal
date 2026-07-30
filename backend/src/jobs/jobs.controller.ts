@@ -8,6 +8,8 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JobsService } from './jobs.service';
@@ -15,12 +17,16 @@ import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
+import { AdminKeyGuard, isValidAdminKey } from '../common/guards/admin-key.guard';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../config/configuration';
 
 @Controller('jobs')
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   @Post()
@@ -38,15 +44,28 @@ export class JobsController {
     return this.jobsService.estimate(dto);
   }
 
+  /** Khách đã đăng nhập: chỉ thấy job của mình. Khách CHƯA đăng nhập:
+   * phải có x-admin-key mới xem được TOÀN BỘ job của mọi khách — trước
+   * đây route này công khai hoàn toàn, ai gọi cũng thấy hết. */
   @Get()
   async listAll(@Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    const orders = await this.jobsService.listAll(customerId);
+    if (customerId) {
+      const orders = await this.jobsService.listAll(customerId);
+      return orders.map(toPublicJson);
+    }
+
+    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
+    if (!isValidAdminKey(req, adminApiKey)) {
+      throw new UnauthorizedException('Cần đăng nhập hoặc x-admin-key để xem danh sách job');
+    }
+    const orders = await this.jobsService.listAll(null);
     return orders.map(toPublicJson);
   }
 
   /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   @Get('by-storage-code/:storageCode')
+  @UseGuards(AdminKeyGuard)
   async getByStorageCode(@Param('storageCode') storageCode: string) {
     const order = await this.jobsService.getByStorageCode(storageCode);
     return toPublicJson(order);
