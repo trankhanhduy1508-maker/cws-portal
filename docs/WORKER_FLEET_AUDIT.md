@@ -339,6 +339,57 @@ CHƯA chạy qua Worker thật, cộng dồn vào rủi ro lớn nhất đã nê
 
 ---
 
+## Ngoài roadmap — Admin action retry/requeue/quarantine/drain (ĐÃ TEST TRÊN DỮ LIỆU THẬT + BUILD THẬT, KHÔNG đụng Python)
+
+`CWS_WORKER_ROADMAP.md` đã hết ở Phase 8 (xem mục Phase 8 phía trên).
+Theo lựa chọn của Dy (`AskUserQuestion` sau khi hoàn tất Phase 8), việc
+tiếp theo là đóng lỗ hổng còn thiếu rõ nhất của Phase 6 ("Admin dashboard
+cần: hành động retry/requeue/quarantine/drain, audit log hành động
+admin") thay vì dừng lại hoặc làm `merge_completed_at`.
+
+Commit `8f0b884` (schema), `9890b31` (Backend endpoint), `40b83c6`
+(Frontend UI). **CHỈ Postgres + Backend/Frontend, hoàn toàn KHÔNG đụng
+`cws_worker_full.py`** — đây là commit rủi ro THẤP NHẤT trong các mục
+"ngoài roadmap"/Phase 6-8, vì:
+
+- "Quarantine"/"drain" được **THỰC THI THẬT** (không chỉ là nhãn) bằng
+  cách mở rộng `claim_task()` — RPC DUY NHẤT mọi Worker gọi để xin việc —
+  thêm 1 kiểm tra ở đầu hàm: worker đang `health_state=QUARANTINED` hoặc
+  `desired_state=DRAINING` thì trả về mảng rỗng ngay, KHÔNG cho claim task
+  mới. Worker tự hiểu là "không có task" — hành vi đã có sẵn từ trước,
+  KHÔNG cần sửa 1 dòng Python nào.
+- Audit log hành động Admin: TÁI SỬ DỤNG `worker_incidents` (Phase 6,
+  event_type tiền tố `ADMIN_*`) thay vì tạo bảng riêng — hiện ngay trong
+  bảng "Sự cố Worker Fleet" đã có sẵn.
+
+**Test trực tiếp trên dữ liệu THẬT qua MCP** (không chỉ kiểm tra tĩnh):
+- `admin_retry_task(105)` trên 1 task thật đang `failed` (permanent,
+  5 lần fail liên tiếp cùng 1 worker) — xác nhận đúng hành vi, sau đó
+  KHÔI PHỤC nguyên trạng thái cũ (status/generation/claimed_at/
+  last_heartbeat/failed_by/error_category).
+- `admin_requeue_task()` mô phỏng 1 task active — xác nhận đúng hành vi.
+- `admin_set_worker_quarantine(true)` trên `WORKER-119EBE66` thật + gọi
+  THẬT `claim_task()` trên job có task queued thật (`CWS-CHUNKLIVE`) —
+  xác nhận bị CHẶN (mảng rỗng) dù có task khả dụng. Un-quarantine + gọi
+  lại `claim_task()` — xác nhận CLAIM ĐƯỢC THẬT (task 128) — chứng minh
+  thay đổi KHÔNG làm hỏng logic claim bình thường. Đã REVERT task 128 +
+  `workers.status` về đúng trạng thái trước test.
+- `admin_set_worker_drain(true)` + `claim_task()` — xác nhận bị CHẶN.
+  Un-drain + xoá toàn bộ dữ liệu/incident test, xác nhận
+  `worker_incidents` về lại 0 dòng.
+
+Backend `nest build`+`jest`(37/37)+eslint PASS, Frontend oxlint+`vite
+build` PASS.
+
+**Chưa làm:** UI/RPC xác nhận `final_amount` (Phase 8), `merge_completed_at`
+wiring (Phase 8), các loại sự cố khác chưa có detection (Phase 6). Route
+mutating (retry/requeue/quarantine/drain) hiện chỉ bảo vệ bằng
+`AdminKeyGuard` + `window.confirm()` phía Frontend — chưa có xác thực
+2 lớp/phân quyền chi tiết hơn (phù hợp với mức bảo vệ Admin Dashboard
+hiện có toàn hệ thống, không phải điểm yếu riêng của tính năng này).
+
+---
+
 ## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
 ## không bao giờ được ghi cho job tạo qua Backend hiện tại
 
@@ -445,6 +496,11 @@ duy nhất. Commit `a28f8df`.
   trong message commit).
 - `0454861` — feat(admin): dashboard thống kê thời gian/tiền thuê host
   (Phase 8, Backend/Frontend ĐÃ build/test/lint thật).
+- `5e0295c` — docs: thêm Phase 8 vào audit doc.
+- `8f0b884` — feat(database): retry/requeue/quarantine/drain cho Admin
+  (ngoài roadmap, KHÔNG đụng Python, ĐÃ test trực tiếp trên dữ liệu thật).
+- `9890b31` — feat(admin): endpoint retry/requeue/quarantine/drain.
+- `40b83c6` — feat(admin): UI retry/requeue/quarantine/drain.
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -495,11 +551,15 @@ hiện có trong repo thay vì tiếp tục chờ.
 11. Cấu hình `fleets.hourly_rate` (hiện `null` cho mọi fleet) khi có giá
     thật — nếu không, `host_usage_sessions.status` sẽ mãi là
     `awaiting_rate`, không bao giờ tính ra `estimated_amount`.
-12. Xây UI/RPC riêng cho hành động "xác nhận final_amount" của Admin
-    (hiện luôn `null`) và cho retry/requeue/quarantine/drain (Phase 6) —
-    2 hạng mục Admin-action còn thiếu, chưa có trong roadmap chi tiết đủ
-    để tự triển khai mà không đoán.
+12. ~~Retry/requeue/quarantine/drain (Phase 6)~~ — ĐÃ XONG (`8f0b884`/
+    `9890b31`/`40b83c6`), KHÔNG đụng Python, đã test trực tiếp trên dữ
+    liệu thật. Còn thiếu: UI/RPC riêng cho hành động "xác nhận
+    final_amount" của Admin (Phase 8, hiện luôn `null`).
 13. `merge_completed_at` chưa wiring (cần sửa contract trả về của
     `attempt_job_video_merge()` trước).
 14. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
-    tạo qua website có tự động sinh đủ task ngoài probe hay không.
+    tạo qua website có tự động sinh đủ task ngoài probe hay không. Đặc
+    biệt xác nhận Worker vẫn claim/render/complete bình thường sau khi
+    `claim_task()` bị mở rộng thêm kiểm tra quarantine/drain (mục
+    "Ngoài roadmap" phía trên) — dù đã test kỹ qua MCP, đây vẫn là RPC lõi
+    nhất của toàn bộ hệ thống, đáng được xác nhận lại trên máy thật.
