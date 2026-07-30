@@ -10,6 +10,10 @@ export interface AppConfig {
   };
   googleDriveApiKey: string | null;
   corsOrigin: string;
+  mbBank: {
+    accountNumber: string | null;
+    accountName: string | null;
+  };
 }
 
 /**
@@ -37,6 +41,14 @@ export function loadConfig(): AppConfig {
     },
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY ?? null,
     corsOrigin: process.env.CORS_ORIGIN ?? '*',
+    mbBank: {
+      // Optional: chưa có số tài khoản MB Bank thật trong môi trường
+      // này — nếu để trống, QrBankProvider chỉ trả nội dung chuyển
+      // khoản dạng text (không bịa ảnh QR trỏ tới tài khoản không có
+      // thật). Điền vào đây khi có tài khoản MB Bank thật để nhận tiền.
+      accountNumber: process.env.MB_BANK_ACCOUNT_NUMBER ?? null,
+      accountName: process.env.MB_BANK_ACCOUNT_NAME ?? null,
+    },
   };
 }
 

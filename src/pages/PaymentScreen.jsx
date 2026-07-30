@@ -7,7 +7,7 @@ import { formatPriceVnd } from '../utils/timeUtils';
 import { PAYMENT_STATUS } from '../constants/renderConstants';
 
 export default function PaymentScreen({
-  amountVnd, method, setMethod, status, error, transferContent,
+  amountVnd, method, setMethod, status, error, transferContent, qrImageUrl,
   onPay, onBack,
 }) {
   const isProcessing = status === PAYMENT_STATUS.PROCESSING;
@@ -36,6 +36,17 @@ export default function PaymentScreen({
 
       {isProcessing && transferContent && (
         <div style={{ padding: '14px 16px', borderRadius: 14, background: '#F7F7F8', textAlign: 'center' }}>
+          {qrImageUrl ? (
+            <img
+              src={qrImageUrl}
+              alt="Mã QR chuyển khoản MB Bank"
+              style={{ width: '100%', maxWidth: 220, borderRadius: 10, marginBottom: 10 }}
+            />
+          ) : (
+            <p style={{ fontSize: 12, color: '#9a9aa0', marginBottom: 8 }}>
+              Chưa cấu hình tài khoản MB Bank thật — chuyển khoản thủ công với nội dung bên dưới:
+            </p>
+          )}
           <p style={{ fontSize: 12.5, color: '#6B6B70', marginBottom: 4 }}>
             Chuyển khoản với nội dung chính xác:
           </p>

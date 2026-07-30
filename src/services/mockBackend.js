@@ -131,6 +131,7 @@ export async function mockCreatePaymentIntent({ amountVnd, method }) {
     method,
     status: PAYMENT_STATUS.PROCESSING,
     transferContent: `CWS ${paymentCode}`,
+    qrImageUrl: null, // mock không có tài khoản MB Bank thật để dựng QR — honest, không bịa
   };
 }
 

@@ -9,6 +9,7 @@ export function usePayment() {
   const [status, setStatus] = useState(PAYMENT_STATUS.UNPAID);
   const [paymentId, setPaymentId] = useState(null);
   const [transferContent, setTransferContent] = useState(null);
+  const [qrImageUrl, setQrImageUrl] = useState(null);
   const [error, setError] = useState(null);
 
   const pay = useCallback(async (amountVnd) => {
@@ -18,6 +19,7 @@ export function usePayment() {
       const intent = await createPaymentIntent({ amountVnd, method });
       setPaymentId(intent.paymentId);
       setTransferContent(intent.transferContent ?? null);
+      setQrImageUrl(intent.qrImageUrl ?? null);
       // Với Backend thật: đợi webhook ngân hàng xác nhận (có thể mất
       // vài phút) — xem RenderService.confirmPayment(), hàm này giờ
       // poll trạng thái thay vì tự đặt PAID. Mock: xác nhận ngay như cũ.
@@ -36,8 +38,9 @@ export function usePayment() {
     setStatus(PAYMENT_STATUS.UNPAID);
     setPaymentId(null);
     setTransferContent(null);
+    setQrImageUrl(null);
     setError(null);
   }, []);
 
-  return { method, setMethod, status, paymentId, transferContent, error, pay, reset };
+  return { method, setMethod, status, paymentId, transferContent, qrImageUrl, error, pay, reset };
 }

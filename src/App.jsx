@@ -197,6 +197,7 @@ export default function App() {
             status={payment.status}
             error={payment.error}
             transferContent={payment.transferContent}
+            qrImageUrl={payment.qrImageUrl}
             onPay={handlePay}
             onBack={() => setScreen(SCREEN.PROFILE)}
           />

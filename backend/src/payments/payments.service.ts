@@ -22,9 +22,13 @@ export class PaymentsService {
     };
   }
 
-  async createIntent(
-    dto: CreatePaymentDto,
-  ): Promise<{ paymentId: string; status: PaymentStatus; transferContent: string | null; amountVnd: number }> {
+  async createIntent(dto: CreatePaymentDto): Promise<{
+    paymentId: string;
+    status: PaymentStatus;
+    transferContent: string | null;
+    amountVnd: number;
+    qrImageUrl: string | null;
+  }> {
     const provider = this.providers[dto.method];
     if (!provider) {
       throw new BadRequestException(
@@ -32,7 +36,9 @@ export class PaymentsService {
       );
     }
 
-    const { providerRef, status, paymentCode, transferContent } = await provider.createIntent(dto.amountVnd);
+    const { providerRef, status, paymentCode, transferContent, qrImageUrl } = await provider.createIntent(
+      dto.amountVnd,
+    );
     const paymentId = randomUUID();
 
     const record: PaymentRecord = {
@@ -51,7 +57,7 @@ export class PaymentsService {
     // đơn giản hoá: dùng chính paymentId làm khóa tra cứu, providerRef giữ
     // nội bộ provider (qr-*) đủ để suy luận lại provider nào xử lý.
     void providerRef;
-    return { paymentId, status, transferContent, amountVnd: dto.amountVnd };
+    return { paymentId, status, transferContent, amountVnd: dto.amountVnd, qrImageUrl };
   }
 
   async getStatus(paymentId: string): Promise<PaymentStatus> {

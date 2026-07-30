@@ -16,6 +16,8 @@ export interface IPaymentProvider {
     status: PaymentStatus;
     paymentCode: string | null;
     transferContent: string | null;
+    /** Ảnh QR quét được (VietQR) — null nếu chưa cấu hình tài khoản nhận tiền thật. */
+    qrImageUrl: string | null;
   }>;
   /** Xác nhận giao dịch đã hoàn tất qua hành động TRỰC TIẾP của provider
    * (vd ví trừ tiền ngay) — QR ngân hàng KHÔNG implement thật vì việc
