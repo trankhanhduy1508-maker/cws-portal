@@ -29,6 +29,7 @@ export const API_CONFIG = {
     ADMIN_LIST_CUSTOMERS: '/customers',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',
+    ADMIN_LIST_HOST_USAGE: '/fleet/host-usage',
     ADMIN_LIST_JOBS: '/jobs',
     ADMIN_JOB_BY_STORAGE_CODE: (code) => `/jobs/by-storage-code/${encodeURIComponent(code)}`,
     ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,

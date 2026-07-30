@@ -31,4 +31,11 @@ export class FleetController {
         resolved === 'true' ? true : resolved === 'false' ? false : undefined,
     });
   }
+
+  /** Phase 8 CWS_WORKER_ROADMAP.md — thống kê thời gian/tiền thuê host, CHỈ đọc. */
+  @Get('host-usage')
+  @UseGuards(AdminKeyGuard)
+  async listHostUsageSessions() {
+    return this.workerFleetGateway.listHostUsageSessions();
+  }
 }

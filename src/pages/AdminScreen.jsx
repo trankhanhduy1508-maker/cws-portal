@@ -1,13 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
 import {
-  adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminGetJobByStorageCode,
-  adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
+  adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminListHostUsageSessions,
+  adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 const ADMIN_KEY_STORAGE = 'cws_admin_key';
+
+// Phase 8 CWS_WORKER_ROADMAP.md — hiển thị giây dạng "Xp Ys" ngắn gọn cho
+// bảng thống kê host usage (số giây thô từ Backend khó đọc trực tiếp).
+function formatDurationSeconds(totalSeconds) {
+  const s = Math.round(totalSeconds ?? 0);
+  const minutes = Math.floor(s / 60);
+  const seconds = s % 60;
+  return minutes > 0 ? `${minutes}p ${seconds}s` : `${seconds}s`;
+}
 
 /**
  * Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7) — KHÔNG nằm
@@ -27,6 +36,7 @@ export default function AdminScreen() {
   const [incidents, setIncidents] = useState([]);
   const [incidentSeverityFilter, setIncidentSeverityFilter] = useState('all');
   const [incidentShowResolved, setIncidentShowResolved] = useState(false);
+  const [hostUsageSessions, setHostUsageSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -39,13 +49,15 @@ export default function AdminScreen() {
     setIsLoading(true);
     setError(null);
     Promise.all([
-      adminListJobs(key), adminListCustomers(key), adminListWorkers(key), adminListIncidents(key),
+      adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
+      adminListIncidents(key), adminListHostUsageSessions(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
         setIncidents(incidentsRes);
+        setHostUsageSessions(hostUsageRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -405,6 +417,58 @@ export default function AdminScreen() {
                 ))}
                 {filteredIncidents.length === 0 && (
                   <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Thống kê thời gian thuê host
+          </h3>
+          {/* Phase 8 CWS_WORKER_ROADMAP.md — CHỈ đọc (host_usage_sessions,
+              tính bởi RPC compute_host_usage_sessions() qua cron 5 phút/lần,
+              xem worker_migrations/006_host_usage_billing.sql). "Ước tính"
+              để trống (—) khi status=awaiting_rate (fleets.hourly_rate chưa
+              được cấu hình) — KHÔNG hiện 0 để tránh hiểu lầm miễn phí.
+              status=decision_required nghĩa là khởi động vượt quá 7 phút
+              (420s), cần Admin xem xét thủ công (roadmap chưa quy định tự
+              động xử lý trường hợp này). Chưa có "Số tiền cuối" (cần hành
+              động xác nhận riêng của Admin, ngoài phạm vi vòng này). */}
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Lúc</th>
+                  <th style={{ padding: 8 }}>Worker</th>
+                  <th style={{ padding: 8 }}>Task</th>
+                  <th style={{ padding: 8 }}>Khởi động</th>
+                  <th style={{ padding: 8 }}>Render</th>
+                  <th style={{ padding: 8 }}>Upload</th>
+                  <th style={{ padding: 8 }}>Billable</th>
+                  <th style={{ padding: 8 }}>Ước tính</th>
+                  <th style={{ padding: 8 }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hostUsageSessions.map((hu) => (
+                  <tr key={hu.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(hu.createdAt)}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{hu.workerId ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{hu.taskId ?? '—'}</td>
+                    <td style={{ padding: 8 }} title={`Ngưỡng miễn tính: ${formatDurationSeconds(hu.startupGraceSeconds)}`}>
+                      {formatDurationSeconds(hu.startupSeconds)}
+                    </td>
+                    <td style={{ padding: 8 }}>{formatDurationSeconds(hu.renderSeconds)}</td>
+                    <td style={{ padding: 8 }}>{formatDurationSeconds(hu.uploadSeconds)}</td>
+                    <td style={{ padding: 8 }}>{formatDurationSeconds(hu.billableSeconds)}</td>
+                    <td style={{ padding: 8 }}>
+                      {hu.estimatedAmount != null ? hu.estimatedAmount.toLocaleString('vi-VN') : '—'}
+                    </td>
+                    <td style={{ padding: 8 }}>{hu.status}</td>
+                  </tr>
+                ))}
+                {hostUsageSessions.length === 0 && (
+                  <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có phiên nào hoàn thành</td></tr>
                 )}
               </tbody>
             </table>

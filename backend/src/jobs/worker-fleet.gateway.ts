@@ -439,4 +439,90 @@ export class WorkerFleetGateway {
       };
     });
   }
+
+  /** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —
+   * CHỈ đọc từ `host_usage_sessions` (migration `worker_migrations/006_...`),
+   * bảng này được TÍNH bởi RPC `compute_host_usage_sessions()` (cron 5
+   * phút/lần, KHÔNG BAO GIỜ được Worker gọi trực tiếp — đúng nguyên tắc
+   * "Worker không được tự quyết định billing"). `estimatedAmount`/
+   * `hourlyRate` là `null` khi `fleets.hourly_rate` chưa được cấu hình
+   * (status `awaiting_rate`) — KHÔNG hiện `0` để tránh hiểu lầm là miễn
+   * phí. `finalAmount` hiện luôn `null` (xác nhận cuối là hành động Admin
+   * riêng, chưa làm ở vòng này). */
+  async listHostUsageSessions(limit = 200): Promise<
+    {
+      id: number;
+      workerId: string | null;
+      taskId: number | null;
+      startupSeconds: number;
+      startupGraceSeconds: number;
+      waitingSeconds: number;
+      renderSeconds: number;
+      mergeSeconds: number;
+      uploadSeconds: number;
+      verificationSeconds: number;
+      billableSeconds: number;
+      nonBillableSeconds: number;
+      hourlyRate: number | null;
+      estimatedAmount: number | null;
+      finalAmount: number | null;
+      status: string;
+      createdAt: number;
+    }[]
+  > {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('host_usage_sessions')
+      .select(
+        'id, worker_id, task_id, startup_seconds, startup_grace_seconds, waiting_seconds, render_seconds, merge_seconds, upload_seconds, verification_seconds, billable_seconds, non_billable_seconds, hourly_rate, estimated_amount, final_amount, status, created_at',
+      )
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      this.logger.error(`listHostUsageSessions() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được thống kê host: ${error.message}`);
+    }
+
+    return (data ?? []).map((r) => {
+      const row = r as {
+        id: number;
+        worker_id: string | null;
+        task_id: number | null;
+        startup_seconds: number;
+        startup_grace_seconds: number;
+        waiting_seconds: number;
+        render_seconds: number;
+        merge_seconds: number;
+        upload_seconds: number;
+        verification_seconds: number;
+        billable_seconds: number;
+        non_billable_seconds: number;
+        hourly_rate: number | null;
+        estimated_amount: number | null;
+        final_amount: number | null;
+        status: string;
+        created_at: string;
+      };
+      return {
+        id: row.id,
+        workerId: row.worker_id,
+        taskId: row.task_id,
+        startupSeconds: row.startup_seconds,
+        startupGraceSeconds: row.startup_grace_seconds,
+        waitingSeconds: row.waiting_seconds,
+        renderSeconds: row.render_seconds,
+        mergeSeconds: row.merge_seconds,
+        uploadSeconds: row.upload_seconds,
+        verificationSeconds: row.verification_seconds,
+        billableSeconds: row.billable_seconds,
+        nonBillableSeconds: row.non_billable_seconds,
+        hourlyRate: row.hourly_rate,
+        estimatedAmount: row.estimated_amount,
+        finalAmount: row.final_amount,
+        status: row.status,
+        createdAt: new Date(row.created_at).getTime(),
+      };
+    });
+  }
 }

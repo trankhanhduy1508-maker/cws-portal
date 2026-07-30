@@ -41,6 +41,13 @@ export function adminListIncidents(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, adminKey);
 }
 
+/** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —
+ * chỉ đọc, tính bởi RPC compute_host_usage_sessions() (cron), không phải
+ * Backend/Frontend tự tính. */
+export function adminListHostUsageSessions(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_HOST_USAGE, adminKey);
+}
+
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
  * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
  * xem JobsService.assertOwnership() trong Backend (trước đây route này
