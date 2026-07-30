@@ -411,10 +411,30 @@ thêm 1 return value, không đổi logic nhánh nào. Lưu ý: `CWS_ENABLE_INTE
 đang TẮT mặc định trong `cws_worker.bat`, nên nhánh "success" trong thực
 tế sẽ HIẾM KHI được thực thi cho tới khi Dy chủ động bật flag đó.
 
+**Cập nhật tiếp theo — sửa 1 "giới hạn đã biết" khác:** commit `ec598d4`
+(schema) + `2056252` (wiring Python). Chính docstring của
+`attempt_job_video_merge()` (Phase 2) từng ghi rõ 1 giới hạn: nếu 2
+Worker cùng hoàn thành 2 task cuối cùng của CÙNG 1 job gần như đồng
+thời, cả hai có thể cùng thấy `is_fully_done=true` và cùng thử merge
+song song (lãng phí ffmpeg + upload B2 2 lần cho cùng 1 video) — được
+ghi rõ là KHÔNG PHẢI hồi quy mới (`cws_auto_ghep_video.bat` thủ công
+cũng có hạn chế tương tự nếu 2 người cùng chạy tay), nhưng nay có thể
+đóng được. Giải pháp: khoá lạc quan qua cột mới `jobs.merge_lock_at` +
+RPC `try_acquire_merge_lock()` (`UPDATE ... WHERE merge_lock_at IS
+NULL` — atomic, chỉ 1 worker nhận `true` dù gọi đồng thời). Python chỉ
+thêm ĐÚNG 1 điểm gọi, ngay sau khi xác nhận đủ điều kiện merge, trước
+khi bắt đầu download/ffmpeg — RPC lỗi mạng cũng được xử lý an toàn (coi
+như chưa chắc có khoá, bỏ qua thay vì liều merge trùng).
+
+Test: RPC test trực tiếp trên 1 job thật qua MCP (gọi 2 lần liên tiếp,
+xác nhận đúng `true` rồi `false`, khôi phục dữ liệu). Python: kiểm tra
+tĩnh (cân bằng ngoặc, không lỗi `%%`, diff tối thiểu ~10 dòng).
+
 **Đến đây, toàn bộ mục "chưa làm" có ý nghĩa tính năng (không tính máy
-thật/giá) trong audit này đã đóng.** Việc còn lại thực sự cần: xác nhận
-trên máy Worker thật (8 commit Python chưa từng chạy qua Python/Blender/
-Windows thật) và cấu hình `fleets.hourly_rate` khi có giá thật.
+thật/giá) trong audit này đã đóng, kể cả 1 giới hạn đã biết từ trước.**
+Việc còn lại thực sự cần: xác nhận trên máy Worker thật (9 commit Python
+chưa từng chạy qua Python/Blender/Windows thật) và cấu hình
+`fleets.hourly_rate` khi có giá thật.
 
 ---
 
@@ -535,6 +555,10 @@ duy nhất. Commit `a28f8df`.
 - `68470ca` — docs: cập nhật audit doc, xác nhận final_amount đã xong.
 - `caa97f1` — feat(worker): wiring merge_completed_at (commit Python thứ
   8 của phiên này, chưa test máy thật).
+- `5356b00` — docs: cập nhật audit doc, xác nhận merge_completed_at xong.
+- `ec598d4` — feat(database): RPC try_acquire_merge_lock.
+- `2056252` — feat(worker): wiring khoá lạc quan chống merge song song
+  (commit Python thứ 9 của phiên này, chưa test máy thật).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -572,15 +596,15 @@ hiện có trong repo thay vì tiếp tục chờ.
    rõ là "chưa làm/để lại vòng sau" thay vì đoán, xem từng mục Phase ở
    trên). Việc còn lại từ đây là XÁC NHẬN TRÊN MÁY THẬT, không phải viết
    thêm code theo roadmap.
-9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 8
+9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 9
    commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
-   `3cfb241`/`0bec9a6`/`caa97f1`, cộng `c6d64f3` từ trước) mới chỉ kiểm
-   tra tĩnh, chưa từng chạy qua Python/Blender/B2/Windows thật. Đây là
-   rủi ro lớn nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker
-   thật trước khi coi là sẵn sàng production, ĐẶC BIỆT với `0bec9a6`
-   (Phase 8) vì liên quan trực tiếp tới số liệu billing sẽ hiển thị cho
-   Admin. `caa97f1` rủi ro thấp hơn (diff ~20 dòng, tính năng merge đang
-   tắt mặc định nên hiếm khi thực thi trong vận hành thật).
+   `3cfb241`/`0bec9a6`/`caa97f1`/`2056252`, cộng `c6d64f3` từ trước) mới
+   chỉ kiểm tra tĩnh, chưa từng chạy qua Python/Blender/B2/Windows thật.
+   Đây là rủi ro lớn nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy
+   Worker thật trước khi coi là sẵn sàng production, ĐẶC BIỆT với
+   `0bec9a6` (Phase 8) vì liên quan trực tiếp tới số liệu billing sẽ hiển
+   thị cho Admin. `caa97f1`/`2056252` rủi ro thấp hơn (diff nhỏ, tính
+   năng merge đang tắt mặc định nên hiếm khi thực thi trong vận hành thật).
 10. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
     Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
     đó không.
