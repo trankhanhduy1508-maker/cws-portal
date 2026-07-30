@@ -763,6 +763,85 @@ def get_worker_vram_mb():
         return None
 
 
+# ---------------------------------------------------------------------
+# ACTIVE IDLE POWER MANAGEMENT (Phase 4, CWS_WORKER_ROADMAP.md, them 31/07/2026)
+# ---------------------------------------------------------------------
+# CHU DICH chi dung 2 Windows API CHUAN, da tai lieu hoa chinh thuc, KHONG
+# can quyen Admin, KHONG dung schtasks/registry/powercfg/Task Scheduler:
+#   - SetThreadExecutionState (kernel32.dll) - ngan Windows tu Sleep khi
+#     dang co task. KHONG PHAI Sleep/Hibernate/Wake-on-LAN (nhung thu
+#     roadmap CAM lam o Phase nay) - day la co che NGUOC LAI: bao Windows
+#     "dung tu sleep", khong phai chu dong dua may vao/ra sleep.
+#   - SendMessageW voi SC_MONITORPOWER (user32.dll) - tat man hinh 1 LAN
+#     duy nhat khi bat dau ranh, KHONG lap lai moi vong poll (dung yeu cau
+#     roadmap "khong goi tat man hinh lap lai trong moi vong poll").
+# TUYET DOI KHONG dong vao GPU clock/voltage/power limit/Ultimate
+# Performance - ngoai pham vi Phase 4 cho phep.
+#
+# "Dung Blender va tien trinh nang" luc ranh (yeu cau khac cua Phase 4):
+# KHONG can code them - kien truc hien tai da tu nhien dung yeu cau nay,
+# Blender chi duoc goi qua subprocess.run() NGAN HAN cho TUNG frame
+# (render_single_frame()/analyze_blend_scene()), tu thoat ngay sau moi
+# lan goi - KHONG co tien trinh Blender nao chay lien tuc de "phai dung"
+# luc worker ranh.
+_monitor_turned_off_while_idle = False
+
+
+def prevent_windows_sleep():
+    """Goi khi BAT DAU co task (PREPARING) - bao Windows dung tu Sleep
+    giua chung luc dang render. KHONG bat buoc man hinh phai bat (dung
+    yeu cau roadmap), chi ngan he thong tu ngu quen giua luc dang lam
+    viec. Best-effort - loi khong duoc lam gian doan render."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ES_CONTINUOUS = 0x80000000
+        ES_SYSTEM_REQUIRED = 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+    except Exception as e:
+        print(f"[POWER] Khong the ngan Windows Sleep: {e} - bo qua, khong anh huong render.")
+
+
+def allow_windows_sleep_and_turn_off_monitor_once():
+    """Goi khi BAT DAU ranh (task is None) - (a) tra lai quyen tu quan ly
+    idle cho Windows (bo co SYSTEM_REQUIRED, KHONG chu dong ep Sleep/
+    Hibernate - chi ngung NGAN Windows tu lam viec do neu no muon), (b)
+    tat man hinh DUNG 1 LAN (dung bien _monitor_turned_off_while_idle de
+    nho, tranh goi lap lai moi 15s vong poll nhu roadmap cam)."""
+    global _monitor_turned_off_while_idle
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ES_CONTINUOUS = 0x80000000
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+    except Exception as e:
+        print(f"[POWER] Khong the tra lai quyen quan ly idle cho Windows: {e}")
+
+    if _monitor_turned_off_while_idle:
+        return  # da tat roi tu lan ranh truoc - KHONG goi lai
+    try:
+        import ctypes
+        HWND_BROADCAST = 0xFFFF
+        WM_SYSCOMMAND = 0x0112
+        SC_MONITORPOWER = 0xF170
+        MONITOR_OFF = 2
+        ctypes.windll.user32.SendMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_OFF)
+        _monitor_turned_off_while_idle = True
+        print("[POWER] Da tat man hinh (may dang ranh, cho task moi) - "
+              "se KHONG lap lai cho toi khi co task moi.")
+    except Exception as e:
+        print(f"[POWER] Khong the tat man hinh: {e} - bo qua, khong quan trong.")
+
+
+def reset_monitor_off_flag_on_new_task():
+    """Goi ngay khi VUA claim duoc task moi - cho phep lan ranh TIEP THEO
+    (sau khi xong task nay) duoc tat man hinh lai tu dau."""
+    global _monitor_turned_off_while_idle
+    _monitor_turned_off_while_idle = False
+
+
 def check_for_newer_version():
     """Doc bang worker_config qua REST (SELECT, khong phai RPC - bang nay
     co policy 'allow read worker_config' cho phep doc truc tiep), so sanh
@@ -2480,6 +2559,7 @@ def worker_loop():
                                      # bao con song, neu khong bang workers
                                      # se khong bao gio biet may nay dang idle
             report_state(worker_id, "IDLE_WAITING_JOB")
+            allow_windows_sleep_and_turn_off_monitor_once()
 
             # ----- TU KIEM TRA BAN MOI (yeu cau Dy 22/07/2026 toi): TRUOC day
             # file .bat (lop vo ngoai) CO san co che auto-update, nhung CHI
@@ -2508,6 +2588,8 @@ def worker_loop():
         worker_ping(worker_id)  # Bao con song ngay khi VUA nhan task
         report_state(worker_id, "PREPARING", task_id=task_id,
                      reason=f"vua claim task {task_id}, dang tai blend/phan tich scene")
+        prevent_windows_sleep()
+        reset_monitor_off_flag_on_new_task()
 
         # LOAD JOB CONTEXT (25/07/2026, Job 4): tai blend_path/optimization_code
         # DUNG CHO JOB VUA CLAIM DUOC (co the KHAC job lan truoc, vi random
