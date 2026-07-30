@@ -36,13 +36,16 @@ Request: `{ "fileRef"?, "driveLink"?, "fileSizeBytes"?, "profileId" }`
 Response: `{ "etaSeconds": 900, "costVnd": 45000, "queueSeconds": 0 }`
 
 ### GET /jobs
-Danh sách toàn bộ render order (Job Dashboard/History).
+Danh sách render order (Job Dashboard/History).
 
-**Lưu ý bảo mật (CHƯA fix — cần Facebook Login trước):** endpoint này
-KHÔNG có phân quyền theo khách hàng, trả về TOÀN BỘ order của mọi
-khách. Portal hiện dùng route này cho History của chính khách đang
-xem — vì chưa có đăng nhập nên không lọc theo customer được. KHÔNG
-build UI admin công khai dựa trên route này cho tới khi có auth.
+Nếu request có `Authorization: Bearer <token>` hợp lệ (đăng nhập
+Facebook) — chỉ trả job của đúng khách đó (`findByCustomerId`).
+
+**Lưu ý bảo mật còn lại:** nếu KHÔNG có token (khách chưa đăng nhập,
+hoặc gọi thẳng API không qua Portal) — trả về TOÀN BỘ order của mọi
+khách, không có cách nào chặn việc này ở route công khai chừng nào
+Portal chưa bắt buộc đăng nhập. KHÔNG build UI admin công khai dựa
+trên route này.
 
 ### GET /jobs/by-storage-code/:storageCode
 Tra cứu 1 job theo Storage Code (Giai đoạn 7 — cùng lưu ý bảo mật như

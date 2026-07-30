@@ -14,6 +14,7 @@ export interface IRenderOrdersRepository {
   findById(id: string): Promise<RenderOrder | null>;
   findByStorageCode(storageCode: string): Promise<RenderOrder | null>;
   findAll(): Promise<RenderOrder[]>;
+  findByCustomerId(customerId: string): Promise<RenderOrder[]>;
   updateStatus(
     id: string,
     status: JobStatus,

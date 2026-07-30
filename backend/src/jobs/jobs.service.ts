@@ -151,7 +151,12 @@ export class JobsService {
     return order;
   }
 
-  async listAll(): Promise<RenderOrder[]> {
+  /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Facebook).
+   * customerId null -> TRẢ TOÀN BỘ job của mọi khách (giới hạn đã biết:
+   * Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts và
+   * API_DOCUMENTATION.md). */
+  async listAll(customerId: string | null = null): Promise<RenderOrder[]> {
+    if (customerId) return this.ordersRepository.findByCustomerId(customerId);
     return this.ordersRepository.findAll();
   }
 

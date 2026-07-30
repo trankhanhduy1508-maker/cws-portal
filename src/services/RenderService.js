@@ -228,10 +228,14 @@ export async function getJob(jobId) {
   return mock.mockGetJob(jobId);
 }
 
-/** Danh sách toàn bộ job (Job Dashboard / History). */
+/** Danh sách job (Job Dashboard / History) — nếu đã đăng nhập Facebook,
+ * Backend chỉ trả job của đúng khách đó (xem JobsController.listAll()). */
 export async function listJobs() {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`);
+    const token = getStoredToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Không lấy được danh sách job');
     return res.json();
   }

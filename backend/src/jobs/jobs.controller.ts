@@ -41,8 +41,10 @@ export class JobsController {
   }
 
   @Get()
-  async listAll() {
-    const orders = await this.jobsService.listAll();
+  async listAll(@Req() req: Request) {
+    const jwtSecret = this.configService.get('jwtSecret', { infer: true });
+    const customerId = getOptionalCustomerId(req, jwtSecret);
+    const orders = await this.jobsService.listAll(customerId);
     return orders.map(toPublicJson);
   }
 

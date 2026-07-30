@@ -245,4 +245,19 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
     }
     return (data as RenderOrderRow[]).map(rowToDomain);
   }
+
+  async findByCustomerId(customerId: string): Promise<RenderOrder[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error(`findByCustomerId(${customerId}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được danh sách render order theo customer: ${error.message}`);
+    }
+    return (data as RenderOrderRow[]).map(rowToDomain);
+  }
 }
