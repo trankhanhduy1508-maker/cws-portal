@@ -24,7 +24,11 @@ export const API_CONFIG = {
     APPROVE_JOB: (jobId) => `/jobs/${jobId}/approve`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
-    FACEBOOK_LOGIN: '/auth/facebook',
+    // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.
+    ADMIN_LIST_JOBS: '/jobs',
+    ADMIN_JOB_BY_STORAGE_CODE: (code) => `/jobs/by-storage-code/${encodeURIComponent(code)}`,
+    ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,
+    ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
   },
 };
 

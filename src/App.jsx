@@ -11,6 +11,7 @@ import ReviewScreen from './pages/ReviewScreen';
 import PreviewDownloadScreen from './pages/PreviewDownloadScreen';
 import ErrorScreen from './pages/ErrorScreen';
 import HistoryScreen from './pages/HistoryScreen';
+import AdminScreen from './pages/AdminScreen';
 import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
 import { useFileUploadResolver } from './hooks/useFileUploadResolver';
@@ -36,6 +37,20 @@ const SCREEN = {
 };
 
 export default function App() {
+  // Admin Dashboard (Giai đoạn 7) — hoàn toàn tách biệt khỏi luồng
+  // khách hàng, chỉ vào được qua URL kèm #admin (không có nút/link nào
+  // dẫn tới từ giao diện khách hàng). Bảo vệ ở tầng Backend qua
+  // x-admin-key (xem AdminScreen.jsx), không phải qua ẩn URL. Tách
+  // thành nhánh riêng ở NGOÀI CustomerPortalApp (không phải early
+  // return bên trong nó) để không vi phạm Rules of Hooks — App() ở
+  // đây không gọi hook nào, chỉ CustomerPortalApp() mới gọi.
+  if (window.location.hash === '#admin') {
+    return <AdminScreen />;
+  }
+  return <CustomerPortalApp />;
+}
+
+function CustomerPortalApp() {
   const [screen, setScreen] = useState(SCREEN.LANDING);
   const [screenBeforeHistory, setScreenBeforeHistory] = useState(SCREEN.LANDING);
   const [source, setSource] = useState(FILE_SOURCE.UPLOAD);
