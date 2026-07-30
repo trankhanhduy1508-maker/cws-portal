@@ -98,6 +98,12 @@ rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
 - RLS owner-scoped bật cho toàn bộ bảng liên quan tới khách hàng
   (`auth.uid() = customer_id`/`= id`) — `get_advisors(security)` xác
   nhận không còn ERROR nào trên các bảng MVP.
+- `get_advisors(performance)` đã chạy đầy đủ (migration 010): sửa 7 RLS
+  policy re-evaluate `auth.uid()` mỗi row (khuyến nghị chính thức
+  Supabase), thêm index thiếu cho `downloads.customer_id`/
+  `notifications.job_id`. Còn lại `unindexed_foreign_keys` trên
+  `fleets`/`machine_capability` (bảng Worker Fleet, ngoài phạm vi) và
+  `unused_index` (INFO, bình thường vì DB gần trống — không phải vấn đề).
 
 ### Không làm trong MVP (xác nhận qua grep, không có code nào)
 MoMo, Stripe, PayPal, Google Login, OTP, Zalo Login, AI ETA,
@@ -208,10 +214,6 @@ làm việc này:
   (`cws_worker_full.py`, không sửa) hiện chỉ tải được từ Google Drive;
   nếu khách chọn "Upload File", Backend báo lỗi rõ ràng thay vì tạo job
   hỏng, nhưng đây vẫn là 1 giới hạn thật của luồng, không phải bug.
-- **Index/Foreign Key đầy đủ trên toàn bộ 8 bảng** — đã audit Foreign
-  Key chính (customer_profiles→auth.users, payments→render_orders qua
-  job_id mới thêm), nhưng chưa chạy `get_advisors(performance)` đầy đủ
-  (gặp lỗi 502 tạm thời từ Cloudflare lúc thử, chưa retry).
 
 ---
 

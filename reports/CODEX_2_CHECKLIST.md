@@ -13,9 +13,9 @@ Supabase • Database • Backblaze B2
 - [x] Kiểm tra Facebook Auth — ĐÃ CHUYỂN sang dùng Supabase Auth built-in OAuth (`supabase.auth.signInWithOAuth({ provider: 'facebook' })`), KHÔNG tự code Backend nhận credential Facebook. Trigger `handle_new_auth_user()` (migration 007) tự tạo/cập nhật customer_profiles khi có user mới, ON CONFLICT tránh trùng hồ sơ khi đăng nhập lại. CÒN BLOCKER: cần bật Facebook Provider thật trong Supabase Dashboard (App ID/Secret) — việc này chỉ người dùng làm được.
 - [x] Kiểm tra RLS — Đã bật cho render_orders/payments/sites/machine_capability/customer_profiles/review_images/downloads/notifications (migration 007), policy owner-scoped (`auth.uid() = customer_id`/`= id`). payments/sites/machine_capability/storage_objects/worker_logs: bật RLS nhưng KHÔNG có policy nào (chủ ý — chỉ Backend service_role đọc/ghi được).
 - [x] Kiểm tra Trigger — `on_auth_user_created` (AFTER INSERT OR UPDATE ON auth.users) đã tạo, đã apply lên Supabase thật.
-- [x] Kiểm tra Migration — 004-007 đã APPLY thành công lên Supabase thật qua MCP `apply_migration` (xem migration 007 nội dung đầy đủ).
-- [x] Kiểm tra Enum — job_status đã có REVIEW_READY (migration 006), payment method giới hạn 'qr_bank' (migration 004).
-- [ ] Kiểm tra Index — chưa audit riêng, chưa phát hiện vấn đề qua get_advisors(performance) (chưa chạy loại này).
+- [x] Kiểm tra Migration — 004-010 đã APPLY thành công lên Supabase thật qua MCP `apply_migration` (xem migration 007/010 nội dung đầy đủ).
+- [x] Kiểm tra Enum — job_status đã có REVIEW_READY/AWAITING_PAYMENT (migration 006), payment method giới hạn 'qr_bank' (migration 004).
+- [x] Kiểm tra Index — chạy `get_advisors(performance)` thật: phát hiện + fix qua migration 010 — 7 policy RLS (customer_profiles x2, render_orders, review_images, downloads, notifications x2) re-evaluate `auth.uid()` mỗi row thay vì `(select auth.uid())` (khuyến nghị chính thức Supabase, không đổi hành vi logic); thêm index còn thiếu cho `downloads.customer_id`/`notifications.job_id`. Còn lại: `unindexed_foreign_keys` trên `fleets`/`machine_capability` (bảng Worker Fleet, ngoài phạm vi, không sửa) + `unused_index` (INFO, bình thường vì DB gần như trống, không phải vấn đề thật).
 - [x] Kiểm tra Foreign Key — customer_profiles.id → auth.users.id (migration 007), review_images/downloads/notifications/worker_logs → render_orders/jobs qua job_id (migration 005).
 
 ---

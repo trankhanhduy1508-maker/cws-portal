@@ -69,6 +69,14 @@
   — đã thêm nút "Xem" mở modal hiển thị ảnh preview ngay trong
   `AdminScreen.jsx`.
 
+### Migration 010 — sửa cảnh báo performance (get_advisors)
+- 7 RLS policy (migration 007) re-evaluate `auth.uid()` mỗi row thay vì
+  `(select auth.uid())` — đã sửa theo khuyến nghị chính thức Supabase,
+  KHÔNG đổi hành vi logic (`auth_rls_initplan` advisory).
+- Thêm index còn thiếu cho `downloads.customer_id`, `notifications.job_id`
+  (`unindexed_foreign_keys` advisory). KHÔNG sửa cảnh báo tương tự trên
+  `fleets`/`machine_capability` — bảng Worker Fleet, ngoài phạm vi.
+
 ## [1.2.0] - Supabase Auth + RLS + VietQR + Admin Dashboard (2026-07-30)
 
 ### Thêm mới
