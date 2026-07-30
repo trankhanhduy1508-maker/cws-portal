@@ -68,7 +68,7 @@ export function useRenderJob() {
     try {
       const { jobId: newJobId } = await createJob({ input, profileId });
       setJobId(newJobId);
-      unsubscribeRef.current = subscribeToJobUpdates(newJobId, makeHandlers());
+      unsubscribeRef.current = await subscribeToJobUpdates(newJobId, makeHandlers());
     } catch (err) {
       setStatus(JOB_STATUS.ERROR);
       setError({ message: err.message || 'Không tạo được job' });
@@ -77,7 +77,7 @@ export function useRenderJob() {
 
   /** Mở lại (subscribe) 1 job ĐÃ TỒN TẠI — dùng khi người dùng bấm vào
    * 1 job đang chạy trong Job Dashboard, không phải tạo job mới. */
-  const attach = useCallback((existingJobId) => {
+  const attach = useCallback(async (existingJobId) => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     setJobId(existingJobId);
     setError(null);
@@ -85,7 +85,7 @@ export function useRenderJob() {
     setPaymentInfo(null);
     paymentFetchedForRef.current = null;
 
-    unsubscribeRef.current = subscribeToJobUpdates(existingJobId, makeHandlers());
+    unsubscribeRef.current = await subscribeToJobUpdates(existingJobId, makeHandlers());
   }, []);
 
   const cancel = useCallback(async () => {

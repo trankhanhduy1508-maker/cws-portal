@@ -241,6 +241,19 @@ ràng thay vì rơi vào 500 mặc định) + file test mới cho filter này (c
 từng có test). Tổng test backend: 29 → 31, PASS. Xem `backend/CHANGELOG.md`
 mục `[1.7.0]`.
 
+### Lỗ hổng bảo mật thứ 3 (IDOR qua WebSocket) phát hiện qua self-review liên tiếp
+
+Sau khi khoá quyền sở hữu cho toàn bộ route REST `/jobs/:id/...`, phát
+hiện `/ws/jobs/:id` (`JobsRealtimeServer`) vẫn còn NGUYÊN lỗ hổng y hệt
+— gửi toàn bộ snapshot job cho bất kỳ ai kết nối biết job id, vì đây là
+đường vào dữ liệu riêng, tách biệt hoàn toàn với REST. Đã sửa: token
+Supabase gửi qua query string (`?token=...`, trình duyệt không set
+được custom header khi mở WebSocket), Backend xác thực qua hàm mới
+`resolveCustomerId()` rồi đối chiếu `order.customerId`, đóng kết nối
+(4003) nếu không khớp. Thêm 4 test mới (file test đầu tiên cho lớp
+này). Tổng test backend: 31 → 35, PASS. Xem `backend/CHANGELOG.md` mục
+`[1.8.0]`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +

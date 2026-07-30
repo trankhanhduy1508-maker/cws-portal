@@ -173,9 +173,13 @@ export async function createJob({ input, profileId }) {
  * mockBackend.js), Backend thật sẽ dùng WebSocket/SSE thật. Component
  * gọi hàm này 1 lần, nhận lại unsubscribe() để dọn dẹp khi rời màn hình.
  *
- * @returns {() => void} unsubscribe
+ * Async vì cần lấy access token trước khi mở WebSocket (xem
+ * subscribeToJobUpdatesReal) — Backend kiểm tra chủ sở hữu job qua
+ * token này, không còn gửi dữ liệu công khai cho bất kỳ ai biết jobId.
+ *
+ * @returns {Promise<() => void>} unsubscribe
  */
-export function subscribeToJobUpdates(jobId, { onUpdate, onComplete, onError }) {
+export async function subscribeToJobUpdates(jobId, { onUpdate, onComplete, onError }) {
   if (IS_BACKEND_CONFIGURED) {
     return subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError });
   }
@@ -269,8 +273,13 @@ export function getDownloadUrl(jobId) {
 // WebSocket sẵn để khi Dy nối Backend chỉ cần hoàn thiện, không đổi
 // chữ ký hàm subscribeToJobUpdates() ở trên).
 // ============================================================
-function subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError }) {
-  const wsUrl = `${API_CONFIG.WS_BASE_URL}${API_CONFIG.ENDPOINTS.JOB_REALTIME_WS(jobId)}`;
+async function subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError }) {
+  // Token qua query string vì WebSocket() của trình duyệt không set được
+  // custom header — Backend đọc lại qua resolveCustomerId() để kiểm tra
+  // chủ sở hữu job trước khi gửi bất kỳ dữ liệu nào (xem jobs-realtime.server.ts).
+  const token = await getAccessToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+  const wsUrl = `${API_CONFIG.WS_BASE_URL}${API_CONFIG.ENDPOINTS.JOB_REALTIME_WS(jobId)}${tokenParam}`;
   const socket = new WebSocket(wsUrl);
 
   socket.onmessage = (event) => {

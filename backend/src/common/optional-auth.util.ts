@@ -2,6 +2,24 @@ import { Request } from 'express';
 import { SupabaseService } from '../supabase/supabase.service';
 
 /**
+ * Xác thực 1 access token THÔ (không cần Request) qua Supabase Auth —
+ * dùng chung cho cả `getOptionalCustomerId` (Bearer header, route HTTP
+ * thường) lẫn `JobsRealtimeServer` (token qua query string, vì WebSocket
+ * handshake của trình duyệt không set được custom header). Trả null
+ * nếu token rỗng/sai/hết hạn, KHÔNG throw — gọi nơi nào cần bắt buộc
+ * đăng nhập thì tự kiểm tra kết quả null đó.
+ */
+export async function resolveCustomerId(
+  token: string | null,
+  supabaseService: SupabaseService,
+): Promise<string | null> {
+  if (!token) return null;
+  const { data, error } = await supabaseService.getClient().auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
+/**
  * Đọc customerId từ Bearer token NẾU có, KHÔNG bắt buộc phải đăng nhập
  * (khác jwt-auth.guard.ts — guard đó throw 401 nếu thiếu/sai token, hàm
  * này chỉ trả null). Dùng cho các route công khai muốn "biết thêm" khách
@@ -19,8 +37,5 @@ export async function getOptionalCustomerId(
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
 
-  const token = authHeader.slice('Bearer '.length);
-  const { data, error } = await supabaseService.getClient().auth.getUser(token);
-  if (error || !data.user) return null;
-  return data.user.id;
+  return resolveCustomerId(authHeader.slice('Bearer '.length), supabaseService);
 }

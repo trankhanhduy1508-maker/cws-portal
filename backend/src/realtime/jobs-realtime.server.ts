@@ -7,6 +7,7 @@ import {
   RENDER_ORDERS_REPOSITORY,
 } from '../jobs/repositories/render-orders.repository.interface';
 import { toPublicJson } from '../jobs/render-order.presenter';
+import { resolveCustomerId } from '../common/optional-auth.util';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 const PATH_PATTERN = /^\/ws\/jobs\/([^/?]+)/;
@@ -53,26 +54,61 @@ export class JobsRealtimeServer {
         return;
       }
       const jobId = match[1];
+      // Token qua query string (?token=...) — trình duyệt KHÔNG set được
+      // custom header khi mở WebSocket, nên không thể dùng Authorization
+      // header như route HTTP thường (xem getOptionalCustomerId()).
+      const token = new URL(url, 'http://localhost').searchParams.get('token');
       this.wss!.handleUpgrade(request, socket, head, (client) => {
-        this.handleConnection(client, jobId);
+        this.handleConnection(client, jobId, token);
       });
     });
 
-    this.logger.log('JobsRealtimeServer đã gắn vào HTTP server, lắng nghe /ws/jobs/:id');
+    this.logger.log(
+      'JobsRealtimeServer đã gắn vào HTTP server, lắng nghe /ws/jobs/:id',
+    );
   }
 
-  private async handleConnection(client: WebSocket, jobId: string): Promise<void> {
+  /**
+   * Cùng nguyên tắc kiểm tra chủ sở hữu với JobsService.assertOwnership()
+   * (xem jobs.service.ts) — trước đây route WebSocket này gửi TOÀN BỘ
+   * snapshot job (customerId/software/notes/finalPriceVnd...) cho BẤT KỲ
+   * ai kết nối biết job id, bỏ qua hoàn toàn việc kiểm tra ở tầng REST.
+   * Job có customerId -> bắt buộc token khớp đúng khách đó, đóng kết nối
+   * ngay (KHÔNG gửi dữ liệu nào) nếu không khớp. Job chưa có customerId
+   * (khách vãng lai) vẫn mở, giữ nguyên hành vi cũ.
+   */
+  private async handleConnection(
+    client: WebSocket,
+    jobId: string,
+    token: string | null,
+  ): Promise<void> {
     this.logger.log(`Client kết nối realtime cho job ${jobId}`);
+
+    let current;
+    try {
+      current = await this.ordersRepository.findById(jobId);
+    } catch (err) {
+      this.logger.error(
+        `Không lấy được snapshot ban đầu cho job ${jobId}: ${String(err)}`,
+      );
+      current = null;
+    }
+
+    if (current?.customerId) {
+      const customerId = await resolveCustomerId(token, this.supabaseService);
+      if (customerId !== current.customerId) {
+        this.logger.warn(
+          `Từ chối kết nối realtime cho job ${jobId} — token không khớp chủ sở hữu`,
+        );
+        client.close(4003, 'Không có quyền truy cập job này');
+        return;
+      }
+    }
 
     // Gửi ngay snapshot hiện tại — khớp đúng hành vi mockSubscribeToJob
     // (Portal không bị "trống" nếu vừa kết nối lại giữa chừng).
-    try {
-      const current = await this.ordersRepository.findById(jobId);
-      if (current && client.readyState === client.OPEN) {
-        client.send(JSON.stringify(toPublicJson(current)));
-      }
-    } catch (err) {
-      this.logger.error(`Không lấy được snapshot ban đầu cho job ${jobId}: ${String(err)}`);
+    if (current && client.readyState === client.OPEN) {
+      client.send(JSON.stringify(toPublicJson(current)));
     }
 
     const channel = this.supabaseService
@@ -96,7 +132,9 @@ export class JobsRealtimeServer {
               }
             })
             .catch((err: unknown) => {
-              this.logger.error(`Lỗi khi forward realtime update cho job ${jobId}: ${String(err)}`);
+              this.logger.error(
+                `Lỗi khi forward realtime update cho job ${jobId}: ${String(err)}`,
+              );
             });
           void payload;
         },

@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.8.0] - Sửa IDOR thứ 2: /ws/jobs/:id gửi dữ liệu công khai (2026-07-31)
+
+**Phát hiện thứ 4 qua self-review liên tiếp:** sau khi khoá quyền sở
+hữu cho toàn bộ route REST `/jobs/:id/...` ([1.6.0]), phát hiện route
+WebSocket `/ws/jobs/:id` (`JobsRealtimeServer`) vẫn còn NGUYÊN lỗ hổng
+y hệt — gửi TOÀN BỘ snapshot job (customerId/software/notes/
+finalPriceVnd...) cho BẤT KỲ ai kết nối biết job id, hoàn toàn bỏ qua
+việc kiểm tra vừa làm ở REST vì đây là 1 đường vào dữ liệu riêng biệt.
+
+Đã sửa: `RenderService.js` (`subscribeToJobUpdatesReal`) lấy access
+token qua `getAccessToken()` (đã có sẵn, dùng chung với các API khác)
+và đính vào WebSocket URL dạng query string `?token=...` — trình duyệt
+KHÔNG set được custom header (Authorization) khi mở `WebSocket()`, nên
+đây là cách khả thi duy nhất. `JobsRealtimeServer` đọc lại token đó qua
+hàm mới `resolveCustomerId()` (tách ra từ `getOptionalCustomerId()`,
+dùng chung logic xác thực Supabase Auth), đối chiếu với `order.customerId`
+— đóng kết nối (mã 4003) NGAY, không gửi bất kỳ dữ liệu nào, nếu không
+khớp. Job chưa có `customerId` (khách vãng lai) vẫn mở như cũ.
+
+`subscribeToJobUpdates()`/`subscribeToJobUpdatesReal()` giờ là `async`
+(cần `await getAccessToken()` trước khi mở WebSocket) — cập nhật 2 nơi
+gọi trong `useRenderJob.js` (`start()`, `attach()`) dùng `await`.
+
+Thêm `jobs-realtime.server.spec.ts` (file test mới, trước đây chưa có
+test nào cho lớp WebSocket bridge này) với 4 test: từ chối khách khác
+chủ, từ chối khách ẩn danh khi job có chủ, cho phép đúng chủ, cho phép
+job chưa có chủ (khách vãng lai). Tổng test backend: 31 → 35, PASS.
+Build/lint + boot thật đã chạy lại, frontend build/lint cũng PASS.
+
 ## [1.7.0] - Giới hạn dung lượng upload ở tầng multer, tránh OOM (2026-07-31)
 
 **Phát hiện thứ 3 qua self-review liên tiếp:** `POST /files/upload`
