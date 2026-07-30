@@ -302,3 +302,13 @@ Payment/Download — CWS_MVP_WORKFLOW_FINAL.md, mục Admin) đã khớp đúng
 Toàn bộ phần còn lại (mục BLOCKED ở trên) đều là credential/dashboard/
 thao tác bên ngoài mà Agent không có quyền tự thực hiện trong môi
 trường này.
+
+**Xác nhận độc lập cuối cùng (2026-07-30):** ngoài build/test/lint
+chạy cục bộ nhiều lần trong suốt phiên, đã kiểm tra qua GitHub REST API
+(`GET /repos/.../actions/runs`) rằng GitHub Actions CI đã tự chạy thật
+trên MỖI lần push lên `main` — 10/10 lần chạy gần nhất đều
+`completed`/`success`. Đây là xác nhận từ máy chủ GitHub (không phải
+môi trường làm việc cục bộ), cho thứ tin cậy cao nhất có thể đạt được
+mà không cần triển khai lên Render/Vercel thật. Đồng thời đã chạy
+`npm ci` (không phải `npm install`) cho cả backend và frontend để mô
+phỏng đúng bước cài đặt CI — cả 2 cài đặt sạch, không lỗi.
