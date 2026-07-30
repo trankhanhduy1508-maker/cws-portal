@@ -11,6 +11,12 @@ export interface AppConfig {
   googleDriveApiKey: string | null;
   jwtSecret: string;
   corsOrigin: string;
+  facebook: {
+    appId: string | null;
+    appSecret: string | null;
+    callbackUrl: string | null;
+  };
+  frontendUrl: string;
 }
 
 /**
@@ -34,6 +40,16 @@ export function loadConfig(): AppConfig {
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY ?? null,
     jwtSecret: required('JWT_SECRET'),
     corsOrigin: process.env.CORS_ORIGIN ?? '*',
+    facebook: {
+      // Optional: Facebook Login chưa có App ID/Secret thật trong môi
+      // trường phát triển này — CustomersModule/AuthModule đã dựng
+      // sẵn khung, chỉ cần điền 3 biến này là chạy được, KHÔNG cần sửa
+      // code (giống pattern googleDriveApiKey ở trên).
+      appId: process.env.FACEBOOK_APP_ID ?? null,
+      appSecret: process.env.FACEBOOK_APP_SECRET ?? null,
+      callbackUrl: process.env.FACEBOOK_CALLBACK_URL ?? null,
+    },
+    frontendUrl: process.env.FRONTEND_URL ?? '*',
   };
 }
 

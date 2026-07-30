@@ -5,6 +5,7 @@ import { loadConfig } from './config/configuration';
 import { AppController } from './app.controller';
 import { SupabaseModule } from './supabase/supabase.module';
 import { CustomersModule } from './customers/customers.module';
+import { AuthModule } from './auth/auth.module';
 import { JobsModule } from './jobs/jobs.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
@@ -18,6 +19,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     ScheduleModule.forRoot(),
     SupabaseModule,
     CustomersModule,
+    AuthModule,
     JobsModule,
     PaymentsModule,
     StorageModule,
