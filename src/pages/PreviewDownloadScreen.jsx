@@ -3,9 +3,16 @@ import StepCard from '../components/StepCard';
 import StepDots from '../components/StepDots';
 import { formatDuration } from '../utils/timeUtils';
 import { formatBytes } from '../utils/fileUtils';
+import { getDownloadUrl } from '../services/RenderService';
+import { IS_BACKEND_CONFIGURED } from '../services/apiConfig';
 import './PreviewDownloadScreen.css';
 
-export default function PreviewDownloadScreen({ fileName, downloadUrl, isPlaceholder, durationSec, resultSizeBytes }) {
+export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, isPlaceholder, durationSec, resultSizeBytes }) {
+  // Backend thật: LUÔN tải qua route có ghi log (CWS_DATABASE_SCHEMA.md,
+  // bảng downloads) — không dùng thẳng downloadUrl raw dù đã có sẵn
+  // trong tay, để mọi lượt tải đều được backend biết. Mock: không có
+  // route log thật, dùng thẳng Blob URL như cũ.
+  const href = IS_BACKEND_CONFIGURED ? getDownloadUrl(jobId) : downloadUrl;
   return (
     <StepCard>
       <StepDots total={5} current={4} />
@@ -57,12 +64,12 @@ export default function PreviewDownloadScreen({ fileName, downloadUrl, isPlaceho
       )}
 
       <a
-        href={downloadUrl || '#'}
+        href={href || '#'}
         download={fileName ? `render-${fileName}` : true}
         className="btn btn--primary btn--full"
         style={{ textDecoration: 'none' }}
-        aria-disabled={!downloadUrl}
-        onClick={(e) => { if (!downloadUrl) e.preventDefault(); }}
+        aria-disabled={!href}
+        onClick={(e) => { if (!href) e.preventDefault(); }}
       >
         <Download size={18} strokeWidth={2} />
         Tải thành phẩm

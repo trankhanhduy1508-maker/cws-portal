@@ -6,7 +6,10 @@ import {
   HttpCode,
   Param,
   Post,
+  Req,
+  Res,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { JobsService } from './jobs.service';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
@@ -69,6 +72,17 @@ export class JobsController {
   async approve(@Param('id') id: string) {
     const order = await this.jobsService.approve(id);
     return toPublicJson(order);
+  }
+
+  /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi
+   * redirect sang link B2 thật — Portal KHÔNG được dùng thẳng downloadUrl
+   * raw (xem getDownloadUrl() trong RenderService.js), phải qua route
+   * này để mọi lượt tải đều được ghi log. */
+  @Get(':id/download')
+  async download(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
+    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null;
+    const url = await this.jobsService.getDownloadRedirectUrl(id, ip);
+    res.redirect(302, url);
   }
 
   /** Alias REST chuẩn (DELETE) — cùng logic với route POST ở trên,

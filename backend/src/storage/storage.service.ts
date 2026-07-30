@@ -7,7 +7,8 @@ import {
   REVIEW_IMAGES_REPOSITORY,
   IReviewImagesRepository,
 } from './repositories/review-images.repository.interface';
-import { StorageObject, ReviewImage } from './domain/storage-object';
+import { DOWNLOADS_REPOSITORY, IDownloadsRepository } from './repositories/downloads.repository.interface';
+import { StorageObject, ReviewImage, DownloadLog } from './domain/storage-object';
 
 @Injectable()
 export class StorageService {
@@ -16,6 +17,8 @@ export class StorageService {
     private readonly storageObjectsRepository: IStorageObjectsRepository,
     @Inject(REVIEW_IMAGES_REPOSITORY)
     private readonly reviewImagesRepository: IReviewImagesRepository,
+    @Inject(DOWNLOADS_REPOSITORY)
+    private readonly downloadsRepository: IDownloadsRepository,
   ) {}
 
   async recordPaths(
@@ -41,5 +44,10 @@ export class StorageService {
 
   async getReviewImages(jobId: string): Promise<ReviewImage[]> {
     return this.reviewImagesRepository.findByJobId(jobId);
+  }
+
+  /** Ghi log mỗi lần khách tải file cuối (CWS_DATABASE_SCHEMA.md, bảng downloads). */
+  async logDownload(jobId: string, ipAddress: string | null): Promise<DownloadLog> {
+    return this.downloadsRepository.log(jobId, ipAddress);
   }
 }

@@ -185,6 +185,7 @@ export default function App() {
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.FINISHED && (
           <PreviewDownloadScreen
             key="done"
+            jobId={job.jobId}
             fileName={activeProjectName}
             downloadUrl={job.result?.downloadUrl}
             isPlaceholder={job.result?.isPlaceholder}

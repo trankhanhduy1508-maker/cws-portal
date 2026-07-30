@@ -15,3 +15,11 @@ export interface ReviewImage {
   displayOrder: number | null;
   createdAt: number;
 }
+
+export interface DownloadLog {
+  id: string;
+  jobId: string;
+  customerId: string | null;
+  downloadedAt: number;
+  ipAddress: string | null;
+}

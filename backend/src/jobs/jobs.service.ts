@@ -182,4 +182,16 @@ export class JobsService {
       displayOrder: img.displayOrder,
     }));
   }
+
+  /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi trả
+   * về URL thật để Controller redirect — CHỈ cho phép khi job đã
+   * FINISHED và có downloadUrl (chưa duyệt thì chưa có gì để tải). */
+  async getDownloadRedirectUrl(id: string, ipAddress: string | null): Promise<string> {
+    const order = await this.getById(id);
+    if (order.status !== JobStatus.FINISHED || !order.downloadUrl) {
+      throw new BadRequestException(`Job ${id} chưa có file để tải (trạng thái hiện tại: ${order.status})`);
+    }
+    await this.storageService.logDownload(id, ipAddress);
+    return order.downloadUrl;
+  }
 }
