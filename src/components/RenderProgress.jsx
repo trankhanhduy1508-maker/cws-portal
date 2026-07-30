@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Check, Clock3, Search, Network, Link2, Cpu, PackageCheck } from 'lucide-react';
+import { Check, Clock3, Search, Network, Link2, Cpu, Eye, PackageCheck } from 'lucide-react';
 import { STAGE_SEQUENCE as STAGES, JOB_STATUS } from '../constants/renderConstants';
 import './RenderProgress.css';
 
@@ -9,6 +9,7 @@ const STAGE_ICONS = {
   [JOB_STATUS.ALLOCATING_WORKERS]: Network,
   [JOB_STATUS.WORKERS_CONNECTED]: Link2,
   [JOB_STATUS.RENDERING]: Cpu,
+  [JOB_STATUS.REVIEW_READY]: Eye,
   [JOB_STATUS.PACKAGING]: PackageCheck,
 };
 
