@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   startFacebookLogin,
-  consumeTokenFromUrl,
-  getStoredCustomer,
   logout as logoutService,
-  isLoggedIn,
+  onAuthStateChange,
+  getCurrentUser,
+  consumeOAuthErrorFromUrl,
 } from '../services/AuthService';
 
 export function useAuth() {
@@ -14,22 +14,33 @@ export function useAuth() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const gotTokenFromRedirect = consumeTokenFromUrl();
-    if (gotTokenFromRedirect || isLoggedIn()) {
-      setIsAuthenticated(true);
-      setCustomer(getStoredCustomer());
-    }
+    const oauthError = consumeOAuthErrorFromUrl();
+    if (oauthError) setError(oauthError);
+
+    getCurrentUser().then((user) => {
+      setIsAuthenticated(Boolean(user));
+      setCustomer(user);
+    });
+
+    // Bắt sự kiện đăng nhập/đăng xuất xảy ra SAU (vd Facebook redirect
+    // về xong, hoặc đăng xuất từ tab khác) — Supabase tự bắn sự kiện
+    // này, không cần Portal tự poll.
+    const unsubscribe = onAuthStateChange((user) => {
+      setIsAuthenticated(Boolean(user));
+      setCustomer(user);
+    });
+    return unsubscribe;
   }, []);
 
   const login = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Backend thật: startFacebookLogin() điều hướng rời trang (trả về
-      // null) — App sẽ quay lại đây sau khi Facebook redirect xong, lúc
-      // đó useEffect ở trên bắt token. Mock: trả về customer ngay.
       const result = await startFacebookLogin();
       if (result) {
+        // Mock: trả về customer ngay. Backend thật: startFacebookLogin()
+        // điều hướng rời trang (trả về null) — khi Facebook/Supabase
+        // redirect về, onAuthStateChange ở trên tự cập nhật state.
         setIsAuthenticated(true);
         setCustomer(result);
       }
@@ -40,8 +51,8 @@ export function useAuth() {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    logoutService();
+  const logout = useCallback(async () => {
+    await logoutService();
     setIsAuthenticated(false);
     setCustomer(null);
   }, []);

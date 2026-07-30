@@ -1,86 +1,128 @@
 // ============================================================
-// AuthService — Facebook Login (CWS_MVP_WORKFLOW_FINAL.md: "Chỉ dùng
-// Facebook Login"). Cùng nguyên tắc mock/real với RenderService.js:
-// khi chưa có Backend thật, dùng mockFacebookLogin() để demo vẫn dùng
-// được (không có redirect Facebook thật để chờ).
+// AuthService — Facebook Login qua Supabase Auth (KHÔNG tự làm OAuth
+// thủ công, KHÔNG có form nhập username/password Facebook ở đây hay
+// bất kỳ đâu trong CWS — Facebook lo đăng nhập/xác minh/xin quyền,
+// Supabase Auth lo phiên đăng nhập, CWS chỉ ĐỌC session). Cùng nguyên
+// tắc mock/real với RenderService.js: chưa cấu hình Supabase thì dùng
+// mockFacebookLogin() để demo vẫn dùng được.
 // ============================================================
 
-import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
+import { supabase, IS_SUPABASE_CONFIGURED } from './supabaseClient';
 import * as mock from './mockBackend';
 
-const TOKEN_STORAGE_KEY = 'cws_auth_token';
-const CUSTOMER_STORAGE_KEY = 'cws_auth_customer';
+const MOCK_TOKEN_KEY = 'cws_mock_auth_token';
+const MOCK_CUSTOMER_KEY = 'cws_mock_auth_customer';
 
-export function getStoredToken() {
+function getMockSession() {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    const token = localStorage.getItem(MOCK_TOKEN_KEY);
+    if (!token) return null;
+    const raw = localStorage.getItem(MOCK_CUSTOMER_KEY);
+    return { token, customer: raw ? JSON.parse(raw) : null };
   } catch {
     return null;
   }
 }
 
-export function getStoredCustomer() {
+function storeMockSession(token, customer) {
   try {
-    const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeSession(token, customer) {
-  try {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-    localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(customer));
+    localStorage.setItem(MOCK_TOKEN_KEY, token);
+    localStorage.setItem(MOCK_CUSTOMER_KEY, JSON.stringify(customer));
   } catch {
     // localStorage có thể bị chặn (chế độ ẩn danh nghiêm ngặt) — không
     // chặn luồng đăng nhập vì lỗi lưu trữ, chỉ mất phiên khi refresh.
   }
 }
 
-export function logout() {
+function clearMockSession() {
   try {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+    localStorage.removeItem(MOCK_TOKEN_KEY);
+    localStorage.removeItem(MOCK_CUSTOMER_KEY);
   } catch {
-    // bỏ qua an toàn, xem storeSession()
+    // bỏ qua an toàn, xem storeMockSession()
   }
 }
 
-/**
- * Bắt đầu đăng nhập. Backend thật: chuyển hướng sang GET /auth/facebook
- * (NestJS redirect tiếp sang Facebook OAuth dialog thật). Mock: không
- * có Facebook thật để chuyển hướng, tạo ngay 1 phiên demo giả lập.
- */
-export function startFacebookLogin() {
-  if (IS_BACKEND_CONFIGURED) {
-    window.location.href = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.FACEBOOK_LOGIN}`;
-    return Promise.resolve(null); // điều hướng rời trang, không có gì để trả về
+/** Access token hiện tại (nếu đã đăng nhập) — đính vào Authorization
+ * header khi RenderService.js gọi Backend. */
+export async function getAccessToken() {
+  if (IS_SUPABASE_CONFIGURED) {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
   }
-  return mock.mockFacebookLogin().then(({ token, customer }) => {
-    storeSession(token, customer);
-    return customer;
-  });
+  return getMockSession()?.token ?? null;
 }
 
 /**
- * Backend thật redirect khách về Portal kèm `?token=...` sau khi đăng
- * nhập Facebook xong (xem AuthController.facebookCallback ở Backend).
- * Gọi hàm này lúc App khởi động để bắt token đó, lưu lại, và dọn URL.
- * @returns {boolean} true nếu vừa bắt được token mới từ URL
+ * Bắt đầu đăng nhập Facebook. Backend thật: Supabase Auth tự lo TOÀN
+ * BỘ OAuth (redirect Facebook, xin quyền, tạo phiên) — hàm này chỉ
+ * kích hoạt điều hướng, luôn trả về null (trang sẽ rời đi, quay lại
+ * qua useAuth's onAuthStateChange khi Facebook redirect xong). Mock:
+ * không có Facebook thật để chuyển hướng, tạo ngay 1 phiên demo.
  */
-export function consumeTokenFromUrl() {
+export async function startFacebookLogin() {
+  if (IS_SUPABASE_CONFIGURED) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw new Error(error.message || 'Không bắt đầu được đăng nhập Facebook');
+    return null;
+  }
+  const { token, customer } = await mock.mockFacebookLogin();
+  storeMockSession(token, customer);
+  return customer;
+}
+
+export async function logout() {
+  if (IS_SUPABASE_CONFIGURED) {
+    await supabase.auth.signOut();
+    return;
+  }
+  clearMockSession();
+}
+
+/** Lắng nghe thay đổi trạng thái đăng nhập (đăng nhập/đăng xuất/token
+ * refresh). Trả về hàm huỷ đăng ký. Mock: không có sự kiện thật, gọi
+ * callback 1 lần với trạng thái hiện tại. */
+export function onAuthStateChange(callback) {
+  if (IS_SUPABASE_CONFIGURED) {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session?.user ?? null);
+    });
+    return () => data.subscription.unsubscribe();
+  }
+  callback(getMockSession()?.customer ?? null);
+  return () => {};
+}
+
+/** Trạng thái đăng nhập hiện tại — dùng lúc App khởi động. */
+export async function getCurrentUser() {
+  if (IS_SUPABASE_CONFIGURED) {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user ?? null;
+  }
+  return getMockSession()?.customer ?? null;
+}
+
+/**
+ * Facebook/Supabase báo lỗi OAuth qua query string sau khi redirect về
+ * (khách hủy cấp quyền, callback lỗi...) — vd
+ * ?error=access_denied&error_description=.... Đọc 1 lần rồi dọn URL.
+ * @returns {string|null} mô tả lỗi (đã dịch nếu là lỗi thường gặp), null nếu không có lỗi
+ */
+export function consumeOAuthErrorFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  if (!token) return false;
+  const error = params.get('error');
+  const errorDescription = params.get('error_description');
+  if (!error) return null;
 
-  storeSession(token, null); // chưa biết profile chi tiết — Portal chỉ cần token để gọi API sau này
-  params.delete('token');
+  params.delete('error');
+  params.delete('error_description');
+  params.delete('error_code');
   const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
   window.history.replaceState({}, '', cleanUrl);
-  return true;
-}
 
-export function isLoggedIn() {
-  return Boolean(getStoredToken());
+  if (error === 'access_denied') return 'Bạn đã hủy đăng nhập Facebook';
+  return errorDescription || 'Đăng nhập Facebook thất bại, vui lòng thử lại';
 }

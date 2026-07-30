@@ -1,7 +1,7 @@
-import { History } from 'lucide-react';
+import { History, LogOut } from 'lucide-react';
 import './PortalShell.css';
 
-export default function PortalShell({ children, onOpenHistory }) {
+export default function PortalShell({ children, onOpenHistory, isAuthenticated, onLogout }) {
   return (
     <div className="portal-shell">
       <header className="portal-shell__header">
@@ -9,16 +9,28 @@ export default function PortalShell({ children, onOpenHistory }) {
           <span className="portal-shell__logo-mark" />
           CWS
         </div>
-        {onOpenHistory && (
-          <button
-            className="portal-shell__history-btn"
-            onClick={onOpenHistory}
-            aria-label="Xem lịch sử render"
-            type="button"
-          >
-            <History size={20} strokeWidth={1.75} />
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {onOpenHistory && (
+            <button
+              className="portal-shell__history-btn"
+              onClick={onOpenHistory}
+              aria-label="Xem lịch sử render"
+              type="button"
+            >
+              <History size={20} strokeWidth={1.75} />
+            </button>
+          )}
+          {isAuthenticated && onLogout && (
+            <button
+              className="portal-shell__history-btn"
+              onClick={onLogout}
+              aria-label="Đăng xuất"
+              type="button"
+            >
+              <LogOut size={20} strokeWidth={1.75} />
+            </button>
+          )}
+        </div>
       </header>
       <main className="portal-shell__main">
         {children}

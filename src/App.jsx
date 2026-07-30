@@ -113,12 +113,17 @@ export default function App() {
     setScreen(SCREEN.UPLOAD);
   }, [job, payment, clearFile, clearLink]);
 
-  // ---- Job Dashboard / History ----
+  // ---- Job Dashboard / History (chỉ khách đã đăng nhập mới xem được) ----
   const handleOpenHistory = useCallback(() => {
     setScreenBeforeHistory(screen);
     setScreen(SCREEN.HISTORY);
     jobHistory.reload();
   }, [screen, jobHistory]);
+
+  const handleLogout = useCallback(async () => {
+    await auth.logout();
+    setScreen(SCREEN.LANDING);
+  }, [auth]);
 
   const handleOpenHistoryJob = useCallback((historyJob) => {
     const isTerminal = [JOB_STATUS.FINISHED, JOB_STATUS.ERROR, JOB_STATUS.CANCELLED].includes(historyJob.status);
@@ -134,7 +139,11 @@ export default function App() {
   }, [job]);
 
   return (
-    <PortalShell onOpenHistory={screen !== SCREEN.HISTORY ? handleOpenHistory : undefined}>
+    <PortalShell
+      onOpenHistory={auth.isAuthenticated && screen !== SCREEN.HISTORY ? handleOpenHistory : undefined}
+      isAuthenticated={auth.isAuthenticated}
+      onLogout={handleLogout}
+    >
       <AnimatePresence mode="wait">
         {screen === SCREEN.LANDING && (
           <LandingScreen key="landing" onStart={handleStart} />

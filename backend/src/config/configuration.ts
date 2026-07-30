@@ -9,14 +9,7 @@ export interface AppConfig {
     bucketName: string;
   };
   googleDriveApiKey: string | null;
-  jwtSecret: string;
   corsOrigin: string;
-  facebook: {
-    appId: string | null;
-    appSecret: string | null;
-    callbackUrl: string | null;
-  };
-  frontendUrl: string;
 }
 
 /**
@@ -25,6 +18,11 @@ export interface AppConfig {
  * cứu Round 2 trước đây: secret hardcode trong file phân phối). Backend
  * này đọc 100% qua process.env, secret thật nằm ở .env (không commit)
  * hoặc biến môi trường của nền tảng hosting (Render/Railway/Fly.io).
+ *
+ * Facebook Login KHÔNG cấu hình ở đây nữa — dùng Supabase Auth
+ * (Dashboard > Authentication > Providers > Facebook), Backend chỉ cần
+ * xác thực Bearer token qua SupabaseService.getClient().auth.getUser()
+ * (xem common/optional-auth.util.ts), không tự ký/verify JWT riêng nữa.
  */
 export function loadConfig(): AppConfig {
   return {
@@ -38,18 +36,7 @@ export function loadConfig(): AppConfig {
       bucketName: required('B2_BUCKET_NAME'),
     },
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY ?? null,
-    jwtSecret: required('JWT_SECRET'),
     corsOrigin: process.env.CORS_ORIGIN ?? '*',
-    facebook: {
-      // Optional: Facebook Login chưa có App ID/Secret thật trong môi
-      // trường phát triển này — CustomersModule/AuthModule đã dựng
-      // sẵn khung, chỉ cần điền 3 biến này là chạy được, KHÔNG cần sửa
-      // code (giống pattern googleDriveApiKey ở trên).
-      appId: process.env.FACEBOOK_APP_ID ?? null,
-      appSecret: process.env.FACEBOOK_APP_SECRET ?? null,
-      callbackUrl: process.env.FACEBOOK_CALLBACK_URL ?? null,
-    },
-    frontendUrl: process.env.FRONTEND_URL ?? '*',
   };
 }
 

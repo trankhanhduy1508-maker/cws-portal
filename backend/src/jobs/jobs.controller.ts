@@ -10,27 +10,25 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { ConfigService } from '@nestjs/config';
 import { JobsService } from './jobs.service';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
-import { AppConfig } from '../config/configuration';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Controller('jobs')
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
-    private readonly configService: ConfigService<AppConfig, true>,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   @Post()
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
-    // Gắn customerId NẾU khách đã đăng nhập Facebook (Bearer token hợp
-    // lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách chưa đăng nhập
-    // (xem lý do ở jwt-auth.guard.ts).
-    const jwtSecret = this.configService.get('jwtSecret', { infer: true });
-    const customerId = getOptionalCustomerId(req, jwtSecret);
+    // Gắn customerId NẾU khách đã đăng nhập Facebook qua Supabase Auth
+    // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
+    // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
     return this.jobsService.createOrder(dto, customerId);
   }
 
@@ -42,8 +40,7 @@ export class JobsController {
 
   @Get()
   async listAll(@Req() req: Request) {
-    const jwtSecret = this.configService.get('jwtSecret', { infer: true });
-    const customerId = getOptionalCustomerId(req, jwtSecret);
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
     const orders = await this.jobsService.listAll(customerId);
     return orders.map(toPublicJson);
   }

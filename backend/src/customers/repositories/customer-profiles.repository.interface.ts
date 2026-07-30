@@ -1,10 +1,13 @@
-import { CustomerProfile, UpsertCustomerProfileInput } from '../domain/customer-profile';
+import { CustomerProfile } from '../domain/customer-profile';
 
 export const CUSTOMER_PROFILES_REPOSITORY = Symbol('CUSTOMER_PROFILES_REPOSITORY');
 
+/**
+ * Việc tạo/cập nhật customer_profiles khi có Facebook Login mới KHÔNG
+ * còn do Backend làm nữa — Postgres trigger `handle_new_auth_user()`
+ * (migration 007) tự làm việc đó ngay khi Supabase Auth tạo user mới.
+ * Repository này giờ chỉ dùng để ĐỌC.
+ */
 export interface ICustomerProfilesRepository {
-  findByFacebookId(facebookId: string): Promise<CustomerProfile | null>;
   findById(id: string): Promise<CustomerProfile | null>;
-  /** Tạo mới nếu chưa có facebook_id, hoặc cập nhật thông tin mới nhất từ Facebook nếu đã có. */
-  upsertByFacebookId(input: UpsertCustomerProfileInput): Promise<CustomerProfile>;
 }
