@@ -75,7 +75,9 @@ hổng bảo mật của nhánh đó (frontend tự xác nhận thanh toán) —
 - Nội dung chuyển khoản đúng định dạng `"CWS {storage_code} {payment_code}"`.
 - Webhook (`POST /payments/webhook`) đối chiếu payment_code + storage_code
   + số tiền, CHỈ set PAID khi khớp cả 3 — Frontend KHÔNG có cách nào tự
-  đặt PAID.
+  đặt PAID. Bảo vệ thêm bằng `WebhookSecretGuard` (header
+  `x-webhook-secret` khớp `PAYMENT_WEBHOOK_SECRET`, fail-closed) — xem
+  bug bảo mật vừa phát hiện + sửa ở mục "Sửa lỗi nghiêm trọng" bên dưới.
 
 ### Bàn giao
 - `GET /jobs/:id/download` ghi log bảng `downloads` (job_id, IP) rồi
@@ -169,6 +171,37 @@ mới — confirmViaWebhook(): xác nhận cụ thể rằng storage_code KHÔNG
 sẽ bị từ chối dù payment_code+số tiền đúng, đây chính là lỗ hổng đã sửa).
 Tổng test backend: 9 → 20, tất cả PASS.
 
+### Lỗ hổng bảo mật khác phát hiện qua self-review (sau khi tưởng đã xong)
+
+Sau khi báo cáo audit này coi như hoàn tất, tự đọc lại `payments.controller.ts`
+lần nữa và phát hiện: `POST /payments/webhook` — endpoint DUY NHẤT được
+phép set PAID — **không có bất kỳ guard/xác thực nào**. Việc đối chiếu
+payment_code + storage_code + amount tưởng như đủ an toàn, nhưng thực
+ra KHÔNG đủ: cả 3 giá trị này đều được Portal hiển thị trực tiếp cho
+chính khách hàng (trong QR/transferContent) để họ chuyển khoản — nghĩa
+là bất kỳ khách hàng nào cũng biết đủ 3 giá trị đó cho payment của
+chính mình, và có thể tự gọi thẳng webhook để đánh dấu PAID mà KHÔNG
+cần chuyển tiền thật. Đây là lỗ hổng cùng loại (frontend/khách hàng tự
+xác nhận thanh toán) như lỗ hổng đã tìm thấy ở nhánh
+`claude/cws-zero-manual-operation-wtzbrt` trước đó — chỉ khác là lần
+này nằm ngay trong kiến trúc "đã sửa đúng" của chính audit này, bị bỏ
+sót vì đã tập trung vào tính đúng của logic đối chiếu mà quên xác thực
+NGUỒN gọi.
+
+Đã sửa: thêm `WebhookSecretGuard` (mới,
+`backend/src/common/guards/webhook-secret.guard.ts`, cùng mẫu
+fail-closed với `AdminKeyGuard` có sẵn) — bắt buộc header
+`x-webhook-secret` khớp biến môi trường mới `PAYMENT_WEBHOOK_SECRET`.
+Thiếu biến này → webhook từ chối MỌI request thay vì để công khai. Thêm
+3 unit test mới cho guard. Nhân tiện phát hiện thêm: `.github/workflows/ci.yml`
+chưa từng chạy `npm run lint` cho backend (chỉ build+test) — nghĩa là
+xác nhận "CI 10/10 PASS" trước đó KHÔNG hề phủ eslint backend. Đã thêm
+bước lint vào CI job backend, và tự chạy tay phát hiện + sửa 1 lỗi
+eslint có sẵn từ trước (`_providerRef` không dùng ở `QrBankProvider.confirm()`).
+
+Build/test/lint backend + boot thật đã chạy lại — PASS toàn bộ (23/23
+test, tăng từ 20). Xem chi tiết `backend/CHANGELOG.md` mục `[1.5.0]`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
@@ -260,7 +293,10 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
 4. **MB Bank thật** — số tài khoản + tên chủ tài khoản thật
    (`MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME`), và cấu hình nhận
    webhook thật từ MB Bank/cổng trung gian (Casso, SePay, hoặc tương tự)
-   gọi vào `POST /payments/webhook`.
+   gọi vào `POST /payments/webhook` — nhớ khai báo header
+   `x-webhook-secret: <PAYMENT_WEBHOOK_SECRET>` ở phía cổng trung gian
+   (mới thêm, xem mục "Lỗ hổng bảo mật khác" phía trên), nếu không
+   webhook thật cũng sẽ bị từ chối.
 5. **Backblaze B2 thật** — xác nhận đã rotate Application Key đã lộ
    (`00483fb516ab3b10000000003`), và audit lại cấu trúc bucket thật
    (source/review/final/logs — hiện Backend dùng `uploads/...` +
@@ -270,8 +306,9 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
    được vì gắn chặt với `cws_worker_full.py`, không phải lỗi mới).
 6. **Render.com** — deploy Backend thật (`backend/BACKEND_SETUP.md` có
    hướng dẫn đầy đủ), điền toàn bộ biến môi trường trong
-   `backend/.env.example` (đặc biệt `ADMIN_API_KEY` — KHÔNG được để
-   trống ở production, route Admin fail-closed nếu thiếu).
+   `backend/.env.example` (đặc biệt `ADMIN_API_KEY` và `PAYMENT_WEBHOOK_SECRET`
+   — cả 2 KHÔNG được để trống ở production, route Admin/webhook đều
+   fail-closed nếu thiếu).
 7. **Vercel** — điền `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` trỏ
    về Backend thật sau khi deploy xong bước 6.
 8. **Browser test** — không có công cụ trình duyệt trong môi trường làm
@@ -301,9 +338,14 @@ RLS policy + 2 index thiếu (cảnh báo performance).
 
 Ngoài 9 mismatch trên (không tính chung vào số đếm vì không phải lỗi so
 với roadmap, mà là lỗi tự mình gây ra rồi tự phát hiện): qua self-review
-đã tìm và sửa thêm 3 bug do chính các fix trên gây ra (tên file tải về
-sai định dạng, tải frame không giới hạn số lượng song song, ghép video
-vô nghĩa cho render 1 frame).
+đã tìm và sửa thêm 4 bug tự gây ra — 3 bug do các fix tính năng bổ sung
+gây ra (tên file tải về sai định dạng, tải frame không giới hạn số
+lượng song song, ghép video vô nghĩa cho render 1 frame) + 1 lỗ hổng
+bảo mật nghiêm trọng hơn hẳn 3 bug kia: `POST /payments/webhook` (chính
+route vừa sửa ở mismatch (1) phía trên) thiếu xác thực nguồn gọi, cho
+phép khách hàng tự đánh dấu PAID cho payment của mình mà không cần
+chuyển tiền — đã sửa bằng `WebhookSecretGuard` mới, xem mục riêng
+"Lỗ hổng bảo mật khác phát hiện qua self-review" phía trên.
 
 Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
 Login → Customer Profile → Job → Upload → Render → Progress → Preview

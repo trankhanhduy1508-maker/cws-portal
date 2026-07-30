@@ -147,6 +147,13 @@ bất kỳ dòng code nào ở Portal.
   cầu header `x-admin-key` khớp biến môi trường `ADMIN_API_KEY` — đặt
   giá trị thật (không phải giá trị mặc định/rỗng) trước khi deploy
   production.
+- `POST /payments/webhook` yêu cầu header `x-webhook-secret` khớp biến
+  môi trường `PAYMENT_WEBHOOK_SECRET` — bắt buộc đặt giá trị thật trước
+  khi deploy production, và khai báo ĐÚNG giá trị đó khi cấu hình URL
+  webhook ở phía ngân hàng/cổng trung gian (Casso, SePay...). Nếu thiếu,
+  webhook từ chối mọi request (fail-closed) thay vì để công khai — vì
+  payment_code/storage_code/amount trong nội dung webhook không phải bí
+  mật (khách hàng nhìn thấy chúng trên QR để chuyển khoản).
 - Wake System (Model 2): luôn trả về thất bại vì
   cws_worker_full.py chưa có cơ chế relay Magic Packet — job sẽ tự
   rơi vào hàng đợi (Queue) đúng thiết kế, không bị treo.

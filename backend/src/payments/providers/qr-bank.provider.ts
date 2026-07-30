@@ -40,11 +40,20 @@ export class QrBankProvider implements IPaymentProvider {
     accountNumber: string | null;
   }> {
     const paymentCode = randomBytes(4).toString('hex').toUpperCase();
-    const transferContent = storageCode ? `CWS ${storageCode} ${paymentCode}` : `CWS ${paymentCode}`;
-    const { accountNumber, accountName } = this.configService.get('mbBank', { infer: true });
+    const transferContent = storageCode
+      ? `CWS ${storageCode} ${paymentCode}`
+      : `CWS ${paymentCode}`;
+    const { accountNumber, accountName } = this.configService.get('mbBank', {
+      infer: true,
+    });
 
     const qrImageUrl = accountNumber
-      ? this.buildVietQrUrl(accountNumber, accountName, amountVnd, transferContent)
+      ? this.buildVietQrUrl(
+          accountNumber,
+          accountName,
+          amountVnd,
+          transferContent,
+        )
       : null;
 
     return {
@@ -58,7 +67,8 @@ export class QrBankProvider implements IPaymentProvider {
     };
   }
 
-  async confirm(_providerRef: string): Promise<{ status: PaymentStatus }> {
+  async confirm(providerRef: string): Promise<{ status: PaymentStatus }> {
+    void providerRef;
     throw new BadRequestException(
       'qr_bank không hỗ trợ xác nhận trực tiếp — chờ webhook ngân hàng xác nhận qua POST /payments/webhook',
     );

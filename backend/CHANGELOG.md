@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.5.0] - Bảo mật webhook thanh toán + CI backend lint (2026-07-30)
+
+**Lỗ hổng bảo mật phát hiện qua self-review sau audit lần cuối:**
+`POST /payments/webhook` không có bất kỳ xác thực nào (không guard,
+không shared secret, không chữ ký) — chỉ đối chiếu payment_code/
+storage_code/amount, nhưng cả 3 giá trị này KHÔNG phải bí mật vì chính
+Portal hiển thị chúng cho khách để chuyển khoản (QR + transferContent).
+Hệ quả: bất kỳ khách hàng nào cũng có thể tự POST thẳng vào webhook với
+đúng payment của mình để đánh dấu PAID mà không cần chuyển tiền thật —
+vô hiệu hoá hoàn toàn bước thanh toán.
+
+Đã sửa: thêm `WebhookSecretGuard`
+(`backend/src/common/guards/webhook-secret.guard.ts`, cùng tinh thần
+fail-closed với `AdminKeyGuard` đã có) — bắt buộc header
+`x-webhook-secret` khớp biến môi trường `PAYMENT_WEBHOOK_SECRET` mới.
+Thiếu biến này thì webhook từ chối mọi request thay vì để công khai.
+Cần khai báo đúng secret này khi cấu hình URL webhook ở phía ngân hàng/
+cổng trung gian (Casso, SePay...). Thêm 3 unit test mới
+(`webhook-secret.guard.spec.ts`).
+
+**Phát hiện thêm qua cùng đợt kiểm tra:** `.github/workflows/ci.yml`
+chưa từng chạy `npm run lint` cho backend (chỉ build+test) — nghĩa là
+CI 10/10 lần chạy thành công trước đó KHÔNG hề phủ được eslint backend.
+Khi chạy tay lại, phát hiện 1 lỗi eslint có sẵn từ trước (biến
+`_providerRef` không dùng trong `QrBankProvider.confirm()`, tham số bắt
+buộc bởi `IPaymentProvider`) — đã sửa (dùng `void providerRef;` giống
+cách xử lý tương tự đã có ở `PaymentsService.createIntent()`) và đã
+thêm bước `npm run lint` vào CI job backend để không lặp lại lỗ hổng
+kiểm tra này.
+
+Build/test/lint backend + boot thật (`node dist/main.js`) đã chạy lại,
+tất cả PASS (23/23 test, tăng từ 20). Frontend build/lint không đổi,
+vẫn PASS.
+
 ## [1.4.0] - Giá thật theo runtime Worker + xuất video MP4 (2026-07-30)
 
 Theo yêu cầu trực tiếp của người dùng (KHÔNG bắt buộc theo 3 tài liệu

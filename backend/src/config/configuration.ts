@@ -15,6 +15,7 @@ export interface AppConfig {
     accountName: string | null;
   };
   adminApiKey: string | null;
+  paymentWebhookSecret: string | null;
 }
 
 /**
@@ -53,6 +54,13 @@ export function loadConfig(): AppConfig {
     // Shared secret đơn giản cho route Admin (Giai đoạn 7) — KHÔNG phải
     // hệ thống phân quyền enterprise, xem common/guards/admin-key.guard.ts.
     adminApiKey: process.env.ADMIN_API_KEY ?? null,
+    // Shared secret xác thực webhook ngân hàng/cổng trung gian (Casso,
+    // SePay...) gọi vào POST /payments/webhook — bắt buộc vì payment_code/
+    // storage_code/amount trong nội dung webhook KHÔNG phải bí mật (chính
+    // khách hàng nhìn thấy các giá trị này trên QR để chuyển khoản), nên
+    // chỉ validate 3 trường đó là chưa đủ để xác nhận request đến từ ngân
+    // hàng thật — xem common/guards/webhook-secret.guard.ts.
+    paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? null,
   };
 }
 

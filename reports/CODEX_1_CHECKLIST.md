@@ -10,7 +10,7 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
 
 - [x] Kiểm tra Repository — 1 repo duy nhất `trankhanhduy1508-maker/cws-portal`, root chứa Portal (Vite+React), `backend/` chứa NestJS. Nhiều nhánh cũ từ các phiên agent trước (`agent-1-*`, `agent-2-*`, `agent-3-*`, `codex/3-business-workflow-cleanup`, `backend/nestjs-implementation`, `claude/cws-zero-manual-operation-wtzbrt`) — CHƯA dọn, chưa rõ cái nào còn giá trị/đã merge hay bỏ dở (xem Pending).
 - [x] Kiểm tra CI/CD — `.github/workflows/ci.yml` (build+test backend, build+lint frontend) đã viết và commit trên nhánh `codex/ci-workflow`, nhưng nhánh này CHƯA merge vào `main` — nghĩa là CI chưa thực sự chạy trên PR/push vào main cho tới khi merge.
-- [x] Kiểm tra Build — xác minh thật (không chỉ tin log cũ): `cd backend && npm run build` (nest build) PASS; `npm run lint` (oxlint) + `npm run build` (vite build) ở root PASS; `cd backend && npm test` (jest) — ban đầu 9/9, sau khi thêm test cho fix thanh toán (audit 2026-07-30) hiện là 20/20 PASS. Chạy lại nhiều lần trong suốt phiên để xác nhận sau mỗi thay đổi, không dùng kết quả cũ.
+- [x] Kiểm tra Build — xác minh thật (không chỉ tin log cũ): `cd backend && npm run build` (nest build) PASS; `npm run lint` (oxlint) + `npm run build` (vite build) ở root PASS; `cd backend && npm test` (jest) — ban đầu 9/9, sau khi thêm test cho fix thanh toán (audit 2026-07-30) lên 20/20, sau khi thêm `WebhookSecretGuard` (bug bảo mật webhook, cùng ngày) hiện là 23/23 PASS. Chạy lại nhiều lần trong suốt phiên để xác nhận sau mỗi thay đổi, không dùng kết quả cũ. **Phát hiện thêm:** `cd backend && npm run lint` (eslint, KHÁC oxlint của frontend) CHƯA TỪNG được chạy/verify trong suốt phiên trước đó, và CI (`.github/workflows/ci.yml`) cũng chưa từng chạy nó cho backend — khi chạy tay lộ ra 1 lỗi eslint có sẵn từ trước (`_providerRef` không dùng). Đã sửa lỗi đó + thêm bước `npm run lint` vào CI job backend để không lặp lại lỗ hổng kiểm tra này.
 - [x] Kiểm tra Documentation — `backend/API_DOCUMENTATION.md`, `backend/CHANGELOG.md`, `backend/BACKEND_SETUP.md` đều bị lỗi thời (mô tả trạng thái TRƯỚC pivot Supabase Auth/RLS/VietQR/AdminKeyGuard/request-changes) — đã cập nhật lại toàn bộ 3 file cho khớp code thật (xem Completed).
 - [ ] Kiểm tra Vercel — KHÔNG có quyền truy cập Dashboard Vercel trong môi trường này, chỉ audit được qua doc (`BACKEND_SETUP.md` mục 5: Portal đọc `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` từ env Vercel) — CLOUD_VERIFICATION_REQUIRED.
 - [ ] Kiểm tra Render.com — KHÔNG có quyền truy cập Dashboard Render trong môi trường này — CLOUD_VERIFICATION_REQUIRED, cần người dùng xác nhận Backend đã deploy + env vars đã điền đủ theo `.env.example`.
@@ -32,6 +32,7 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
     - `agent-3-operations-console-p2` (27 commit, ⊃ `agent-2-secure-output-p2` ⊃ `agent-1-payment-p2`): kiến trúc auth JWT tự ký + role — ĐÃ BỊ THAY THẾ bởi Supabase Auth, code sẽ không compile được trên `main`; schema khác hẳn (bảng `outputs`/`download_events`/`payment_events` không tồn tại); phần "secure output" (locked/unlocked/revoked, audit log bất biến) là **Enterprise Security** — nằm ngoài phạm vi MVP theo đúng chữ của cả 2 tài liệu roadmap. Phần "operations console" (dashboard KPI) có ý tưởng hay nhưng vượt yêu cầu Admin của roadmap, đã ghi nhận để tham khảo sau nếu cần, không lấy trực tiếp được.
     - `claude/cws-zero-manual-operation-wtzbrt` (1 commit, phiên Claude trước): có lỗ hổng bảo mật (frontend tự xác nhận thanh toán) — KHÔNG merge trực tiếp, nhưng đã trích 2 ý tưởng giá trị (giá thật theo runtime Worker, xuất video MP4) viết lại an toàn vào `main` trước khi xoá nhánh — xem `backend/CHANGELOG.md` mục `[1.4.0]`.
   - Kết quả: repo chỉ còn duy nhất nhánh `main` (remote + local), xác nhận qua `git branch -r`/`git branch` sau khi xoá.
+- **Lỗ hổng bảo mật webhook + gap CI lint (2026-07-30, tự phát hiện qua self-review sau khi tưởng audit đã xong):** `POST /payments/webhook` không có xác thực nào — sửa bằng `WebhookSecretGuard` mới (header `x-webhook-secret`/`PAYMENT_WEBHOOK_SECRET`, fail-closed). Đồng thời phát hiện CI chưa từng lint backend — đã thêm bước lint vào `.github/workflows/ci.yml` job backend, tự sửa 1 lỗi eslint có sẵn từ trước lộ ra ngay khi chạy lần đầu. Build/test/lint + boot thật PASS (23/23 test). Chi tiết đầy đủ: `docs/MVP_GAP_REPORT.md`, `backend/CHANGELOG.md` mục `[1.5.0]`.
 
 ---
 
@@ -60,7 +61,10 @@ Repository đã dọn xong hoàn toàn (2026-07-30): merge 3 nhánh PR vào
 người dùng trước khi xoá — xem Completed). Repo giờ chỉ còn duy nhất
 `main`, đã verify qua `git branch -r`/`git branch`. `main` hiện là bản
 MVP đầy đủ nhất, build/test/lint PASS + GitHub Actions CI thật PASS
-10/10 lần gần nhất (xem `docs/MVP_GAP_REPORT.md`).
+10/10 lần gần nhất (xem `docs/MVP_GAP_REPORT.md`) — LƯU Ý: 10 lần đó
+chỉ phủ build+test backend (CI chưa lint backend lúc đó), đã thêm bước
+lint vào CI sau khi phát hiện qua self-review (xem Completed), lần
+chạy CI kế tiếp trên `main` mới là lần đầu CI thật sự lint backend.
 
 Còn lại DUY NHẤT phụ thuộc người dùng: xác nhận Vercel/Render đã cấu
 hình đủ biến môi trường thật (Vercel sẽ tự deploy `main` mới nếu đã

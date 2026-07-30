@@ -203,9 +203,15 @@ không phải cách hợp lệ để xác nhận thanh toán.
 
 ### POST /payments/webhook
 Endpoint DUY NHẤT hợp lệ để set PAID. Ngân hàng/cổng trung gian gọi
-vào đây khi có giao dịch chuyển khoản mới.
+vào đây khi có giao dịch chuyển khoản mới. **Yêu cầu header
+`x-webhook-secret`** khớp `PAYMENT_WEBHOOK_SECRET` (`WebhookSecretGuard`,
+fail-closed) — payment_code/storage_code/amount trong request KHÔNG
+phải bí mật (chính khách hàng nhìn thấy 3 giá trị này trên QR để chuyển
+khoản), nên bắt buộc phải có secret riêng để xác nhận request đến từ
+ngân hàng/cổng trung gian thật, không phải từ khách hàng tự gọi.
 
 Request: `{ "transferContent": "CWS CWS-A1B2C3D4 AB12CD34", "amountVnd": 45000 }`
+(kèm header `x-webhook-secret: <PAYMENT_WEBHOOK_SECRET>`)
 
 Logic: parse `storage_code` + `payment_code` từ `transferContent` (regex
 `CWS\s+(\S+)\s+([A-Za-z0-9]+)` — bắt buộc ĐỦ 2 phần, đúng
