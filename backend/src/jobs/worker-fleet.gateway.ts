@@ -41,7 +41,9 @@ export class WorkerFleetGateway {
 
     if (jobError) {
       this.logger.error(`Tạo internal job thất bại: ${jobError.message}`);
-      throw new Error(`Không tạo được job cho Worker Fleet: ${jobError.message}`);
+      throw new Error(
+        `Không tạo được job cho Worker Fleet: ${jobError.message}`,
+      );
     }
 
     const { error: taskError } = await client.from('tasks').insert({
@@ -53,7 +55,9 @@ export class WorkerFleetGateway {
 
     if (taskError) {
       this.logger.error(`Tạo probe task thất bại: ${taskError.message}`);
-      throw new Error(`Không tạo được task cho Worker Fleet: ${taskError.message}`);
+      throw new Error(
+        `Không tạo được task cho Worker Fleet: ${taskError.message}`,
+      );
     }
 
     return params.internalJobId;
@@ -77,7 +81,9 @@ export class WorkerFleetGateway {
       .eq('job_id', internalJobId);
 
     if (error) {
-      this.logger.error(`getTaskSummary(${internalJobId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `getTaskSummary(${internalJobId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không đọc được trạng thái task: ${error.message}`);
     }
 
@@ -118,14 +124,30 @@ export class WorkerFleetGateway {
       gpuName: (r as { gpu_name: string | null }).gpu_name,
       vramMb: (r as { vram_mb: number | null }).vram_mb,
       status: (r as { status: string }).status,
-      lastSeenAt: new Date((r as { last_seen_at: string }).last_seen_at).getTime(),
+      lastSeenAt: new Date(
+        (r as { last_seen_at: string }).last_seen_at,
+      ).getTime(),
       crashCount: (r as { crash_count: number }).crash_count,
     }));
   }
 
   /** Số lượng Worker đang online (last_seen_at gần đây) — dùng cho
-   * Scheduler Model 1 (đủ máy Online thì không cần Wake). */
-  async countOnlineWorkers(withinSeconds = 30): Promise<number> {
+   * Scheduler Model 1 (đủ máy Online thì không cần Wake).
+   *
+   * Ngưỡng mặc định 180s — KHÔNG được để thấp hơn nhịp heartbeat thật
+   * của Worker (xem CWS_WORKER_ROADMAP.md Phase 1 audit): lúc RẢNH,
+   * cws_worker_full.py gọi worker_ping() mỗi 15s (POLL_INTERVAL_SEC),
+   * nhưng lúc ĐANG RENDER, chỉ gọi mỗi 60s (HEARTBEAT_INTERVAL_SEC, qua
+   * thread heartbeat_loop). Ngưỡng cũ 30s khiến 1 Worker đang render
+   * (bận, không rảnh) có tới ~50% khả năng bị đếm nhầm là "offline" tại
+   * bất kỳ thời điểm query nào — gây nhấp nháy trạng thái ALLOCATING_
+   * WORKERS/SEARCHING_WORKERS ở SchedulerService và ước tính hàng đợi
+   * sai ở JobsService.estimate(). 180s khớp đúng ngưỡng đã dùng thật ở
+   * `mark_stale_workers_offline()` (cron 2 phút trên Supabase) và RPC
+   * `count_active_workers()` (chưa được Backend dùng tới, cùng ngưỡng
+   * 180s) — đồng bộ 1 chuẩn duy nhất cho toàn hệ thống thay vì mỗi nơi
+   * tự chọn 1 con số khác nhau. */
+  async countOnlineWorkers(withinSeconds = 180): Promise<number> {
     const client = this.supabaseService.getClient();
     const since = new Date(Date.now() - withinSeconds * 1000).toISOString();
     const { count, error } = await client
@@ -151,17 +173,23 @@ export class WorkerFleetGateway {
       .maybeSingle();
 
     if (error) {
-      this.logger.error(`getTotalFrames(${internalJobId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `getTotalFrames(${internalJobId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không đọc được total_frames: ${error.message}`);
     }
-    return (data as { total_frames: number | null } | null)?.total_frames ?? null;
+    return (
+      (data as { total_frames: number | null } | null)?.total_frames ?? null
+    );
   }
 
   /** Metadata do chính Worker ghi lại (Scene Analyzer) — dùng để quyết
    * định framerate thật khi ghép video kết quả (PackagingService/
    * VideoAssemblyService) — KHÔNG đoán fps, đọc từ Worker, mặc định 24
    * nếu Worker chưa ghi (giữ hành vi cũ trước khi có cột này). */
-  async getJobMeta(internalJobId: string): Promise<{ totalFrames: number | null; fps: number }> {
+  async getJobMeta(
+    internalJobId: string,
+  ): Promise<{ totalFrames: number | null; fps: number }> {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('jobs')
@@ -170,10 +198,15 @@ export class WorkerFleetGateway {
       .maybeSingle();
 
     if (error) {
-      this.logger.error(`getJobMeta(${internalJobId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `getJobMeta(${internalJobId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không đọc được metadata job: ${error.message}`);
     }
-    const row = data as { total_frames: number | null; fps: number | null } | null;
+    const row = data as {
+      total_frames: number | null;
+      fps: number | null;
+    } | null;
     return { totalFrames: row?.total_frames ?? null, fps: row?.fps ?? 24 };
   }
 
@@ -183,7 +216,9 @@ export class WorkerFleetGateway {
    * Worker, không đổi ở đây). */
   async getTaskExecutionDetails(
     internalJobId: string,
-  ): Promise<{ workerId: string; claimedAt: string; lastHeartbeat: string | null }[]> {
+  ): Promise<
+    { workerId: string; claimedAt: string; lastHeartbeat: string | null }[]
+  > {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('tasks')
@@ -193,8 +228,12 @@ export class WorkerFleetGateway {
       .not('claimed_at', 'is', null);
 
     if (error) {
-      this.logger.error(`getTaskExecutionDetails(${internalJobId}) thất bại: ${error.message}`);
-      throw new Error(`Không đọc được chi tiết thực thi task: ${error.message}`);
+      this.logger.error(
+        `getTaskExecutionDetails(${internalJobId}) thất bại: ${error.message}`,
+      );
+      throw new Error(
+        `Không đọc được chi tiết thực thi task: ${error.message}`,
+      );
     }
 
     return (data ?? []).map((r) => ({
@@ -223,7 +262,9 @@ export class WorkerFleetGateway {
       .eq('job_id', internalJobId);
 
     if (error) {
-      this.logger.error(`getTasks(${internalJobId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `getTasks(${internalJobId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không đọc được danh sách task: ${error.message}`);
     }
     return (data ?? []).map((r) => ({
@@ -251,18 +292,30 @@ export class WorkerFleetGateway {
     if (fromFrame > totalFrames) return;
 
     const client = this.supabaseService.getClient();
-    const rows: { job_id: string; frame_start: number; frame_end: number; status: string }[] = [];
+    const rows: {
+      job_id: string;
+      frame_start: number;
+      frame_end: number;
+      status: string;
+    }[] = [];
 
     for (let start = fromFrame; start <= totalFrames; start += chunkSize) {
       const end = Math.min(start + chunkSize - 1, totalFrames);
-      rows.push({ job_id: internalJobId, frame_start: start, frame_end: end, status: 'queued' });
+      rows.push({
+        job_id: internalJobId,
+        frame_start: start,
+        frame_end: end,
+        status: 'queued',
+      });
     }
 
     if (rows.length === 0) return;
 
     const { error } = await client.from('tasks').insert(rows);
     if (error) {
-      this.logger.error(`createRemainingTasks(${internalJobId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `createRemainingTasks(${internalJobId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không tạo được các task còn lại: ${error.message}`);
     }
   }
