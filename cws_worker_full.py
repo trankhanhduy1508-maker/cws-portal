@@ -927,6 +927,46 @@ def fail_task(task_id, generation, worker_id, error_type):
     })
 
 
+def report_total_frames_if_known(job_id, worker_id, optimization_plan):
+    """Bao lai jobs.total_frames/fps THAT cho Backend (sua lo hong goc re
+    khien luong end-to-end khong bao gio hoan thanh - xem worker_migrations/
+    002_set_job_total_frames_rpc.sql). Goi 1 LAN sau khi Scene Analyzer xac
+    dinh duoc frame range that (dinh dang trong optimization_plan qua
+    analyze_blend_scene(), xem "frame_start"/"frame_end"/"total_frames"/"fps").
+
+    An toan goi NHIEU LAN/tu NHIEU worker khac nhau - RPC set_job_total_frames()
+    idempotent (chi ghi neu jobs.total_frames dang NULL, tuong tu tinh than
+    "Phuong an C" cua set_optimization_plan_if_missing), nen KHONG can worker
+    tu kiem tra "job nay da co total_frames chua" truoc khi goi - de don gian
+    hoa code phia Python, day trach nhiem chong ghi trung xuong RPC/Postgres.
+
+    KHONG lam gian doan render neu RPC loi/job da co total_frames tu truoc -
+    day la tinh nang PHU, khong duoc chan worker tiep tuc lam viec chinh."""
+    if not optimization_plan:
+        return
+    total_frames = optimization_plan.get("total_frames")
+    if not total_frames or total_frames < 1:
+        print(f"[TOTAL_FRAMES] Job {job_id}: khong xac dinh duoc total_frames "
+              f"tu Scene Analyzer (gia tri: {total_frames!r}) - bo qua bao cao.")
+        return
+    try:
+        ok = rpc_call("set_job_total_frames", {
+            "p_job_id": job_id,
+            "p_worker_id": worker_id,
+            "p_total_frames": total_frames,
+            "p_fps": optimization_plan.get("fps"),
+        })
+        if ok:
+            print(f"[TOTAL_FRAMES] Job {job_id}: da bao total_frames={total_frames} "
+                  f"fps={optimization_plan.get('fps')} len Backend thanh cong.")
+        # ok=False nghia la job da co total_frames tu truoc (worker khac da
+        # bao roi, hoac worker nay khong con task active cho job do nua) -
+        # BINH THUONG, khong phai loi, khong can log ram.
+    except Exception as e:
+        print(f"[TOTAL_FRAMES] LOI khi bao total_frames cho job {job_id}: {e} "
+              f"- bo qua, khong anh huong render.")
+
+
 def report_render_speed(job_id, seconds_per_frame):
     """Bao toc do render that do duoc (03_Scheduler_Tuning.md Chuong 8).
     Chi co y nghia khi goi SAU KHI hoan thanh probe task dau tien cua job -
@@ -1180,6 +1220,21 @@ THRESHOLDS = {
 }
 
 scene = bpy.context.scene
+
+# ===== FRAME RANGE THAT (them 31/07/2026, sua lo hong goc re khien luong
+# end-to-end khong bao gio hoan thanh - xem worker_migrations/002_set_job_
+# total_frames_rpc.sql): truoc day KHONG co code nao doc scene.frame_start/
+# scene.frame_end, khien jobs.total_frames khong bao gio duoc ghi cho job
+# tao qua Backend (WorkerFleetGateway.createInternalJobWithProbeTask), va
+# SchedulerService khong bao gio tu tao duoc task ngoai probe task. Doc
+# THANG tu Blender (khong doan/hard-code) - fps that = fps / fps_base
+# (fps_base thuong la 1.0, nhung mot so scene dung gia tri khac de dat FPS
+# le, vd 23.976 = 24/1.001).
+scene_frame_start = scene.frame_start
+scene_frame_end = scene.frame_end
+scene_total_frames = max(0, scene_frame_end - scene_frame_start + 1)
+scene_fps = scene.render.fps / scene.render.fps_base if scene.render.fps_base else scene.render.fps
+
 lights_objs = [o for o in scene.objects if o.type == 'LIGHT']
 total_lights = len(lights_objs)
 shadow_count = sum(1 for o in lights_objs if getattr(o.data, "use_shadow", False))
@@ -1447,6 +1502,11 @@ report = {
     "engine": engine, "total_lights": total_lights, "shadow_lights": shadow_count,
     "max_texture_res": max_tex, "texture_count": tex_count, "polygon_count": polys,
     "oversized_textures": oversized_textures,
+    # Frame range THAT cua scene - dung de bao lai jobs.total_frames qua
+    # RPC set_job_total_frames() (xem get_or_create_optimization_plan()
+    # noi goi RPC nay, va worker_migrations/002_set_job_total_frames_rpc.sql).
+    "frame_start": scene_frame_start, "frame_end": scene_frame_end,
+    "total_frames": scene_total_frames, "fps": scene_fps,
     "samples": samples, "motion_blur": motion_blur, "volumetric_count": volumetric_count,
     "shadow_cube_size": shadow_cube_size, "shadow_cascade_size": shadow_cascade_size,
     "suggested_level": level, "reasons": reasons,
@@ -2291,7 +2351,7 @@ def worker_ping(worker_id):
 # ---------------------------------------------------------------------
 # VONG LAP CHINH
 # ---------------------------------------------------------------------
-def _load_job_context(job_id, _cache={}):
+def _load_job_context(job_id, worker_id, _cache={}):
     """Chuan bi day du thong tin can thiet cho 1 job (blend_path,
     optimization_code, ten file de log) - TACH RIENG (25/07/2026, phuc vu
     Job 4 - 6 file .blend khac nhau) khoi worker_loop() de co the goi LAI
@@ -2320,6 +2380,7 @@ def _load_job_context(job_id, _cache={}):
     blend_path = ensure_blend_file(job_info["blend_link"], job_info["blend_file"])
     optimization_plan = get_or_create_optimization_plan(blend_path, job_id)
     print_scene_analysis_report(optimization_plan, job_id)
+    report_total_frames_if_known(job_id, worker_id, optimization_plan)
 
     optimization_code = get_driver_namespace_fix_code() + apply_safe_optimizations_args(optimization_plan)
     if ENABLE_GPU_TEXTURE_RELOAD_FIX:
@@ -2422,7 +2483,7 @@ def worker_loop():
         # DUNG CHO JOB VUA CLAIM DUOC (co the KHAC job lan truoc, vi random
         # thu tu moi vong) - xem docstring _load_job_context() de biet co che
         # cache tranh tai lai khong can thiet neu trung job cu.
-        job_ctx = _load_job_context(current_job_id)
+        job_ctx = _load_job_context(current_job_id, worker_id)
         if job_ctx is None:
             # Job nay loi that (khong ton tai tren Supabase) - tra lai task
             # bang fail_task (transient, de worker khac/lan sau thu lai) roi
