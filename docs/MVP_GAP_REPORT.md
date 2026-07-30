@@ -287,6 +287,26 @@ Tổng test backend: 35 → 37 (thêm `b2-storage.service.spec.ts`). Build/
 lint + boot thật đã chạy lại (cả backend lẫn frontend). Xem
 `backend/CHANGELOG.md` mục `[1.9.0]`.
 
+### Bug tính giá thật sai (phát hiện 2026-07-31, phiên Worker Fleet — không liên quan Worker Fleet)
+
+Trong lúc rà soát MVP theo yêu cầu Dy (sau khi hoàn tất
+`CWS_WORKER_ROADMAP.md`), phát hiện `PricingService.computeFinalPriceVnd()`
+(gọi từ `JobsService.approve()`, tính TIỀN THẬT khách phải trả qua QR
+bank — KHÔNG có bước Admin xác nhận lại trước khi gửi) tính SAI khi 1
+Worker nhận 2 task KHÔNG LIÊN TỤC của CÙNG 1 job: code cũ gộp
+`claimedAt`/`lastHeartbeat` của MỌI task cùng `workerId` thành 1 khoảng
+DUY NHẤT `[min(claimedAt), max(lastHeartbeat)]` — thời gian RẢNH giữa 2
+lần claim (hoàn toàn có thể xảy ra vì Worker Fleet poll job gần như
+ngẫu nhiên, có thể quay lại job cũ sau khi làm việc khác) bị tính NHẦM
+là thời gian làm việc thật, khiến khách bị tính tiền quá cao đáng kể.
+
+Đã hỏi Dy qua `AskUserQuestion`, xác nhận sửa ngay. Sửa: cộng dồn
+runtime CỦA TỪNG task riêng lẻ, chỉ cộng phí khởi động 1 lần cho MỖI
+Worker khác nhau (không phải mỗi task). Thêm
+`backend/src/jobs/services/pricing.service.spec.ts` (trước đây CHƯA có
+file test riêng cho `PricingService`) — 5 test case. Tổng test backend:
+37 → 42, PASS. Xem commit `97f0ac3` trên `main`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
