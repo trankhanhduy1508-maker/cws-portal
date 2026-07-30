@@ -49,6 +49,12 @@ export class PaymentsService {
     return { paymentId, status };
   }
 
+  async getStatus(paymentId: string): Promise<PaymentStatus> {
+    const record = await this.paymentsRepository.findById(paymentId);
+    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    return record.status;
+  }
+
   async confirm(paymentId: string): Promise<{ paymentId: string; status: PaymentStatus }> {
     const record = await this.paymentsRepository.findById(paymentId);
     if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);

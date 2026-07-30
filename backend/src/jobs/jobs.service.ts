@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   IRenderOrdersRepository,
@@ -9,6 +9,8 @@ import { JobStatus } from './domain/job-status.enum';
 import { RENDER_PROFILES, RenderProfileId } from './domain/render-profile';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PaymentsService } from '../payments/payments.service';
+import { PaymentStatus } from '../payments/payment.types';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -38,6 +40,7 @@ export class JobsService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
@@ -56,6 +59,15 @@ export class JobsService {
   async createOrder(dto: CreateJobDto): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
+    }
+
+    // Chỉ tạo job nếu paymentId thật sự đã PAID — tránh việc Client tự
+    // gửi 1 paymentId bất kỳ (chưa thanh toán) để tạo job miễn phí.
+    const paymentStatus = await this.paymentsService.getStatus(dto.paymentId);
+    if (paymentStatus !== PaymentStatus.PAID) {
+      throw new BadRequestException(
+        `Payment ${dto.paymentId} chưa ở trạng thái PAID (hiện tại: ${paymentStatus})`,
+      );
     }
 
     const estimate = await this.estimate({
@@ -78,7 +90,7 @@ export class JobsService {
       status: initialStatus,
       stageProgress: 0,
       paymentId: dto.paymentId,
-      paymentStatus: 'paid', // Backend chỉ nhận request tạo job SAU khi PaymentsService xác nhận paid ở tầng Controller
+      paymentStatus: paymentStatus as unknown as RenderOrder['paymentStatus'],
       estimate,
       driveLink: dto.driveLink ?? null,
       uploadedFileB2Key: dto.fileRef ?? null,
