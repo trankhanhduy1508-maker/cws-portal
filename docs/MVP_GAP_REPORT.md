@@ -284,24 +284,44 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
    `codex/mvp-payment-qr-only`) merge fast-forward vào `main`;
    `codex/ci-workflow` merge 3-way sạch (chỉ thêm 1 file). Build/test/lint
    PASS trên `main` sau merge, đã push GitHub (`a7ffb80..21ac183`).
+   Sau đó cũng đã xoá toàn bộ 16 nhánh Git cũ theo yêu cầu người dùng
+   (2 đợt, đều xác nhận rõ ràng trước khi xoá) — repo hiện chỉ còn `main`.
 
 ---
 
 ## Kết luận
 
-Sau khi sửa mismatch thanh toán (mục quan trọng nhất) + 5 mismatch nhỏ
-hơn (Tạo Job thiếu field, Admin thiếu Customer list/Tìm kiếm theo
-Customer/Tiến độ/Worker/Preview), toàn bộ **luồng chính** (Definition
-of Done: Facebook Login → Customer Profile → Job → Upload → Render →
-Progress → Preview → MB QR → Webhook → PAID → Download → COMPLETED)
-VÀ toàn bộ mục "Admin theo dõi" (Customer/Jobs/Worker/Progress/Preview/
-Payment/Download — CWS_MVP_WORKFLOW_FINAL.md, mục Admin) đã khớp đúng
-3 tài liệu gốc. Không còn mismatch nào phát hiện được qua audit tĩnh
-(đọc code + đối chiếu từng dòng trong 3 doc).
+Tổng cộng **10 mismatch với roadmap** đã tìm và sửa trong đợt audit
+này: (1) thứ tự thanh toán vs render (nghiêm trọng nhất), (2) "Tạo Job"
+thiếu Phần mềm/Phiên bản/Ghi chú, (3) Admin thiếu "Danh sách khách
+hàng", (4) Admin thiếu "Tìm kiếm theo Customer", (5) Admin thiếu cột
+"Tiến độ", (6) Admin thiếu theo dõi "Worker", (7) Admin thiếu xem
+"Preview", (8) thiếu nguồn "Direct Link" trong 4 nguồn Tạo Job, (9) 7
+RLS policy + 2 index thiếu (cảnh báo performance), (10) — không tính
+là mismatch nhưng cùng đợt: đã tự phát hiện qua self-review và sửa 3
+bug do chính các fix trên gây ra (tên file tải về sai định dạng, tải
+frame không giới hạn số lượng song song, ghép video vô nghĩa cho render
+1 frame).
+
+Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
+Login → Customer Profile → Job → Upload → Render → Progress → Preview
+→ MB QR → Webhook → PAID → Download → COMPLETED) VÀ toàn bộ mục "Admin
+theo dõi" (Customer/Jobs/Worker/Progress/Preview/Payment/Download —
+CWS_MVP_WORKFLOW_FINAL.md, mục Admin) đã khớp đúng 3 tài liệu gốc.
+Không còn mismatch nào phát hiện được qua audit tĩnh (đọc code + đối
+chiếu từng dòng trong 3 doc).
+
+Ngoài phạm vi bắt buộc của roadmap, theo yêu cầu trực tiếp của người
+dùng đã bổ sung thêm 2 tính năng (giá thật theo runtime Worker, xuất
+video MP4 tự động) — xem mục đầu file.
 
 Toàn bộ phần còn lại (mục BLOCKED ở trên) đều là credential/dashboard/
 thao tác bên ngoài mà Agent không có quyền tự thực hiện trong môi
-trường này.
+trường này. Repository cũng đã được dọn sạch: merge toàn bộ 3 nhánh PR
+vào `main` và xoá 16 nhánh Git cũ không còn giá trị (7 nhánh nằm trọn
+trong `main`, 9 nhánh còn lại đã đọc kỹ nội dung trước khi xoá — không
+có nhánh nào đáng giữ lại hoặc merge, xem `reports/CODEX_1_CHECKLIST.md`
+để biết chi tiết từng nhánh) — repo hiện chỉ còn duy nhất `main`.
 
 **Xác nhận độc lập cuối cùng (2026-07-30):** ngoài build/test/lint
 chạy cục bộ nhiều lần trong suốt phiên, đã kiểm tra qua GitHub REST API
