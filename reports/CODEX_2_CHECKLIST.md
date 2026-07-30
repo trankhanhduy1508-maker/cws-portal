@@ -89,7 +89,13 @@ Supabase • Database • Backblaze B2
 
 # Next Task
 
-Khi có quyền truy cập Supabase (project ref + credential do người dùng cung cấp): chạy `list_tables` xác nhận schema thật khớp với migrations trong repo, rồi áp dụng migration 004 sau khi xác nhận không có bản ghi method khác 'qr_bank'.
+Đã có Supabase MCP access. Migration 004 (qr_bank only) và 005 (customer_profiles + storage_objects + review_images + downloads + worker_logs + notifications + mở rộng render_orders/payments) đã APPLY thành công lên project ynhxlxetwuiyejcjypsi. Tiếp theo: viết repository/service cho storage_objects, review_images, downloads, worker_logs, notifications (mirror pattern customers.module.ts).
+
+## 🚨 SECURITY INCIDENT
+`backend/.env.example` từng chứa secret thật (Supabase service_role key, B2 application key) bị commit công khai — đã xóa khỏi working tree (commit e296a74) nhưng KHÔNG rewrite được git history (bị cấm force-push/rewrite history). Secret coi như đã lộ vĩnh viễn. **CẦN NGƯỜI DÙNG rotate ngay**: Supabase Dashboard > Settings > API > regenerate service_role key; Backblaze B2 > revoke application key K004COzN4VQn3r4AcniKM1HOrr58deM, tạo key mới. Sau khi rotate, cập nhật lại biến môi trường thật trên Render.
+
+## RLS disabled (advisory)
+render_orders, payments, sites, machine_capability đang KHÔNG bật RLS — anon key đọc/ghi được toàn bộ. CHƯA tự bật (bật sai sẽ chặn truy cập nếu chưa có policy) — cần người dùng xác nhận cách anon key được dùng ở đâu trước khi bật + viết policy.
 
 ---
 

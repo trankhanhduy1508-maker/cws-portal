@@ -124,7 +124,11 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Next Task
 
-Audit chi tiết payments.controller.ts (endpoint confirm có bị gọi trực tiếp từ frontend không) và b2-storage.service.ts (cấu trúc lưu trữ có khớp jobs/{storage_code}/source|review|final|logs không), sau đó bắt đầu thiết kế Facebook Login nếu chưa bị chặn bởi thiếu credential.
+Đã xác nhận: payments.controller.ts confirm KHÔNG có guard, gọi thẳng từ frontend (usePayment.js) — vi phạm "Frontend không được tự đặt Payment = PAID". Chưa fix (cần thiết kế webhook thật, phụ thuộc payment_code/storage_code vừa thêm ở migration 005 + credential MB Bank webhook thật).
+
+Đã tạo backend/src/customers module (repository/service upsertByFacebookId) để sẵn sàng cho Facebook Login. BLOCKED tiếp: cần FACEBOOK_APP_ID/FACEBOOK_APP_SECRET thật để viết OAuth strategy + controller — chưa có trong môi trường này.
+
+Next: viết PaymentsController webhook endpoint (POST /payments/webhook) verify amount+content+payment_code+storage_code, đổi confirm() hiện tại thành internal-only (không public).
 
 ---
 
