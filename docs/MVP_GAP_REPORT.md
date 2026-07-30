@@ -331,6 +331,33 @@ nhưng lãng phí tài nguyên không cần thiết, 1 bề mặt DoS nhỏ. Đ�
 không đổi hành vi cho client thật (luôn có job thật vì `createJob()`
 await xong mới gọi subscribe). Thêm 1 test mới. Xem commit `d0005fd`.
 
+### 🔴 Bug nghiêm trọng nhất phiên này: hủy job KHÔNG kiểm tra trạng thái — khách có thể mất tiền mà không nhận được file (phát hiện 2026-07-31)
+
+`JobsService.cancel()` (`POST /jobs/:id/cancel`, `DELETE /jobs/:id`)
+TRƯỚC ĐÂY không kiểm tra `order.status` trước khi hủy. Nút "Hủy job"
+hiện diện ngay trên `PaymentScreen` (lúc đang `AWAITING_PAYMENT`, QR đã
+sinh). Nếu khách bấm hủy đúng lúc webhook ngân hàng xác nhận PAID
+sắp/vừa tới, `finalizeDelivery()` (điều kiện `status===AWAITING_PAYMENT`)
+sẽ từ chối đóng gói/mở tải vì status đã là CANCELLED — khách CÓ THỂ ĐÃ
+CHUYỂN KHOẢN THẬT nhưng KHÔNG BAO GIỜ nhận được file, và hệ thống KHÔNG
+CÓ cơ chế hoàn tiền/cảnh báo nào cho trường hợp này. Có thể là bug
+nghiêm trọng nhất tìm được trong toàn bộ đợt rà soát MVP + Worker Fleet.
+
+Đã hỏi Dy qua `AskUserQuestion`, xác nhận sửa ngay theo hướng khuyến
+nghị: `cancel()` giờ CHỈ cho phép hủy khi job còn ở giai đoạn MIỄN PHÍ
+(trước khi sinh QR — `QUEUED`/`SEARCHING_WORKERS`/`ALLOCATING_WORKERS`/
+`WORKERS_CONNECTED`/`RENDERING`/`REVIEW_READY`), từ `AWAITING_PAYMENT`
+trở đi trả lỗi rõ ràng "liên hệ Admin" thay vì âm thầm hủy mất tiền
+khách.
+
+Fix này kéo theo sửa 2 bug PHỤ (nếu không sửa, khách bấm "Hủy job" lúc
+bị chặn sẽ KHÔNG THẤY GÌ xảy ra): `RenderService.js#cancelJob()` là hàm
+DUY NHẤT trong file `return res.ok` thay vì throw khi thất bại (mọi hàm
+khác đều throw đúng quy ước chung) — lỗi bị nuốt hoàn toàn; và
+`App.jsx#handleCancelJob` gọi `job.cancel()` (async) không await/catch.
+Cả 2 đã sửa. Thêm 3 test mới cho `cancel()`. Tổng test backend: 43 → 46,
+PASS. Xem commit `c5aaaab`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
