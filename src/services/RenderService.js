@@ -19,6 +19,7 @@
 import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
 import * as mock from './mockBackend';
 import { validateFile, validateDriveLink } from '../utils/fileUtils';
+import { getStoredToken } from './AuthService';
 
 // Giữ tham chiếu File thật theo fileRef — CHỈ dùng ở mock mode để tạo
 // Blob URL placeholder lúc job hoàn thành (xem ghi chú "download thật"
@@ -168,9 +169,13 @@ export async function confirmPayment({ paymentId, method }) {
  */
 export async function createJob({ input, profileId, paymentId }) {
   if (IS_BACKEND_CONFIGURED) {
+    const token = getStoredToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ ...input, profileId, paymentId }),
     });
     if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);

@@ -24,6 +24,9 @@ export interface RenderOrder {
   projectName: string;
   /** Mã tra cứu ngắn cho khách/admin (CWS_ROADMAP_MVP_V1.md: "Sinh Storage Code"). */
   storageCode: string;
+  /** Khách đã đăng nhập Facebook tạo job này — null nếu chưa đăng nhập
+   * (Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts). */
+  customerId: string | null;
   profileId: RenderProfileId;
   status: JobStatus;
   stageProgress: number; // 0..1 trong giai đoạn hiện tại

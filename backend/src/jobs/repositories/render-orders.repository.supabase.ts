@@ -14,6 +14,7 @@ interface RenderOrderRow {
   id: string;
   project_name: string;
   storage_code: string;
+  customer_id: string | null;
   profile_id: string;
   status: string;
   stage_progress: number;
@@ -38,6 +39,7 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
     id: row.id,
     projectName: row.project_name,
     storageCode: row.storage_code,
+    customerId: row.customer_id,
     profileId: row.profile_id as RenderProfileId,
     status: row.status as JobStatus,
     stageProgress: row.stage_progress,
@@ -65,6 +67,7 @@ function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at
     id: order.id,
     project_name: order.projectName,
     storage_code: order.storageCode,
+    customer_id: order.customerId,
     profile_id: order.profileId,
     status: order.status,
     stage_progress: order.stageProgress,

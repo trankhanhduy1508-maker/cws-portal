@@ -10,17 +10,28 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { JobsService } from './jobs.service';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
+import { getOptionalCustomerId } from '../common/optional-auth.util';
+import { AppConfig } from '../config/configuration';
 
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {}
 
   @Post()
-  async create(@Body() dto: CreateJobDto) {
-    return this.jobsService.createOrder(dto);
+  async create(@Body() dto: CreateJobDto, @Req() req: Request) {
+    // Gắn customerId NẾU khách đã đăng nhập Facebook (Bearer token hợp
+    // lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách chưa đăng nhập
+    // (xem lý do ở jwt-auth.guard.ts).
+    const jwtSecret = this.configService.get('jwtSecret', { infer: true });
+    const customerId = getOptionalCustomerId(req, jwtSecret);
+    return this.jobsService.createOrder(dto, customerId);
   }
 
   @Post('estimate')

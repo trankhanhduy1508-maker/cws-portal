@@ -62,7 +62,7 @@ export class JobsService {
     return { ...baseEstimate, queueSeconds };
   }
 
-  async createOrder(dto: CreateJobDto): Promise<{ jobId: string }> {
+  async createOrder(dto: CreateJobDto, customerId: string | null = null): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
     }
@@ -95,6 +95,7 @@ export class JobsService {
       id,
       projectName,
       storageCode,
+      customerId,
       profileId: dto.profileId,
       status: initialStatus,
       stageProgress: 0,
