@@ -55,7 +55,7 @@ Supabase • Database • Backblaze B2
 
 # Completed
 
--
+- Backend module storage_objects/review_images (StorageService: recordPaths/getPaths/publishReviewImages, enforce 3-5 ảnh preview theo MVP). Xem PR #7. Bảng đã được tạo qua migration 005 (PR #6, đã apply lên Supabase thật).
 
 ---
 
@@ -67,7 +67,8 @@ Supabase • Database • Backblaze B2
 
 # Pending
 
--
+- Wire StorageService vào Worker render pipeline thật (hiện chưa có nơi nào gọi publishReviewImages() với path ảnh thật).
+- Kiểm tra Bucket B2 thật (cấu trúc source/review/final/logs, signed URL, lifecycle) — CLOUD_VERIFICATION_REQUIRED, chưa có credential B2 để tự kiểm tra trực tiếp bucket.
 
 ---
 
