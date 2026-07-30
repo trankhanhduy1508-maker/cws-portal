@@ -13,6 +13,16 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // trong tay, để mọi lượt tải đều được backend biết. Mock: không có
   // route log thật, dùng thẳng Blob URL như cũ.
   const href = IS_BACKEND_CONFIGURED ? getDownloadUrl(jobId) : downloadUrl;
+
+  // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
+  // có ffmpeg, xem PackagingService) — KHÔNG cố định phần mở rộng theo
+  // tên file gốc khách gửi lên (vd "scene.blend"), phải đọc thật từ
+  // downloadUrl để gợi ý tên tải về đúng định dạng thật.
+  const resultExtension = downloadUrl?.match(/\.(mp4|zip)(?:$|\?)/i)?.[1]?.toLowerCase();
+  const baseName = fileName ? fileName.replace(/\.[^./]+$/, '') : null;
+  const downloadFileName = resultExtension
+    ? `render-${baseName || 'result'}.${resultExtension}`
+    : (fileName ? `render-${fileName}` : true);
   return (
     <StepCard>
       <StepDots total={5} current={4} />
@@ -65,7 +75,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
 
       <a
         href={href || '#'}
-        download={fileName ? `render-${fileName}` : true}
+        download={downloadFileName}
         className="btn btn--primary btn--full"
         style={{ textDecoration: 'none' }}
         aria-disabled={!href}
