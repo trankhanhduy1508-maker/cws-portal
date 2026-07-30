@@ -273,8 +273,24 @@ export async function mockApproveJob(jobId) {
   }
   const resume = resumeAfterReviewByJob.get(jobId);
   resumeAfterReviewByJob.delete(jobId);
-  resume?.();
-  return { id: jobId, status: job.status };
+  if (resume) {
+    resume();
+  } else {
+    // Trang vừa refresh giữa lúc chờ duyệt — closure runSimulation() đã
+    // mất (resumeAfterReviewByJob chỉ sống trong memory, không persist).
+    // Hoàn tất job ngay thay vì treo im lặng chờ 1 resume() không còn tồn tại.
+    jobsStore[jobId] = {
+      ...jobsStore[jobId],
+      status: JOB_STATUS.FINISHED,
+      stageProgress: 1,
+      durationSec: Math.round((Date.now() - job.createdAt) / 1000),
+      isPlaceholder: true,
+    };
+    persist();
+    notify(jobId);
+    notifyComplete(jobId);
+  }
+  return { id: jobId, status: jobsStore[jobId].status };
 }
 
 export function mockListJobs() {
