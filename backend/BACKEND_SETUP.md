@@ -45,13 +45,26 @@ Kiểm tra: `curl http://localhost:3000/health` → `{"status":"ok",...}`
 
 ## 3. Chạy Migration (CHỈ CẦN LÀM 1 LẦN)
 
-Migration 001-006 đã được chạy thật trên Supabase project
+Migration 001-007 đã được chạy thật trên Supabase project
 `ynhxlxetwuiyejcjypsi` (render_orders, payments, sites,
 machine_capability, customer_profiles, storage_objects, review_images,
-downloads, worker_logs, notifications — không đụng bảng jobs/tasks/
-workers cũ của Worker Fleet). Nếu deploy sang Supabase project khác,
-chạy lần lượt các file trong `migrations/` theo đúng thứ tự số (001
-đến 006) qua Supabase SQL Editor.
+downloads, worker_logs, notifications, RLS owner-scoped + trigger
+Supabase Auth — không đụng bảng jobs/tasks/workers cũ của Worker
+Fleet). Nếu deploy sang Supabase project khác, chạy lần lượt các file
+trong `migrations/` theo đúng thứ tự số (001 đến 007) qua Supabase SQL
+Editor, **và** bật Facebook Provider trong Authentication > Providers
+(xem mục 3b).
+
+### 3b. Bật Facebook Login (Supabase Auth, không phải code riêng)
+
+Facebook Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth —
+Backend/Portal KHÔNG tự code OAuth strategy. Chỉ cần:
+1. Supabase Dashboard > Authentication > Providers > Facebook > Enable,
+   điền App ID/App Secret thật (tạo ở developers.facebook.com).
+2. Authentication > URL Configuration > Site URL + Redirect URLs điền
+   đúng domain Vercel thật của Portal.
+3. Xong — `customer_profiles` tự tạo qua trigger `handle_new_auth_user()`,
+   không cần thao tác gì thêm ở Backend.
 
 **Lưu ý bảo mật:** `SUPABASE_SERVICE_ROLE_KEY` và `B2_APPLICATION_KEY`
 từng bị commit nhầm vào `backend/.env.example` (đã xóa khỏi working
@@ -96,15 +109,25 @@ bất kỳ dòng code nào ở Portal.
   ffmpeg như quy trình cũ nếu cần video).
 - Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
   gỡ hoàn toàn. Webhook thật (`POST /payments/webhook`) đã đối chiếu
-  đúng nội dung+số tiền, nhưng CHƯA có ảnh VietQR quét được (cần số
-  tài khoản/BIN MB Bank thật) và CHƯA có webhook thật từ ngân hàng gọi
-  vào — cần business info trước khi vận hành thật.
+  đúng nội dung+số tiền. Ảnh VietQR quét được ĐÃ dựng thật khi có
+  `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` (env) — chỉ còn thiếu
+  webhook thật từ ngân hàng gọi vào (cần thao tác phía ngân hàng/cổng
+  trung gian, chưa nối).
 - Preview/duyệt: render xong dừng ở `review_ready`, tạo 3-5 ảnh
   preview watermark thật — chỉ `POST /jobs/:id/approve` mới mở
   `downloadUrl`. Tải file PHẢI qua `GET /jobs/:id/download` (có ghi
-  log), không dùng thẳng `downloadUrl` raw.
-- Facebook Login: CHƯA implement — cần `FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET`
-  thật. Không có bước này thì Customer Profile cũng chưa gắn được vào job.
+  log), không dùng thẳng `downloadUrl` raw. Khách có thể
+  `POST /jobs/:id/request-changes` để yêu cầu chỉnh sửa thay vì duyệt
+  (chỉ ghi nhận, không tự động re-render/hoàn tiền).
+- Facebook Login: dùng Supabase Auth built-in OAuth (xem mục 3b) — cần
+  bật Provider thật trong Supabase Dashboard, KHÔNG cần code Backend
+  riêng. RLS owner-scoped đã bật (migration 007) nên khách chỉ đọc
+  được dữ liệu của chính mình.
+- Route Admin (`GET /jobs` ẩn danh, `GET /jobs/by-storage-code/:code`,
+  `GET /payments/by-code/:code`, `AdminScreen.jsx` qua `#admin`) yêu
+  cầu header `x-admin-key` khớp biến môi trường `ADMIN_API_KEY` — đặt
+  giá trị thật (không phải giá trị mặc định/rỗng) trước khi deploy
+  production.
 - Wake System (Model 2): luôn trả về thất bại vì
   cws_worker_full.py chưa có cơ chế relay Magic Packet — job sẽ tự
   rơi vào hàng đợi (Queue) đúng thiết kế, không bị treo.
