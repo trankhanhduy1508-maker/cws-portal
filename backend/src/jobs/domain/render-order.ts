@@ -39,7 +39,17 @@ export interface RenderOrder {
   paymentId: string | null;
   paymentStatus: 'unpaid' | 'processing' | 'paid' | 'failed';
 
+  /** Ước tính TRƯỚC render (heuristic theo dung lượng file) — chỉ để
+   * hiển thị lúc chọn Render Profile, KHÔNG phải giá cuối khách trả. */
   estimate: JobEstimate;
+  /** Giá THẬT tính sau khi render xong, theo runtime thật của Worker
+   * (PricingService, tại JobsService.approve()) — null cho tới lúc đó.
+   * Đây mới là số tiền thật sự đưa vào QR MB Bank, KHÔNG phải
+   * `estimate.costVnd`. */
+  finalPriceVnd: number | null;
+  /** Tổng runtime thật (giây) đã dùng để tính finalPriceVnd — lưu lại
+   * để admin/khách đối chiếu, không phải số bắt buộc theo roadmap. */
+  workerRuntimeSeconds: number | null;
 
   driveLink: string | null;
   uploadedFileB2Key: string | null;

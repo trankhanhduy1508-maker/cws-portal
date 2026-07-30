@@ -11,6 +11,7 @@ import { RenderProfileId } from './domain/render-profile';
 import { JobStatus } from './domain/job-status.enum';
 import { RenderOrder } from './domain/render-order';
 import { PaymentStatus } from '../payments/payment.types';
+import { PricingService } from './services/pricing.service';
 
 describe('JobsService.estimate()', () => {
   let service: JobsService;
@@ -32,6 +33,7 @@ describe('JobsService.estimate()', () => {
         { provide: StorageService, useValue: {} },
         { provide: B2StorageService, useValue: {} },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: PricingService, useValue: {} },
       ],
     }).compile();
 
@@ -106,8 +108,10 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     updateStatus: jest.Mock;
     updateResult: jest.Mock;
   };
+  let mockGateway: { getJobMeta: jest.Mock };
   let mockPackagingService: { packageRenderResult: jest.Mock };
   let mockPaymentsService: { createIntent: jest.Mock; getStatus: jest.Mock };
+  let mockPricingService: { computeFinalPriceVnd: jest.Mock };
 
   function baseOrder(overrides: Partial<RenderOrder> = {}): RenderOrder {
     return {
@@ -124,6 +128,8 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       paymentId: null,
       paymentStatus: 'unpaid',
       estimate: { etaSeconds: 900, costVnd: 45000, queueSeconds: 0 },
+      finalPriceVnd: null,
+      workerRuntimeSeconds: null,
       driveLink: 'https://drive.google.com/file/d/abc',
       uploadedFileB2Key: null,
       fileSizeBytes: 1000,
@@ -145,6 +151,9 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateResult: jest.fn(),
     };
+    mockGateway = {
+      getJobMeta: jest.fn().mockResolvedValue({ totalFrames: 48, fps: 24 }),
+    };
     mockPackagingService = {
       packageRenderResult: jest.fn().mockResolvedValue({ downloadUrl: 'https://b2/final.zip', resultSizeBytes: 123 }),
     };
@@ -157,16 +166,20 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       }),
       getStatus: jest.fn(),
     };
+    mockPricingService = {
+      computeFinalPriceVnd: jest.fn().mockResolvedValue({ finalPriceVnd: 72000, workerRuntimeSeconds: 2100 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobsService,
         { provide: RENDER_ORDERS_REPOSITORY, useValue: mockRepository },
-        { provide: WorkerFleetGateway, useValue: {} },
+        { provide: WorkerFleetGateway, useValue: mockGateway },
         { provide: PACKAGING_SERVICE, useValue: mockPackagingService },
         { provide: StorageService, useValue: {} },
         { provide: B2StorageService, useValue: {} },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: PricingService, useValue: mockPricingService },
       ],
     }).compile();
 
@@ -177,23 +190,26 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     mockRepository.findById.mockResolvedValue(baseOrder({ status: JobStatus.RENDERING }));
 
     await expect(service.approve('job-1')).rejects.toThrow(BadRequestException);
+    expect(mockPricingService.computeFinalPriceVnd).not.toHaveBeenCalled();
     expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
   });
 
-  it('approve() sinh payment gắn đúng storageCode và chuyển job sang awaiting_payment', async () => {
+  it('approve() sinh payment với giá THẬT (PricingService), KHÔNG dùng estimate.costVnd', async () => {
     const order = baseOrder();
     mockRepository.findById.mockResolvedValue(order);
     mockRepository.attachPayment.mockResolvedValue(baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-1' }));
 
     const result = await service.approve('job-1');
 
+    expect(mockPricingService.computeFinalPriceVnd).toHaveBeenCalledWith('internal-1');
     expect(mockPaymentsService.createIntent).toHaveBeenCalledWith(
-      { amountVnd: order.estimate.costVnd, method: 'qr_bank' },
+      { amountVnd: 72000, method: 'qr_bank' }, // giá THẬT (72000), khác estimate.costVnd (45000)
       { jobId: 'job-1', storageCode: 'CWS-AAAAAAAA' },
     );
-    expect(mockRepository.attachPayment).toHaveBeenCalledWith('job-1', 'pay-1');
+    expect(mockRepository.attachPayment).toHaveBeenCalledWith('job-1', 'pay-1', 72000, 2100);
     expect(result.order.status).toBe(JobStatus.AWAITING_PAYMENT);
     expect(result.payment.paymentId).toBe('pay-1');
+    expect(result.payment.amountVnd).toBe(72000);
     expect(result.payment.transferContent).toBe('CWS CWS-AAAAAAAA AB12CD34');
   });
 
@@ -218,11 +234,12 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     expect(mockPackagingService.packageRenderResult).not.toHaveBeenCalled();
   });
 
-  it('finalizeDelivery() đóng gói + mở tải khi payment đã PAID', async () => {
+  it('finalizeDelivery() đóng gói + mở tải khi payment đã PAID, dùng fps thật từ Worker', async () => {
     mockRepository.findById.mockResolvedValue(
       baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-1' }),
     );
     mockPaymentsService.getStatus.mockResolvedValue(PaymentStatus.PAID);
+    mockGateway.getJobMeta.mockResolvedValue({ totalFrames: 48, fps: 30 });
     mockRepository.updateResult.mockResolvedValue(
       baseOrder({ status: JobStatus.FINISHED, downloadUrl: 'https://b2/final.zip' }),
     );
@@ -230,7 +247,8 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     const result = await service.finalizeDelivery('job-1');
 
     expect(mockRepository.markPaymentPaid).toHaveBeenCalledWith('job-1');
-    expect(mockPackagingService.packageRenderResult).toHaveBeenCalledWith('internal-1', 'job-1');
+    expect(mockGateway.getJobMeta).toHaveBeenCalledWith('internal-1');
+    expect(mockPackagingService.packageRenderResult).toHaveBeenCalledWith('internal-1', 'job-1', 30);
     expect(result?.status).toBe(JobStatus.FINISHED);
     expect(result?.downloadUrl).toBe('https://b2/final.zip');
   });

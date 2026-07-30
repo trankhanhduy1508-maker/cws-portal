@@ -45,15 +45,16 @@ Kiểm tra: `curl http://localhost:3000/health` → `{"status":"ok",...}`
 
 ## 3. Chạy Migration (CHỈ CẦN LÀM 1 LẦN)
 
-Migration 001-010 đã được chạy thật trên Supabase project
+Migration 001-011 đã được chạy thật trên Supabase project
 `ynhxlxetwuiyejcjypsi` (render_orders, payments, sites,
 machine_capability, customer_profiles, storage_objects, review_images,
 downloads, worker_logs, notifications, RLS owner-scoped + trigger
 Supabase Auth, payments.job_id/storage_code/bank_name/account_number/
-qr_image_url, render_orders.software/software_version/notes — không
-đụng bảng jobs/tasks/workers cũ của Worker Fleet). Nếu deploy sang
-Supabase project khác, chạy lần lượt các file trong `migrations/` theo
-đúng thứ tự số (001 đến 010) qua Supabase SQL
+qr_image_url, render_orders.software/software_version/notes/
+final_price_vnd/worker_runtime_seconds — không đụng bảng
+jobs/tasks/workers cũ của Worker Fleet). Nếu deploy sang Supabase
+project khác, chạy lần lượt các file trong `migrations/` theo đúng thứ
+tự số (001 đến 011) qua Supabase SQL
 Editor, **và** bật Facebook Provider trong Authentication > Providers
 (xem mục 3b).
 
@@ -85,6 +86,16 @@ làm trước khi deploy production.
    Environment Variables của Render
 7. Deploy — Render tự cấp domain dạng https://cws-backend.onrender.com
 
+### 4b. Cài ffmpeg (tùy chọn — để ghép video MP4 cho file cuối)
+
+`PackagingService` tự dùng ffmpeg CLI (spawn process, không phải npm
+package) để ghép các frame PNG thành 1 file `.mp4` khi có sẵn — nếu
+KHÔNG cài, Backend tự động rơi về đóng gói `.zip` như trước, không lỗi
+gì, không chặn việc bàn giao. Nếu muốn có video MP4:
+- Render.com: thêm vào Build Command: `apt-get update && apt-get install -y ffmpeg && npm install && npm run build` (Render dùng Docker gốc Debian, có `apt-get`; kiểm tra lại tài liệu Render nếu instance type khác).
+- VPS tự quản (Ubuntu/Debian): `sudo apt-get install -y ffmpeg`.
+- Kiểm tra đã cài đúng: `ffmpeg -version`.
+
 ## 5. Kết nối Portal với Backend
 
 Sau khi Backend chạy thành công, vào Vercel Project Settings của
@@ -106,15 +117,17 @@ bất kỳ dòng code nào ở Portal.
   vì "Google Drive" trên Portal, Backend sẽ báo lỗi rõ ràng thay vì tạo
   job hỏng âm thầm. Hiện tại hướng khách dùng nhánh Google Drive cho
   tới khi mở rộng Worker (thay đổi Foundation, cần quyết định riêng).
-- Đóng gói kết quả: hiện tại chỉ nén các frame PNG thành 1 file
-  .zip — CHƯA tự động dựng thành video MP4 (vẫn cần Dy làm tay bằng
-  ffmpeg như quy trình cũ nếu cần video).
+- Đóng gói kết quả: tự động ghép frame thành video `.mp4` qua ffmpeg
+  CLI nếu môi trường chạy Backend có cài ffmpeg (xem mục 4b) — rơi về
+  `.zip` chứa frame PNG như trước nếu không có ffmpeg/ghép thất bại,
+  không chặn việc bàn giao.
 - Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
   gỡ hoàn toàn. **Render là MIỄN PHÍ** — thanh toán chỉ diễn ra SAU khi
-  khách duyệt bản preview (`POST /jobs/:id/approve` sinh QR ngay trong
-  response, job chuyển `awaiting_payment`), KHÔNG chặn việc tạo
-  job/render. Webhook thật (`POST /payments/webhook`) đối chiếu
-  storage_code + payment_code + số tiền. Ảnh VietQR quét được ĐÃ dựng
+  khách duyệt bản preview (`POST /jobs/:id/approve` tính GIÁ THẬT theo
+  runtime Worker thật rồi mới sinh QR trong response, job chuyển
+  `awaiting_payment`), KHÔNG chặn việc tạo job/render. Webhook thật
+  (`POST /payments/webhook`) đối chiếu storage_code + payment_code + số
+  tiền. Ảnh VietQR quét được ĐÃ dựng
   thật khi có `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` (env) —
   chỉ còn thiếu webhook thật từ ngân hàng gọi vào (cần thao tác phía
   ngân hàng/cổng trung gian, chưa nối).

@@ -10,8 +10,11 @@
 export const PACKAGING_SERVICE = Symbol('PACKAGING_SERVICE');
 
 export interface IPackagingService {
+  /** `fps` (từ WorkerFleetGateway.getJobMeta(), Worker tự ghi lại) dùng
+   * để ghép video đúng tốc độ nếu có ffmpeg — không đoán fps. */
   packageRenderResult(
     internalJobId: string,
     renderOrderId: string,
+    fps: number,
   ): Promise<{ downloadUrl: string; resultSizeBytes: number }>;
 }

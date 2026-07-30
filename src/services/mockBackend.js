@@ -287,7 +287,12 @@ export async function mockApproveJob(jobId) {
 
   const paymentId = `pay-${Date.now()}`;
   const paymentCode = Math.random().toString(36).slice(2, 10).toUpperCase();
-  const amountVnd = job.estimate.costVnd;
+  // Giả lập giá THẬT theo runtime (giống công thức PricingService thật:
+  // (runtime + 10 phút khởi động) * 6.000đ/giờ * 2) — KHÔNG dùng lại
+  // job.estimate.costVnd (chỉ là ước tính trước render), để hành vi mock
+  // khớp đúng Backend thật (giá cuối luôn khác giá ước tính ban đầu).
+  const workerRuntimeSeconds = Math.round((Date.now() - job.createdAt) / 1000) + 600;
+  const amountVnd = Math.round((workerRuntimeSeconds / 3600) * 6000 * 2);
   const transferContent = `CWS ${job.storageCode} ${paymentCode}`;
   const payment = {
     paymentId,
@@ -303,6 +308,8 @@ export async function mockApproveJob(jobId) {
     ...jobsStore[jobId],
     paymentId,
     paymentStatus: PAYMENT_STATUS.PROCESSING,
+    finalPriceVnd: amountVnd,
+    workerRuntimeSeconds,
   };
   persist();
 

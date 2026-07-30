@@ -8,6 +8,17 @@
 Audit lần cuối: 2026-07-30. Không tạo tính năng ngoài roadmap, không mở
 rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
 
+**Cập nhật 2026-07-30 (sau khi merge vào `main`):** theo yêu cầu trực
+tiếp của người dùng (KHÔNG phải sửa mismatch — đây là 2 tính năng bổ
+sung nằm NGOÀI phạm vi bắt buộc của 3 tài liệu gốc, người dùng chủ động
+yêu cầu thêm), đã bổ sung: (1) tính giá thanh toán THẬT theo runtime
+Worker thật thay vì ước tính trước render, (2) tự động ghép file cuối
+thành video MP4 qua FFmpeg (rơi về .zip nếu không có ffmpeg). Cả 2 dựa
+trên ý tưởng đã có sẵn ở nhánh `claude/cws-zero-manual-operation-wtzbrt`
+(phiên Claude trước, chưa merge) nhưng viết lại để KHÔNG mang theo lỗ
+hổng bảo mật của nhánh đó (frontend tự xác nhận thanh toán) — xem
+`backend/CHANGELOG.md` mục `[1.4.0]` để biết chi tiết đầy đủ.
+
 ---
 
 ## DONE

@@ -157,6 +157,53 @@ export class WorkerFleetGateway {
     return (data as { total_frames: number | null } | null)?.total_frames ?? null;
   }
 
+  /** Metadata do chính Worker ghi lại (Scene Analyzer) — dùng để quyết
+   * định framerate thật khi ghép video kết quả (PackagingService/
+   * VideoAssemblyService) — KHÔNG đoán fps, đọc từ Worker, mặc định 24
+   * nếu Worker chưa ghi (giữ hành vi cũ trước khi có cột này). */
+  async getJobMeta(internalJobId: string): Promise<{ totalFrames: number | null; fps: number }> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('jobs')
+      .select('total_frames, fps')
+      .eq('id', internalJobId)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`getJobMeta(${internalJobId}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được metadata job: ${error.message}`);
+    }
+    const row = data as { total_frames: number | null; fps: number | null } | null;
+    return { totalFrames: row?.total_frames ?? null, fps: row?.fps ?? 24 };
+  }
+
+  /** Chi tiết claim/heartbeat từng task theo Worker — dùng để tính giá
+   * THẬT theo runtime Worker thật (PricingService), KHÔNG dùng để điều
+   * khiển logic dispatch (đó vẫn là việc của claim_task() nội bộ
+   * Worker, không đổi ở đây). */
+  async getTaskExecutionDetails(
+    internalJobId: string,
+  ): Promise<{ workerId: string; claimedAt: string; lastHeartbeat: string | null }[]> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('tasks')
+      .select('worker_id, claimed_at, last_heartbeat')
+      .eq('job_id', internalJobId)
+      .not('worker_id', 'is', null)
+      .not('claimed_at', 'is', null);
+
+    if (error) {
+      this.logger.error(`getTaskExecutionDetails(${internalJobId}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được chi tiết thực thi task: ${error.message}`);
+    }
+
+    return (data ?? []).map((r) => ({
+      workerId: (r as { worker_id: string }).worker_id,
+      claimedAt: (r as { claimed_at: string }).claimed_at,
+      lastHeartbeat: (r as { last_heartbeat: string | null }).last_heartbeat,
+    }));
+  }
+
   /** Chi tiết từng task của 1 internal job — Scheduler dùng để biết
    * probe task (frame 1-1) đã xong chưa, và max frame_end hiện có
    * (tránh tạo trùng task nếu tick chạy nhiều lần). */

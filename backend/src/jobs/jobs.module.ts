@@ -9,6 +9,7 @@ import { JobsController } from './jobs.controller';
 import { FleetController } from './fleet.controller';
 import { JobsService } from './jobs.service';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PricingService } from './services/pricing.service';
 import { PACKAGING_SERVICE } from './services/packaging.interface';
 import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repository.interface';
 import { SupabaseRenderOrdersRepository } from './repositories/render-orders.repository.supabase';
@@ -19,6 +20,7 @@ import { SupabaseRenderOrdersRepository } from './repositories/render-orders.rep
   providers: [
     JobsService,
     WorkerFleetGateway,
+    PricingService,
     { provide: PACKAGING_SERVICE, useExisting: PackagingService },
     {
       provide: RENDER_ORDERS_REPOSITORY,

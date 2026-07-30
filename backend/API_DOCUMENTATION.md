@@ -98,23 +98,31 @@ khi job ở `review_ready` trở về sau. Response: `{ "images": [{ "url", "dis
 
 ### POST /jobs/:id/approve
 Khách duyệt bản preview — CHỈ hợp lệ khi `status === review_ready`.
-Sinh 1 payment mới (QR MB Bank) NGAY trong response này, chuyển job
-sang `awaiting_payment`. KHÔNG đóng gói/mở tải ngay — chỉ khi webhook
-xác nhận PAID (SchedulerService phát hiện qua tick, gọi
-`JobsService.finalizeDelivery()`) job mới chuyển tiếp `packaging` →
-`finished` kèm `downloadUrl`.
+Tính GIÁ THẬT (`PricingService.computeFinalPriceVnd()`) dựa trên
+runtime thật của từng Worker đã tham gia job (đọc `tasks.claimed_at`/
+`tasks.last_heartbeat`, KHÔNG dùng `estimate.costVnd` — số đó chỉ là
+ước tính heuristic hiển thị trước render). Công thức: mỗi Worker
+`(runtime + 10 phút khởi động)`, cộng dồn mọi Worker, đổi ra giờ,
+x 6.000đ/giờ, x 2. Sinh 1 payment mới (QR MB Bank) với giá thật này
+NGAY trong response, chuyển job sang `awaiting_payment`. KHÔNG đóng
+gói/mở tải ngay — chỉ khi webhook xác nhận PAID (SchedulerService phát
+hiện qua tick, gọi `JobsService.finalizeDelivery()`) job mới chuyển
+tiếp `packaging` → `finished` kèm `downloadUrl`.
 
-Response: toàn bộ field của job (như `GET /jobs/:id`) + field `payment`:
+Response: toàn bộ field của job (như `GET /jobs/:id`, bao gồm
+`finalPriceVnd`/`workerRuntimeSeconds` mới) + field `payment`:
 ```json
 {
   "...": "...",
   "status": "awaiting_payment",
+  "finalPriceVnd": 72000,
+  "workerRuntimeSeconds": 2100,
   "payment": {
     "paymentId": "uuid",
     "paymentCode": "AB12CD34",
     "transferContent": "CWS CWS-A1B2C3D4 AB12CD34",
     "qrImageUrl": "https://img.vietqr.io/...",
-    "amountVnd": 45000
+    "amountVnd": 72000
   }
 }
 ```
@@ -133,6 +141,11 @@ Ghi log vào bảng `downloads` (job_id + IP) rồi redirect (302) sang URL
 B2 thật. Portal PHẢI dùng route này để tải, không dùng thẳng `downloadUrl`
 raw (xem `RenderService.getDownloadUrl()`). Trả lỗi 400 nếu job chưa
 `finished`.
+
+File cuối là `.mp4` (ghép qua ffmpeg CLI, `VideoAssemblyService`) nếu
+môi trường chạy Backend có cài ffmpeg — rơi về `.zip` chứa các frame
+PNG như cũ nếu không có ffmpeg hoặc ghép video thất bại (KHÔNG chặn cả
+việc bàn giao chỉ vì thiếu ffmpeg). Xem `BACKEND_SETUP.md` để cài ffmpeg.
 
 ### GET /jobs/:id/logs
 Log Worker (bảng `worker_logs`) — ghi khi 1 task render thất bại vĩnh

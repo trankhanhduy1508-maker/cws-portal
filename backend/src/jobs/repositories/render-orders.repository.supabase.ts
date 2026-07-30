@@ -26,6 +26,8 @@ interface RenderOrderRow {
   estimate_eta_seconds: number;
   estimate_cost_vnd: number;
   estimate_queue_seconds: number;
+  final_price_vnd: number | null;
+  worker_runtime_seconds: number | null;
   drive_link: string | null;
   uploaded_file_b2_key: string | null;
   file_size_bytes: number | null;
@@ -56,6 +58,8 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
       costVnd: row.estimate_cost_vnd,
       queueSeconds: row.estimate_queue_seconds,
     },
+    finalPriceVnd: row.final_price_vnd,
+    workerRuntimeSeconds: row.worker_runtime_seconds,
     driveLink: row.drive_link,
     uploadedFileB2Key: row.uploaded_file_b2_key,
     fileSizeBytes: row.file_size_bytes,
@@ -85,6 +89,8 @@ function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at
     estimate_eta_seconds: order.estimate.etaSeconds,
     estimate_cost_vnd: order.estimate.costVnd,
     estimate_queue_seconds: order.estimate.queueSeconds,
+    final_price_vnd: order.finalPriceVnd,
+    worker_runtime_seconds: order.workerRuntimeSeconds,
     drive_link: order.driveLink,
     uploaded_file_b2_key: order.uploadedFileB2Key,
     file_size_bytes: order.fileSizeBytes,
@@ -226,7 +232,12 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
     }
   }
 
-  async attachPayment(id: string, paymentId: string): Promise<RenderOrder | null> {
+  async attachPayment(
+    id: string,
+    paymentId: string,
+    finalPriceVnd: number,
+    workerRuntimeSeconds: number,
+  ): Promise<RenderOrder | null> {
     const { data, error } = await this.supabaseService
       .getClient()
       .from(TABLE)
@@ -235,6 +246,8 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
         payment_status: 'processing',
         status: JobStatus.AWAITING_PAYMENT,
         stage_progress: 0,
+        final_price_vnd: finalPriceVnd,
+        worker_runtime_seconds: workerRuntimeSeconds,
       })
       .eq('id', id)
       .select()

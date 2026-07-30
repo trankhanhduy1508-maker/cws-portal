@@ -14,6 +14,7 @@ import { StorageService } from '../storage/storage.service';
 import { B2StorageService } from '../files/b2-storage.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentMethod, PaymentStatus } from '../payments/payment.types';
+import { PricingService } from './services/pricing.service';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -47,6 +48,7 @@ export class JobsService {
     private readonly storageService: StorageService,
     private readonly b2StorageService: B2StorageService,
     private readonly paymentsService: PaymentsService,
+    private readonly pricingService: PricingService,
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
@@ -103,6 +105,8 @@ export class JobsService {
       paymentId: null,
       paymentStatus: 'unpaid',
       estimate,
+      finalPriceVnd: null,
+      workerRuntimeSeconds: null,
       driveLink: dto.driveLink ?? null,
       uploadedFileB2Key: dto.fileRef ?? null,
       fileSizeBytes: dto.fileSizeBytes ?? null,
@@ -169,10 +173,13 @@ export class JobsService {
 
   /**
    * Khách duyệt bản preview (CWS_MVP_WORKFLOW_FINAL.md, mục Review:
-   * "Đồng ý → Sinh QR thanh toán"). KHÔNG đóng gói/mở tải ngay — chỉ
-   * SAU KHI webhook xác nhận PAID (xem finalizeDelivery()) mới mở tải.
-   * Gọi trước đó (khi order chưa ở REVIEW_READY) là lỗi rõ ràng, không
-   * âm thầm bỏ qua.
+   * "Đồng ý → Sinh QR thanh toán"). Giá đưa vào QR là giá THẬT tính từ
+   * runtime Worker thật (PricingService) — KHÔNG dùng
+   * `order.estimate.costVnd` (chỉ là ước tính trước render, hiển thị
+   * lúc chọn Render Profile). KHÔNG đóng gói/mở tải ngay — chỉ SAU KHI
+   * webhook xác nhận PAID (xem finalizeDelivery()) mới mở tải. Gọi
+   * trước đó (khi order chưa ở REVIEW_READY) là lỗi rõ ràng, không âm
+   * thầm bỏ qua.
    */
   async approve(id: string): Promise<{
     order: RenderOrder;
@@ -190,17 +197,26 @@ export class JobsService {
         `Job ${id} chưa sẵn sàng để duyệt (trạng thái hiện tại: ${order.status})`,
       );
     }
+    if (!order.internalJobId) {
+      throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể tính giá thật`);
+    }
 
-    const amountVnd = order.estimate.costVnd;
+    const { finalPriceVnd, workerRuntimeSeconds } = await this.pricingService.computeFinalPriceVnd(
+      order.internalJobId,
+    );
+
     const { paymentId, paymentCode, transferContent, qrImageUrl } = await this.paymentsService.createIntent(
-      { amountVnd, method: PaymentMethod.QR_BANK },
+      { amountVnd: finalPriceVnd, method: PaymentMethod.QR_BANK },
       { jobId: order.id, storageCode: order.storageCode },
     );
 
-    const updated = await this.ordersRepository.attachPayment(id, paymentId);
+    const updated = await this.ordersRepository.attachPayment(id, paymentId, finalPriceVnd, workerRuntimeSeconds);
     if (!updated) throw new NotFoundException(`Không tìm thấy job ${id}`);
 
-    return { order: updated, payment: { paymentId, paymentCode, transferContent, qrImageUrl, amountVnd } };
+    return {
+      order: updated,
+      payment: { paymentId, paymentCode, transferContent, qrImageUrl, amountVnd: finalPriceVnd },
+    };
   }
 
   /**
@@ -225,9 +241,11 @@ export class JobsService {
     await this.ordersRepository.markPaymentPaid(id);
     await this.ordersRepository.updateStatus(id, JobStatus.PACKAGING, 0);
 
+    const { fps } = await this.workerFleetGateway.getJobMeta(order.internalJobId);
     const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
       order.internalJobId,
       order.id,
+      fps,
     );
 
     const durationSec = Math.round((Date.now() - order.createdAt) / 1000);

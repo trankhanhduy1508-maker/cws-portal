@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.4.0] - Giá thật theo runtime Worker + xuất video MP4 (2026-07-30)
+
+Theo yêu cầu trực tiếp của người dùng (KHÔNG bắt buộc theo 3 tài liệu
+roadmap — đây là quyết định nghiệp vụ, không phải sửa mismatch). Ý
+tưởng tham khảo từ nhánh `claude/cws-zero-manual-operation-wtzbrt`
+(phiên Claude trước, chưa merge) — đã LƯỢC BỎ phần vi phạm bảo mật của
+nhánh đó (`payAndUnlock()` cho phép frontend tự kích hoạt xác nhận
+thanh toán) khi mang ý tưởng này vào, giữ nguyên tắc chỉ webhook mới
+set PAID.
+
+### Giá thật theo runtime Worker
+- `PricingService` mới (`backend/src/jobs/services/pricing.service.ts`):
+  tính giá cuối cùng dựa trên runtime THẬT của từng Worker đã tham gia
+  job (đọc `tasks.claimed_at`/`tasks.last_heartbeat` qua
+  `WorkerFleetGateway.getTaskExecutionDetails()` mới) — KHÔNG dùng
+  `estimate.costVnd` (ước tính heuristic theo dung lượng file, chỉ để
+  hiển thị lúc chọn Render Profile). Công thức: mỗi Worker
+  `(runtime + 10 phút khởi động)`, cộng dồn mọi Worker, đổi giờ,
+  x 6.000đ/giờ, x 2.
+- `JobsService.approve()` giờ gọi `PricingService` để tính
+  `finalPriceVnd`/`workerRuntimeSeconds` NGAY trước khi sinh QR — số
+  tiền trong QR luôn là giá thật, không phải ước tính.
+- `render_orders` bổ sung cột `final_price_vnd`, `worker_runtime_seconds`
+  (migration 011), expose qua `GET /jobs/:id` và response của
+  `POST /jobs/:id/approve`.
+
+### Tự động ghép video MP4 cho file cuối
+- `VideoAssemblyService` mới (`backend/src/scheduler/video-assembly.service.ts`)
+  + `ffmpeg.util.ts`: ghép các frame PNG đã render thành 1 file
+  `.mp4` qua ffmpeg CLI (spawn process, không phải npm package) khi có
+  sẵn trên môi trường chạy Backend. `PackagingService` ưu tiên thử
+  ghép video, rơi về `.zip` frame PNG như cũ nếu ffmpeg không có/thất
+  bại — KHÔNG chặn cả việc bàn giao chỉ vì thiếu ffmpeg, không giả vờ
+  đã dựng được video khi không dựng được.
+- `WorkerFleetGateway.getJobMeta()` mới: đọc `fps` thật Worker tự ghi
+  lại (Scene Analyzer) để ghép video đúng tốc độ, không đoán.
+- KHÔNG đụng tới cơ chế preview watermark hiện có (3-5 ảnh tĩnh qua
+  `PreviewService`/sharp) — roadmap "Không thuộc MVP: Video preview đầy
+  đủ" chỉ áp dụng cho bước xem trước, không áp dụng cho định dạng file
+  cuối sau khi đã thanh toán.
+
 ## [1.3.0] - Sửa mismatch thứ tự thanh toán (2026-07-30)
 
 ### Sửa lỗi nghiêm trọng (mismatch với roadmap)

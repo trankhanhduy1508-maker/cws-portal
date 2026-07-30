@@ -21,6 +21,11 @@ export interface RenderOrderPublicJson {
   paymentId: string | null;
   paymentStatus: string;
   estimate: { etaSeconds: number; costVnd: number; queueSeconds: number };
+  /** Giá THẬT tính sau khi render xong theo runtime Worker thật — null
+   * cho tới khi khách duyệt preview (JobsService.approve()). Đây mới
+   * là số tiền thật sự trong QR, KHÔNG phải `estimate.costVnd`. */
+  finalPriceVnd: number | null;
+  workerRuntimeSeconds: number | null;
   createdAt: number;
   downloadUrl: string | null;
   durationSec: number | null;
@@ -43,6 +48,8 @@ export function toPublicJson(order: RenderOrder): RenderOrderPublicJson {
     paymentId: order.paymentId,
     paymentStatus: order.paymentStatus,
     estimate: order.estimate,
+    finalPriceVnd: order.finalPriceVnd,
+    workerRuntimeSeconds: order.workerRuntimeSeconds,
     createdAt: order.createdAt,
     downloadUrl: order.downloadUrl,
     durationSec: order.durationSec,
