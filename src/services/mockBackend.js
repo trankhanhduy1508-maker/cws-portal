@@ -97,7 +97,7 @@ export async function mockCreatePaymentIntent({ amountVnd, method }) {
   return { paymentId: `pay-${Date.now()}`, amountVnd, method, status: PAYMENT_STATUS.PROCESSING };
 }
 
-export async function mockConfirmPayment({ paymentId, method }) {
+export async function mockConfirmPayment({ paymentId }) {
   // QR ngân hàng (MB Bank, duy nhất trong MVP): giả lập độ trễ như đang
   // chờ khách quét mã xong. Đây là DEMO — không có giao dịch tiền thật
   // nào xảy ra.
