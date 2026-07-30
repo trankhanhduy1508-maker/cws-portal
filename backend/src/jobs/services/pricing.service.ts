@@ -13,8 +13,9 @@ const WORKER_STARTUP_SECONDS = 10 * 60;
  * chỉ tính tại `JobsService.approve()`, sau khi biết chắc job đã render
  * xong với runtime thật).
  *
- * Công thức: mỗi Worker (runtime + 10 phút khởi động) → cộng dồn mọi
- * Worker → đổi ra giờ → x 6.000đ/giờ → x 2.
+ * Công thức: cộng dồn runtime của TỪNG task (claimedAt → lastHeartbeat),
+ * cộng thêm 10 phút khởi động cho MỖI Worker khác nhau (không phải mỗi
+ * task) → đổi ra giờ → x 6.000đ/giờ → x 2.
  */
 @Injectable()
 export class PricingService {
@@ -25,9 +26,35 @@ export class PricingService {
   async computeFinalPriceVnd(
     internalJobId: string,
   ): Promise<{ finalPriceVnd: number; workerRuntimeSeconds: number }> {
-    const executions = await this.workerFleetGateway.getTaskExecutionDetails(internalJobId);
+    const executions =
+      await this.workerFleetGateway.getTaskExecutionDetails(internalJobId);
 
-    const byWorker = new Map<string, { start: number; end: number }>();
+    if (executions.length === 0) {
+      this.logger.warn(
+        `computeFinalPriceVnd(${internalJobId}): không có dữ liệu claimed_at/worker_id — ` +
+          'tính giá tối thiểu 1 Worker x thời gian khởi động để không chặn approve().',
+      );
+      const seconds = WORKER_STARTUP_SECONDS;
+      return {
+        finalPriceVnd: this.priceFromSeconds(seconds),
+        workerRuntimeSeconds: seconds,
+      };
+    }
+
+    // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây gộp
+    // claimedAt/lastHeartbeat của MỌI task cùng 1 workerId thành 1
+    // khoảng [min(claimedAt), max(lastHeartbeat)] DUY NHẤT cho cả job —
+    // nếu 1 Worker nhận 2 task KHÔNG LIÊN TỤC của CÙNG job (hoàn toàn có
+    // thể xảy ra, Worker poll job gần như ngẫu nhiên, có thể quay lại
+    // job cũ sau khi đã làm việc khác), khoảng thời gian RẢNH giữa 2 lần
+    // đó bị tính nhầm thành thời gian LÀM VIỆC THẬT, khiến khách hàng bị
+    // tính tiền quá cao. Giờ cộng dồn runtime của TỪNG task riêng lẻ,
+    // CHỈ cộng phí khởi động 1 lần cho MỖI Worker khác nhau (không phải
+    // mỗi task) — phản ánh đúng "Worker khởi động 1 lần, có thể render
+    // nhiều task rải rác trong job".
+    const workerIdsSeen = new Set<string>();
+    let totalTaskRuntimeSeconds = 0;
+
     for (const exec of executions) {
       const claimedAtMs = new Date(exec.claimedAt).getTime();
       // last_heartbeat là mốc gần đúng nhất Worker còn chạy task này mà
@@ -35,31 +62,16 @@ export class PricingService {
       // cột completed_at riêng, không được sửa schema đó. Task xong quá
       // nhanh chưa kịp có heartbeat nào thì coi runtime = 0 cho task đó
       // thay vì bịa số.
-      const endMs = exec.lastHeartbeat ? new Date(exec.lastHeartbeat).getTime() : claimedAtMs;
+      const endMs = exec.lastHeartbeat
+        ? new Date(exec.lastHeartbeat).getTime()
+        : claimedAtMs;
 
-      const existing = byWorker.get(exec.workerId);
-      if (!existing) {
-        byWorker.set(exec.workerId, { start: claimedAtMs, end: endMs });
-      } else {
-        existing.start = Math.min(existing.start, claimedAtMs);
-        existing.end = Math.max(existing.end, endMs);
-      }
+      totalTaskRuntimeSeconds += Math.max(0, (endMs - claimedAtMs) / 1000);
+      workerIdsSeen.add(exec.workerId);
     }
 
-    if (byWorker.size === 0) {
-      this.logger.warn(
-        `computeFinalPriceVnd(${internalJobId}): không có dữ liệu claimed_at/worker_id — ` +
-          'tính giá tối thiểu 1 Worker x thời gian khởi động để không chặn approve().',
-      );
-      const seconds = WORKER_STARTUP_SECONDS;
-      return { finalPriceVnd: this.priceFromSeconds(seconds), workerRuntimeSeconds: seconds };
-    }
-
-    let totalSeconds = 0;
-    for (const { start, end } of byWorker.values()) {
-      const runtimeSeconds = Math.max(0, (end - start) / 1000);
-      totalSeconds += runtimeSeconds + WORKER_STARTUP_SECONDS;
-    }
+    const totalSeconds =
+      totalTaskRuntimeSeconds + workerIdsSeen.size * WORKER_STARTUP_SECONDS;
 
     return {
       finalPriceVnd: this.priceFromSeconds(totalSeconds),
@@ -69,6 +81,8 @@ export class PricingService {
 
   private priceFromSeconds(totalSeconds: number): number {
     const totalHours = totalSeconds / 3600;
-    return Math.round(totalHours * VND_PER_WORKER_HOUR * FINAL_PRICE_MULTIPLIER);
+    return Math.round(
+      totalHours * VND_PER_WORKER_HOUR * FINAL_PRICE_MULTIPLIER,
+    );
   }
 }
