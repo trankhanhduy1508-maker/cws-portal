@@ -1,0 +1,177 @@
+# Worker Fleet Audit — CWS_WORKER_ROADMAP.md
+
+Tài liệu theo dõi tiến độ thực hiện `CWS_WORKER_ROADMAP.md`, tương tự cách
+`docs/MVP_GAP_REPORT.md` theo dõi domain MVP. Cập nhật lần cuối: 2026-07-31.
+
+---
+
+## Phase 0 — Xác nhận MVP hoàn tất
+
+Đã xác nhận đủ điều kiện mở khóa Worker (theo yêu cầu trực tiếp của người
+dùng, xem `docs/MVP_GAP_REPORT.md` để biết chi tiết đầy đủ):
+- Build/test backend PASS (37/37 test tại thời điểm audit).
+- Build/lint frontend PASS.
+- Không còn hạng mục MVP P0/P1 dang dở về code.
+- Điểm duy nhất chưa đạt 100%: chưa test UI bằng mắt trên trình duyệt thật
+  (không có công cụ browser trong môi trường làm việc) — người dùng xác
+  nhận bỏ qua điểm này để mở khóa Worker.
+
+---
+
+## Phase 1 — Audit hệ sinh thái Worker (HOÀN THÀNH)
+
+### Vai trò 3 file
+
+- **`cws_worker_full.py`** — TOÀN BỘ logic Worker thật (không phải
+  launcher). Tự cài Blender/thư viện Python, tải file .blend, phân
+  tích/tối ưu scene, render từng frame, validate ảnh, upload B2, gọi RPC
+  Supabase (claim/heartbeat/complete/fail).
+- **`cws_worker.bat`** — launcher + bootstrap Python portable + supervisor
+  tự restart (vòng lặp `:check_update` → `:launch_python` → cooldown 15s
+  → lặp lại) + auto-update (so sánh `worker_config.latest_version`). CHỦ
+  Ý giữ đơn giản (dựa theo triết lý `condor_master` của HTCondor) — KHÔNG
+  chứa logic render nào. KHÔNG có cơ chế chống double-spawn.
+- **`cws_auto_ghep_video.bat`** — công cụ ghép video độc lập, chạy tay,
+  KHÔNG được `cws_worker_full.py` gọi. Dùng RPC `get_job_render_summary`
+  (CSV) + `aws s3 sync` + đếm đủ frame + `ffmpeg -framerate ... -crf 18`.
+
+### Entry point / Supervisor
+
+`cws_worker.bat` là entry point production (double-click) và supervisor
+duy nhất (tự restart Python nếu crash). KHÔNG cần thêm supervisor mới.
+
+### Cơ chế fencing/staleness đã có sẵn (phát hiện qua đọc trực tiếp RPC/cron
+đang chạy thật trên Supabase — KHÔNG có trong repo trước audit này)
+
+- `mark_stale_workers_offline()` — pg_cron mỗi 2 phút, set
+  `workers.status='offline'` nếu `last_seen_at` im lặng > 180s.
+- `requeue_stale_tasks()` — pg_cron mỗi 2 phút, requeue task + tăng
+  `tasks.generation` (fencing token thô sơ) nếu `last_heartbeat` > 240s.
+- `update_task_stage()` RPC tồn tại (ghi `tasks.current_stage`/
+  `stage_entered_at`, cột cũng đã có sẵn) nhưng **`cws_worker_full.py`
+  chưa từng gọi RPC này** — tích hợp dang dở từ trước.
+
+### Quyết định Phase 3: mở rộng trên nền có sẵn
+
+Theo xác nhận trực tiếp của người dùng: KHÔNG thay thế 2 cron job trên
+bằng cơ chế lease/fencing mới hoàn toàn — chỉ THÊM cột/bảng mới bên cạnh.
+
+---
+
+## Phase 2 — Tích hợp ghép video (ĐÃ COMMIT, CẦN PORT LẠI)
+
+Commit `c6d64f3` đã tích hợp `attempt_job_video_merge()` vào
+`cws_worker_full.py`, dùng `boto3` thay vì đòi hỏi cài `aws` CLI, giữ
+`cws_auto_ghep_video.bat` làm fallback, gate bằng feature flag
+`CWS_ENABLE_INTEGRATED_VIDEO_MERGE` (mặc định `false`).
+
+**⚠️ CẦN LÀM LẠI:** commit này được xây trên baseline
+`WORKER_VERSION="1.14.0"` trong git, nhưng `worker_config.latest_version`
+trên Supabase đã là `"1.16.5"` (cập nhật 2026-07-28, TRƯỚC cả khi file
+`.py` được upload vào repo 2026-07-31) — nghĩa là baseline trong git CŨ
+HƠN bản thật đang được coi là "mới nhất". Đang chờ người dùng upload lại
+đúng bản `1.16.5` thật (qua GitHub web) để đối chiếu và port lại thay đổi
+Phase 2 lên đúng baseline, tránh sửa nhầm/mất tính năng đã có trong 1.16.5
+mà chưa từng thấy.
+
+---
+
+## Phase 3 — Schema state machine (SCHEMA XONG, CODE CHƯA WIRING)
+
+Migration `worker_migrations/001_worker_state_machine_schema.sql` đã
+apply thật lên Supabase (project `ynhxlxetwuiyejcjypsi`):
+- `workers` thêm cột: `desired_state`, `observed_state`, `health_state`,
+  `current_task_id`, `current_generation`, `boot_id`, `session_id`,
+  `agent_version`, `worker_version`, `last_transition_at`, `state_reason`
+  (tất cả nullable, ADD-ONLY).
+- Bảng mới: `worker_leases`, `worker_state_events`, `task_attempts` — đã
+  bật RLS (không có policy, theo đúng quy ước bảo mật hiện có cho
+  `payments`/`sites`/`machine_capability`, xác nhận qua `get_advisors`).
+
+**Chưa làm:** wiring code Python (Worker báo cáo desired_state/
+observed_state) và Backend (đọc các cột/bảng mới cho Admin Dashboard
+Phase 5) — cần baseline Worker đúng trước.
+
+---
+
+## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
+## không bao giờ được ghi cho job tạo qua Backend hiện tại
+
+Phát hiện khi điều tra ưu tiên "đồng bộ Worker với backend, hoàn thành
+luồng Website → Queue → Scheduler → Worker → Render → Upload → Verify".
+
+**Xác nhận qua đọc trực tiếp code + RPC (không đoán):**
+- `analyze_blend_scene()` (Scene Analyzer) chỉ tính Light/Shadow/Texture/
+  Polygon — KHÔNG đọc `scene.frame_start`/`scene.frame_end`, không tính
+  `total_frames`.
+- RPC DUY NHẤT từng ghi `jobs.total_frames` là `create_job_with_chunks()`
+  (legacy) — đòi hỏi `total_frames` biết TRƯỚC lúc tạo job
+  (`chunking_status='probing'` ngay từ đầu). Backend hiện tại
+  (`WorkerFleetGateway.createInternalJobWithProbeTask()`) KHÔNG biết
+  `total_frames` trước — đó chính là lý do cần Scene Analyzer.
+- `report_render_speed()` (RPC tạo task còn lại sau probe) chỉ chạy khi
+  `chunking_status='probing'` — KHÔNG BAO GIỜ đúng với job Backend tạo
+  (mặc định `'pending'`) → trả về `-1`, không tạo task nào.
+
+**Xác nhận qua dữ liệu THẬT trên Supabase:** cả 3 `render_orders` hiện
+có đều dừng lại đúng 1 task (`total_frames=null`,
+`chunking_status='pending'`) — **không liên quan gì đến việc Worker có
+online hay không** (vấn đề vận hành thật: cả 27 worker đã đăng ký đều
+`status='offline'`, lần cuối thấy `2026-07-27`, là vấn đề TÁCH BIỆT).
+
+**Đã sửa (phần Backend/RPC, KHÔNG cần đụng Worker):** thêm RPC
+`set_job_total_frames(p_job_id, p_worker_id, p_total_frames, p_fps)`
+(migration `worker_migrations/002_set_job_total_frames_rpc.sql`, đã apply
+thật) — idempotent (chỉ ghi nếu đang NULL), yêu cầu worker gọi đang giữ 1
+task active của đúng job đó. `SchedulerService.processOrder()` (không đổi)
+đã có sẵn cơ chế tự tạo task còn lại đúng khi `getTotalFrames()` trả về
+khác null — chỉ thiếu đúng 1 đường để Worker báo lại giá trị thật.
+
+**Chưa làm (cần baseline Worker đúng):** Scene Analyzer đọc
+`scene.frame_start`/`scene.frame_end` thật từ Blender, gọi RPC
+`set_job_total_frames()` sau khi xác định được.
+
+---
+
+## Bug đã sửa: ngưỡng "Worker online" sai lệch với nhịp heartbeat thật
+
+`WorkerFleetGateway.countOnlineWorkers()` dùng ngưỡng 30 giây, nhưng
+Worker chỉ gọi `worker_ping()` mỗi 60 giây (`HEARTBEAT_INTERVAL_SEC`) lúc
+đang render (so với mỗi 15s lúc rảnh, `POLL_INTERVAL_SEC`) — một Worker
+đang render khỏe mạnh có tới ~50% khả năng bị đếm nhầm là "offline" tại
+bất kỳ thời điểm query nào, gây nhấp nháy trạng thái
+`ALLOCATING_WORKERS`/`SEARCHING_WORKERS` và ước tính hàng đợi sai. Đã sửa
+nâng ngưỡng lên 180s, khớp đúng `mark_stale_workers_offline()` và RPC
+`count_active_workers()` (chưa được Backend dùng tới) — đồng bộ 1 chuẩn
+duy nhất. Commit `a28f8df`.
+
+---
+
+## Vấn đề vận hành thật (KHÔNG phải bug code, cần người dùng tự xử lý)
+
+- Cả 27 Worker đã đăng ký (`fleet_id=2`, "Fleet Anh Thông") đều
+  `status='offline'`, lần `last_seen_at` gần nhất là 2026-07-27 — không
+  có máy Worker vật lý nào đang kết nối tại thời điểm audit.
+- `worker_config.latest_version="1.16.5"` (cập nhật 2026-07-28) nhưng
+  KHÔNG worker nào từng nhận được bản này (đã ngừng poll từ 2026-07-27,
+  một ngày TRƯỚC khi version được cập nhật).
+
+---
+
+## Tổng hợp commit liên quan (branch `main`)
+
+- `d31cd58` — feat(database): add worker lease and state event schema.
+- `a28f8df` — fix: nâng ngưỡng countOnlineWorkers() 30s → 180s.
+- `27d8235` — fix(database): thêm RPC set_job_total_frames.
+- `c6d64f3` — feat(worker): tích hợp ghép video (CẦN PORT LẠI trên
+  baseline 1.16.5 đúng).
+
+## Việc tiếp theo (chờ baseline Worker `1.16.5` đúng)
+
+1. Đối chiếu file `.py` mới với các thay đổi trong `c6d64f3`, port lại
+   nếu cần.
+2. Scene Analyzer đọc `scene.frame_start`/`scene.frame_end`, gọi RPC
+   `set_job_total_frames()`.
+3. Wiring `desired_state`/`observed_state`/`worker_leases`/
+   `worker_state_events` (Phase 3 phần code).
+4. Tiếp tục Phase 4 trở đi theo đúng thứ tự `CWS_WORKER_ROADMAP.md`.
