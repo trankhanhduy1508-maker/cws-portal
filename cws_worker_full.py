@@ -1258,6 +1258,16 @@ def attempt_job_video_merge(job_id, worker_id):
     tu kiem tra AN TOAN cua ban .bat: is_fully_done -> tai PNG -> dem du
     frame -> ffmpeg -> xac minh output. KHONG rewrite lai tu dau, chi port.
 
+    GIA TRI TRA VE (them cho Phase 8 CWS_WORKER_ROADMAP.md - truoc day ham
+    nay khong tra ve gi, khien worker_loop() khong the biet merge co THAT
+    SU thanh cong hay khong de bao cao merge_completed_at):
+    - "success": merge + upload B2 thanh cong THAT SU.
+    - None (mac dinh): moi truong hop con lai (tat tinh nang, chua du
+      dieu kien merge, chi 1 frame, thieu du lieu, that bai o buoc nao
+      do) - worker_loop() KHONG duoc coi None la loi, chi la "lan nay
+      chua merge", dung tinh than "merge la buoc PHU, that bai khong
+      duoc lam sai lech task/job da xong" da ghi ro o duoi.
+
     CHU DICH THIET KE (theo dung CWS_WORKER_ROADMAP.md Phase 2):
     - Chi chay khi CWS_ENABLE_INTEGRATED_VIDEO_MERGE=true (mac dinh TAT,
       xem constant o dau file) - neu tat, ham nay khong lam gi ca, hanh vi
@@ -1368,6 +1378,7 @@ def attempt_job_video_merge(job_id, worker_id):
         client.upload_file(str(output_mp4), B2_BUCKET, merged_key)
         print(f"[MERGE] Da upload video ghep len B2: {merged_key}")
         log_task_event(job_id, worker_id, f"Merge thanh cong: {merged_key}")
+        return "success"
 
     except Exception as e:
         print(f"[MERGE] LOI khong luong truoc khi ghep video job {job_id}: {e}")
@@ -2914,7 +2925,14 @@ def worker_loop():
             # tat, xem attempt_job_video_merge()). Loi o day KHONG duoc
             # anh huong task vua complete_task() thanh cong o tren.
             try:
-                attempt_job_video_merge(current_job_id, worker_id)
+                merge_result = attempt_job_video_merge(current_job_id, worker_id)
+                if merge_result == "success":
+                    # Phase 8 (CWS_WORKER_ROADMAP.md): chi bao merge_completed
+                    # khi merge THAT SU thanh cong (tra ve "success") - None
+                    # nghia la tat tinh nang/chua du dieu kien/that bai o buoc
+                    # nao do BEN TRONG ham (da tu log rieng), KHONG phai loi
+                    # can bao them o day.
+                    report_task_attempt_stage(task_id, worker_id, generation, "merge_completed")
             except Exception as merge_err:
                 print(f"[MERGE] Loi khong luong truoc ngoai attempt_job_video_merge(): {merge_err}")
                 report_incident(worker_id, "MERGE_FAIL", "error",
