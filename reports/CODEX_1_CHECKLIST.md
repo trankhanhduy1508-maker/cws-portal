@@ -33,6 +33,7 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
     - `claude/cws-zero-manual-operation-wtzbrt` (1 commit, phiên Claude trước): có lỗ hổng bảo mật (frontend tự xác nhận thanh toán) — KHÔNG merge trực tiếp, nhưng đã trích 2 ý tưởng giá trị (giá thật theo runtime Worker, xuất video MP4) viết lại an toàn vào `main` trước khi xoá nhánh — xem `backend/CHANGELOG.md` mục `[1.4.0]`.
   - Kết quả: repo chỉ còn duy nhất nhánh `main` (remote + local), xác nhận qua `git branch -r`/`git branch` sau khi xoá.
 - **Lỗ hổng bảo mật webhook + gap CI lint (2026-07-30, tự phát hiện qua self-review sau khi tưởng audit đã xong):** `POST /payments/webhook` không có xác thực nào — sửa bằng `WebhookSecretGuard` mới (header `x-webhook-secret`/`PAYMENT_WEBHOOK_SECRET`, fail-closed). Đồng thời phát hiện CI chưa từng lint backend — đã thêm bước lint vào `.github/workflows/ci.yml` job backend, tự sửa 1 lỗi eslint có sẵn từ trước lộ ra ngay khi chạy lần đầu. Build/test/lint + boot thật PASS (23/23 test). Chi tiết đầy đủ: `docs/MVP_GAP_REPORT.md`, `backend/CHANGELOG.md` mục `[1.5.0]`.
+- **Lỗ hổng bảo mật thứ 2 (IDOR, 2026-07-31, tự phát hiện qua self-review liên tiếp):** toàn bộ route `/jobs/:id/...` không kiểm tra chủ sở hữu job, chỉ dựa vào UUID khó đoán — sửa bằng `JobsService.assertOwnership()` mới + cập nhật frontend `adminApi.js`/`AdminScreen.jsx` gửi `x-admin-key` cho route preview. Build/test/lint + boot thật PASS (29/29 test). Chi tiết: `docs/MVP_GAP_REPORT.md`, `backend/CHANGELOG.md` mục `[1.6.0]`.
 
 ---
 

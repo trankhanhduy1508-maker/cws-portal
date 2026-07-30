@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   IRenderOrdersRepository,
@@ -9,7 +15,10 @@ import { JobStatus } from './domain/job-status.enum';
 import { RENDER_PROFILES, RenderProfileId } from './domain/render-profile';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
-import { PACKAGING_SERVICE, IPackagingService } from './services/packaging.interface';
+import {
+  PACKAGING_SERVICE,
+  IPackagingService,
+} from './services/packaging.interface';
 import { StorageService } from '../storage/storage.service';
 import { B2StorageService } from '../files/b2-storage.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -24,7 +33,10 @@ import { PricingService } from './services/pricing.service';
  * Scene Analyzer phân tích thật (đã có sẵn 1 phần trong Worker), nên
  * thay thế hàm này bằng ước tính dựa trên phân tích scene thật.
  */
-function computeEstimate(fileSizeBytes: number | null, profileId: RenderProfileId): JobEstimate {
+function computeEstimate(
+  fileSizeBytes: number | null,
+  profileId: RenderProfileId,
+): JobEstimate {
   const profile = RENDER_PROFILES[profileId];
   const sizeMb = fileSizeBytes ? fileSizeBytes / (1024 * 1024) : 80;
 
@@ -44,7 +56,8 @@ export class JobsService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
-    @Inject(PACKAGING_SERVICE) private readonly packagingService: IPackagingService,
+    @Inject(PACKAGING_SERVICE)
+    private readonly packagingService: IPackagingService,
     private readonly storageService: StorageService,
     private readonly b2StorageService: B2StorageService,
     private readonly paymentsService: PaymentsService,
@@ -52,14 +65,18 @@ export class JobsService {
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
-    const baseEstimate = computeEstimate(dto.fileSizeBytes ?? null, dto.profileId);
+    const baseEstimate = computeEstimate(
+      dto.fileSizeBytes ?? null,
+      dto.profileId,
+    );
 
     // Hàng đợi thật: nếu số Worker online hiện tại là 0, báo hàng đợi
     // ước tính dựa trên số lượng order đang active — đơn giản, trung
     // thực hơn số ngẫu nhiên của bản mock trước đây.
     const onlineWorkers = await this.workerFleetGateway.countOnlineWorkers();
     const activeOrders = await this.ordersRepository.findActiveOrders();
-    const queueSeconds = onlineWorkers > 0 ? 0 : Math.min(activeOrders.length * 240, 3600);
+    const queueSeconds =
+      onlineWorkers > 0 ? 0 : Math.min(activeOrders.length * 240, 3600);
 
     return { ...baseEstimate, queueSeconds };
   }
@@ -71,7 +88,10 @@ export class JobsService {
    * Sinh QR → Webhook → PAID → Mở tải). Payment chỉ được tạo sau, tại
    * approve() — xem ghi chú ở đó.
    */
-  async createOrder(dto: CreateJobDto, customerId: string | null = null): Promise<{ jobId: string }> {
+  async createOrder(
+    dto: CreateJobDto,
+    customerId: string | null = null,
+  ): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
     }
@@ -85,9 +105,13 @@ export class JobsService {
 
     const id = randomUUID();
     const projectName =
-      dto.fileName || (dto.driveLink ? '(File từ Google Drive)' : 'Không rõ tên file');
+      dto.fileName ||
+      (dto.driveLink ? '(File từ Google Drive)' : 'Không rõ tên file');
 
-    const initialStatus = estimate.queueSeconds > 0 ? JobStatus.QUEUED : JobStatus.SEARCHING_WORKERS;
+    const initialStatus =
+      estimate.queueSeconds > 0
+        ? JobStatus.QUEUED
+        : JobStatus.SEARCHING_WORKERS;
 
     const storageCode = `CWS-${id.slice(0, 8).toUpperCase()}`;
 
@@ -134,11 +158,12 @@ export class JobsService {
     const blendLink = order.driveLink ?? `b2://${order.uploadedFileB2Key}`;
     const blendFile = order.projectName;
 
-    const internalJobId = await this.workerFleetGateway.createInternalJobWithProbeTask({
-      internalJobId: order.id,
-      blendLink,
-      blendFile,
-    });
+    const internalJobId =
+      await this.workerFleetGateway.createInternalJobWithProbeTask({
+        internalJobId: order.id,
+        blendLink,
+        blendFile,
+      });
 
     await this.ordersRepository.attachInternalJobId(order.id, internalJobId);
   }
@@ -149,10 +174,47 @@ export class JobsService {
     return order;
   }
 
+  /**
+   * Job có chủ (order.customerId khác null) -> BẮT BUỘC customerId của
+   * người gọi phải khớp, kể cả khách chưa đăng nhập (customerId=null bị
+   * chặn) — trước đây mọi route theo `:id` (preview/approve/cancel/
+   * download/logs/notifications) chỉ dựa vào việc UUID khó đoán, KHÔNG
+   * hề kiểm tra chủ sở hữu, nên ai biết được id là xem/thao tác được
+   * job của người khác (IDOR). Job KHÔNG có chủ (tạo lúc chưa đăng nhập,
+   * customerId=null) vẫn mở cho bất kỳ ai biết id — giữ đúng hành vi cũ
+   * cho luồng khách vãng lai (chưa ép đăng nhập được, xem jwt-auth.guard.ts).
+   * `isAdmin=true` (x-admin-key hợp lệ, xem jobs.controller.ts) bỏ qua
+   * kiểm tra — Admin Dashboard cần xem/thao tác job của MỌI khách.
+   */
+  private assertOwnership(
+    order: RenderOrder,
+    customerId: string | null,
+    isAdmin = false,
+  ): void {
+    if (isAdmin) return;
+    if (order.customerId && order.customerId !== customerId) {
+      throw new ForbiddenException(`Không có quyền truy cập job ${order.id}`);
+    }
+  }
+
+  /** Dùng cho route GET /jobs/:id, GET /jobs/:id/status — có kiểm tra chủ sở hữu. */
+  async getByIdForCustomer(
+    id: string,
+    customerId: string | null,
+    isAdmin = false,
+  ): Promise<RenderOrder> {
+    const order = await this.getById(id);
+    this.assertOwnership(order, customerId, isAdmin);
+    return order;
+  }
+
   /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   async getByStorageCode(storageCode: string): Promise<RenderOrder> {
     const order = await this.ordersRepository.findByStorageCode(storageCode);
-    if (!order) throw new NotFoundException(`Không tìm thấy job với storage code ${storageCode}`);
+    if (!order)
+      throw new NotFoundException(
+        `Không tìm thấy job với storage code ${storageCode}`,
+      );
     return order;
   }
 
@@ -165,7 +227,12 @@ export class JobsService {
     return this.ordersRepository.findAll();
   }
 
-  async cancel(id: string): Promise<RenderOrder> {
+  async cancel(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ): Promise<RenderOrder> {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return order;
@@ -181,7 +248,11 @@ export class JobsService {
    * trước đó (khi order chưa ở REVIEW_READY) là lỗi rõ ràng, không âm
    * thầm bỏ qua.
    */
-  async approve(id: string): Promise<{
+  async approve(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ): Promise<{
     order: RenderOrder;
     payment: {
       paymentId: string;
@@ -192,30 +263,44 @@ export class JobsService {
     };
   }> {
     const order = await this.getById(id);
+    this.assertOwnership(order, customerId, isAdmin);
     if (order.status !== JobStatus.REVIEW_READY) {
       throw new BadRequestException(
         `Job ${id} chưa sẵn sàng để duyệt (trạng thái hiện tại: ${order.status})`,
       );
     }
     if (!order.internalJobId) {
-      throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể tính giá thật`);
+      throw new BadRequestException(
+        `Job ${id} thiếu internalJobId — không thể tính giá thật`,
+      );
     }
 
-    const { finalPriceVnd, workerRuntimeSeconds } = await this.pricingService.computeFinalPriceVnd(
-      order.internalJobId,
-    );
+    const { finalPriceVnd, workerRuntimeSeconds } =
+      await this.pricingService.computeFinalPriceVnd(order.internalJobId);
 
-    const { paymentId, paymentCode, transferContent, qrImageUrl } = await this.paymentsService.createIntent(
-      { amountVnd: finalPriceVnd, method: PaymentMethod.QR_BANK },
-      { jobId: order.id, storageCode: order.storageCode },
-    );
+    const { paymentId, paymentCode, transferContent, qrImageUrl } =
+      await this.paymentsService.createIntent(
+        { amountVnd: finalPriceVnd, method: PaymentMethod.QR_BANK },
+        { jobId: order.id, storageCode: order.storageCode },
+      );
 
-    const updated = await this.ordersRepository.attachPayment(id, paymentId, finalPriceVnd, workerRuntimeSeconds);
+    const updated = await this.ordersRepository.attachPayment(
+      id,
+      paymentId,
+      finalPriceVnd,
+      workerRuntimeSeconds,
+    );
     if (!updated) throw new NotFoundException(`Không tìm thấy job ${id}`);
 
     return {
       order: updated,
-      payment: { paymentId, paymentCode, transferContent, qrImageUrl, amountVnd: finalPriceVnd },
+      payment: {
+        paymentId,
+        paymentCode,
+        transferContent,
+        qrImageUrl,
+        amountVnd: finalPriceVnd,
+      },
     };
   }
 
@@ -229,24 +314,30 @@ export class JobsService {
    */
   async finalizeDelivery(id: string): Promise<RenderOrder | null> {
     const order = await this.getById(id);
-    if (order.status !== JobStatus.AWAITING_PAYMENT || !order.paymentId) return null;
+    if (order.status !== JobStatus.AWAITING_PAYMENT || !order.paymentId)
+      return null;
 
     const paymentStatus = await this.paymentsService.getStatus(order.paymentId);
     if (paymentStatus !== PaymentStatus.PAID) return null;
 
     if (!order.internalJobId) {
-      throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể đóng gói`);
+      throw new BadRequestException(
+        `Job ${id} thiếu internalJobId — không thể đóng gói`,
+      );
     }
 
     await this.ordersRepository.markPaymentPaid(id);
     await this.ordersRepository.updateStatus(id, JobStatus.PACKAGING, 0);
 
-    const { fps } = await this.workerFleetGateway.getJobMeta(order.internalJobId);
-    const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
+    const { fps } = await this.workerFleetGateway.getJobMeta(
       order.internalJobId,
-      order.id,
-      fps,
     );
+    const { downloadUrl, resultSizeBytes } =
+      await this.packagingService.packageRenderResult(
+        order.internalJobId,
+        order.id,
+        fps,
+      );
 
     const durationSec = Math.round((Date.now() - order.createdAt) / 1000);
 
@@ -268,8 +359,14 @@ export class JobsService {
    * và xử lý thủ công (re-render hoặc hoàn tiền là quyết định nghiệp
    * vụ, không phải việc tự động hoá được).
    */
-  async requestChanges(id: string, note: string | null): Promise<void> {
+  async requestChanges(
+    id: string,
+    note: string | null,
+    customerId: string | null = null,
+    isAdmin = false,
+  ): Promise<void> {
     const order = await this.getById(id);
+    this.assertOwnership(order, customerId, isAdmin);
     if (order.status !== JobStatus.REVIEW_READY) {
       throw new BadRequestException(
         `Job ${id} chưa ở trạng thái chờ duyệt (hiện tại: ${order.status})`,
@@ -292,8 +389,12 @@ export class JobsService {
   }
 
   /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */
-  async getReviewImages(id: string): Promise<{ url: string; displayOrder: number | null }[]> {
-    await this.getById(id); // 404 nếu job không tồn tại
+  async getReviewImages(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ): Promise<{ url: string; displayOrder: number | null }[]> {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
     const images = await this.storageService.getReviewImages(id);
     return images.map((img) => ({
       url: this.b2StorageService.getPublicUrl(img.imagePath),
@@ -304,24 +405,40 @@ export class JobsService {
   /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi trả
    * về URL thật để Controller redirect — CHỈ cho phép khi job đã
    * FINISHED và có downloadUrl (chưa duyệt thì chưa có gì để tải). */
-  async getDownloadRedirectUrl(id: string, ipAddress: string | null): Promise<string> {
+  async getDownloadRedirectUrl(
+    id: string,
+    ipAddress: string | null,
+    customerId: string | null = null,
+    isAdmin = false,
+  ): Promise<string> {
     const order = await this.getById(id);
+    this.assertOwnership(order, customerId, isAdmin);
     if (order.status !== JobStatus.FINISHED || !order.downloadUrl) {
-      throw new BadRequestException(`Job ${id} chưa có file để tải (trạng thái hiện tại: ${order.status})`);
+      throw new BadRequestException(
+        `Job ${id} chưa có file để tải (trạng thái hiện tại: ${order.status})`,
+      );
     }
     await this.storageService.logDownload(id, ipAddress);
     return order.downloadUrl;
   }
 
   /** Admin xem log Worker (báo lỗi render, CWS_DATABASE_SCHEMA.md bảng worker_logs). */
-  async getWorkerLogs(id: string) {
-    await this.getById(id); // 404 nếu job không tồn tại
+  async getWorkerLogs(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ) {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
     return this.storageService.getWorkerLogs(id);
   }
 
   /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
-  async getNotifications(id: string) {
-    await this.getById(id); // 404 nếu job không tồn tại
+  async getNotifications(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ) {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
     return this.storageService.getNotifications(id);
   }
 }

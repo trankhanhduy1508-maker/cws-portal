@@ -17,7 +17,10 @@ import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
-import { AdminKeyGuard, isValidAdminKey } from '../common/guards/admin-key.guard';
+import {
+  AdminKeyGuard,
+  isValidAdminKey,
+} from '../common/guards/admin-key.guard';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 
@@ -28,6 +31,13 @@ export class JobsController {
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
+
+  /** x-admin-key hợp lệ -> bỏ qua kiểm tra chủ sở hữu job (Admin Dashboard
+   * cần xem/thao tác job của MỌI khách, xem JobsService.assertOwnership()). */
+  private isAdminRequest(req: Request): boolean {
+    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
+    return isValidAdminKey(req, adminApiKey);
+  }
 
   @Post()
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
@@ -57,7 +67,9 @@ export class JobsController {
 
     const adminApiKey = this.configService.get('adminApiKey', { infer: true });
     if (!isValidAdminKey(req, adminApiKey)) {
-      throw new UnauthorizedException('Cần đăng nhập hoặc x-admin-key để xem danh sách job');
+      throw new UnauthorizedException(
+        'Cần đăng nhập hoặc x-admin-key để xem danh sách job',
+      );
     }
     const orders = await this.jobsService.listAll(null);
     return orders.map(toPublicJson);
@@ -71,9 +83,18 @@ export class JobsController {
     return toPublicJson(order);
   }
 
+  /** Job có customer_id -> chỉ đúng chủ (hoặc khách chưa đăng nhập) mới
+   * xem/thao tác được — xem JobsService.assertOwnership(). Job không có
+   * chủ (tạo lúc chưa đăng nhập) vẫn mở cho ai biết id, giữ nguyên hành
+   * vi cũ cho khách vãng lai. */
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    const order = await this.jobsService.getById(id);
+  async getById(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const order = await this.jobsService.getByIdForCustomer(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return toPublicJson(order);
   }
 
@@ -81,8 +102,13 @@ export class JobsController {
    * `status` trong response đầy đủ), route riêng này chỉ để khớp danh
    * sách API đã liệt kê, trả về tập con. */
   @Get(':id/status')
-  async getStatus(@Param('id') id: string) {
-    const order = await this.jobsService.getById(id);
+  async getStatus(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const order = await this.jobsService.getByIdForCustomer(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { status: order.status, stageProgress: order.stageProgress };
   }
 
@@ -90,15 +116,22 @@ export class JobsController {
    * CANCEL_JOB -> POST /jobs/:id/cancel). KHÔNG được đổi/xóa route này. */
   @Post(':id/cancel')
   @HttpCode(200)
-  async cancelViaPost(@Param('id') id: string) {
-    await this.jobsService.cancel(id);
+  async cancelViaPost(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    await this.jobsService.cancel(id, customerId, this.isAdminRequest(req));
     return { ok: true };
   }
 
-  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt. */
+  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt (hoặc
+   * Admin Dashboard xem qua x-admin-key, xem adminApi.js). */
   @Get(':id/preview')
-  async getPreview(@Param('id') id: string) {
-    const images = await this.jobsService.getReviewImages(id);
+  async getPreview(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const images = await this.jobsService.getReviewImages(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { images };
   }
 
@@ -106,8 +139,13 @@ export class JobsController {
    * PAID rồi mới đóng gói + mở link tải (xem JobsService.finalizeDelivery()). */
   @Post(':id/approve')
   @HttpCode(200)
-  async approve(@Param('id') id: string) {
-    const { order, payment } = await this.jobsService.approve(id);
+  async approve(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const { order, payment } = await this.jobsService.approve(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { ...toPublicJson(order), payment };
   }
 
@@ -115,8 +153,18 @@ export class JobsController {
    * báo + worker_log), KHÔNG đổi status/tiền, xem jobs.service.ts. */
   @Post(':id/request-changes')
   @HttpCode(200)
-  async requestChanges(@Param('id') id: string, @Body() body: { note?: string }) {
-    await this.jobsService.requestChanges(id, body?.note ?? null);
+  async requestChanges(
+    @Param('id') id: string,
+    @Body() body: { note?: string },
+    @Req() req: Request,
+  ) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    await this.jobsService.requestChanges(
+      id,
+      body?.note ?? null,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { ok: true };
   }
 
@@ -125,23 +173,46 @@ export class JobsController {
    * raw (xem getDownloadUrl() trong RenderService.js), phải qua route
    * này để mọi lượt tải đều được ghi log. */
   @Get(':id/download')
-  async download(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
-    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null;
-    const url = await this.jobsService.getDownloadRedirectUrl(id, ip);
+  async download(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const ip =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      null;
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const url = await this.jobsService.getDownloadRedirectUrl(
+      id,
+      ip,
+      customerId,
+      this.isAdminRequest(req),
+    );
     res.redirect(302, url);
   }
 
-  /** Admin xem log Worker (báo lỗi render). */
+  /** Admin xem log Worker (báo lỗi render) — cần x-admin-key nếu job có chủ. */
   @Get(':id/logs')
-  async getLogs(@Param('id') id: string) {
-    const logs = await this.jobsService.getWorkerLogs(id);
+  async getLogs(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const logs = await this.jobsService.getWorkerLogs(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { logs };
   }
 
   /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
   @Get(':id/notifications')
-  async getNotifications(@Param('id') id: string) {
-    const notifications = await this.jobsService.getNotifications(id);
+  async getNotifications(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const notifications = await this.jobsService.getNotifications(
+      id,
+      customerId,
+      this.isAdminRequest(req),
+    );
     return { notifications };
   }
 
@@ -149,8 +220,9 @@ export class JobsController {
    * thêm để khớp convention REST nếu có client khác gọi kiểu DELETE. */
   @Delete(':id')
   @HttpCode(200)
-  async cancelViaDelete(@Param('id') id: string) {
-    await this.jobsService.cancel(id);
+  async cancelViaDelete(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    await this.jobsService.cancel(id, customerId, this.isAdminRequest(req));
     return { ok: true };
   }
 }

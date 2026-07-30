@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.6.0] - Sửa IDOR: kiểm tra chủ sở hữu job trên mọi route theo :id (2026-07-31)
+
+**Lỗ hổng thứ 2 phát hiện qua self-review liên tiếp (sau [1.5.0]):** mọi
+route `/jobs/:id/...` (GET job, status, preview, download, logs,
+notifications, POST approve/cancel/request-changes, DELETE) chỉ dựa vào
+việc UUID khó đoán — KHÔNG hề kiểm tra job đó có phải của người gọi hay
+không. Hệ quả: bất kỳ ai biết/đoán được id của 1 job (rò rỉ qua URL,
+lịch sử trình duyệt, log, chia sẻ ảnh chụp màn hình...) đều có thể xem
+chi tiết, huỷ job, kích hoạt approve() sớm, hoặc **tải file kết quả
+cuối** của khách hàng khác.
+
+Đã sửa: `JobsService.assertOwnership(order, customerId, isAdmin)` (mới)
+— nếu job đã có chủ (`customerId` khác null) thì bắt buộc người gọi
+phải cùng `customerId` đó, trừ khi có `x-admin-key` hợp lệ. Job CHƯA có
+chủ (tạo lúc khách chưa đăng nhập) vẫn mở cho ai biết id — giữ nguyên
+hành vi hiện tại cho luồng khách vãng lai (Facebook Provider chưa bật
+thật, chưa thể ép đăng nhập, xem `jwt-auth.guard.ts`). Áp dụng cho
+`getByIdForCustomer` (mới), `cancel`, `approve`, `requestChanges`,
+`getReviewImages`, `getDownloadRedirectUrl`, `getWorkerLogs`,
+`getNotifications`. `getById`/`finalizeDelivery` nội bộ (dùng bởi
+Scheduler, không có ngữ cảnh customer) giữ nguyên không đổi.
+
+`GET /jobs/:id/preview` trước đây cố ý để công khai không cần
+`x-admin-key` (ảnh đã watermark, coi là ít nhạy cảm) — đã cập nhật
+`src/services/adminApi.js`/`AdminScreen.jsx` để gửi kèm `x-admin-key`,
+giữ nguyên tính năng "Xem" preview của Admin Dashboard hoạt động đúng
+sau khi khoá route lại.
+
+Thêm 6 unit test mới (`jobs.service.spec.ts`) xác nhận: khách khác chủ
+bị chặn (403), khách ẩn danh bị chặn nếu job đã có chủ, đúng chủ được
+phép, Admin (`isAdmin=true`) bỏ qua được kiểm tra, job chưa có chủ vẫn
+mở cho khách vãng lai, `cancel()` không huỷ được job người khác. Tổng
+test backend: 23 → 29, tất cả PASS. Build/lint + boot thật đã chạy lại,
+xác nhận toàn bộ route `/jobs/:id/...` đăng ký đúng, không lỗi DI.
+
 ## [1.5.0] - Bảo mật webhook thanh toán + CI backend lint (2026-07-30)
 
 **Lỗ hổng bảo mật phát hiện qua self-review sau audit lần cuối:**

@@ -36,10 +36,14 @@ export function adminListWorkers(adminKey) {
 }
 
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
- * "Preview") — route công khai (không cần x-admin-key), admin gọi
- * bằng jobId đã có sẵn trong danh sách job. */
-export async function adminGetJobPreview(jobId) {
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`);
+ * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
+ * xem JobsService.assertOwnership() trong Backend (trước đây route này
+ * mở công khai theo jobId, không kiểm tra chủ sở hữu — đã sửa lỗ hổng
+ * IDOR, xem docs/MVP_GAP_REPORT.md). */
+export async function adminGetJobPreview(jobId, adminKey) {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`, {
+    headers: { 'x-admin-key': adminKey },
+  });
   if (!res.ok) throw new Error(`Không lấy được ảnh preview (${res.status})`);
   return res.json();
 }
@@ -54,10 +58,12 @@ export function adminGetPaymentByCode(paymentCode, adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_PAYMENT_BY_CODE(paymentCode), adminKey);
 }
 
-/** Log Worker (báo lỗi render) của 1 job — KHÔNG cần admin key (route
- * này công khai theo jobId, xem jobs.controller.ts), giữ ở đây cho gọn. */
-export async function adminGetJobLogs(jobId) {
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ADMIN_JOB_LOGS(jobId)}`);
+/** Log Worker (báo lỗi render) của 1 job — cần x-admin-key nếu job đã
+ * có chủ (cùng lý do với adminGetJobPreview ở trên). */
+export async function adminGetJobLogs(jobId, adminKey) {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ADMIN_JOB_LOGS(jobId)}`, {
+    headers: { 'x-admin-key': adminKey },
+  });
   if (!res.ok) throw new Error(`Không lấy được log (${res.status})`);
   return res.json();
 }

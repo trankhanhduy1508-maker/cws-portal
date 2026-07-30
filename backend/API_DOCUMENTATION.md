@@ -85,6 +85,13 @@ trước.
 Tra cứu 1 job theo Storage Code (Giai đoạn 7). **Yêu cầu header
 `x-admin-key`** (`AdminKeyGuard`).
 
+**Kiểm tra chủ sở hữu (mọi route `/jobs/:id/...` bên dưới):** nếu job
+đã có `customerId` (khách tạo lúc đã đăng nhập), CHỈ đúng khách đó (Bearer
+token khớp) hoặc request có `x-admin-key` hợp lệ mới xem/thao tác được
+— trả 403 nếu không khớp. Job KHÔNG có `customerId` (tạo lúc khách chưa
+đăng nhập) vẫn mở cho bất kỳ ai biết `id` (luồng khách vãng lai, xem
+`JobsService.assertOwnership()`).
+
 ### GET /jobs/:id
 Chi tiết 1 render order — bao gồm `storageCode`, `customerId` (để admin
 đối chiếu với `GET /customers`, "Tìm kiếm theo Customer").

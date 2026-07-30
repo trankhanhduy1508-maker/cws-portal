@@ -202,6 +202,32 @@ eslint có sẵn từ trước (`_providerRef` không dùng ở `QrBankProvider.
 Build/test/lint backend + boot thật đã chạy lại — PASS toàn bộ (23/23
 test, tăng từ 20). Xem chi tiết `backend/CHANGELOG.md` mục `[1.5.0]`.
 
+### Lỗ hổng bảo mật thứ 2 (IDOR) phát hiện qua self-review liên tiếp
+
+Tiếp tục tự đọc lại code sau khi sửa lỗ hổng webhook ở trên, phát hiện
+lỗ hổng cùng bản chất (thiếu xác thực NGUỒN gọi) nhưng ở phạm vi rộng
+hơn: TOÀN BỘ route `/jobs/:id/...` (GET job/status/preview/download/
+logs/notifications, POST approve/cancel/request-changes, DELETE) chỉ
+dựa vào việc UUID khó đoán, KHÔNG hề kiểm tra job đó có phải của người
+gọi hay không. Nếu 1 job id bị lộ (URL, lịch sử trình duyệt, log, chia
+sẻ ảnh chụp màn hình...), bất kỳ ai cũng xem được chi tiết, huỷ job,
+kích hoạt approve() sớm, hoặc **tải file kết quả cuối** của khách khác.
+
+Đã sửa: `JobsService.assertOwnership()` (mới) — job có `customerId` bắt
+buộc người gọi khớp `customerId` đó (hoặc có `x-admin-key` hợp lệ để
+Admin Dashboard vẫn xem/thao tác được job của mọi khách); job CHƯA có
+`customerId` (tạo lúc khách chưa đăng nhập) vẫn mở cho khách vãng lai,
+giữ nguyên hành vi hiện tại (Facebook Provider chưa bật thật). Route
+`GET /jobs/:id/preview` trước đây cố ý để công khai (ảnh watermark, ít
+nhạy cảm) — cập nhật `adminApi.js`/`AdminScreen.jsx` gửi kèm
+`x-admin-key` để tính năng "Xem" của Admin không bị chặn nhầm.
+
+Thêm 6 unit test mới xác nhận đúng hành vi (khách khác chủ bị chặn 403,
+khách ẩn danh bị chặn nếu job có chủ, đúng chủ được phép, Admin bỏ qua
+được, job chưa có chủ vẫn mở, không huỷ được job người khác). Tổng test
+backend: 23 → 29, PASS toàn bộ. Build/lint + boot thật xác nhận không
+lỗi DI. Xem chi tiết `backend/CHANGELOG.md` mục `[1.6.0]`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
@@ -338,14 +364,17 @@ RLS policy + 2 index thiếu (cảnh báo performance).
 
 Ngoài 9 mismatch trên (không tính chung vào số đếm vì không phải lỗi so
 với roadmap, mà là lỗi tự mình gây ra rồi tự phát hiện): qua self-review
-đã tìm và sửa thêm 4 bug tự gây ra — 3 bug do các fix tính năng bổ sung
+đã tìm và sửa thêm 5 bug tự gây ra — 3 bug do các fix tính năng bổ sung
 gây ra (tên file tải về sai định dạng, tải frame không giới hạn số
-lượng song song, ghép video vô nghĩa cho render 1 frame) + 1 lỗ hổng
-bảo mật nghiêm trọng hơn hẳn 3 bug kia: `POST /payments/webhook` (chính
-route vừa sửa ở mismatch (1) phía trên) thiếu xác thực nguồn gọi, cho
-phép khách hàng tự đánh dấu PAID cho payment của mình mà không cần
-chuyển tiền — đã sửa bằng `WebhookSecretGuard` mới, xem mục riêng
-"Lỗ hổng bảo mật khác phát hiện qua self-review" phía trên.
+lượng song song, ghép video vô nghĩa cho render 1 frame) + 2 lỗ hổng
+bảo mật nghiêm trọng hơn hẳn 3 bug kia, cả 2 đều thuộc dạng "thiếu xác
+thực nguồn gọi": (a) `POST /payments/webhook` cho phép khách hàng tự
+đánh dấu PAID cho payment của mình mà không cần chuyển tiền — đã sửa
+bằng `WebhookSecretGuard` mới; (b) TOÀN BỘ route `/jobs/:id/...` không
+kiểm tra chủ sở hữu (IDOR) — ai biết được job id là xem/huỷ/tải được
+job của khách khác — đã sửa bằng `JobsService.assertOwnership()` mới.
+Xem 2 mục riêng "Lỗ hổng bảo mật khác/thứ 2 phát hiện qua self-review"
+phía trên.
 
 Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
 Login → Customer Profile → Job → Upload → Render → Progress → Preview

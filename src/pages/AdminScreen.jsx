@@ -47,10 +47,10 @@ export default function AdminScreen() {
 
   const handleOpenPreview = useCallback((job) => {
     setPreviewJob({ id: job.id, projectName: job.projectName, images: [], isLoading: true, error: null });
-    adminGetJobPreview(job.id)
+    adminGetJobPreview(job.id, adminKey)
       .then((res) => setPreviewJob((p) => (p && p.id === job.id ? { ...p, images: res.images ?? [], isLoading: false } : p)))
       .catch((err) => setPreviewJob((p) => (p && p.id === job.id ? { ...p, isLoading: false, error: err.message } : p)));
-  }, []);
+  }, [adminKey]);
 
   useEffect(() => {
     if (adminKey) loadAll(adminKey);
