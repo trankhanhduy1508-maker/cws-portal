@@ -22,6 +22,27 @@ biết từ xa).
 
 ---
 
+## Rà soát các RPC lõi CÓ SẴN (không phải do đợt audit này viết) — 2026-07-31
+
+Theo yêu cầu của Dy, đọc lại toàn bộ RPC lõi đang chạy thật
+(`claim_task`, `complete_task`, `fail_task`, `report_heartbeat`,
+`worker_ping`, `report_render_speed`, `set_optimization_plan_if_missing`,
+`count_active_workers`, `create_job_with_chunks`) tìm lỗi tiềm ẩn.
+`complete_task`/`report_heartbeat`/`worker_ping` đúng, khớp nguyên tắc
+fencing token. `count_active_workers`/`create_job_with_chunks` là code
+CHẾT (Backend không gọi tới, xác nhận từ đợt audit trước).
+
+**1 phát hiện đáng chú ý trong `fail_task()`** (KHÔNG sửa, đã hỏi và
+Dy xác nhận giữ nguyên): hằng số `v_max_retry := 3` là **code chết** —
+điều kiện `v_distinct_worker_count >= 2` (đứng trước trong chuỗi `or`)
+luôn kích hoạt trước `v_distinct_worker_count >= v_max_retry`, nên task
+bị đánh `failed` vĩnh viễn ngay khi 2 worker KHÁC NHAU cùng fail, không
+bao giờ thực sự chờ tới 3 như tên hằng số gợi ý. Không rõ đây là chủ
+đích (2 máy khác nhau cùng fail đã là bằng chứng đủ mạnh) hay lỗi gõ
+nhầm từ trước — **Dy xác nhận giữ nguyên hành vi hiện tại, không sửa**.
+
+---
+
 ## Phase 0 — Xác nhận MVP hoàn tất
 
 Đã xác nhận đủ điều kiện mở khóa Worker (theo yêu cầu trực tiếp của người
