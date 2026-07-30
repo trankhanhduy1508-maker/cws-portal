@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { CheckCircle2, Download, BadgeCheck } from 'lucide-react';
 import StepCard from '../components/StepCard';
 import StepDots from '../components/StepDots';
@@ -12,7 +13,17 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // bảng downloads) — không dùng thẳng downloadUrl raw dù đã có sẵn
   // trong tay, để mọi lượt tải đều được backend biết. Mock: không có
   // route log thật, dùng thẳng Blob URL như cũ.
-  const href = IS_BACKEND_CONFIGURED ? getDownloadUrl(jobId) : downloadUrl;
+  // getDownloadUrl() giờ là async (cần đính kèm access token qua query
+  // string, xem RenderService.js) nên phải load qua state thay vì gọi
+  // thẳng trong render.
+  const [realHref, setRealHref] = useState(null);
+  useEffect(() => {
+    if (!IS_BACKEND_CONFIGURED) return;
+    let cancelled = false;
+    getDownloadUrl(jobId).then((url) => { if (!cancelled) setRealHref(url); });
+    return () => { cancelled = true; };
+  }, [jobId]);
+  const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
 
   // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
   // có ffmpeg, xem PackagingService) — KHÔNG cố định phần mở rộng theo

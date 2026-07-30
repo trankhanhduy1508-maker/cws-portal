@@ -25,6 +25,16 @@ import { PaymentsService } from '../payments/payments.service';
 import { PaymentMethod, PaymentStatus } from '../payments/payment.types';
 import { PricingService } from './services/pricing.service';
 
+/** Thời hạn presigned URL cho ảnh preview — đủ dài để xem trong 1 phiên
+ * (modal Admin, màn Review), tự động ký lại mỗi lần gọi GET .../preview
+ * nên không cần thời hạn dài hơn. */
+const PREVIEW_URL_TTL_SECONDS = 1800;
+/** Thời hạn presigned URL cho file tải cuối — đủ để trình duyệt bắt đầu
+ * tải xong (kể cả mạng chậm/file lớn), ngắn để giảm rủi ro nếu URL vô
+ * tình lộ ra (log, lịch sử trình duyệt...). Ký lại mỗi lần gọi
+ * GET /jobs/:id/download nên khách bấm tải lại lúc nào cũng có URL mới. */
+const DOWNLOAD_URL_TTL_SECONDS = 300;
+
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
  * như mockBackend.js phía Portal (dựa trên dung lượng file), để hành
@@ -396,10 +406,15 @@ export class JobsService {
   ): Promise<{ url: string; displayOrder: number | null }[]> {
     this.assertOwnership(await this.getById(id), customerId, isAdmin);
     const images = await this.storageService.getReviewImages(id);
-    return images.map((img) => ({
-      url: this.b2StorageService.getPublicUrl(img.imagePath),
-      displayOrder: img.displayOrder,
-    }));
+    return Promise.all(
+      images.map(async (img) => ({
+        url: await this.b2StorageService.getSignedUrl(
+          img.imagePath,
+          PREVIEW_URL_TTL_SECONDS,
+        ),
+        displayOrder: img.displayOrder,
+      })),
+    );
   }
 
   /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi trả
@@ -419,7 +434,10 @@ export class JobsService {
       );
     }
     await this.storageService.logDownload(id, ipAddress);
-    return order.downloadUrl;
+    const key = this.b2StorageService.extractKeyFromPublicUrl(
+      order.downloadUrl,
+    );
+    return this.b2StorageService.getSignedUrl(key, DOWNLOAD_URL_TTL_SECONDS);
   }
 
   /** Admin xem log Worker (báo lỗi render, CWS_DATABASE_SCHEMA.md bảng worker_logs). */

@@ -6,6 +6,7 @@ import {
   ListObjectsV2Command,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { AppConfig } from '../config/configuration';
 
@@ -30,14 +31,46 @@ export class B2StorageService {
     });
   }
 
-  /** Ghép URL công khai từ object key — dùng khi cần trả URL cho 1 key
-   * đã biết trước (vd đọc lại review_images.image_path từ DB). */
+  /** Ghép URL "công khai" (không ký, không hết hạn) từ object key — CHỈ
+   * dùng làm giá trị lưu nội bộ (DB), KHÔNG trả trực tiếp cho khách xem/
+   * tải nữa (xem getSignedUrl bên dưới). Nếu bucket B2 thật đang để
+   * public-read, URL dạng này ai đoán được key cũng tải được, bỏ qua
+   * hoàn toàn kiểm tra chủ sở hữu ở tầng Backend — đây chính là lỗ hổng
+   * đã phát hiện qua self-review (xem docs/MVP_GAP_REPORT.md). */
   getPublicUrl(key: string): string {
     return `https://${this.endpoint}/${this.bucketName}/${key}`;
   }
 
+  /** Trích object key từ URL đã lưu bằng getPublicUrl()/uploadBuffer() ở
+   * trên — dùng để ký lại thành presigned URL ngay trước khi trả cho
+   * khách, KHÔNG cần đổi schema DB (vẫn lưu chuỗi URL tĩnh như cũ, chỉ
+   * không dùng thẳng nó nữa). */
+  extractKeyFromPublicUrl(url: string): string {
+    const prefix = `https://${this.endpoint}/${this.bucketName}/`;
+    if (!url.startsWith(prefix)) {
+      throw new Error(
+        `URL không thuộc bucket B2 hiện tại, không trích được key: ${url}`,
+      );
+    }
+    return url.slice(prefix.length);
+  }
+
+  /**
+   * URL có CHỮ KÝ + THỜI HẠN cho 1 object — đây mới là URL thật sự nên
+   * đưa cho khách (ảnh preview/file tải cuối), thay cho getPublicUrl()
+   * tĩnh ở trên. An toàn dù bucket B2 đang public-read hay private:
+   * presigned URL vẫn hoạt động đúng với bucket public (không hại gì
+   * thêm), và bắt buộc phải có nếu bucket được chuyển sang private.
+   */
+  async getSignedUrl(key: string, expiresInSeconds: number): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: this.bucketName, Key: key });
+    return getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds });
+  }
+
   /** Upload file lên B2, trả về object key (dùng làm fileRef). */
-  async uploadFile(file: Express.Multer.File): Promise<{ key: string; url: string }> {
+  async uploadFile(
+    file: Express.Multer.File,
+  ): Promise<{ key: string; url: string }> {
     const key = `uploads/${randomUUID()}-${file.originalname}`;
 
     try {
@@ -98,7 +131,11 @@ export class B2StorageService {
   }
 
   /** Upload buffer (vd file zip đã nén) lên B2, trả về URL trực tiếp. */
-  async uploadBuffer(key: string, buffer: Buffer, contentType: string): Promise<string> {
+  async uploadBuffer(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucketName,

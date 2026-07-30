@@ -189,7 +189,11 @@ export async function subscribeToJobUpdates(jobId, { onUpdate, onComplete, onErr
 /** @returns {Promise<boolean>} */
 export async function cancelJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, { method: 'POST' });
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     return res.ok;
   }
   return mock.mockCancelJob(jobId);
@@ -198,7 +202,10 @@ export async function cancelJob(jobId) {
 /** Lấy snapshot hiện tại của 1 job (dùng khi mở lại từ Job Dashboard). */
 export async function getJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`);
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Không lấy được thông tin job');
     return res.json();
   }
@@ -224,7 +231,10 @@ export async function listJobs() {
  */
 export async function getJobPreview(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`);
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Không lấy được ảnh xem trước');
     return res.json();
   }
@@ -236,7 +246,11 @@ export async function getJobPreview(jobId) {
  * webhook xác nhận PAID (job tự chuyển AWAITING_PAYMENT -> FINISHED). */
 export async function approveJob(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.APPROVE_JOB(jobId)}`, { method: 'POST' });
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.APPROVE_JOB(jobId)}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Duyệt kết quả thất bại');
     return res.json();
   }
@@ -249,9 +263,13 @@ export async function approveJob(jobId) {
  * ở REVIEW_READY sau khi gọi hàm này. */
 export async function requestJobChanges(jobId, note) {
   if (IS_BACKEND_CONFIGURED) {
+    const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REQUEST_CHANGES_JOB(jobId)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ note: note || undefined }),
     });
     if (!res.ok) throw new Error('Gửi yêu cầu chỉnh sửa thất bại');
@@ -260,10 +278,23 @@ export async function requestJobChanges(jobId, note) {
   return mock.mockRequestChanges(jobId, note);
 }
 
-/** URL tải file kết quả theo jobId. */
-export function getDownloadUrl(jobId) {
+/**
+ * URL tải file kết quả theo jobId — dùng thẳng làm `href`/`window.open()`
+ * (điều hướng trình duyệt thật, KHÔNG qua `fetch()`), nên phải đính token
+ * qua query string `?token=` giống `subscribeToJobUpdatesReal()` — trình
+ * duyệt không set được Authorization header cho điều hướng thường.
+ * Thiếu bước này thì Backend sẽ coi khách đã đăng nhập là ẩn danh, tự
+ * chặn nhầm (403) chính chủ job của họ (xem optional-auth.util.ts).
+ *
+ * Async vì cần `await getAccessToken()` trước khi ghép URL — nơi gọi
+ * phải `await` trước khi dùng làm `href`/`window.open()`.
+ * @returns {Promise<string|null>}
+ */
+export async function getDownloadUrl(jobId) {
   if (IS_BACKEND_CONFIGURED) {
-    return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`;
+    const token = await getAccessToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}${tokenParam}`;
   }
   return mock.mockGetJob(jobId)?.downloadUrl ?? null;
 }

@@ -1,14 +1,31 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { AppConfig } from '../../config/configuration';
 
 /** Dùng ở nơi cần kiểm tra CÓ ĐIỀU KIỆN (vd GET /jobs: chỉ đòi admin key
  * khi KHÔNG có customer token) — AdminKeyGuard bên dưới dùng cho route
- * LUÔN LUÔN cần admin key. */
-export function isValidAdminKey(req: Request, adminApiKey: string | null): boolean {
+ * LUÔN LUÔN cần admin key.
+ *
+ * Chấp nhận query string `?adminKey=` làm fallback khi không có header
+ * `x-admin-key` — cần cho link tải trực tiếp (`<a href>`) của Admin
+ * Dashboard (`GET /jobs/:id/download`), vì điều hướng trình duyệt
+ * thường KHÔNG set được custom header (cùng lý do WebSocket/download
+ * của khách cần `?token=`, xem optional-auth.util.ts). Admin đã tự tay
+ * nhập/lưu đúng key này ở AdminScreen.jsx nên không phát sinh quyền
+ * truy cập mới ngoài những gì họ đã có qua các route x-admin-key khác. */
+export function isValidAdminKey(
+  req: Request,
+  adminApiKey: string | null,
+): boolean {
   if (!adminApiKey) return false;
-  return req.headers['x-admin-key'] === adminApiKey;
+  if (req.headers['x-admin-key'] === adminApiKey) return true;
+  return req.query.adminKey === adminApiKey;
 }
 
 /**

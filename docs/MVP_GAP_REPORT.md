@@ -254,6 +254,39 @@ Supabase gửi qua query string (`?token=...`, trình duyệt không set
 này). Tổng test backend: 31 → 35, PASS. Xem `backend/CHANGELOG.md` mục
 `[1.8.0]`.
 
+### Regression nghiêm trọng do chính fix IDOR gây ra + gốc rễ B2 public URL
+
+Sau khi thêm `assertOwnership()` ([1.6.0]/[1.8.0]), rà lại toàn bộ
+`RenderService.js` để tìm nốt các chỗ tương tự thì phát hiện regression
+nghiêm trọng do CHÍNH fix đó gây ra: `cancelJob()`, `getJob()`,
+`getJobPreview()`, `approveJob()`, `requestJobChanges()` gọi `fetch()`
+tới các route vừa khoá quyền sở hữu mà KHÔNG đính `Authorization` header
+(chỉ `createJob()`/`listJobs()` có đính). `getDownloadUrl()` còn nặng
+hơn — dùng thẳng làm `href`/`window.open()`, trình duyệt không bao giờ
+set được custom header cho điều hướng thường. Hệ quả: ngay khi Facebook
+Provider được bật thật, MỌI khách đã đăng nhập sẽ bị chính
+`assertOwnership()` chặn nhầm (403) trên job của CHÍNH HỌ — lỗi vô hình
+hiện tại chỉ vì mọi job thật đang có `customerId = null`.
+
+Đã sửa: đính `Authorization: Bearer` vào 5 hàm trên; `getDownloadUrl()`
+chuyển `async`, đính token qua `?token=` (giống cách đã làm cho
+WebSocket) — `getOptionalCustomerId()` đọc thêm fallback này; cập nhật
+`App.jsx`/`PreviewDownloadScreen.jsx` cho khớp API async mới; link "Tải"
+của Admin (trước đây dùng thẳng `job.downloadUrl`, bỏ qua route có log)
+đổi sang `adminGetDownloadUrl()` (đính `?adminKey=`).
+
+Đồng thời phát hiện + sửa gốc rễ: `B2StorageService` trả URL "công
+khai" tĩnh không ký/không hết hạn — nếu bucket B2 thật đang public-read,
+ai đoán được URL cũng tải được file, bỏ qua hoàn toàn kiểm tra chủ sở
+hữu ở Backend. Đã thêm `@aws-sdk/s3-request-presigner`,
+`getSignedUrl()`/`extractKeyFromPublicUrl()` mới — ảnh preview và file
+tải cuối giờ đều là presigned URL có hạn (30 phút/5 phút), an toàn dù
+bucket đang public hay private, không cần đổi schema DB.
+
+Tổng test backend: 35 → 37 (thêm `b2-storage.service.spec.ts`). Build/
+lint + boot thật đã chạy lại (cả backend lẫn frontend). Xem
+`backend/CHANGELOG.md` mục `[1.9.0]`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
@@ -391,11 +424,11 @@ RLS policy + 2 index thiếu (cảnh báo performance).
 Ngoài 9 mismatch trên (không tính chung vào số đếm vì không phải lỗi so
 với roadmap, mà là lỗi tự mình gây ra rồi tự phát hiện): qua self-review
 LIÊN TIẾP (mỗi lần sửa xong lại tự đọc lại code 1 lần nữa thay vì dừng)
-đã tìm và sửa thêm 7 bug tự gây ra:
+đã tìm và sửa thêm 9 bug tự gây ra:
 - 3 bug do các fix tính năng bổ sung gây ra (tên file tải về sai định
   dạng, tải frame không giới hạn số lượng song song, ghép video vô
   nghĩa cho render 1 frame).
-- 4 lỗ hổng/rủi ro nghiêm trọng hơn hẳn 3 bug kia, phát hiện theo đúng
+- 6 lỗ hổng/rủi ro nghiêm trọng hơn hẳn 3 bug kia, phát hiện theo đúng
   thứ tự tự đọc lại code (mỗi lần sửa xong 1 cái lại lộ ra cái tiếp
   theo): (a) `POST /payments/webhook` cho phép khách hàng tự đánh dấu
   PAID cho payment của mình mà không cần chuyển tiền — sửa bằng
@@ -406,9 +439,18 @@ LIÊN TIẾP (mỗi lần sửa xong lại tự đọc lại code 1 lần nữa 
   tra 2GB — sửa bằng `limits.fileSize` + xử lý `MulterError` riêng
   trong `HttpExceptionFilter`; (d) route WebSocket `/ws/jobs/:id` vẫn
   còn NGUYÊN lỗ hổng IDOR y hệt (b) dù đã sửa ở REST, vì là đường vào
-  dữ liệu riêng — sửa bằng token qua query string + `resolveCustomerId()`.
-  Xem các mục riêng "Lỗ hổng bảo mật..." phía trên để biết chi tiết
-  từng cái.
+  dữ liệu riêng — sửa bằng token qua query string + `resolveCustomerId()`;
+  (e) **regression do chính fix (b) gây ra** — `RenderService.js` gọi
+  5 route vừa khoá quyền sở hữu mà KHÔNG đính `Authorization` header,
+  lẽ ra sẽ tự chặn nhầm mọi khách đã đăng nhập ngay khi Facebook Provider
+  bật thật (vô hình hiện tại chỉ vì mọi job thật đang có `customerId = null`)
+  — sửa bằng cách đính token vào cả 5 hàm + `getDownloadUrl()` qua query
+  string; (f) `B2StorageService` trả URL công khai tĩnh không ký/không
+  hết hạn cho ảnh preview + file tải cuối — nếu bucket B2 thật public-read
+  thì (b) vô nghĩa vì ai đoán được URL cũng tải trực tiếp từ B2, bỏ qua
+  Backend hoàn toàn — sửa bằng presigned URL (`getSignedUrl()` mới, thư
+  viện `@aws-sdk/s3-request-presigner`). Xem các mục riêng "Lỗ hổng bảo
+  mật.../Regression..." phía trên để biết chi tiết từng cái.
 
 Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
 Login → Customer Profile → Job → Upload → Render → Progress → Preview

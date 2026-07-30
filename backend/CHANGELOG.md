@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.9.0] - Sửa regression nghiêm trọng từ fix IDOR + presigned URL cho B2 (2026-07-31)
+
+**Regression nghiêm trọng phát hiện qua kiểm tra chéo sau [1.6.0]/[1.8.0]:**
+sau khi thêm `JobsService.assertOwnership()`, rà lại toàn bộ
+`RenderService.js` thì phát hiện các hàm `cancelJob()`, `getJob()`,
+`getJobPreview()`, `approveJob()`, `requestJobChanges()` gọi `fetch()`
+tới các route `/jobs/:id/...` mà KHÔNG đính kèm header `Authorization`
+(chỉ `createJob()`/`listJobs()` có). `getDownloadUrl()` càng nặng hơn:
+dùng thẳng làm `href`/`window.open()` (điều hướng trình duyệt), vốn
+KHÔNG BAO GIỜ set được custom header. Hệ quả: ngay khi Facebook Provider
+được bật thật, MỌI khách đã đăng nhập sẽ bị chính `assertOwnership()`
+(tưởng là fix bảo mật) chặn nhầm (403) khi xem/duyệt/huỷ/tải job của
+CHÍNH HỌ — lỗi này vô hình hiện tại chỉ vì mọi job thật đang có
+`customerId = null` (Facebook Auth chưa bật), nên nhánh "khách vãng lai"
+trong `assertOwnership()` vô tình che giấu nó.
+
+Đã sửa toàn diện:
+- `RenderService.js`: đính `Authorization: Bearer <token>` (qua
+  `getAccessToken()` có sẵn) vào `cancelJob()`, `getJob()`,
+  `getJobPreview()`, `approveJob()`, `requestJobChanges()`.
+- `getDownloadUrl()` chuyển thành `async`, đính token qua query string
+  `?token=` (điều hướng trình duyệt không set được header, cùng cách đã
+  làm cho WebSocket ở [1.8.0]) — cập nhật `optional-auth.util.ts`
+  (`getOptionalCustomerId`) đọc thêm fallback này.
+- `App.jsx`/`PreviewDownloadScreen.jsx`: cập nhật 2 nơi gọi
+  `getDownloadUrl()` cho khớp API async mới (mở tab trống ngay lúc
+  click rồi gán `location.href` sau, tránh trình duyệt chặn popup).
+- `AdminScreen.jsx`: link "Tải" trong bảng Job trước đây dùng thẳng
+  `job.downloadUrl` (bỏ qua hoàn toàn route có ghi log + kiểm tra chủ sở
+  hữu) — đổi sang `adminGetDownloadUrl()` (mới, đính `?adminKey=`,
+  `admin-key.guard.ts#isValidAdminKey` đọc thêm fallback này).
+
+**Đồng thời phát hiện + sửa gốc rễ vấn đề (không chỉ vá triệu chứng):**
+`B2StorageService` trả URL "công khai" tĩnh, không ký, không hết hạn
+cho cả ảnh preview lẫn file tải cuối — nếu bucket B2 thật đang public-read,
+ai đoán được URL (suy từ job id) cũng tải được file, bỏ qua hoàn toàn
+mọi kiểm tra chủ sở hữu vừa thêm ở Backend. Đã thêm
+`@aws-sdk/s3-request-presigner`, method mới `B2StorageService.getSignedUrl()`
+(URL có chữ ký + hạn dùng) và `extractKeyFromPublicUrl()` (trích lại key
+từ URL tĩnh đã lưu, không cần đổi schema DB). Ảnh preview ký lại mỗi lần
+gọi (`GET /jobs/:id/preview`, hạn 30 phút); file tải cuối ký lại mỗi lần
+gọi (`GET /jobs/:id/download`, hạn 5 phút). An toàn dù bucket đang public
+hay private — không phá vỡ gì nếu vẫn public, bắt buộc phải có nếu
+chuyển sang private (khuyến nghị cho production).
+
+Thêm `b2-storage.service.spec.ts` (file test mới, trước đây chưa có)
+cho `extractKeyFromPublicUrl()`. Tổng test backend: 35 → 37, PASS.
+Build/lint + boot thật đã chạy lại (cả backend lẫn frontend), tất cả
+PASS. Xem `docs/MVP_GAP_REPORT.md` để biết chi tiết đầy đủ.
+
 ## [1.8.0] - Sửa IDOR thứ 2: /ws/jobs/:id gửi dữ liệu công khai (2026-07-31)
 
 **Phát hiện thứ 4 qua self-review liên tiếp:** sau khi khoá quyền sở

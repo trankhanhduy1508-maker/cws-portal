@@ -67,3 +67,11 @@ export async function adminGetJobLogs(jobId, adminKey) {
   if (!res.ok) throw new Error(`Không lấy được log (${res.status})`);
   return res.json();
 }
+
+/** URL tải file kết quả cho link `<a href>` trong bảng Job — dùng thẳng
+ * làm href (không phải fetch()) nên phải đính `adminKey` qua query string
+ * thay vì header `x-admin-key` (điều hướng trình duyệt thường không set
+ * được custom header, xem admin-key.guard.ts#isValidAdminKey). */
+export function adminGetDownloadUrl(jobId, adminKey) {
+  return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?adminKey=${encodeURIComponent(adminKey)}`;
+}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
 import {
   adminListCustomers, adminListJobs, adminListWorkers, adminGetJobByStorageCode,
-  adminGetPaymentByCode, adminGetJobPreview,
+  adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
@@ -214,7 +214,9 @@ export default function AdminScreen() {
                   <td style={{ padding: 8 }}>{PAYMENT_STATUS_LABEL[job.paymentStatus] ?? job.paymentStatus}</td>
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
                   <td style={{ padding: 8 }}>
-                    {job.downloadUrl ? <a href={job.downloadUrl} target="_blank" rel="noopener noreferrer">Tải</a> : '—'}
+                    {job.downloadUrl ? (
+                      <a href={adminGetDownloadUrl(job.id, adminKey)} target="_blank" rel="noopener noreferrer">Tải</a>
+                    ) : '—'}
                   </td>
                   <td style={{ padding: 8 }}>
                     <button

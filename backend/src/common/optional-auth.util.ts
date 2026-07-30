@@ -29,13 +29,30 @@ export async function resolveCustomerId(
  * supabase.auth.signInWithOAuth() ở Portal) — KHÔNG phải JWT tự ký nữa.
  * Xác thực bằng cách hỏi thẳng Supabase Auth (auth.getUser), không tự
  * verify chữ ký — đơn giản, đúng, không cần biết JWT secret của Supabase.
+ *
+ * Fallback `?token=` query string khi KHÔNG có Bearer header — bắt
+ * buộc phải có cho `GET /jobs/:id/download` (Portal dùng thẳng
+ * `<a href>`/`window.open()` để tải, trình duyệt KHÔNG set được custom
+ * header cho điều hướng thường, chỉ `fetch()` mới set được). Không có
+ * fallback này thì `JobsService.assertOwnership()` sẽ luôn coi khách
+ * đã đăng nhập là "ẩn danh" trên route download — tự chặn nhầm chính
+ * chủ job của họ ngay khi Facebook Provider bật thật.
  */
 export async function getOptionalCustomerId(
   req: Request,
   supabaseService: SupabaseService,
 ): Promise<string | null> {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return resolveCustomerId(
+      authHeader.slice('Bearer '.length),
+      supabaseService,
+    );
+  }
 
-  return resolveCustomerId(authHeader.slice('Bearer '.length), supabaseService);
+  const queryToken = req.query.token;
+  return resolveCustomerId(
+    typeof queryToken === 'string' ? queryToken : null,
+    supabaseService,
+  );
 }

@@ -20,6 +20,7 @@ import { useRenderJob } from './hooks/useRenderJob';
 import { useJobHistory } from './hooks/useJobHistory';
 import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
+import { getDownloadUrl } from './services/RenderService';
 
 // Screen điều hướng — tuyến tính theo đúng end-to-end workflow:
 // Facebook Login -> Upload -> Render Profile -> Processing (Job chạy
@@ -151,7 +152,18 @@ function CustomerPortalApp() {
   const handleOpenHistoryJob = useCallback((historyJob) => {
     const isTerminal = [JOB_STATUS.FINISHED, JOB_STATUS.ERROR, JOB_STATUS.CANCELLED].includes(historyJob.status);
     if (isTerminal) {
-      if (historyJob.downloadUrl) window.open(historyJob.downloadUrl, '_blank', 'noopener');
+      // Luôn qua route GET /jobs/:id/download (ghi log + kiểm tra chủ sở
+      // hữu) — KHÔNG mở thẳng historyJob.downloadUrl (URL B2 nội bộ, có
+      // thể đã hết hạn nếu là presigned URL, xem b2-storage.service.ts).
+      // getDownloadUrl() giờ async (cần lấy access token trước) — mở tab
+      // trống NGAY trong lúc click (đồng bộ) rồi mới gán location sau,
+      // để trình duyệt không chặn popup (chỉ cho phép window.open() gọi
+      // trực tiếp trong user gesture, không phải sau 1 await).
+      const win = window.open('', '_blank', 'noopener');
+      getDownloadUrl(historyJob.id).then((url) => {
+        if (url && win) win.location.href = url;
+        else if (win) win.close();
+      });
       return;
     }
     // Job đang chạy — mở lại (subscribe), KHÔNG tạo job mới.
