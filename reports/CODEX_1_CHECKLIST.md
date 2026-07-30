@@ -29,7 +29,9 @@ GitHub • Repository • Vercel • Render.com • CI/CD • Build • Document
 
 # Pending
 
-- Dọn nhánh Git cũ: nhiều nhánh remote không rõ trạng thái (đã merge? bỏ dở? còn cần giữ?) — CẦN NGƯỜI DÙNG xác nhận trước khi xoá bất kỳ nhánh nào (xoá nhánh là hành động khó hoàn tác, không tự ý làm).
+- Dọn nhánh Git cũ — đã audit xong bằng `git merge-base --is-ancestor` với `main` mới (2026-07-30), CẦN NGƯỜI DÙNG xác nhận trước khi xoá (xoá nhánh là hành động khó hoàn tác, không tự ý làm):
+  - **Đã nằm trọn trong `main` (an toàn để xoá nếu muốn dọn dẹp)**: `agent-3-operations-p2`, `agent-3-secure-output-p2`, `backend/nestjs-implementation`, `codex/3-business-workflow-cleanup`, `codex/ci-workflow`, `codex/mvp-payment-qr-only`, `codex/storage-review-images`.
+  - **CÓ commit riêng chưa nằm trong `main`** (cần xem qua trước khi quyết định, có thể là việc dở hoặc thử nghiệm của phiên agent trước): `agent-1-payment-p2` (8 commit), `agent-1-planner` (4), `agent-2-implementation` (5), `agent-2-payment-p2` (1), `agent-2-render-pipeline` (1), `agent-2-secure-output-p2` (10), `agent-3-operations-console-p2` (27 — nhiều nhất, đáng xem kỹ nhất), `agent-3-review` (1), `claude/cws-zero-manual-operation-wtzbrt` (1).
 - Xác nhận cấu hình thật trên Vercel (env `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL`) và Render.com (toàn bộ biến trong `backend/.env.example`, đặc biệt `ADMIN_API_KEY`/`MB_BANK_ACCOUNT_NUMBER` không được để trống ở production) — CLOUD_VERIFICATION_REQUIRED, không có Dashboard access.
 
 ---
