@@ -5,6 +5,7 @@ import { AppConfig } from '../config/configuration';
 const FILE_LINK_PATTERN = /\/file\/d\/([\w-]+)/;
 const OPEN_ID_PATTERN = /[?&]id=([\w-]+)/;
 const FOLDER_LINK_PATTERN = /\/folders\//;
+const GOOGLE_DRIVE_HOST_PATTERN = /^https:\/\/drive\.google\.com\//;
 
 @Injectable()
 export class GoogleDriveService {
@@ -36,9 +37,17 @@ export class GoogleDriveService {
   /**
    * @returns { fileName, fileSizeBytes } — null nếu chưa cấu hình
    * GOOGLE_DRIVE_API_KEY (honest fallback, giống hành vi mock trước
-   * đây: không bịa dữ liệu giả khi chưa thể lấy thật).
+   * đây: không bịa dữ liệu giả khi chưa thể lấy thật), hoặc nếu link
+   * là OneDrive/Dropbox (CWS_ROADMAP_MVP_V1.md chấp nhận cả 2 nguồn
+   * này, nhưng CHƯA có tích hợp API thật để lấy tên/dung lượng file —
+   * trả null thay vì bịa, giống đúng nguyên tắc đã áp dụng cho Drive).
    */
   async resolve(driveLink: string): Promise<{ fileName: string | null; fileSizeBytes: number | null }> {
+    if (!GOOGLE_DRIVE_HOST_PATTERN.test(driveLink)) {
+      this.logger.warn('Link không phải Google Drive (OneDrive/Dropbox) — chưa có API thật để resolve.');
+      return { fileName: null, fileSizeBytes: null };
+    }
+
     const fileId = this.extractFileId(driveLink);
 
     const apiKey = this.configService.get('googleDriveApiKey', { infer: true });

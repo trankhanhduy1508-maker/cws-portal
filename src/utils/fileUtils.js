@@ -1,4 +1,4 @@
-import { ACCEPTED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, GOOGLE_DRIVE_LINK_PATTERN } from '../constants/renderConstants';
+import { ACCEPTED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, SHARED_LINK_PATTERNS } from '../constants/renderConstants';
 
 export function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
@@ -44,9 +44,10 @@ export function validateFile(file) {
 }
 
 /**
- * Validate CÚ PHÁP của link Google Drive. Đây chỉ kiểm tra định dạng URL,
- * KHÔNG xác nhận file có thật/có quyền truy cập — việc đó cần Backend
- * thật gọi tới Google Drive API để kiểm tra (chưa có ở bản này).
+ * Validate CÚ PHÁP của link chia sẻ (Google Drive / OneDrive / Dropbox
+ * — CWS_ROADMAP_MVP_V1.md). Đây chỉ kiểm tra định dạng URL, KHÔNG xác
+ * nhận file có thật/có quyền truy cập — việc đó cần Backend thật gọi
+ * API tương ứng để kiểm tra (hiện chỉ Google Drive có kiểm tra thật).
  *
  * @returns {{ valid: boolean, error: string|null }}
  */
@@ -54,13 +55,13 @@ export function validateDriveLink(link) {
   const trimmed = (link || '').trim();
 
   if (!trimmed) {
-    return { valid: false, error: 'Vui lòng dán link Google Drive' };
+    return { valid: false, error: 'Vui lòng dán link chia sẻ (Google Drive/OneDrive/Dropbox)' };
   }
 
-  if (!GOOGLE_DRIVE_LINK_PATTERN.test(trimmed)) {
+  if (!SHARED_LINK_PATTERNS.some((pattern) => pattern.test(trimmed))) {
     return {
       valid: false,
-      error: 'Link không đúng định dạng Google Drive. Vui lòng kiểm tra lại link chia sẻ.',
+      error: 'Link không đúng định dạng Google Drive/OneDrive/Dropbox. Vui lòng kiểm tra lại link chia sẻ.',
     };
   }
 

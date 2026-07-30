@@ -45,9 +45,16 @@ describe('GoogleDriveService', () => {
     });
   });
 
-  describe('link không hợp lệ', () => {
-    it('từ chối link không phải Google Drive/không nhận diện được ID', async () => {
-      await expect(service.resolve('https://example.com/random')).rejects.toThrow(
+  describe('link không phải Google Drive (OneDrive/Dropbox/Direct Link)', () => {
+    it('chấp nhận nhưng trả null thay vì bịa dữ liệu (chưa có API thật cho nguồn này)', async () => {
+      const result = await service.resolve('https://1drv.ms/f/abc123');
+      expect(result).toEqual({ fileName: null, fileSizeBytes: null });
+    });
+  });
+
+  describe('link Google Drive nhưng không nhận diện được ID', () => {
+    it('từ chối link Google Drive không đúng cú pháp file/id', async () => {
+      await expect(service.resolve('https://drive.google.com/random-unrecognized-path')).rejects.toThrow(
         BadRequestException,
       );
     });
