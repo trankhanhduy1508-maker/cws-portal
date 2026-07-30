@@ -194,7 +194,19 @@ export async function cancelJob(jobId) {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    return res.ok;
+    // SỬA LỖI (tự phát hiện 31/07/2026): đây là hàm DUY NHẤT trong file
+    // này trước đây "return res.ok" thay vì throw khi thất bại — mọi hàm
+    // khác đều throw new Error(...) đúng quy ước chung. Hệ quả: khi
+    // Backend từ chối huỷ (vd job đã AWAITING_PAYMENT trở đi, xem
+    // JobsService.cancel()), lỗi bị NUỐT hoàn toàn, khách bấm "Huỷ job"
+    // không thấy gì xảy ra, không có phản hồi nào. Đọc message thật từ
+    // Backend (BadRequestException trả về lý do rõ ràng) thay vì chỉ báo
+    // chung chung.
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Huỷ job thất bại (${res.status})`);
+    }
+    return true;
   }
   return mock.mockCancelJob(jobId);
 }

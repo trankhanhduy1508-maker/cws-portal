@@ -237,12 +237,37 @@ export class JobsService {
     return this.ordersRepository.findAll();
   }
 
+  /** Các trạng thái CÒN Ở GIAI ĐOẠN MIỄN PHÍ (trước khi sinh QR thanh
+   * toán tại approve()) — CHỈ những trạng thái này được phép huỷ. Sửa
+   * lỗi nghiêm trọng phát hiện qua tự rà soát 31/07/2026: trước đây
+   * cancel() KHÔNG kiểm tra status, cho phép huỷ ngay cả khi đã
+   * AWAITING_PAYMENT (QR đã sinh, có thể khách ĐÃ chuyển khoản thật) —
+   * nếu khách bấm "Huỷ job" đúng lúc webhook ngân hàng sắp/vừa xác nhận
+   * PAID, `finalizeDelivery()` sẽ từ chối đóng gói/mở tải vì status
+   * không còn là AWAITING_PAYMENT nữa, khiến khách MẤT TIỀN THẬT mà
+   * KHÔNG BAO GIỜ nhận được file, và hệ thống không có cơ chế hoàn
+   * tiền/cảnh báo nào cho trường hợp này. */
+  private static readonly CANCELLABLE_STATUSES = new Set<JobStatus>([
+    JobStatus.QUEUED,
+    JobStatus.SEARCHING_WORKERS,
+    JobStatus.ALLOCATING_WORKERS,
+    JobStatus.WORKERS_CONNECTED,
+    JobStatus.RENDERING,
+    JobStatus.REVIEW_READY,
+  ]);
+
   async cancel(
     id: string,
     customerId: string | null = null,
     isAdmin = false,
   ): Promise<RenderOrder> {
-    this.assertOwnership(await this.getById(id), customerId, isAdmin);
+    const existing = await this.getById(id);
+    this.assertOwnership(existing, customerId, isAdmin);
+    if (!JobsService.CANCELLABLE_STATUSES.has(existing.status)) {
+      throw new BadRequestException(
+        `Job ${id} đã sang giai đoạn thanh toán/hoàn tất (trạng thái hiện tại: ${existing.status}) — không thể tự huỷ nữa, vui lòng liên hệ Admin.`,
+      );
+    }
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return order;

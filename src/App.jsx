@@ -122,7 +122,19 @@ function CustomerPortalApp() {
     job.start({ input: resolvedInput, profileId: selectedProfileId });
   }, [job, resolvedInput, selectedProfileId]);
 
-  const handleCancelJob = useCallback(() => { job.cancel(); }, [job]);
+  // SỬA LỖI (tự phát hiện 31/07/2026): trước đây gọi job.cancel() không
+  // await/catch — job.cancel() là async, nếu Backend từ chối huỷ (vd
+  // job đã AWAITING_PAYMENT trở đi, xem JobsService.cancel()) lỗi bị bỏ
+  // qua hoàn toàn, khách bấm nút không thấy phản hồi gì. window.alert()
+  // dùng tạm (nhất quán với các dialog native khác đã dùng trong dự án,
+  // vd AdminScreen.jsx) — đủ cho 1 hành động hiếm khi thất bại.
+  const handleCancelJob = useCallback(async () => {
+    try {
+      await job.cancel();
+    } catch (err) {
+      window.alert(err.message || 'Không huỷ được job.');
+    }
+  }, [job]);
 
   const handleRetry = useCallback(() => {
     job.reset();

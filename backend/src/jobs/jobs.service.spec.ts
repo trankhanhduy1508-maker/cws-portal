@@ -399,4 +399,40 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     );
     expect(mockRepository.markCancelled).not.toHaveBeenCalled();
   });
+
+  it('cancel() cho phép huỷ khi job còn ở giai đoạn miễn phí (REVIEW_READY, trước khi thanh toán)', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.REVIEW_READY }),
+    );
+    mockRepository.markCancelled.mockResolvedValue(
+      baseOrder({ status: JobStatus.CANCELLED }),
+    );
+
+    await expect(
+      service.cancel('job-1', 'customer-owner'),
+    ).resolves.toMatchObject({ status: JobStatus.CANCELLED });
+    expect(mockRepository.markCancelled).toHaveBeenCalledWith('job-1');
+  });
+
+  it('cancel() TỪ CHỐI huỷ khi job đã AWAITING_PAYMENT (bug tự phát hiện: tránh khách mất tiền mà không nhận được file)', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'payment-1' }),
+    );
+
+    await expect(service.cancel('job-1', 'customer-owner')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(mockRepository.markCancelled).not.toHaveBeenCalled();
+  });
+
+  it('cancel() TỪ CHỐI huỷ khi job đã FINISHED', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.FINISHED }),
+    );
+
+    await expect(service.cancel('job-1', 'customer-owner')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(mockRepository.markCancelled).not.toHaveBeenCalled();
+  });
 });
