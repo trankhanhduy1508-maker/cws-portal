@@ -184,6 +184,7 @@ export default function AdminScreen() {
                 <th style={{ padding: 8 }}>Project</th>
                 <th style={{ padding: 8 }}>Customer</th>
                 <th style={{ padding: 8 }}>Status</th>
+                <th style={{ padding: 8 }}>Tiến độ</th>
                 <th style={{ padding: 8 }}>Payment</th>
                 <th style={{ padding: 8 }}>Tạo lúc</th>
                 <th style={{ padding: 8 }}>File cuối</th>
@@ -195,6 +196,7 @@ export default function AdminScreen() {
                   <td style={{ padding: 8 }}>{job.projectName}</td>
                   <td style={{ padding: 8 }}>{job.customerId ? (customerNameById.get(job.customerId) ?? job.customerId) : '—'}</td>
                   <td style={{ padding: 8 }}>{JOB_STATUS_LABEL[job.status] ?? job.status}</td>
+                  <td style={{ padding: 8 }}>{Math.round((job.stageProgress ?? 0) * 100)}%</td>
                   <td style={{ padding: 8 }}>{PAYMENT_STATUS_LABEL[job.paymentStatus] ?? job.paymentStatus}</td>
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
                   <td style={{ padding: 8 }}>
@@ -203,7 +205,7 @@ export default function AdminScreen() {
                 </tr>
               ))}
               {visibleJobs.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
+                <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
               )}
             </tbody>
           </table>
