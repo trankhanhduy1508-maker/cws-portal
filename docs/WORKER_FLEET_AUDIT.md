@@ -430,9 +430,31 @@ Test: RPC test trực tiếp trên 1 job thật qua MCP (gọi 2 lần liên ti�
 xác nhận đúng `true` rồi `false`, khôi phục dữ liệu). Python: kiểm tra
 tĩnh (cân bằng ngoặc, không lỗi `%%`, diff tối thiểu ~10 dòng).
 
+**🔴 Tự phát hiện + tự sửa 1 bug do CHÍNH fix này gây ra, TRƯỚC khi ảnh
+hưởng dữ liệu thật:** `try_acquire_merge_lock()` giữ khoá VĨNH VIỄN kể
+cả khi lần merge đó thất bại. Nguyên nhân gốc: `get_job_render_summary()#is_fully_done`
+chỉ tính trên các task ĐANG TỒN TẠI trong bảng `tasks` — ngay sau khi
+probe task (1 frame) xong nhưng TRƯỚC KHI Backend kịp chèn các task còn
+lại (`createRemainingTasks()`), nó có thể trả về `true` "giả". Trước khi
+có khoá, điều này vô hại (`attempt_job_video_merge()` tự bắt qua kiểm
+tra "số file PNG không khớp" rồi bỏ qua, lần sau thử lại bình thường) —
+nhưng VỚI khoá vĩnh viễn mới thêm, lần thử "giả" này sẽ khoá CHẾT job
+đó, khiến lần merge THẬT SỰ sau này (khi job đã thực sự render xong)
+không bao giờ tự động chạy nữa — tức là hàng loạt job có bật tính năng
+merge sẽ VĨNH VIỄN không tự ghép được video, một mức độ nghiêm trọng
+hơn hẳn giới hạn gốc đang cố sửa.
+
+Sửa: commit `01b928d` (RPC `release_merge_lock`, test acquire→release→acquire
+lại trên 1 job thật qua MCP) + `e762609` (Python: biến `merge_succeeded`
+theo dõi xuyên suốt hàm, `finally` gọi `release_merge_lock()` NẾU không
+thành công thật sự — best-effort, bọc riêng try/except). Phát hiện qua
+tự rà lại logic của chính mình (không phải do test thật báo lỗi), đúng
+tinh thần "measure twice" — không có dữ liệu thật nào từng bị ảnh hưởng
+vì lỗi này chưa từng chạy trên môi trường thật.
+
 **Đến đây, toàn bộ mục "chưa làm" có ý nghĩa tính năng (không tính máy
 thật/giá) trong audit này đã đóng, kể cả 1 giới hạn đã biết từ trước.**
-Việc còn lại thực sự cần: xác nhận trên máy Worker thật (9 commit Python
+Việc còn lại thực sự cần: xác nhận trên máy Worker thật (10 commit Python
 chưa từng chạy qua Python/Blender/Windows thật) và cấu hình
 `fleets.hourly_rate` khi có giá thật.
 
@@ -559,6 +581,12 @@ duy nhất. Commit `a28f8df`.
 - `ec598d4` — feat(database): RPC try_acquire_merge_lock.
 - `2056252` — feat(worker): wiring khoá lạc quan chống merge song song
   (commit Python thứ 9 của phiên này, chưa test máy thật).
+- `6f5b912` — docs: thêm mục sửa giới hạn merge song song.
+- `01b928d` — fix(database): RPC release_merge_lock (tự phát hiện + sửa
+  bug do chính `ec598d4`/`2056252` gây ra, trước khi ảnh hưởng dữ liệu
+  thật).
+- `e762609` — fix(worker): thả khoá lạc quan nếu merge thất bại (commit
+  Python thứ 10 của phiên này, chưa test máy thật).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -596,15 +624,18 @@ hiện có trong repo thay vì tiếp tục chờ.
    rõ là "chưa làm/để lại vòng sau" thay vì đoán, xem từng mục Phase ở
    trên). Việc còn lại từ đây là XÁC NHẬN TRÊN MÁY THẬT, không phải viết
    thêm code theo roadmap.
-9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 9
+9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 10
    commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
-   `3cfb241`/`0bec9a6`/`caa97f1`/`2056252`, cộng `c6d64f3` từ trước) mới
-   chỉ kiểm tra tĩnh, chưa từng chạy qua Python/Blender/B2/Windows thật.
-   Đây là rủi ro lớn nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy
-   Worker thật trước khi coi là sẵn sàng production, ĐẶC BIỆT với
-   `0bec9a6` (Phase 8) vì liên quan trực tiếp tới số liệu billing sẽ hiển
-   thị cho Admin. `caa97f1`/`2056252` rủi ro thấp hơn (diff nhỏ, tính
-   năng merge đang tắt mặc định nên hiếm khi thực thi trong vận hành thật).
+   `3cfb241`/`0bec9a6`/`caa97f1`/`2056252`/`e762609`, cộng `c6d64f3` từ
+   trước) mới chỉ kiểm tra tĩnh, chưa từng chạy qua Python/Blender/B2/
+   Windows thật. Đây là rủi ro lớn nhất hiện tại — BẮT BUỘC xác nhận
+   trên ít nhất 1 máy Worker thật trước khi coi là sẵn sàng production,
+   ĐẶC BIỆT với `0bec9a6` (Phase 8) vì liên quan trực tiếp tới số liệu
+   billing sẽ hiển thị cho Admin. `caa97f1`/`2056252`/`e762609` rủi ro
+   thấp hơn (diff nhỏ, tính năng merge đang tắt mặc định nên hiếm khi
+   thực thi trong vận hành thật) — nhưng `e762609` CHÍNH LÀ minh chứng
+   tại sao vẫn cần xác nhận máy thật cho MỌI thay đổi dù nhỏ: bản thân
+   nó sửa 1 bug do 2 commit Python ngay trước đó gây ra.
 10. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
     Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
     đó không.
