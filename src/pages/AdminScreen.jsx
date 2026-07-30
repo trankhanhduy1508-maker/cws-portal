@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, RefreshCw, KeyRound } from 'lucide-react';
-import { adminListCustomers, adminListJobs, adminGetJobByStorageCode, adminGetPaymentByCode } from '../services/adminApi';
+import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
+import {
+  adminListCustomers, adminListJobs, adminListWorkers, adminGetJobByStorageCode,
+  adminGetPaymentByCode, adminGetJobPreview,
+} from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
@@ -20,23 +23,33 @@ export default function AdminScreen() {
   const [keyInput, setKeyInput] = useState('');
   const [jobs, setJobs] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
   const [paymentCodeQuery, setPaymentCodeQuery] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
   const [searchResult, setSearchResult] = useState(null);
+  const [previewJob, setPreviewJob] = useState(null); // { id, projectName, images, isLoading, error }
 
   const loadAll = useCallback((key) => {
     setIsLoading(true);
     setError(null);
-    Promise.all([adminListJobs(key), adminListCustomers(key)])
-      .then(([jobsRes, customersRes]) => {
+    Promise.all([adminListJobs(key), adminListCustomers(key), adminListWorkers(key)])
+      .then(([jobsRes, customersRes, workersRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
+        setWorkers(workersRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
+  }, []);
+
+  const handleOpenPreview = useCallback((job) => {
+    setPreviewJob({ id: job.id, projectName: job.projectName, images: [], isLoading: true, error: null });
+    adminGetJobPreview(job.id)
+      .then((res) => setPreviewJob((p) => (p && p.id === job.id ? { ...p, images: res.images ?? [], isLoading: false } : p)))
+      .catch((err) => setPreviewJob((p) => (p && p.id === job.id ? { ...p, isLoading: false, error: err.message } : p)));
   }, []);
 
   useEffect(() => {
@@ -188,6 +201,7 @@ export default function AdminScreen() {
                 <th style={{ padding: 8 }}>Payment</th>
                 <th style={{ padding: 8 }}>Tạo lúc</th>
                 <th style={{ padding: 8 }}>File cuối</th>
+                <th style={{ padding: 8 }}>Preview</th>
               </tr>
             </thead>
             <tbody>
@@ -202,18 +216,102 @@ export default function AdminScreen() {
                   <td style={{ padding: 8 }}>
                     {job.downloadUrl ? <a href={job.downloadUrl} target="_blank" rel="noopener noreferrer">Tải</a> : '—'}
                   </td>
+                  <td style={{ padding: 8 }}>
+                    <button
+                      onClick={() => handleOpenPreview(job)}
+                      type="button"
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: '#3B5BFF' }}
+                    >
+                      <Eye size={13} strokeWidth={2} /> Xem
+                    </button>
+                  </td>
                 </tr>
               ))}
               {visibleJobs.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
+                <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
+      {previewJob && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20,
+          }}
+          onClick={() => setPreviewJob(null)}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 640, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 600 }}>
+                Preview — {previewJob.projectName}
+              </h3>
+              <button onClick={() => setPreviewJob(null)} type="button" style={{ padding: 4 }}>
+                <X size={18} strokeWidth={2} />
+              </button>
+            </div>
+            {previewJob.isLoading && <p style={{ fontSize: 13.5, color: '#6B6B70' }}>Đang tải...</p>}
+            {previewJob.error && <p style={{ fontSize: 13.5, color: '#E5484D' }}>{previewJob.error}</p>}
+            {!previewJob.isLoading && !previewJob.error && previewJob.images.length === 0 && (
+              <p style={{ fontSize: 13.5, color: '#9a9aa0' }}>Job này chưa có ảnh preview (chưa tới bước review_ready).</p>
+            )}
+            {previewJob.images.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+                {previewJob.images
+                  .slice()
+                  .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                  .map((img, i) => (
+                    <img
+                      key={img.url + i}
+                      src={img.url}
+                      alt={`Preview ${i + 1}`}
+                      style={{ width: '100%', borderRadius: 10, aspectRatio: '16 / 9', objectFit: 'cover' }}
+                    />
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {!isLoading && (
         <>
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Worker Fleet
+          </h3>
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Worker ID</th>
+                  <th style={{ padding: 8 }}>GPU</th>
+                  <th style={{ padding: 8 }}>Status</th>
+                  <th style={{ padding: 8 }}>Last seen</th>
+                  <th style={{ padding: 8 }}>Crash count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workers.map((w) => (
+                  <tr key={w.workerId} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
+                    <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{w.status}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(w.lastSeenAt)}</td>
+                    <td style={{ padding: 8 }}>{w.crashCount}</td>
+                  </tr>
+                ))}
+                {workers.length === 0 && (
+                  <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
           <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
             Khách hàng
           </h3>

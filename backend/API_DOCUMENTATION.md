@@ -25,6 +25,16 @@ Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7 —
 
 Response: `[{ "id", "fullName", "email", "avatarUrl", "phone", "preferredContact", "marketingConsent", "createdAt", "updatedAt" }, ...]`
 
+## Fleet
+
+### GET /fleet/workers
+Trạng thái Worker Fleet (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
+"Worker") — CHỈ đọc bảng `workers` nội bộ, không can thiệp gì (đúng
+nguyên tắc "không đụng Worker Fleet"). **Yêu cầu header `x-admin-key`**
+(`AdminKeyGuard`).
+
+Response: `[{ "workerId", "gpuName", "vramMb", "status": "idle"|"busy"|"offline", "lastSeenAt", "crashCount" }, ...]`
+
 ## Jobs
 
 ### POST /jobs

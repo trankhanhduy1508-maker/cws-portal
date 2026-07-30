@@ -6,6 +6,7 @@ import { StorageModule } from '../storage/storage.module';
 import { FilesModule } from '../files/files.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { JobsController } from './jobs.controller';
+import { FleetController } from './fleet.controller';
 import { JobsService } from './jobs.service';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { PACKAGING_SERVICE } from './services/packaging.interface';
@@ -14,7 +15,7 @@ import { SupabaseRenderOrdersRepository } from './repositories/render-orders.rep
 
 @Module({
   imports: [SupabaseModule, PackagingModule, StorageModule, FilesModule, PaymentsModule],
-  controllers: [JobsController],
+  controllers: [JobsController, FleetController],
   providers: [
     JobsService,
     WorkerFleetGateway,

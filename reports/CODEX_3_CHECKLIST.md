@@ -54,7 +54,7 @@ Customer Workflow • Worker • Payment • Dashboard
 # Phase 5 - Dashboard
 
 - [x] Dashboard Customer — History Screen hiện có (lọc theo customer khi đăng nhập).
-- [x] Dashboard Admin — AdminScreen.jsx (bảng job kèm Customer/Tiến độ + bảng Khách hàng, tìm theo storage_code/payment_code/customer — đủ 3 tiêu chí Giai đoạn 7), chỉ vào qua #admin, bảo vệ bằng x-admin-key (AdminKeyGuard, kể cả GET /customers mới). Không polish UI (chưa xem bằng mắt), chỉ đảm bảo đúng chức năng + có bảo vệ. Còn thiếu (ghi nhận, chưa làm — ưu tiên thấp): view riêng cho Worker Fleet, xem ảnh Preview ngay trong Admin.
+- [x] Dashboard Admin — AdminScreen.jsx (bảng Job kèm Customer/Tiến độ/nút xem Preview + bảng Khách hàng + bảng Worker Fleet, tìm theo storage_code/payment_code/customer — đủ 3 tiêu chí Giai đoạn 7 + đủ 7 mục "Admin theo dõi" của CWS_MVP_WORKFLOW_FINAL.md), chỉ vào qua #admin, bảo vệ bằng x-admin-key (AdminKeyGuard, kể cả GET /customers và GET /fleet/workers mới). Không polish UI (chưa xem bằng mắt), chỉ đảm bảo đúng chức năng + có bảo vệ.
 - [x] Job Detail — GET /jobs/:id đã có đủ field (storage_code, status, payment, download).
 - [x] Payment Detail — GET /payments/by-code/:code (admin), GET /payments/:id (khách tự poll).
 - [x] Download History — bảng downloads + StorageService.logDownload(), chưa có UI riêng hiển thị lịch sử tải nhưng dữ liệu đã ghi đủ.

@@ -29,6 +29,21 @@ export function adminListJobs(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_JOBS, adminKey);
 }
 
+/** Trạng thái Worker Fleet (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
+ * "Worker") — chỉ đọc, không can thiệp. */
+export function adminListWorkers(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, adminKey);
+}
+
+/** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
+ * "Preview") — route công khai (không cần x-admin-key), admin gọi
+ * bằng jobId đã có sẵn trong danh sách job. */
+export async function adminGetJobPreview(jobId) {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`);
+  if (!res.ok) throw new Error(`Không lấy được ảnh preview (${res.status})`);
+  return res.json();
+}
+
 /** Tra cứu 1 job theo Storage Code. */
 export function adminGetJobByStorageCode(storageCode, adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_JOB_BY_STORAGE_CODE(storageCode), adminKey);

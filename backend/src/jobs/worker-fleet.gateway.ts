@@ -90,6 +90,39 @@ export class WorkerFleetGateway {
     };
   }
 
+  /** Danh sách Worker Fleet — Admin theo dõi "Worker"
+   * (CWS_MVP_WORKFLOW_FINAL.md, mục Admin). CHỈ đọc, không sửa gì lên
+   * bảng `workers` (đúng nguyên tắc "không đụng Worker Fleet"). */
+  async listWorkers(): Promise<
+    {
+      workerId: string;
+      gpuName: string | null;
+      vramMb: number | null;
+      status: string;
+      lastSeenAt: number;
+      crashCount: number;
+    }[]
+  > {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('workers')
+      .select('worker_id, gpu_name, vram_mb, status, last_seen_at, crash_count')
+      .order('last_seen_at', { ascending: false });
+
+    if (error) {
+      this.logger.error(`listWorkers() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được danh sách Worker: ${error.message}`);
+    }
+    return (data ?? []).map((r) => ({
+      workerId: (r as { worker_id: string }).worker_id,
+      gpuName: (r as { gpu_name: string | null }).gpu_name,
+      vramMb: (r as { vram_mb: number | null }).vram_mb,
+      status: (r as { status: string }).status,
+      lastSeenAt: new Date((r as { last_seen_at: string }).last_seen_at).getTime(),
+      crashCount: (r as { crash_count: number }).crash_count,
+    }));
+  }
+
   /** Số lượng Worker đang online (last_seen_at gần đây) — dùng cho
    * Scheduler Model 1 (đủ máy Online thì không cần Wake). */
   async countOnlineWorkers(withinSeconds = 30): Promise<number> {

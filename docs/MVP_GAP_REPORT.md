@@ -78,9 +78,15 @@ rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
   có route/UI nào cho "Danh sách khách hàng" dù roadmap liệt kê rõ.
 - Cột "Tiến độ" (% từ `stageProgress`) trong bảng Job — roadmap liệt kê
   "Tiến độ" tách riêng khỏi "Danh sách Job" trong mục Admin.
+- `GET /fleet/workers` (mới, `AdminKeyGuard`, chỉ đọc bảng `workers` —
+  không can thiệp Worker Fleet) + bảng "Worker Fleet" trong
+  `AdminScreen.jsx` — đủ "Worker" trong danh sách Admin theo dõi.
+- Nút "Xem" mở modal ảnh preview ngay trong `AdminScreen.jsx` (dùng
+  route `GET /jobs/:id/preview` đã có sẵn) — đủ "Preview" trong danh
+  sách Admin theo dõi.
 - Bảo vệ bằng `AdminKeyGuard` (header `x-admin-key`) trên `GET /jobs`
   (ẩn danh), `GET /jobs/by-storage-code/:code`, `GET /payments/by-code/:code`,
-  `GET /customers`.
+  `GET /customers`, `GET /fleet/workers`.
 
 ### Database & RLS
 - Đủ 8 bảng theo `CWS_DATABASE_SCHEMA.md`: customer_profiles,
@@ -151,19 +157,20 @@ thêm `JobsService` vào `SchedulerService`.
 Build/test/lint đã chạy lại lần nữa sau các fix này, vẫn PASS toàn bộ;
 đã verify boot thật xác nhận route `GET /customers` đăng ký đúng.
 
-### 2 mục Admin còn lại — ghi nhận, cố ý CHƯA làm (mức độ thấp hơn)
+### 2 mục Admin còn lại — đã hoàn thành nốt
 
-- **Admin theo dõi "Worker"** — CWS_MVP_WORKFLOW_FINAL.md, mục Admin
-  liệt kê "Worker" trong danh sách theo dõi. Hiện `AdminScreen.jsx`
-  chỉ suy ra gián tiếp qua status job (`searching_workers`/`rendering`),
-  không có view riêng cho Worker Fleet (số máy online, đang render gì).
-  `WorkerFleetGateway.countOnlineWorkers()` đã tồn tại phía Backend nên
-  KHẢ THI để làm sau — không làm ở đợt audit này vì mức độ ưu tiên thấp
-  hơn nhiều so với mismatch thanh toán/Tạo Job/Customer list đã sửa.
-- **Admin xem Preview ảnh** — roadmap liệt kê "Preview" trong mục Admin
-  theo dõi, nhưng `AdminScreen.jsx` hiện không có cách xem ảnh preview
-  của 1 job (dữ liệu đã có qua `GET /jobs/:id/preview`, chỉ chưa có UI
-  admin gọi tới). Cùng lý do trên — ghi nhận, chưa làm ở đợt này.
+- **Admin theo dõi "Worker"** — đã thêm `GET /fleet/workers`
+  (`WorkerFleetGateway.listWorkers()`, chỉ đọc bảng `workers`: worker_id/
+  gpu_name/status/last_seen_at/crash_count) + bảng "Worker Fleet" trong
+  `AdminScreen.jsx`. Route riêng `/fleet` (không phải `/jobs/...`) để
+  tránh xung đột với route `:id` của `JobsController` — đã verify boot
+  thật xác nhận đăng ký đúng, không đè lên `/jobs/:id/...`.
+- **Admin xem Preview ảnh** — đã thêm nút "Xem" per-job trong
+  `AdminScreen.jsx`, mở modal gọi `GET /jobs/:id/preview` (route đã có
+  sẵn từ trước, công khai — không cần sửa Backend, chỉ thiếu UI).
+
+Build/test/lint + boot thật đã chạy lại lần nữa sau 2 fix này, vẫn PASS
+toàn bộ.
 
 ---
 
@@ -249,17 +256,15 @@ KHÔNG tự làm tiếp được, cần người dùng thao tác trực tiếp:
 
 ## Kết luận
 
-Sau khi sửa mismatch thanh toán (mục quan trọng nhất) + 2 mismatch nhỏ
-hơn (Tạo Job thiếu field, Admin thiếu Customer list), toàn bộ **luồng
-chính** (Definition of Done: Facebook Login → Customer Profile → Job →
-Upload → Render → Progress → Preview → MB QR → Webhook → PAID →
-Download → COMPLETED) đã khớp đúng thứ tự 3 tài liệu gốc, không còn
-mismatch nào phát hiện được qua audit tĩnh (đọc code + đối chiếu từng
-dòng trong 3 doc).
-
-2 mục phụ trong "Admin theo dõi" (Worker, Preview) còn thiếu UI — đã
-ghi nhận rõ, cố ý chưa làm vì mức ưu tiên thấp hơn nhiều so với các
-mismatch đã sửa và không ảnh hưởng tới luồng chính/Definition of Done.
+Sau khi sửa mismatch thanh toán (mục quan trọng nhất) + 5 mismatch nhỏ
+hơn (Tạo Job thiếu field, Admin thiếu Customer list/Tìm kiếm theo
+Customer/Tiến độ/Worker/Preview), toàn bộ **luồng chính** (Definition
+of Done: Facebook Login → Customer Profile → Job → Upload → Render →
+Progress → Preview → MB QR → Webhook → PAID → Download → COMPLETED)
+VÀ toàn bộ mục "Admin theo dõi" (Customer/Jobs/Worker/Progress/Preview/
+Payment/Download — CWS_MVP_WORKFLOW_FINAL.md, mục Admin) đã khớp đúng
+3 tài liệu gốc. Không còn mismatch nào phát hiện được qua audit tĩnh
+(đọc code + đối chiếu từng dòng trong 3 doc).
 
 Toàn bộ phần còn lại (mục BLOCKED ở trên) đều là credential/dashboard/
 thao tác bên ngoài mà Agent không có quyền tự thực hiện trong môi

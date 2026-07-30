@@ -52,6 +52,14 @@
   tên/email/id trong `AdminScreen.jsx` (lọc luôn cả bảng Job theo
   customer được chọn). `customerId` cũng được thêm vào response của
   `GET /jobs`/`GET /jobs/:id` để admin đối chiếu.
+- **Admin thiếu "Worker" + "Preview"** — CWS_MVP_WORKFLOW_FINAL.md, mục
+  Admin liệt kê cả 2 mục này trong danh sách theo dõi. Đã thêm
+  `GET /fleet/workers` (mới, `AdminKeyGuard`, CHỈ đọc bảng `workers` nội
+  bộ — không can thiệp Worker Fleet) + bảng "Worker Fleet" trong
+  `AdminScreen.jsx`. Xem Preview: `GET /jobs/:id/preview` đã có sẵn
+  (route công khai, không cần guard) nhưng chưa có UI Admin nào gọi tới
+  — đã thêm nút "Xem" mở modal hiển thị ảnh preview ngay trong
+  `AdminScreen.jsx`.
 
 ## [1.2.0] - Supabase Auth + RLS + VietQR + Admin Dashboard (2026-07-30)
 
