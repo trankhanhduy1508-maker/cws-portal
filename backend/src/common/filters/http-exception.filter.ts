@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { MulterError } from 'multer';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -15,6 +16,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    // MulterError (vd file upload vượt quá `limits.fileSize`, xem
+    // files.controller.ts) là lỗi CLIENT (413), không phải lỗi Backend
+    // — nếu không bắt riêng sẽ rơi vào nhánh 500 phía dưới, vừa sai mã
+    // lỗi vừa làm ồn log (logger.error chỉ nên ghi lỗi Backend thật).
+    if (exception instanceof MulterError) {
+      response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        message:
+          exception.code === 'LIMIT_FILE_SIZE'
+            ? 'File quá lớn (vượt quá giới hạn cho phép)'
+            : exception.message,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     const status =
       exception instanceof HttpException

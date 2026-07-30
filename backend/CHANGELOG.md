@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.7.0] - Giới hạn dung lượng upload ở tầng multer, tránh OOM (2026-07-31)
+
+**Phát hiện thứ 3 qua self-review liên tiếp:** `POST /files/upload`
+dùng `FileInterceptor('file')` KHÔNG khai báo `limits.fileSize` —
+interceptor này mặc định dùng memory storage, nghĩa là multer đọc
+TOÀN BỘ file vào RAM trước khi handler chạy. Việc kiểm tra
+`file.size > MAX_FILE_SIZE_BYTES` (2GB) trong code trước đó chỉ chạy
+SAU khi file đã nằm hết trong bộ nhớ — không hề chặn được file lớn hơn
+2GB tốn RAM tới mức đó, rủi ro OOM thật trên môi trường nhỏ (Render.com
+free/starter tier).
+
+Đã sửa: thêm `limits: { fileSize: MAX_FILE_SIZE_BYTES }` ngay trong
+`FileInterceptor(...)` — multer tự chặn NGAY khi vượt giới hạn, không
+đọc hết file vào RAM trước. Đồng thời `HttpExceptionFilter` (bắt lỗi
+toàn cục) thêm nhánh xử lý `MulterError` riêng — trả 413 (Payload Too
+Large) rõ ràng thay vì rơi vào nhánh 500 mặc định (sai mã lỗi, vừa gây
+nhiễu log vì `logger.error()` chỉ nên ghi lỗi Backend thật, không phải
+lỗi do khách upload file quá lớn).
+
+Thêm `http-exception.filter.spec.ts` (file test mới cho filter này,
+trước đây chưa có) với 2 test: MulterError trả đúng 413, HttpException
+thường (vd BadRequestException) vẫn hoạt động như cũ. Tổng test
+backend: 29 → 31, PASS. Build/lint + boot thật đã chạy lại, xác nhận
+route `/files/upload` đăng ký đúng.
+
 ## [1.6.0] - Sửa IDOR: kiểm tra chủ sở hữu job trên mọi route theo :id (2026-07-31)
 
 **Lỗ hổng thứ 2 phát hiện qua self-review liên tiếp (sau [1.5.0]):** mọi

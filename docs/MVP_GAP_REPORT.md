@@ -228,6 +228,19 @@ khách ẩn danh bị chặn nếu job có chủ, đúng chủ được phép, A
 backend: 23 → 29, PASS toàn bộ. Build/lint + boot thật xác nhận không
 lỗi DI. Xem chi tiết `backend/CHANGELOG.md` mục `[1.6.0]`.
 
+### Bug thứ 3 phát hiện qua self-review liên tiếp (không phải bảo mật, nhưng rủi ro OOM thật)
+
+`POST /files/upload` dùng `FileInterceptor('file')` không khai báo
+`limits.fileSize` — multer (memory storage mặc định) đọc TOÀN BỘ file
+vào RAM trước khi handler kịp kiểm tra `file.size > MAX_FILE_SIZE_BYTES`
+(2GB), nên giới hạn đó chưa từng thực sự chặn được file lớn hơn 2GB tốn
+RAM tới mức nào. Đã sửa: khai báo `limits.fileSize` ngay trong
+`FileInterceptor`, để multer tự chặn trước khi đọc hết file vào bộ nhớ.
+Thêm nhánh xử lý `MulterError` trong `HttpExceptionFilter` (trả 413 rõ
+ràng thay vì rơi vào 500 mặc định) + file test mới cho filter này (chưa
+từng có test). Tổng test backend: 29 → 31, PASS. Xem `backend/CHANGELOG.md`
+mục `[1.7.0]`.
+
 ### 3 mismatch nhỏ hơn phát hiện cùng đợt audit
 
 - **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +

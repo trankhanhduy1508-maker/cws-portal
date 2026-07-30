@@ -26,25 +26,38 @@ export class FilesController {
     private readonly googleDriveService: GoogleDriveService,
   ) {}
 
+  /**
+   * `limits.fileSize` bắt buộc phải khai báo Ở ĐÂY (không chỉ check
+   * `file.size` sau khi upload xong) — FileInterceptor mặc định dùng
+   * memory storage, tức là KHÔNG có limit này thì multer sẽ đọc TOÀN
+   * BỘ file vào RAM trước khi handler chạy, dù file lớn hơn 2GB bao
+   * nhiêu cũng không chặn được cho tới khi đã tốn hết bộ nhớ — rủi ro
+   * OOM thật (không chỉ lý thuyết) trên môi trường production nhỏ như
+   * Render.com free/starter tier.
+   */
   @Post('files/upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+  )
   async upload(@UploadedFile() file?: Express.Multer.File) {
-    if (!file) throw new BadRequestException('Thiếu file trong request (field "file")');
+    if (!file)
+      throw new BadRequestException('Thiếu file trong request (field "file")');
 
-    const ext = file.originalname.slice(file.originalname.lastIndexOf('.')).toLowerCase();
+    const ext = file.originalname
+      .slice(file.originalname.lastIndexOf('.'))
+      .toLowerCase();
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
       throw new BadRequestException(
         `Định dạng không được hỗ trợ. Chỉ chấp nhận: ${ACCEPTED_EXTENSIONS.join(', ')}`,
       );
     }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      throw new BadRequestException(
-        `File quá lớn (tối đa ${(MAX_FILE_SIZE_BYTES / 1024 / 1024 / 1024).toFixed(0)}GB)`,
-      );
-    }
 
     const { key } = await this.b2StorageService.uploadFile(file);
-    return { fileRef: key, fileName: file.originalname, fileSizeBytes: file.size };
+    return {
+      fileRef: key,
+      fileName: file.originalname,
+      fileSizeBytes: file.size,
+    };
   }
 
   @Post('drive/resolve')
