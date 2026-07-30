@@ -390,17 +390,25 @@ RLS policy + 2 index thiếu (cảnh báo performance).
 
 Ngoài 9 mismatch trên (không tính chung vào số đếm vì không phải lỗi so
 với roadmap, mà là lỗi tự mình gây ra rồi tự phát hiện): qua self-review
-đã tìm và sửa thêm 5 bug tự gây ra — 3 bug do các fix tính năng bổ sung
-gây ra (tên file tải về sai định dạng, tải frame không giới hạn số
-lượng song song, ghép video vô nghĩa cho render 1 frame) + 2 lỗ hổng
-bảo mật nghiêm trọng hơn hẳn 3 bug kia, cả 2 đều thuộc dạng "thiếu xác
-thực nguồn gọi": (a) `POST /payments/webhook` cho phép khách hàng tự
-đánh dấu PAID cho payment của mình mà không cần chuyển tiền — đã sửa
-bằng `WebhookSecretGuard` mới; (b) TOÀN BỘ route `/jobs/:id/...` không
-kiểm tra chủ sở hữu (IDOR) — ai biết được job id là xem/huỷ/tải được
-job của khách khác — đã sửa bằng `JobsService.assertOwnership()` mới.
-Xem 2 mục riêng "Lỗ hổng bảo mật khác/thứ 2 phát hiện qua self-review"
-phía trên.
+LIÊN TIẾP (mỗi lần sửa xong lại tự đọc lại code 1 lần nữa thay vì dừng)
+đã tìm và sửa thêm 7 bug tự gây ra:
+- 3 bug do các fix tính năng bổ sung gây ra (tên file tải về sai định
+  dạng, tải frame không giới hạn số lượng song song, ghép video vô
+  nghĩa cho render 1 frame).
+- 4 lỗ hổng/rủi ro nghiêm trọng hơn hẳn 3 bug kia, phát hiện theo đúng
+  thứ tự tự đọc lại code (mỗi lần sửa xong 1 cái lại lộ ra cái tiếp
+  theo): (a) `POST /payments/webhook` cho phép khách hàng tự đánh dấu
+  PAID cho payment của mình mà không cần chuyển tiền — sửa bằng
+  `WebhookSecretGuard` mới; (b) TOÀN BỘ route REST `/jobs/:id/...`
+  không kiểm tra chủ sở hữu (IDOR) — sửa bằng
+  `JobsService.assertOwnership()` mới; (c) `POST /files/upload` không
+  giới hạn `fileSize` ở tầng multer, rủi ro OOM thật trước khi kịp kiểm
+  tra 2GB — sửa bằng `limits.fileSize` + xử lý `MulterError` riêng
+  trong `HttpExceptionFilter`; (d) route WebSocket `/ws/jobs/:id` vẫn
+  còn NGUYÊN lỗ hổng IDOR y hệt (b) dù đã sửa ở REST, vì là đường vào
+  dữ liệu riêng — sửa bằng token qua query string + `resolveCustomerId()`.
+  Xem các mục riêng "Lỗ hổng bảo mật..." phía trên để biết chi tiết
+  từng cái.
 
 Sau các fix trên, toàn bộ **luồng chính** (Definition of Done: Facebook
 Login → Customer Profile → Job → Upload → Render → Progress → Preview
