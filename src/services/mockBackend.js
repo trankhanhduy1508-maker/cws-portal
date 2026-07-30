@@ -50,6 +50,20 @@ function saveJobs(jobs) {
 const jobsStore = loadJobs();
 const subscribersByJob = new Map(); // jobId -> Set<{ onUpdate, onComplete, onError }>
 const timersByJob = new Map(); // jobId -> { cancelled }
+const resumeAfterReviewByJob = new Map(); // jobId -> () => void, chỉ tồn tại khi đang REVIEW_READY chờ duyệt
+
+/** Ảnh preview demo — SVG watermark "CWS RENDER" lặp chéo, KHÔNG phải
+ * frame render thật (mock không có Worker thật để render). */
+function generateMockPreviewImages() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270">
+    <rect width="100%" height="100%" fill="#2b2b30"/>
+    <text x="50%" y="50%" font-size="18" fill="#9a9aa0" text-anchor="middle" font-family="sans-serif">CWS PREVIEW (demo)</text>
+    <text x="10%" y="20%" font-size="14" fill="rgba(255,255,255,0.25)" transform="rotate(-25 48 54)" font-family="sans-serif">CWS RENDER</text>
+    <text x="60%" y="80%" font-size="14" fill="rgba(255,255,255,0.25)" transform="rotate(-25 288 216)" font-family="sans-serif">CWS RENDER</text>
+  </svg>`;
+  const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  return [0, 1, 2].map((i) => ({ url, displayOrder: i }));
+}
 
 function persist() {
   saveJobs(jobsStore);
@@ -178,6 +192,13 @@ function runSimulation(jobId, downloadSourceFile) {
       notify(jobId);
       if (t < 1) {
         requestAnimationFrame(tick);
+      } else if (stageKey === JOB_STATUS.REVIEW_READY) {
+        // Dừng lại chờ khách duyệt — KHÔNG tự đóng gói/mở link tải
+        // (đúng CWS_ROADMAP_MVP_V1.md, Giai đoạn 4).
+        jobsStore[jobId] = { ...jobsStore[jobId], previewImages: generateMockPreviewImages() };
+        persist();
+        notify(jobId);
+        resumeAfterReviewByJob.set(jobId, () => { stageIdx += 1; step(); });
       } else {
         stageIdx += 1;
         step();
@@ -216,6 +237,22 @@ export function mockCancelJob(jobId) {
 
 export function mockGetJob(jobId) {
   return jobsStore[jobId] ?? null;
+}
+
+export async function mockGetJobPreview(jobId) {
+  await new Promise((r) => setTimeout(r, 200));
+  return { images: jobsStore[jobId]?.previewImages ?? [] };
+}
+
+export async function mockApproveJob(jobId) {
+  const job = jobsStore[jobId];
+  if (!job || job.status !== JOB_STATUS.REVIEW_READY) {
+    throw new Error(`Job ${jobId} chưa sẵn sàng để duyệt`);
+  }
+  const resume = resumeAfterReviewByJob.get(jobId);
+  resumeAfterReviewByJob.delete(jobId);
+  resume?.();
+  return { id: jobId, status: job.status };
 }
 
 export function mockListJobs() {

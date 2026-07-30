@@ -6,6 +6,7 @@ import UploadScreen from './pages/UploadScreen';
 import RenderProfileScreen from './pages/RenderProfileScreen';
 import PaymentScreen from './pages/PaymentScreen';
 import ProgressScreen from './pages/ProgressScreen';
+import ReviewScreen from './pages/ReviewScreen';
 import PreviewDownloadScreen from './pages/PreviewDownloadScreen';
 import ErrorScreen from './pages/ErrorScreen';
 import HistoryScreen from './pages/HistoryScreen';
@@ -172,6 +173,15 @@ export default function App() {
           <ErrorScreen key="cancelled" variant="cancelled" onRetry={handleRetry} />
         )}
 
+        {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.REVIEW_READY && (
+          <ReviewScreen
+            key="review"
+            jobId={job.jobId}
+            fileName={activeProjectName}
+            onApprove={job.approve}
+          />
+        )}
+
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.FINISHED && (
           <PreviewDownloadScreen
             key="done"
@@ -184,7 +194,7 @@ export default function App() {
         )}
 
         {screen === SCREEN.PROCESSING &&
-          ![JOB_STATUS.ERROR, JOB_STATUS.CANCELLED, JOB_STATUS.FINISHED].includes(job.status) && (
+          ![JOB_STATUS.ERROR, JOB_STATUS.CANCELLED, JOB_STATUS.FINISHED, JOB_STATUS.REVIEW_READY].includes(job.status) && (
           <ProgressScreen
             key="progress"
             stageIndex={job.stageIndex}

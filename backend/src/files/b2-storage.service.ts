@@ -30,6 +30,12 @@ export class B2StorageService {
     });
   }
 
+  /** Ghép URL công khai từ object key — dùng khi cần trả URL cho 1 key
+   * đã biết trước (vd đọc lại review_images.image_path từ DB). */
+  getPublicUrl(key: string): string {
+    return `https://${this.endpoint}/${this.bucketName}/${key}`;
+  }
+
   /** Upload file lên B2, trả về object key (dùng làm fileRef). */
   async uploadFile(file: Express.Multer.File): Promise<{ key: string; url: string }> {
     const key = `uploads/${randomUUID()}-${file.originalname}`;

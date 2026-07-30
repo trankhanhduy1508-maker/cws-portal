@@ -60,7 +60,7 @@ export class JobsController {
   @Get(':id/preview')
   async getPreview(@Param('id') id: string) {
     const images = await this.jobsService.getReviewImages(id);
-    return { images: images.map((img) => ({ imagePath: img.imagePath, displayOrder: img.displayOrder })) };
+    return { images };
   }
 
   /** Khách duyệt bản preview -> đóng gói kết quả cuối + mở link tải. */

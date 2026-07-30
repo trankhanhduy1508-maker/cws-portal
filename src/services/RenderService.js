@@ -217,6 +217,28 @@ export async function listJobs() {
   return mock.mockListJobs();
 }
 
+/** 3-5 ảnh preview có watermark — gọi khi job ở REVIEW_READY.
+ * @returns {Promise<{ images: { url: string, displayOrder: number|null }[] }>}
+ */
+export async function getJobPreview(jobId) {
+  if (IS_BACKEND_CONFIGURED) {
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`);
+    if (!res.ok) throw new Error('Không lấy được ảnh xem trước');
+    return res.json();
+  }
+  return mock.mockGetJobPreview(jobId);
+}
+
+/** Khách duyệt bản preview -> đóng gói kết quả cuối + mở link tải. */
+export async function approveJob(jobId) {
+  if (IS_BACKEND_CONFIGURED) {
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.APPROVE_JOB(jobId)}`, { method: 'POST' });
+    if (!res.ok) throw new Error('Duyệt kết quả thất bại');
+    return res.json();
+  }
+  return mock.mockApproveJob(jobId);
+}
+
 /** URL tải file kết quả theo jobId. */
 export function getDownloadUrl(jobId) {
   if (IS_BACKEND_CONFIGURED) {

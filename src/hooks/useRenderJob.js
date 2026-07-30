@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createJob, subscribeToJobUpdates, cancelJob as cancelJobApi } from '../services/RenderService';
+import { createJob, subscribeToJobUpdates, cancelJob as cancelJobApi, approveJob } from '../services/RenderService';
 import { JOB_STATUS, STAGE_SEQUENCE } from '../constants/renderConstants';
 
 /**
@@ -86,6 +86,13 @@ export function useRenderJob() {
     // báo), không cần setState thủ công ở đây.
   }, [jobId]);
 
+  /** Khách duyệt bản preview (status === REVIEW_READY) -> Backend đóng
+   * gói + mở link tải, trạng thái mới tự đến qua onUpdate/onComplete. */
+  const approve = useCallback(async () => {
+    if (!jobId) return;
+    await approveJob(jobId);
+  }, [jobId]);
+
   const reset = useCallback(() => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     setJobId(null);
@@ -116,6 +123,7 @@ export function useRenderJob() {
     start,
     attach,
     cancel,
+    approve,
     reset,
   };
 }

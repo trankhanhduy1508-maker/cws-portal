@@ -4,6 +4,7 @@ import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repositor
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { PACKAGING_SERVICE } from './services/packaging.interface';
 import { StorageService } from '../storage/storage.service';
+import { B2StorageService } from '../files/b2-storage.service';
 import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.estimate()', () => {
@@ -22,6 +23,7 @@ describe('JobsService.estimate()', () => {
         { provide: WorkerFleetGateway, useValue: mockGateway },
         { provide: PACKAGING_SERVICE, useValue: {} },
         { provide: StorageService, useValue: {} },
+        { provide: B2StorageService, useValue: {} },
       ],
     }).compile();
 

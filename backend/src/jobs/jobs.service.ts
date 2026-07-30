@@ -11,7 +11,7 @@ import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { PACKAGING_SERVICE, IPackagingService } from './services/packaging.interface';
 import { StorageService } from '../storage/storage.service';
-import { ReviewImage } from '../storage/domain/storage-object';
+import { B2StorageService } from '../files/b2-storage.service';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -43,6 +43,7 @@ export class JobsService {
     private readonly workerFleetGateway: WorkerFleetGateway,
     @Inject(PACKAGING_SERVICE) private readonly packagingService: IPackagingService,
     private readonly storageService: StorageService,
+    private readonly b2StorageService: B2StorageService,
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
@@ -172,9 +173,13 @@ export class JobsService {
     return updated;
   }
 
-  /** Danh sách ảnh preview (3-5 ảnh, đã watermark) để khách xem trước khi duyệt. */
-  async getReviewImages(id: string): Promise<ReviewImage[]> {
+  /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */
+  async getReviewImages(id: string): Promise<{ url: string; displayOrder: number | null }[]> {
     await this.getById(id); // 404 nếu job không tồn tại
-    return this.storageService.getReviewImages(id);
+    const images = await this.storageService.getReviewImages(id);
+    return images.map((img) => ({
+      url: this.b2StorageService.getPublicUrl(img.imagePath),
+      displayOrder: img.displayOrder,
+    }));
   }
 }

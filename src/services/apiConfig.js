@@ -19,6 +19,8 @@ export const API_CONFIG = {
     GET_JOB: (jobId) => `/jobs/${jobId}`,
     LIST_JOBS: '/jobs',
     CANCEL_JOB: (jobId) => `/jobs/${jobId}/cancel`,
+    JOB_PREVIEW: (jobId) => `/jobs/${jobId}/preview`,
+    APPROVE_JOB: (jobId) => `/jobs/${jobId}/approve`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
   },
