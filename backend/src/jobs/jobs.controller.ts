@@ -92,6 +92,13 @@ export class JobsController {
     res.redirect(302, url);
   }
 
+  /** Admin xem log Worker (báo lỗi render). */
+  @Get(':id/logs')
+  async getLogs(@Param('id') id: string) {
+    const logs = await this.jobsService.getWorkerLogs(id);
+    return { logs };
+  }
+
   /** Alias REST chuẩn (DELETE) — cùng logic với route POST ở trên,
    * thêm để khớp convention REST nếu có client khác gọi kiểu DELETE. */
   @Delete(':id')

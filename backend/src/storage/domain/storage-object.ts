@@ -23,3 +23,12 @@ export interface DownloadLog {
   downloadedAt: number;
   ipAddress: string | null;
 }
+
+export interface WorkerLog {
+  id: string;
+  jobId: string;
+  workerName: string | null;
+  message: string | null;
+  level: string;
+  createdAt: number;
+}

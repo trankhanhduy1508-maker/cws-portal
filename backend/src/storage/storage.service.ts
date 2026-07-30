@@ -8,7 +8,8 @@ import {
   IReviewImagesRepository,
 } from './repositories/review-images.repository.interface';
 import { DOWNLOADS_REPOSITORY, IDownloadsRepository } from './repositories/downloads.repository.interface';
-import { StorageObject, ReviewImage, DownloadLog } from './domain/storage-object';
+import { WORKER_LOGS_REPOSITORY, IWorkerLogsRepository } from './repositories/worker-logs.repository.interface';
+import { StorageObject, ReviewImage, DownloadLog, WorkerLog } from './domain/storage-object';
 
 @Injectable()
 export class StorageService {
@@ -19,6 +20,8 @@ export class StorageService {
     private readonly reviewImagesRepository: IReviewImagesRepository,
     @Inject(DOWNLOADS_REPOSITORY)
     private readonly downloadsRepository: IDownloadsRepository,
+    @Inject(WORKER_LOGS_REPOSITORY)
+    private readonly workerLogsRepository: IWorkerLogsRepository,
   ) {}
 
   async recordPaths(
@@ -49,5 +52,19 @@ export class StorageService {
   /** Ghi log mỗi lần khách tải file cuối (CWS_DATABASE_SCHEMA.md, bảng downloads). */
   async logDownload(jobId: string, ipAddress: string | null): Promise<DownloadLog> {
     return this.downloadsRepository.log(jobId, ipAddress);
+  }
+
+  /** Ghi log Worker (CWS_DATABASE_SCHEMA.md, bảng worker_logs) — dùng khi báo lỗi render. */
+  async logWorkerEvent(
+    jobId: string,
+    workerName: string | null,
+    message: string | null,
+    level: string,
+  ): Promise<WorkerLog> {
+    return this.workerLogsRepository.log(jobId, workerName, message, level);
+  }
+
+  async getWorkerLogs(jobId: string): Promise<WorkerLog[]> {
+    return this.workerLogsRepository.findByJobId(jobId);
   }
 }

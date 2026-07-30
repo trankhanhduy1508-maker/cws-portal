@@ -127,13 +127,19 @@ export class WorkerFleetGateway {
   /** Chi tiết từng task của 1 internal job — Scheduler dùng để biết
    * probe task (frame 1-1) đã xong chưa, và max frame_end hiện có
    * (tránh tạo trùng task nếu tick chạy nhiều lần). */
-  async getTasks(
-    internalJobId: string,
-  ): Promise<{ frameStart: number; frameEnd: number; status: string }[]> {
+  async getTasks(internalJobId: string): Promise<
+    {
+      frameStart: number;
+      frameEnd: number;
+      status: string;
+      lastLog: string | null;
+      workerId: string | null;
+    }[]
+  > {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('tasks')
-      .select('frame_start, frame_end, status')
+      .select('frame_start, frame_end, status, last_log, worker_id')
       .eq('job_id', internalJobId);
 
     if (error) {
@@ -144,6 +150,8 @@ export class WorkerFleetGateway {
       frameStart: (r as { frame_start: number }).frame_start,
       frameEnd: (r as { frame_end: number }).frame_end,
       status: (r as { status: string }).status,
+      lastLog: (r as { last_log: string | null }).last_log,
+      workerId: (r as { worker_id: string | null }).worker_id,
     }));
   }
 

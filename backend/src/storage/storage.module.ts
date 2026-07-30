@@ -9,6 +9,8 @@ import { REVIEW_IMAGES_REPOSITORY } from './repositories/review-images.repositor
 import { SupabaseReviewImagesRepository } from './repositories/review-images.repository.supabase';
 import { DOWNLOADS_REPOSITORY } from './repositories/downloads.repository.interface';
 import { SupabaseDownloadsRepository } from './repositories/downloads.repository.supabase';
+import { WORKER_LOGS_REPOSITORY } from './repositories/worker-logs.repository.interface';
+import { SupabaseWorkerLogsRepository } from './repositories/worker-logs.repository.supabase';
 
 @Module({
   imports: [SupabaseModule, FilesModule],
@@ -18,6 +20,7 @@ import { SupabaseDownloadsRepository } from './repositories/downloads.repository
     { provide: STORAGE_OBJECTS_REPOSITORY, useClass: SupabaseStorageObjectsRepository },
     { provide: REVIEW_IMAGES_REPOSITORY, useClass: SupabaseReviewImagesRepository },
     { provide: DOWNLOADS_REPOSITORY, useClass: SupabaseDownloadsRepository },
+    { provide: WORKER_LOGS_REPOSITORY, useClass: SupabaseWorkerLogsRepository },
   ],
   exports: [StorageService, PreviewService],
 })

@@ -216,4 +216,10 @@ export class JobsService {
     await this.storageService.logDownload(id, ipAddress);
     return order.downloadUrl;
   }
+
+  /** Admin xem log Worker (báo lỗi render, CWS_DATABASE_SCHEMA.md bảng worker_logs). */
+  async getWorkerLogs(id: string) {
+    await this.getById(id); // 404 nếu job không tồn tại
+    return this.storageService.getWorkerLogs(id);
+  }
 }

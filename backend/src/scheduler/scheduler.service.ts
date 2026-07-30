@@ -8,6 +8,7 @@ import { WorkerFleetGateway } from '../jobs/worker-fleet.gateway';
 import { JobStatus } from '../jobs/domain/job-status.enum';
 import { RenderOrder } from '../jobs/domain/render-order';
 import { PreviewService } from '../storage/preview.service';
+import { StorageService } from '../storage/storage.service';
 import { WakeService } from './wake/wake.service';
 
 const TASK_EXPANSION_CHUNK_SIZE = 10;
@@ -40,6 +41,7 @@ export class SchedulerService {
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
     private readonly previewService: PreviewService,
+    private readonly storageService: StorageService,
     private readonly wakeService: WakeService,
   ) {}
 
@@ -94,10 +96,17 @@ export class SchedulerService {
       }
     }
 
-    const allDone = tasks.length > 0 && tasks.every((t) => t.status === 'done');
     const anyActive = tasks.some((t) => t.status === 'active');
     const anyQueued = tasks.some((t) => t.status === 'queued');
+    const anyFailed = tasks.some((t) => t.status === 'failed');
+    const settled = tasks.length > 0 && !anyActive && !anyQueued; // không còn task nào Worker sẽ tự thử lại
 
+    if (settled && anyFailed) {
+      await this.markFailed(order, tasks);
+      return;
+    }
+
+    const allDone = tasks.length > 0 && tasks.every((t) => t.status === 'done');
     if (allDone) {
       await this.moveToReview(order, internalJobId);
       return;
@@ -148,6 +157,32 @@ export class SchedulerService {
     }
     // Nếu thất bại: KHÔNG retry ngay, order tiếp tục nằm ở
     // SEARCHING_WORKERS/Queue — đúng yêu cầu "Không retry vô hạn".
+  }
+
+  /**
+   * Có task "failed" (Worker đã hết retry) và không còn task nào
+   * active/queued — Worker Fleet sẽ không tự thử lại nữa. Báo lỗi cho
+   * khách (CWS_ROADMAP_MVP_V1.md Giai đoạn 3: "Báo lỗi nếu có") thay vì
+   * để order treo mãi ở trạng thái cũ không ai biết.
+   */
+  private async markFailed(
+    order: RenderOrder,
+    tasks: { status: string; lastLog: string | null; workerId: string | null }[],
+  ): Promise<void> {
+    if (order.status === JobStatus.ERROR || order.status === JobStatus.FINISHED) return;
+
+    const failedTasks = tasks.filter((t) => t.status === 'failed');
+    for (const task of failedTasks) {
+      await this.storageService.logWorkerEvent(
+        order.id,
+        task.workerId,
+        task.lastLog ?? 'Task thất bại, không có log chi tiết từ Worker',
+        'error',
+      );
+    }
+
+    await this.updateStatus(order, JobStatus.ERROR, order.stageProgress);
+    this.logger.error(`Order ${order.id}: ${failedTasks.length} task thất bại, chuyển sang ERROR`);
   }
 
   /**
