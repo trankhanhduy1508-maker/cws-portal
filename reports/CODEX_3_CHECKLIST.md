@@ -124,6 +124,8 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Next Task
 
+Đã cài Node.js, build backend PASS, `npm test` PASS (8/8), frontend build+lint PASS. Đã fix thêm 1 lỗ hổng: JobsService.createOrder từng set `paymentStatus: 'paid'` cứng, không verify — giờ gọi PaymentsService.getStatus(paymentId) và chặn nếu chưa PAID.
+
 Đã xác nhận: payments.controller.ts confirm KHÔNG có guard, gọi thẳng từ frontend (usePayment.js) — vi phạm "Frontend không được tự đặt Payment = PAID". Chưa fix (cần thiết kế webhook thật, phụ thuộc payment_code/storage_code vừa thêm ở migration 005 + credential MB Bank webhook thật).
 
 Đã tạo backend/src/customers module (repository/service upsertByFacebookId) để sẵn sàng cho Facebook Login. BLOCKED tiếp: cần FACEBOOK_APP_ID/FACEBOOK_APP_SECRET thật để viết OAuth strategy + controller — chưa có trong môi trường này.
