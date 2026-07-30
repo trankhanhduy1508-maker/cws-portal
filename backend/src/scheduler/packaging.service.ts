@@ -4,6 +4,13 @@ import { PassThrough } from 'stream';
 import { B2StorageService } from '../files/b2-storage.service';
 import { VideoAssemblyService } from './video-assembly.service';
 
+/** Số lượng frame tải song song từ B2 — giới hạn để tránh giữ hàng
+ * trăm/nghìn buffer trong RAM cùng lúc (job nhiều frame độ phân giải
+ * cao) và tránh dội quá nhiều request đồng thời lên B2. Đây vẫn là
+ * đánh đổi CHẤP NHẬN ĐƯỢC ở quy mô MVP, không phải giải pháp streaming
+ * hoàn chỉnh cho render hàng chục nghìn frame (cải tiến sau nếu cần). */
+const FRAME_FETCH_CONCURRENCY = 8;
+
 /**
  * Đóng gói kết quả render thành file cuối khách tải về. Ưu tiên ghép
  * thành video MP4 (VideoAssemblyService, cần ffmpeg cài sẵn trên môi
@@ -35,9 +42,7 @@ export class PackagingService {
       );
     }
 
-    const frames = await Promise.all(
-      frameKeys.map(async (key) => ({ key, buffer: await this.b2StorageService.getObjectBuffer(key) })),
-    );
+    const frames = await this.fetchFramesLimited(frameKeys);
 
     const videoBuffer = await this.tryBuildVideo(internalJobId, frames, fps);
     if (videoBuffer) {
@@ -50,6 +55,25 @@ export class PackagingService {
     }
 
     return this.packageAsZip(frames, renderOrderId);
+  }
+
+  /** Tải frame theo lô (FRAME_FETCH_CONCURRENCY cùng lúc) thay vì bắn
+   * hết tất cả request 1 lượt — xem ghi chú ở hằng số phía trên. */
+  private async fetchFramesLimited(frameKeys: string[]): Promise<{ key: string; buffer: Buffer }[]> {
+    const results: { key: string; buffer: Buffer }[] = new Array(frameKeys.length);
+    let nextIndex = 0;
+
+    async function worker(b2: B2StorageService): Promise<void> {
+      while (nextIndex < frameKeys.length) {
+        const index = nextIndex++;
+        results[index] = { key: frameKeys[index], buffer: await b2.getObjectBuffer(frameKeys[index]) };
+      }
+    }
+
+    const workerCount = Math.min(FRAME_FETCH_CONCURRENCY, frameKeys.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker(this.b2StorageService)));
+
+    return results;
   }
 
   /** Không throw ra ngoài — lỗi ffmpeg (build thiếu codec, timeout...)
