@@ -76,7 +76,7 @@ mà chưa từng thấy.
 
 ---
 
-## Phase 3 — Schema state machine (SCHEMA XONG, CODE CHƯA WIRING)
+## Phase 3 — State machine (SCHEMA + RPC + PYTHON ĐÃ XONG, CHƯA TEST THẬT)
 
 Migration `worker_migrations/001_worker_state_machine_schema.sql` đã
 apply thật lên Supabase (project `ynhxlxetwuiyejcjypsi`):
@@ -87,6 +87,32 @@ apply thật lên Supabase (project `ynhxlxetwuiyejcjypsi`):
 - Bảng mới: `worker_leases`, `worker_state_events`, `task_attempts` — đã
   bật RLS (không có policy, theo đúng quy ước bảo mật hiện có cho
   `payments`/`sites`/`machine_capability`, xác nhận qua `get_advisors`).
+
+**✅ RPC + Python wiring đã xong (commit `487aee3` + `f313e93`, 2026-07-31):**
+- RPC mới `report_worker_state_transition(p_worker_id, p_to_state, p_task_id, p_reason)`
+  — ghi `workers.observed_state`/`last_transition_at`/`state_reason`, CHỈ
+  insert vào `worker_state_events` khi thật sự đổi trạng thái (tránh phình
+  bảng). KHÔNG đụng `workers.status` hiện có (vẫn là nguồn sự thật cho
+  `mark_stale_workers_offline`/`requeue_stale_tasks`/`claim_task`/...).
+- Hàm Python mới `report_state()` (wrapper mỏng, best-effort) gọi RPC này
+  tại 5 điểm chuyển trạng thái tự nhiên trong `worker_loop()`: `BOOTING`
+  (lúc khởi động) → `IDLE_WAITING_JOB` (chờ task) → `PREPARING` (vừa
+  claim, đang tải blend/phân tích scene) → `RENDERING` (đang render) →
+  `MERGING` (đặt BÊN TRONG `attempt_job_video_merge()`, sau các guard
+  clause — không đặt trước lời gọi vì hàm này thường no-op) → `COOLDOWN`
+  (vừa xong 1 task, chuẩn bị tìm task tiếp theo).
+- KHÔNG bịa thêm state ngoài những gì code thật sự phân biệt được
+  (`HEALTH_CHECK`/`RESERVED`/`UPLOADING`/`VERIFYING`/`DRAINING`/
+  `MAINTENANCE`/`DEGRADED`/`QUARANTINED`/`ERROR` — chưa có nhánh code nào
+  tương ứng rõ ràng, để lại cho các Phase sau nếu cần).
+
+⚠️ **CHƯA test bằng Worker thật.** Tự phát hiện + tự sửa 1 lỗi f-string
+"%%" lặp lại (đã từng mắc và sửa trước đó trong cùng file) trước khi
+commit — rút kinh nghiệm cần đọc lại kỹ hơn mỗi lần thêm f-string mới.
+
+**Chưa làm:** Backend/Admin Dashboard đọc `observed_state`/
+`worker_state_events` (Phase 5); `worker_leases` (chưa có code nào ghi —
+để dành cho Phase 7 fencing/split-brain).
 
 **Chưa làm:** wiring code Python (Worker báo cáo desired_state/
 observed_state) và Backend (đọc các cột/bảng mới cho Admin Dashboard
@@ -178,6 +204,9 @@ duy nhất. Commit `a28f8df`.
 - `27d8235` — fix(database): thêm RPC set_job_total_frames.
 - `f74211f` — docs: thêm file audit này.
 - `a728763` — fix(worker): đọc frame range thật, gọi RPC set_job_total_frames.
+- `487aee3` — feat(database): thêm RPC report_worker_state_transition.
+- `f313e93` — feat(worker): wiring báo cáo observed_state (5 điểm chuyển
+  trạng thái tự nhiên trong `worker_loop()`).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -186,13 +215,20 @@ hiện có trong repo thay vì tiếp tục chờ.
 
 ## Việc tiếp theo
 
-1. ~~Scene Analyzer đọc frame range, gọi RPC~~ — ĐÃ XONG (`a728763`),
-   chưa test bằng Worker thật.
-2. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại với `c6d64f3`
-   (video merge) và `a728763` (total_frames) xem có trùng/xung đột gì
-   với tính năng đã có sẵn trong đó không.
-3. Wiring `desired_state`/`observed_state`/`worker_leases`/
-   `worker_state_events` (Phase 3 phần code, schema đã có từ `d31cd58`).
-4. Tiếp tục Phase 4 trở đi theo đúng thứ tự `CWS_WORKER_ROADMAP.md`.
-5. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+1. ~~Scene Analyzer đọc frame range, gọi RPC~~ — ĐÃ XONG (`a728763`).
+2. ~~Wiring observed_state (Phase 3 phần code)~~ — ĐÃ XONG (`487aee3` +
+   `f313e93`).
+3. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ
+   commit `a728763`/`487aee3`/`f313e93` mới chỉ kiểm tra tĩnh (cân bằng
+   ngoặc, không còn lỗi f-string), chưa từng chạy qua Python/Blender/B2
+   thật. Đây là rủi ro lớn nhất hiện tại — cần xác nhận trên ít nhất 1
+   máy Worker thật trước khi coi là sẵn sàng production.
+4. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ 4
+   commit Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn
+   trong đó không.
+5. Backend/Admin Dashboard đọc `observed_state`/`worker_state_events`
+   (Phase 5) — schema/RPC đã sẵn sàng, chưa có code Backend nào đọc tới.
+6. Tiếp tục Phase 4 (Active Idle Power Management) trở đi theo đúng thứ
+   tự `CWS_WORKER_ROADMAP.md`.
+7. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
    tạo qua website có tự động sinh đủ task ngoài probe hay không.
