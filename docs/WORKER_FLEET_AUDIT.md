@@ -160,9 +160,9 @@ cao nhất trong tất cả các Phase đã làm, xem mục cảnh báo ở đ�
 
 ## Phase 5 — Admin Dashboard cho Worker (MỘT PHẦN, ĐÃ TEST BUILD THẬT)
 
-Commit `<xem Tổng hợp commit>` — khác Phase 2/3/4 (Python, chỉ kiểm tra
-tĩnh), phần này là Backend/Frontend nên đã build/test/lint THẬT + boot
-thật, không chỉ đọc lại thủ công.
+Commit `092441e` — khác Phase 2/3/4 (Python, chỉ kiểm tra tĩnh), phần
+này là Backend/Frontend nên đã build/test/lint THẬT + boot thật, không
+chỉ đọc lại thủ công.
 
 - `WorkerFleetGateway.listWorkers()` — thêm đọc `observed_state`/
   `state_reason`/`last_transition_at` (cột Phase 3, `worker_migrations/001_...`)
@@ -275,6 +275,8 @@ duy nhất. Commit `a28f8df`.
 - `f313e93` — feat(worker): wiring báo cáo observed_state (5 điểm chuyển
   trạng thái tự nhiên trong `worker_loop()`).
 - `a1aadbd` — feat(worker): Active Idle Power Management (Phase 4).
+- `092441e` — feat(admin): hiển thị observed_state trong Worker Fleet
+  dashboard (Phase 5, ĐÃ build/test/lint/boot thật).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
