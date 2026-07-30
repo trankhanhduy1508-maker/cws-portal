@@ -1,4 +1,12 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { AdminKeyGuard } from '../common/guards/admin-key.guard';
 
@@ -37,5 +45,51 @@ export class FleetController {
   @UseGuards(AdminKeyGuard)
   async listHostUsageSessions() {
     return this.workerFleetGateway.listHostUsageSessions();
+  }
+
+  /** Hành động Admin (ngoài roadmap, đóng lỗ hổng Phase 6) — 4 route dưới
+   * đây đều là hành động THẬT lên Worker Fleet (không chỉ đọc), xem chi
+   * tiết ranh giới an toàn trong `WorkerFleetGateway` và
+   * `worker_migrations/008_admin_worker_actions.sql`. */
+  @Post('tasks/:taskId/retry')
+  @UseGuards(AdminKeyGuard)
+  async retryTask(@Param('taskId') taskId: string) {
+    const ok = await this.workerFleetGateway.adminRetryTask(Number(taskId));
+    return { ok };
+  }
+
+  @Post('tasks/:taskId/requeue')
+  @UseGuards(AdminKeyGuard)
+  async requeueTask(@Param('taskId') taskId: string) {
+    const ok = await this.workerFleetGateway.adminRequeueTask(Number(taskId));
+    return { ok };
+  }
+
+  @Post('workers/:workerId/quarantine')
+  @UseGuards(AdminKeyGuard)
+  async quarantineWorker(
+    @Param('workerId') workerId: string,
+    @Body() body: { quarantined: boolean; reason?: string },
+  ) {
+    const ok = await this.workerFleetGateway.adminSetWorkerQuarantine(
+      workerId,
+      body.quarantined,
+      body.reason,
+    );
+    return { ok };
+  }
+
+  @Post('workers/:workerId/drain')
+  @UseGuards(AdminKeyGuard)
+  async drainWorker(
+    @Param('workerId') workerId: string,
+    @Body() body: { draining: boolean; reason?: string },
+  ) {
+    const ok = await this.workerFleetGateway.adminSetWorkerDrain(
+      workerId,
+      body.draining,
+      body.reason,
+    );
+    return { ok };
   }
 }

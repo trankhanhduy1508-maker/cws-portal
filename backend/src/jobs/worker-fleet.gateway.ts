@@ -525,4 +525,78 @@ export class WorkerFleetGateway {
       };
     });
   }
+
+  /** Hành động Admin (ngoài `CWS_WORKER_ROADMAP.md`, roadmap đã hết ở
+   * Phase 8) — đóng lỗ hổng còn thiếu rõ nhất của Phase 6 ("Admin
+   * dashboard cần: retry/requeue/quarantine/drain, audit log"). Cả 4 RPC
+   * đều CHỈ ở Postgres (migration `worker_migrations/008_...`), KHÔNG
+   * đụng Python — "quarantine"/"drain" được THỰC THI thật qua `claim_task()`
+   * (worker bị quarantine/drain sẽ không claim được task mới nữa),
+   * KHÔNG chỉ là nhãn hiển thị. Audit log tái dùng `worker_incidents`
+   * (Phase 6, event_type tiền tố `ADMIN_*`) thay vì bảng riêng. */
+  async adminRetryTask(taskId: number): Promise<boolean> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc('admin_retry_task', {
+      p_task_id: taskId,
+    });
+    if (error) {
+      this.logger.error(`adminRetryTask(${taskId}) thất bại: ${error.message}`);
+      throw new Error(`Không retry được task: ${error.message}`);
+    }
+    return data === true;
+  }
+
+  async adminRequeueTask(taskId: number): Promise<boolean> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc('admin_requeue_task', {
+      p_task_id: taskId,
+    });
+    if (error) {
+      this.logger.error(
+        `adminRequeueTask(${taskId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không requeue được task: ${error.message}`);
+    }
+    return data === true;
+  }
+
+  async adminSetWorkerQuarantine(
+    workerId: string,
+    quarantined: boolean,
+    reason?: string,
+  ): Promise<boolean> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc('admin_set_worker_quarantine', {
+      p_worker_id: workerId,
+      p_quarantined: quarantined,
+      p_reason: reason ?? null,
+    });
+    if (error) {
+      this.logger.error(
+        `adminSetWorkerQuarantine(${workerId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không đổi được trạng thái quarantine: ${error.message}`);
+    }
+    return data === true;
+  }
+
+  async adminSetWorkerDrain(
+    workerId: string,
+    draining: boolean,
+    reason?: string,
+  ): Promise<boolean> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc('admin_set_worker_drain', {
+      p_worker_id: workerId,
+      p_draining: draining,
+      p_reason: reason ?? null,
+    });
+    if (error) {
+      this.logger.error(
+        `adminSetWorkerDrain(${workerId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không đổi được trạng thái drain: ${error.message}`);
+    }
+    return data === true;
+  }
 }
