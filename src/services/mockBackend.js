@@ -104,6 +104,22 @@ export function computeEstimate({ fileSizeBytes, profileId }) {
 }
 
 // ============================================================
+// AUTH (mock) — không có Facebook thật để chuyển hướng, tạo ngay 1
+// khách demo cố định để luồng end-to-end vẫn chạy được không cần Backend.
+// ============================================================
+export async function mockFacebookLogin() {
+  await new Promise((r) => setTimeout(r, 400));
+  return {
+    token: 'mock-token-demo',
+    customer: {
+      id: 'mock-customer-demo',
+      fullName: 'Khách demo',
+      avatarUrl: null,
+    },
+  };
+}
+
+// ============================================================
 // PAYMENT (mock)
 // ============================================================
 export async function mockCreatePaymentIntent({ amountVnd, method }) {

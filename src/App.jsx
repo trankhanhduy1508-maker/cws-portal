@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import PortalShell from './layouts/PortalShell';
 import LandingScreen from './pages/LandingScreen';
+import LoginScreen from './pages/LoginScreen';
 import UploadScreen from './pages/UploadScreen';
 import RenderProfileScreen from './pages/RenderProfileScreen';
 import PaymentScreen from './pages/PaymentScreen';
@@ -17,14 +18,16 @@ import { useProfileEstimates } from './hooks/useProfileEstimates';
 import { usePayment } from './hooks/usePayment';
 import { useRenderJob } from './hooks/useRenderJob';
 import { useJobHistory } from './hooks/useJobHistory';
+import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 
 // Screen điều hướng — tuyến tính theo đúng end-to-end workflow:
-// Upload -> Render Profile -> Payment -> Processing (Job chạy thật, bao
-// gồm cả lúc xong/lỗi/hủy - xem điều kiện render bên trong PROCESSING).
-// History có thể mở từ bất kỳ đâu qua nút ở header.
+// Facebook Login -> Upload -> Render Profile -> Payment -> Processing
+// (Job chạy thật, bao gồm cả lúc xong/lỗi/hủy - xem điều kiện render
+// bên trong PROCESSING). History có thể mở từ bất kỳ đâu qua nút ở header.
 const SCREEN = {
   LANDING: 'landing',
+  LOGIN: 'login',
   UPLOAD: 'upload',
   PROFILE: 'profile',
   PAYMENT: 'payment',
@@ -49,6 +52,21 @@ export default function App() {
   const payment = usePayment();
   const job = useRenderJob();
   const jobHistory = useJobHistory();
+  const auth = useAuth();
+
+  // Backend thật redirect khách về đây kèm ?token= sau khi đăng nhập
+  // Facebook xong (useAuth đã bắt token lúc mount) — nếu vừa đăng nhập
+  // xong mà vẫn đang ở Landing/Login thì tự chuyển tiếp sang Upload.
+  useEffect(() => {
+    if (auth.isAuthenticated && (screen === SCREEN.LANDING || screen === SCREEN.LOGIN)) {
+      setScreen(SCREEN.UPLOAD);
+    }
+  }, [auth.isAuthenticated, screen]);
+
+  // ---- Bước 0: Landing -> Login (nếu chưa đăng nhập) hoặc thẳng Upload ----
+  const handleStart = useCallback(() => {
+    setScreen(auth.isAuthenticated ? SCREEN.UPLOAD : SCREEN.LOGIN);
+  }, [auth.isAuthenticated]);
 
   // ---- Bước 1: Upload/Drive -> Render Profile ----
   const handleContinueFromUpload = useCallback(async () => {
@@ -119,7 +137,16 @@ export default function App() {
     <PortalShell onOpenHistory={screen !== SCREEN.HISTORY ? handleOpenHistory : undefined}>
       <AnimatePresence mode="wait">
         {screen === SCREEN.LANDING && (
-          <LandingScreen key="landing" onStart={() => setScreen(SCREEN.UPLOAD)} />
+          <LandingScreen key="landing" onStart={handleStart} />
+        )}
+
+        {screen === SCREEN.LOGIN && (
+          <LoginScreen
+            key="login"
+            onLogin={auth.login}
+            isLoading={auth.isLoading}
+            error={auth.error}
+          />
         )}
 
         {screen === SCREEN.UPLOAD && (

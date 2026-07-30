@@ -24,6 +24,7 @@ export const API_CONFIG = {
     APPROVE_JOB: (jobId) => `/jobs/${jobId}/approve`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
+    FACEBOOK_LOGIN: '/auth/facebook',
   },
 };
 
