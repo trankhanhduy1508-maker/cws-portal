@@ -22,6 +22,8 @@ export interface JobEstimate {
 export interface RenderOrder {
   id: string;
   projectName: string;
+  /** Mã tra cứu ngắn cho khách/admin (CWS_ROADMAP_MVP_V1.md: "Sinh Storage Code"). */
+  storageCode: string;
   profileId: RenderProfileId;
   status: JobStatus;
   stageProgress: number; // 0..1 trong giai đoạn hiện tại

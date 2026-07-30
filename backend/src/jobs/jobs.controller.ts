@@ -35,6 +35,13 @@ export class JobsController {
     return orders.map(toPublicJson);
   }
 
+  /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  @Get('by-storage-code/:storageCode')
+  async getByStorageCode(@Param('storageCode') storageCode: string) {
+    const order = await this.jobsService.getByStorageCode(storageCode);
+    return toPublicJson(order);
+  }
+
   @Get(':id')
   async getById(@Param('id') id: string) {
     const order = await this.jobsService.getById(id);

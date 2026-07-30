@@ -7,6 +7,7 @@ import { RenderOrder } from './domain/render-order';
 export interface RenderOrderPublicJson {
   id: string;
   projectName: string;
+  storageCode: string;
   profileId: string;
   status: string;
   stageProgress: number;
@@ -24,6 +25,7 @@ export function toPublicJson(order: RenderOrder): RenderOrderPublicJson {
   return {
     id: order.id,
     projectName: order.projectName,
+    storageCode: order.storageCode,
     profileId: order.profileId,
     status: order.status,
     stageProgress: order.stageProgress,

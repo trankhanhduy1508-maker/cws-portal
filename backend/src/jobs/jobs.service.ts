@@ -89,9 +89,12 @@ export class JobsService {
 
     const initialStatus = estimate.queueSeconds > 0 ? JobStatus.QUEUED : JobStatus.SEARCHING_WORKERS;
 
+    const storageCode = `CWS-${id.slice(0, 8).toUpperCase()}`;
+
     const order: RenderOrder = {
       id,
       projectName,
+      storageCode,
       profileId: dto.profileId,
       status: initialStatus,
       stageProgress: 0,
@@ -137,6 +140,13 @@ export class JobsService {
   async getById(id: string): Promise<RenderOrder> {
     const order = await this.ordersRepository.findById(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
+    return order;
+  }
+
+  /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  async getByStorageCode(storageCode: string): Promise<RenderOrder> {
+    const order = await this.ordersRepository.findByStorageCode(storageCode);
+    if (!order) throw new NotFoundException(`Không tìm thấy job với storage code ${storageCode}`);
     return order;
   }
 

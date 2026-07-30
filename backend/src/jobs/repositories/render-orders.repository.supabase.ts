@@ -13,6 +13,7 @@ const TABLE = 'render_orders';
 interface RenderOrderRow {
   id: string;
   project_name: string;
+  storage_code: string;
   profile_id: string;
   status: string;
   stage_progress: number;
@@ -36,6 +37,7 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
   return {
     id: row.id,
     projectName: row.project_name,
+    storageCode: row.storage_code,
     profileId: row.profile_id as RenderProfileId,
     status: row.status as JobStatus,
     stageProgress: row.stage_progress,
@@ -62,6 +64,7 @@ function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at
   return {
     id: order.id,
     project_name: order.projectName,
+    storage_code: order.storageCode,
     profile_id: order.profileId,
     status: order.status,
     stage_progress: order.stageProgress,
@@ -209,6 +212,21 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
       this.logger.error(`attachInternalJobId(${id}) thất bại: ${error.message}`);
       throw new Error(`Không gắn được internal_job_id: ${error.message}`);
     }
+  }
+
+  async findByStorageCode(storageCode: string): Promise<RenderOrder | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .eq('storage_code', storageCode)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`findByStorageCode(${storageCode}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được render order theo storage code: ${error.message}`);
+    }
+    return data ? rowToDomain(data as RenderOrderRow) : null;
   }
 
   async findActiveOrders(): Promise<RenderOrder[]> {
