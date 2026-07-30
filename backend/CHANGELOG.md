@@ -1,5 +1,51 @@
 # Changelog
 
+## [1.1.0] - MVP alignment pass (2026-07-30)
+
+### Thêm mới
+- customer_profiles + storage_objects + review_images + downloads +
+  worker_logs + notifications: 6 bảng còn thiếu trong
+  CWS_DATABASE_SCHEMA.md, đầy đủ repository/service (migration 005/006).
+- Preview/approval gate thật: JobStatus.REVIEW_READY chèn giữa
+  RENDERING và PACKAGING — Worker render xong chỉ tạo 3-5 ảnh preview
+  có watermark thật ("CWS RENDER", qua sharp), KHÔNG tự đóng gói/mở
+  tải nữa. Chỉ `POST /jobs/:id/approve` mới đóng gói + mở `downloadUrl`.
+- `GET /jobs/:id/download`: ghi log bảng `downloads` rồi redirect sang
+  B2 — Portal không còn dùng thẳng `downloadUrl` raw.
+- Payment webhook thật: `QrBankProvider` sinh `payment_code` +
+  `transferContent` ("CWS {code}"); `POST /payments/webhook` là đường
+  DUY NHẤT set PAID (đối chiếu nội dung + số tiền khớp). `confirm()`
+  trực tiếp không còn set PAID được nữa cho qr_bank.
+- Phát hiện task render thất bại vĩnh viễn → chuyển job sang ERROR +
+  ghi `worker_logs` (trước đây job treo im lặng, không ai biết).
+- `storage_code` (dạng `CWS-XXXXXXXX`) sinh tự động khi tạo job, tra
+  cứu qua `GET /jobs/by-storage-code/:code` và
+  `GET /payments/by-code/:code` (Giai đoạn 7).
+- Chấp nhận link chia sẻ OneDrive/Dropbox ngoài Google Drive (validate
+  cú pháp; chỉ Google Drive có kiểm tra quyền/metadata thật qua API).
+- GitHub Actions CI: build+test backend, build+lint frontend.
+
+### Xóa
+- Wallet, Stripe, PayPal: gỡ hoàn toàn khỏi `PaymentMethod` enum,
+  `PaymentsService`, `PaymentsModule`, `renderConstants.js` — MVP chỉ
+  dùng MB Bank QR (`qr_bank`).
+
+### Giới hạn còn lại (ghi rõ, không che giấu)
+- QR MB Bank vẫn là placeholder text, chưa có ảnh VietQR quét được —
+  cần số tài khoản/BIN thật (business info) để nối cổng thật.
+- Facebook Login: hoàn toàn chưa implement — cần FACEBOOK_APP_ID/SECRET
+  thật. `customer_profiles` module đã có sẵn (upsertByFacebookId) chờ
+  wire vào OAuth strategy.
+- RLS đang tắt trên render_orders/payments/sites/machine_capability —
+  cần quyết định + viết policy trước khi bật (bật sai sẽ chặn hết
+  truy cập).
+- `GET /jobs` và các route tra cứu Giai đoạn 7 (by-storage-code,
+  by-code, logs, notifications) CHƯA có xác thực — chỉ nên dùng nội bộ,
+  KHÔNG build UI admin công khai cho tới khi có auth (JwtAuthGuard đã
+  có sẵn trong `common/guards/`, chưa áp dụng).
+- "Yêu cầu chỉnh sửa" (khách từ chối preview) chưa implement, chỉ có
+  approve.
+
 ## [1.0.0] - CWS Backend - Phase 1 (Initial Implementation)
 
 ### Thêm mới
