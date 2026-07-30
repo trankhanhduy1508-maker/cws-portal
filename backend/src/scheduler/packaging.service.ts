@@ -44,7 +44,11 @@ export class PackagingService {
 
     const frames = await this.fetchFramesLimited(frameKeys);
 
-    const videoBuffer = await this.tryBuildVideo(internalJobId, frames, fps);
+    // Render tĩnh (1 frame, vd ảnh still không phải animation): ghép
+    // "video" 1 frame là vô nghĩa (chỉ vài chục mili-giây, tệ hơn hẳn
+    // so với giao thẳng file ảnh) — bỏ qua bước dựng video, rơi thẳng
+    // về .zip như render nhiều frame không dựng được video.
+    const videoBuffer = frames.length > 1 ? await this.tryBuildVideo(internalJobId, frames, fps) : null;
     if (videoBuffer) {
       const videoKey = `results/${renderOrderId}.mp4`;
       const downloadUrl = await this.b2StorageService.uploadBuffer(videoKey, videoBuffer, 'video/mp4');
