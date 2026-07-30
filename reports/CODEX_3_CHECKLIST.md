@@ -9,10 +9,10 @@ Customer Workflow • Worker • Payment • Dashboard
 # Phase 1 - Workflow Audit
 
 - [x] So sánh với CWS_MVP_WORKFLOW_FINAL.md — MISMATCH lớn: codebase hiện tại implement 1 sản phẩm "render farm/worker fleet marketplace" (RENDER_PROFILES economy/standard/priority/turbo, worker-fleet.gateway, scheduler/wake) khác hẳn luồng đơn giản trong roadmap (Facebook Login → Job từ link chia sẻ → B2 → Worker render → preview → MB QR → COMPLETED). Chi tiết theo từng mục bên dưới.
-- [ ] Kiểm tra Facebook Login — ❌ MISSING. Không có route/service nào cho Facebook OAuth ở cả frontend (src/) lẫn backend (backend/src). Đây là bước đầu tiên của Definition of Done nên là BLOCKER ưu tiên cao nhất.
-- [ ] Kiểm tra Customer Profile — phụ thuộc Facebook Login nên cũng chưa có (không có bảng/entity customer_profiles, chỉ có domain render-order).
-- [ ] Kiểm tra Create Job — hiện tại luồng là "chọn Render Profile + Upload file .blend hoặc dán Google Drive link" (RenderProfileScreen, UploadScreen) — có phần dán Google Drive link (đạt 1 phần), nhưng không có project_name/software/software_version như CWS_DATABASE_SCHEMA.md yêu cầu, và không hỗ trợ OneDrive/Dropbox.
-- [ ] Kiểm tra Shared Link — GOOGLE_DRIVE_LINK_PATTERN chỉ nhận Google Drive; roadmap yêu cầu cả OneDrive/Dropbox/Direct Link.
+- [x] Kiểm tra Facebook Login — TRƯỚC: MISSING hoàn toàn. Đã dựng khung backend đầy đủ (`backend/src/auth`: GET /auth/facebook, GET /auth/facebook/callback, issue JWT, upsert customer_profiles) — báo lỗi rõ ràng nếu thiếu FACEBOOK_APP_ID/SECRET/CALLBACK_URL, không bịa đăng nhập giả. VẪN BLOCKED: cần App ID/Secret thật (Facebook Developers) + frontend chưa có nút "Đăng nhập Facebook"/xử lý callback token.
+- [ ] Kiểm tra Customer Profile — backend/src/customers đã có (upsertByFacebookId), nhưng chưa có gì gắn customer_id vào job (JobsService.createOrder chưa nhận/lưu customer_id).
+- [ ] Kiểm tra Create Job — vẫn dùng model RenderProfile/economy-standard-priority-turbo, chưa có project_name/software/software_version tách riêng như CWS_DATABASE_SCHEMA.md.
+- [x] Kiểm tra Shared Link — Đã hỗ trợ Google Drive/OneDrive/Dropbox (SHARED_LINK_PATTERNS). Direct Link (URL bất kỳ) vẫn chưa hỗ trợ.
 - [x] Kiểm tra Google Drive Permission — backend/src/files/google-drive.service.ts có kiểm tra quyền truy cập (resolve-drive.dto, google-drive.service.spec.ts có test). Phần này KEEP, đáng giữ lại.
 - [ ] Kiểm tra Upload Flow — có UploadZone/UploadScreen nhưng đích cuối là B2 qua RenderService, cần xác minh có thật sự ghi vào cấu trúc jobs/{storage_code}/source|review|final|logs hay không (backend/src/files/b2-storage.service.ts cần audit sâu hơn — chưa xem chi tiết).
 
