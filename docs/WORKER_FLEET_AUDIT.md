@@ -394,8 +394,27 @@ riêng của tính năng này).
 liệu synthetic qua MCP, xoá sạch sau test) + `f332c1d` (Backend endpoint
 + Frontend nút "Xác nhận" trong bảng host usage, `prompt()` nhập số tiền
 prefill bằng `estimatedAmount`). CHỈ Postgres + Backend/Frontend, không
-đụng Python. Còn lại `merge_completed_at` và các loại sự cố khác chưa
-làm.
+đụng Python.
+
+**Cập nhật tiếp theo — `merge_completed_at` ĐÃ WIRING XONG:** commit
+`caa97f1`. Trước đây `attempt_job_video_merge()` không trả về gì ở BẤT
+KỲ nhánh nào (tắt tính năng/chưa đủ điều kiện/lỗi giữa chừng/thành công
+đều như nhau từ góc nhìn caller) nên `worker_loop()` không thể biết
+merge có THẬT SỰ chạy hay không để báo `merge_completed_at`. Sửa tối
+thiểu: thêm đúng 1 dòng `return "success"` ngay sau khi upload B2 thành
+công thật sự (điểm DUY NHẤT có thể khẳng định merge đã xảy ra) — mọi
+nhánh còn lại giữ nguyên trả về `None` như cũ, không đổi hành vi nào
+khác. `worker_loop()` chỉ gọi `report_task_attempt_stage(...,
+"merge_completed")` khi kết quả là `"success"`. Diff tối thiểu (~20
+dòng, 2 điểm sửa) — rủi ro thấp hơn hẳn các wiring Phase 8 trước vì chỉ
+thêm 1 return value, không đổi logic nhánh nào. Lưu ý: `CWS_ENABLE_INTEGRATED_VIDEO_MERGE`
+đang TẮT mặc định trong `cws_worker.bat`, nên nhánh "success" trong thực
+tế sẽ HIẾM KHI được thực thi cho tới khi Dy chủ động bật flag đó.
+
+**Đến đây, toàn bộ mục "chưa làm" có ý nghĩa tính năng (không tính máy
+thật/giá) trong audit này đã đóng.** Việc còn lại thực sự cần: xác nhận
+trên máy Worker thật (8 commit Python chưa từng chạy qua Python/Blender/
+Windows thật) và cấu hình `fleets.hourly_rate` khi có giá thật.
 
 ---
 
@@ -513,6 +532,9 @@ duy nhất. Commit `a28f8df`.
 - `8b2bf01` — docs: thêm mục Admin action vào audit doc.
 - `7905b24` — feat(database): RPC admin_confirm_host_usage_final_amount.
 - `f332c1d` — feat(admin): UI xác nhận final_amount.
+- `68470ca` — docs: cập nhật audit doc, xác nhận final_amount đã xong.
+- `caa97f1` — feat(worker): wiring merge_completed_at (commit Python thứ
+  8 của phiên này, chưa test máy thật).
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -550,13 +572,15 @@ hiện có trong repo thay vì tiếp tục chờ.
    rõ là "chưa làm/để lại vòng sau" thay vì đoán, xem từng mục Phase ở
    trên). Việc còn lại từ đây là XÁC NHẬN TRÊN MÁY THẬT, không phải viết
    thêm code theo roadmap.
-9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 7
+9. **CHƯA test bất kỳ thay đổi Worker nào bằng máy thật** — toàn bộ 8
    commit Python của phiên này (`a728763`/`487aee3`/`f313e93`/`a1aadbd`/
-   `3cfb241`/`0bec9a6`, cộng `c6d64f3` từ trước) mới chỉ kiểm tra tĩnh,
-   chưa từng chạy qua Python/Blender/B2/Windows thật. Đây là rủi ro lớn
-   nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker thật trước
-   khi coi là sẵn sàng production, ĐẶC BIỆT với `0bec9a6` (Phase 8) vì
-   liên quan trực tiếp tới số liệu billing sẽ hiển thị cho Admin.
+   `3cfb241`/`0bec9a6`/`caa97f1`, cộng `c6d64f3` từ trước) mới chỉ kiểm
+   tra tĩnh, chưa từng chạy qua Python/Blender/B2/Windows thật. Đây là
+   rủi ro lớn nhất hiện tại — BẮT BUỘC xác nhận trên ít nhất 1 máy Worker
+   thật trước khi coi là sẵn sàng production, ĐẶC BIỆT với `0bec9a6`
+   (Phase 8) vì liên quan trực tiếp tới số liệu billing sẽ hiển thị cho
+   Admin. `caa97f1` rủi ro thấp hơn (diff ~20 dòng, tính năng merge đang
+   tắt mặc định nên hiếm khi thực thi trong vận hành thật).
 10. Nếu sau này nhận được bản `1.16.5` thật: đối chiếu lại toàn bộ commit
     Worker ở trên xem có trùng/xung đột gì với tính năng đã có sẵn trong
     đó không.
@@ -568,9 +592,9 @@ hiện có trong repo thay vì tiếp tục chờ.
     liệu thật.
 13. ~~Xác nhận final_amount (Phase 8)~~ — ĐÃ XONG (`7905b24`/`f332c1d`),
     KHÔNG đụng Python.
-14. `merge_completed_at` chưa wiring (cần sửa contract trả về của
-    `attempt_job_video_merge()` trước) — mục CÒN LẠI DUY NHẤT có ý nghĩa
-    tính năng (không tính máy thật/giá) chưa làm trong toàn bộ audit này.
+14. ~~`merge_completed_at` wiring~~ — ĐÃ XONG (`caa97f1`), diff tối
+    thiểu (~20 dòng, 1 return value mới). Đây là mục CUỐI CÙNG có ý nghĩa
+    tính năng (không tính máy thật/giá) của toàn bộ audit này.
 15. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
     tạo qua website có tự động sinh đủ task ngoài probe hay không. Đặc
     biệt xác nhận Worker vẫn claim/render/complete bình thường sau khi
