@@ -7,7 +7,7 @@ import { formatPriceVnd } from '../utils/timeUtils';
 import { PAYMENT_STATUS } from '../constants/renderConstants';
 
 export default function PaymentScreen({
-  amountVnd, method, setMethod, status, error,
+  amountVnd, method, setMethod, status, error, transferContent,
   onPay, onBack,
 }) {
   const isProcessing = status === PAYMENT_STATUS.PROCESSING;
@@ -33,6 +33,20 @@ export default function PaymentScreen({
       </div>
 
       <PaymentMethodPicker selected={method} onSelect={setMethod} />
+
+      {isProcessing && transferContent && (
+        <div style={{ padding: '14px 16px', borderRadius: 14, background: '#F7F7F8', textAlign: 'center' }}>
+          <p style={{ fontSize: 12.5, color: '#6B6B70', marginBottom: 4 }}>
+            Chuyển khoản với nội dung chính xác:
+          </p>
+          <p style={{ fontFamily: 'JetBrains Mono', fontSize: 15, fontWeight: 600, color: '#1C1C1E', marginBottom: 8 }}>
+            {transferContent}
+          </p>
+          <p style={{ fontSize: 12, color: '#9a9aa0' }}>
+            Đang chờ ngân hàng xác nhận giao dịch...
+          </p>
+        </div>
+      )}
 
       {status === PAYMENT_STATUS.FAILED && (
         <p style={{ fontSize: 13.5, color: '#E5484D', textAlign: 'center' }}>

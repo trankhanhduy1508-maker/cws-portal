@@ -8,13 +8,13 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Phase 1 - Workflow Audit
 
-- [ ] So sánh với CWS_MVP_WORKFLOW_FINAL.md
-- [ ] Kiểm tra Facebook Login
-- [ ] Kiểm tra Customer Profile
-- [ ] Kiểm tra Create Job
-- [ ] Kiểm tra Shared Link
-- [ ] Kiểm tra Google Drive Permission
-- [ ] Kiểm tra Upload Flow
+- [x] So sánh với CWS_MVP_WORKFLOW_FINAL.md — MISMATCH lớn: codebase hiện tại implement 1 sản phẩm "render farm/worker fleet marketplace" (RENDER_PROFILES economy/standard/priority/turbo, worker-fleet.gateway, scheduler/wake) khác hẳn luồng đơn giản trong roadmap (Facebook Login → Job từ link chia sẻ → B2 → Worker render → preview → MB QR → COMPLETED). Chi tiết theo từng mục bên dưới.
+- [ ] Kiểm tra Facebook Login — ❌ MISSING. Không có route/service nào cho Facebook OAuth ở cả frontend (src/) lẫn backend (backend/src). Đây là bước đầu tiên của Definition of Done nên là BLOCKER ưu tiên cao nhất.
+- [ ] Kiểm tra Customer Profile — phụ thuộc Facebook Login nên cũng chưa có (không có bảng/entity customer_profiles, chỉ có domain render-order).
+- [ ] Kiểm tra Create Job — hiện tại luồng là "chọn Render Profile + Upload file .blend hoặc dán Google Drive link" (RenderProfileScreen, UploadScreen) — có phần dán Google Drive link (đạt 1 phần), nhưng không có project_name/software/software_version như CWS_DATABASE_SCHEMA.md yêu cầu, và không hỗ trợ OneDrive/Dropbox.
+- [ ] Kiểm tra Shared Link — GOOGLE_DRIVE_LINK_PATTERN chỉ nhận Google Drive; roadmap yêu cầu cả OneDrive/Dropbox/Direct Link.
+- [x] Kiểm tra Google Drive Permission — backend/src/files/google-drive.service.ts có kiểm tra quyền truy cập (resolve-drive.dto, google-drive.service.spec.ts có test). Phần này KEEP, đáng giữ lại.
+- [ ] Kiểm tra Upload Flow — có UploadZone/UploadScreen nhưng đích cuối là B2 qua RenderService, cần xác minh có thật sự ghi vào cấu trúc jobs/{storage_code}/source|review|final|logs hay không (backend/src/files/b2-storage.service.ts cần audit sâu hơn — chưa xem chi tiết).
 
 ---
 
@@ -40,11 +40,11 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Phase 4 - Payment
 
-- [ ] Kiểm tra MB QR
-- [ ] Kiểm tra Webhook
-- [ ] Kiểm tra Payment Status
-- [ ] Kiểm tra Delivery
-- [ ] Kiểm tra Download
+- [x] Kiểm tra MB QR — TRƯỚC: mock setTimeout, không QR thật. Đã fix: QrBankProvider sinh payment_code + transfer_content ("CWS {code}") thật. VẪN THIẾU: số tài khoản MB Bank thật (business info) nên chưa dựng được ảnh VietQR quét được — hiện chỉ hiển thị nội dung chuyển khoản dạng text ở PaymentScreen.
+- [x] Kiểm tra Webhook — TRƯỚC: MISSING, confirm() tự set PAID không kiểm tra gì. Đã fix: POST /payments/webhook xác nhận theo content+amount khớp payment_code, là đường DUY NHẤT set PAID. QrBankProvider.confirm() giờ luôn throw. Xem PR #6.
+- [x] Kiểm tra Payment Status — enum PAID/UNPAID/PROCESSING/FAILED đã khớp CWS_DATABASE_SCHEMA.md.
+- [x] Kiểm tra Delivery — GET /jobs/:id/download ghi log rồi redirect sang B2, thay vì lộ downloadUrl raw không kiểm soát được. Xem PR #7.
+- [x] Kiểm tra Download — bảng `downloads` đã tạo (migration 005) + có StorageService.logDownload ghi mỗi lượt tải.
 
 ---
 
@@ -60,14 +60,15 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Cleanup
 
-- [ ] Xóa Stripe
-- [ ] Xóa PayPal
-- [ ] Xóa MoMo
-- [ ] Xóa Google Login
-- [ ] Xóa OTP
-- [ ] Xóa Zalo Login
-- [ ] Xóa AI ETA
-- [ ] Xóa Marketplace
+- [x] Xóa Stripe — gỡ khỏi PaymentMethod enum (backend), PAYMENT_METHOD/PAYMENT_METHODS (frontend). Đã ở trạng thái disabled từ trước, giờ xóa hẳn.
+- [x] Xóa PayPal — tương tự Stripe.
+- [x] Xóa Wallet (Ví CWS) — KHÔNG có trong danh sách cleanup gốc nhưng PHÁT HIỆN THÊM: Wallet đang `available: true` và có WalletProvider thật (dù confirm() giả), vi phạm "Chỉ dùng: MB Bank QR". Đã xóa WalletProvider, gỡ khỏi PaymentsModule/PaymentsService/renderConstants.js. Đã thêm migration 004 để giới hạn DB constraint (chưa apply, CLOUD_VERIFICATION_REQUIRED).
+- [ ] Xóa MoMo — không tìm thấy code MoMo nào trong repo (N/A, có thể do chưa từng được thêm).
+- [ ] Xóa Google Login — chưa tìm thấy code (N/A, hoặc chưa audit đủ sâu authService).
+- [ ] Xóa OTP — chưa audit.
+- [ ] Xóa Zalo Login — chưa audit.
+- [ ] Xóa AI ETA — RENDER_PROFILES dùng durationMultiplier/queueMultiplier tĩnh (không phải AI), có vẻ KHÔNG phải "AI ETA" theo nghĩa cấm — cần xác nhận lại tên gọi/ý định roadmap.
+- [ ] Xóa Marketplace — chưa tìm thấy code Marketplace rõ ràng, nhưng worker-fleet.gateway.ts + scheduler có thể là tiền thân của mô hình marketplace nhiều máy — cần audit kỹ hơn để quyết định KEEP/REMOVE.
 
 ---
 
@@ -85,39 +86,49 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Completed
 
-- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp). Backend + Frontend đã nối đủ đầu-cuối (ReviewScreen.jsx mới, wired vào App.jsx khi status=REVIEW_READY). mockBackend.js cũng dừng thật ở REVIEW_READY (không chỉ lướt qua) để demo khớp hành vi thật. Xem nhánh codex/storage-review-images (PR #7).
+- Audit Phase 1 + Phase 4 (Payment): so sánh workflow thật với CWS_MVP_WORKFLOW_FINAL.md, ghi rõ từng mismatch.
+- Cleanup: xóa Stripe/PayPal/Wallet khỏi payment layer. Chỉ còn QR_BANK (MB Bank). Payment webhook thật (payment_code/transfer_content, POST /payments/webhook) — xem PR #6.
+- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp) + GET /jobs/:id/download có ghi log. Backend + Frontend đã nối đủ đầu-cuối (ReviewScreen.jsx mới). mockBackend.js cũng dừng thật ở REVIEW_READY. Xem PR #7.
 
 ---
 
 # In Progress
 
--
+- Chưa audit sâu: Upload Flow → B2 (cấu trúc jobs/{storage_code}/...), Delivery, Download.
 
 ---
 
 # Pending
 
-- CHƯA test bằng mắt trên trình duyệt thật (dev server đã chạy được, build/lint PASS, nhưng không có công cụ browser trong phiên này để click qua luồng Upload → Profile → Payment → Render → Review → Approve → Download). Cần người dùng hoặc phiên sau tự kiểm tra bằng mắt trước khi coi tính năng này hoàn toàn xong.
-- "Yêu cầu chỉnh sửa" (khách từ chối preview) — CWS_MVP_WORKFLOW_FINAL.md có nhắc tới nhưng chưa implement (hiện chỉ có approve, chưa có reject/re-render).
-- ProgressScreen.jsx/StepDots hiển thị nhãn REVIEW_READY qua STAGE_SEQUENCE label có sẵn, chưa xác nhận bằng mắt có hiển thị đẹp không.
+- CHƯA test bằng mắt trên trình duyệt thật cho toàn luồng Upload → Profile → Payment → Render → Review → Approve → Download (không có công cụ browser trong phiên này).
+- Facebook Login (BLOCKER lớn nhất — chưa có dòng code nào, cần FACEBOOK_APP_ID/SECRET thật). Customer Profile phụ thuộc việc này.
+- QR MB Bank thật cần số tài khoản/BIN thật (business info) để dựng ảnh VietQR quét được — hiện chỉ có nội dung chuyển khoản dạng text.
+- "Yêu cầu chỉnh sửa" (khách từ chối preview) — chưa implement (hiện chỉ có approve, chưa có reject/re-render).
+- Hỗ trợ OneDrive/Dropbox/Direct Link ngoài Google Drive.
+- Quyết định KEEP/REMOVE cho worker-fleet/scheduler (mô hình render farm nhiều máy) — có thể vượt phạm vi MVP.
 
 ---
 
 # Risks
 
--
+- Toàn bộ luồng hiện tại xây trên domain "render farm" (RenderProfile, worker fleet) thay vì domain MVP (Customer/Job/Storage Code) — rủi ro lớn nhất của cả dự án, ảnh hưởng mọi Codex. Đã ghi chi tiết ở CODEX_2_CHECKLIST.md phần Risks.
+- (ĐÃ FIX) confirm() từng cho phép giả mạo PAID trực tiếp — giờ QrBankProvider.confirm() luôn throw, chỉ POST /payments/webhook mới set PAID được.
 
 ---
 
 # Blockers
 
-Không có
+- Không có Facebook App ID/Secret, Supabase credential, MB Bank/webhook credential trong môi trường này — mọi việc liên quan cần các secret này sẽ dừng ở mức code-only (CLOUD_VERIFICATION_REQUIRED) cho đến khi được cung cấp.
 
 ---
 
 # Next Task
 
-Đọc mục chưa hoàn thành đầu tiên và tiếp tục.
+Đã xong: payment verification ở createOrder, webhook thật (PR #6), preview/approval gate + download logging (PR #7), CI GitHub Actions (PR #8). Đã tạo backend/src/customers module, chờ Facebook App credential để viết OAuth strategy.
+
+Còn lại không bị block: viết repository/service cho worker_logs/notifications (bảng đã tạo, chưa có code); wire StorageService vào Worker render pipeline thật (publishReviewImages() hiện chưa được gọi từ đâu khi Worker thật render xong — cần audit worker-fleet.gateway.ts/scheduler.service.ts để tìm điểm nối); Dashboard Admin (Phase 5, chưa bắt đầu).
+
+Bị block chờ người dùng: Facebook Login (FACEBOOK_APP_ID/SECRET), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate secret đã lộ.
 
 ---
 

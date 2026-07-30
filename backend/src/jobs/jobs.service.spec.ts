@@ -5,16 +5,19 @@ import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { PACKAGING_SERVICE } from './services/packaging.interface';
 import { StorageService } from '../storage/storage.service';
 import { B2StorageService } from '../files/b2-storage.service';
+import { PaymentsService } from '../payments/payments.service';
 import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.estimate()', () => {
   let service: JobsService;
   let mockRepository: { findActiveOrders: jest.Mock };
   let mockGateway: { countOnlineWorkers: jest.Mock };
+  let mockPaymentsService: { getStatus: jest.Mock };
 
   beforeEach(async () => {
     mockRepository = { findActiveOrders: jest.fn().mockResolvedValue([]) };
     mockGateway = { countOnlineWorkers: jest.fn().mockResolvedValue(1) }; // giả định có worker online -> queueSeconds = 0
+    mockPaymentsService = { getStatus: jest.fn().mockResolvedValue('paid') };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -24,6 +27,7 @@ describe('JobsService.estimate()', () => {
         { provide: PACKAGING_SERVICE, useValue: {} },
         { provide: StorageService, useValue: {} },
         { provide: B2StorageService, useValue: {} },
+        { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
 

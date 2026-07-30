@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PaymentsRepository } from './payments.repository';
-import { WalletProvider } from './providers/wallet.provider';
 import { QrBankProvider } from './providers/qr-bank.provider';
 import { IPaymentProvider } from './providers/payment-provider.interface';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { WebhookPaymentDto } from './dto/webhook-payment.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -13,29 +13,26 @@ export class PaymentsService {
 
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
-    walletProvider: WalletProvider,
     qrBankProvider: QrBankProvider,
   ) {
-    // Stripe/PayPal CHƯA có provider thật (Portal cũng đã disable 2
-    // phương thức này ở PaymentMethodPicker — xem PAYMENT_METHODS
-    // trong renderConstants.js, available: false). Nếu Backend nhận
-    // được request với method này (vd gọi API trực tiếp bỏ qua Portal),
-    // trả lỗi rõ ràng thay vì giả vờ xử lý được.
+    // MVP chỉ dùng MB Bank QR (CWS_ROADMAP_MVP_V1.md, Giai đoạn 5).
+    // Wallet/Stripe/PayPal không thuộc MVP — đã gỡ khỏi registry.
     this.providers = {
-      [PaymentMethod.WALLET]: walletProvider,
       [PaymentMethod.QR_BANK]: qrBankProvider,
     };
   }
 
-  async createIntent(dto: CreatePaymentDto): Promise<{ paymentId: string; status: PaymentStatus }> {
+  async createIntent(
+    dto: CreatePaymentDto,
+  ): Promise<{ paymentId: string; status: PaymentStatus; transferContent: string | null; amountVnd: number }> {
     const provider = this.providers[dto.method];
     if (!provider) {
       throw new BadRequestException(
-        `Phương thức thanh toán "${dto.method}" chưa được hỗ trợ ở Backend (chỉ wallet/qr_bank khả dụng hiện tại)`,
+        `Phương thức thanh toán "${dto.method}" chưa được hỗ trợ ở Backend (chỉ qr_bank khả dụng trong MVP)`,
       );
     }
 
-    const { providerRef, status } = await provider.createIntent(dto.amountVnd);
+    const { providerRef, status, paymentCode, transferContent } = await provider.createIntent(dto.amountVnd);
     const paymentId = randomUUID();
 
     const record: PaymentRecord = {
@@ -45,14 +42,22 @@ export class PaymentsService {
       status,
       createdAt: Date.now(),
       confirmedAt: null,
+      paymentCode,
+      transferContent,
     };
     await this.paymentsRepository.create(record);
 
     // Lưu providerRef vào paymentId để confirm() sau tìm lại đúng provider —
     // đơn giản hoá: dùng chính paymentId làm khóa tra cứu, providerRef giữ
-    // nội bộ provider (wallet-*/qr-*) đủ để suy luận lại provider nào xử lý.
+    // nội bộ provider (qr-*) đủ để suy luận lại provider nào xử lý.
     void providerRef;
-    return { paymentId, status };
+    return { paymentId, status, transferContent, amountVnd: dto.amountVnd };
+  }
+
+  async getStatus(paymentId: string): Promise<PaymentStatus> {
+    const record = await this.paymentsRepository.findById(paymentId);
+    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    return record.status;
   }
 
   async confirm(paymentId: string): Promise<{ paymentId: string; status: PaymentStatus }> {
@@ -67,5 +72,38 @@ export class PaymentsService {
     const { status } = await provider.confirm(paymentId);
     await this.paymentsRepository.updateStatus(paymentId, status);
     return { paymentId, status };
+  }
+
+  /**
+   * Webhook ngân hàng báo giao dịch thành công (CWS_MVP_WORKFLOW_FINAL.md,
+   * mục Webhook): kiểm tra số tiền + nội dung + payment_code, CHỈ khi
+   * khớp mới set PAID. Đây là đường DUY NHẤT hợp lệ để đặt PAID cho
+   * qr_bank — không có endpoint nào khác cho phép client tự đặt PAID.
+   */
+  async confirmViaWebhook(dto: WebhookPaymentDto): Promise<{ paymentId: string; status: PaymentStatus }> {
+    const match = dto.transferContent.match(/CWS\s+([A-Z0-9]+)/i);
+    if (!match) {
+      throw new BadRequestException(
+        `Nội dung chuyển khoản không đúng định dạng "CWS {payment_code}": "${dto.transferContent}"`,
+      );
+    }
+    const paymentCode = match[1].toUpperCase();
+
+    const record = await this.paymentsRepository.findByPaymentCode(paymentCode);
+    if (!record) {
+      throw new NotFoundException(`Không tìm thấy payment với mã ${paymentCode}`);
+    }
+    if (record.status === PaymentStatus.PAID) {
+      return { paymentId: record.paymentId, status: record.status }; // đã xử lý trước đó, tránh double-confirm
+    }
+    if (record.amountVnd !== dto.amountVnd) {
+      throw new BadRequestException(
+        `Số tiền không khớp cho payment ${record.paymentId}: kỳ vọng ${record.amountVnd}, nhận ${dto.amountVnd}`,
+      );
+    }
+
+    const updated = await this.paymentsRepository.updateStatus(record.paymentId, PaymentStatus.PAID);
+    if (!updated) throw new NotFoundException(`Không tìm thấy payment ${record.paymentId}`);
+    return { paymentId: updated.paymentId, status: updated.status };
   }
 }

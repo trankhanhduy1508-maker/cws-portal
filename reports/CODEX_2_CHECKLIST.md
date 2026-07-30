@@ -8,12 +8,12 @@ Supabase • Database • Backblaze B2
 
 # Phase 1 - Audit
 
-- [ ] Kiểm tra Supabase hiện tại
-- [ ] So sánh Database với CWS_DATABASE_SCHEMA.md
-- [ ] Kiểm tra Facebook Auth
+- [ ] Kiểm tra Supabase hiện tại — CLOUD_VERIFICATION_REQUIRED (chưa có project ref/credential để kiểm tra project thật)
+- [x] So sánh Database với CWS_DATABASE_SCHEMA.md — MISMATCH nghiêm trọng. Migrations hiện tại (001_create_render_orders, 002_create_payments, 003_create_sites_and_wake_capability) mô tả 1 domain khác hẳn: `render_orders` (worker fleet, render profile economy/standard/priority/turbo), `sites`/`wake_capability`. KHÔNG có bảng nào trong 8 bảng của CWS_DATABASE_SCHEMA.md (customer_profiles, jobs, storage_objects, review_images, payments đúng field, downloads, worker_logs, notifications). Bảng `payments` hiện tại có field áp cho method wallet/stripe/paypal (đã sửa constraint ở migration 004, xem Files Changed) nhưng vẫn thiếu job_id, payment_code, storage_code, transfer_content theo schema MVP.
+- [ ] Kiểm tra Facebook Auth — KHÔNG TÌM THẤY bất kỳ code nào implement Facebook Login (grep "facebook" trong src/backend chỉ khớp trong docs). Đây là BLOCKER lớn cho toàn bộ luồng MVP vì mọi bước sau đều phụ thuộc customer đã đăng nhập.
 - [ ] Kiểm tra RLS
 - [ ] Kiểm tra Trigger
-- [ ] Kiểm tra Migration
+- [x] Kiểm tra Migration — xem finding ở dòng "So sánh Database" phía trên. Đã thêm migration 004 (restrict payments.method còn qr_bank) nhưng CHƯA áp dụng lên Supabase thật (CLOUD_VERIFICATION_REQUIRED).
 - [ ] Kiểm tra Enum
 - [ ] Kiểm tra Index
 - [ ] Kiểm tra Foreign Key
@@ -55,38 +55,50 @@ Supabase • Database • Backblaze B2
 
 # Completed
 
-- Backend module storage_objects/review_images (StorageService: recordPaths/getPaths/publishReviewImages, enforce 3-5 ảnh preview theo MVP). Xem PR #7. Bảng đã được tạo qua migration 005 (PR #6, đã apply lên Supabase thật).
+- Audit: xác nhận schema DB hiện tại (render_orders/sites) không khớp CWS_DATABASE_SCHEMA.md (customer_profiles/jobs/...). Ghi rõ để domain Workflow biết trước khi build thêm tính năng trên model cũ.
+- Migration 004: giới hạn payments.method chỉ còn 'qr_bank' (đã apply lên Supabase thật).
+- Backend module storage_objects/review_images/downloads (StorageService: recordPaths/getPaths/publishReviewImages/logDownload, enforce 3-5 ảnh preview theo MVP). Xem PR #7. Bảng đã được tạo qua migration 005 (đã apply lên Supabase thật).
+- Payment webhook thật: QrBankProvider sinh payment_code/transfer_content, POST /payments/webhook xác nhận PAID duy nhất qua nội dung+số tiền khớp. Xem PR #6.
 
 ---
 
 # In Progress
 
--
+- Chưa có access Supabase thật (project ref, service-role key) để kiểm tra RLS/Trigger/Enum/Index/FK và để apply migration 004.
 
 ---
 
 # Pending
 
-- Wire StorageService vào Worker render pipeline thật (hiện chưa có nơi nào gọi publishReviewImages() với path ảnh thật).
-- Kiểm tra Bucket B2 thật (cấu trúc source/review/final/logs, signed URL, lifecycle) — CLOUD_VERIFICATION_REQUIRED, chưa có credential B2 để tự kiểm tra trực tiếp bucket.
+- Kiểm tra Bucket B2 thật (cấu trúc source/review/final/logs, signed URL, lifecycle) — CLOUD_VERIFICATION_REQUIRED, cần rotate B2 key trước (xem SECURITY INCIDENT bên dưới) rồi mới nên dùng key mới để kiểm tra.
+- Quyết định: migrate dữ liệu từ render_orders/jobs (Worker Fleet cũ) sang model MVP, hay giữ song song vĩnh viễn (cần business decision, có dữ liệu thật đang chạy: 12 jobs, 712 tasks).
+- Kiểm tra RLS/Trigger/Enum/Index/FK đầy đủ (đã có Supabase MCP access, nhưng RLS cần quyết định trước — xem advisory bên dưới).
+- worker_logs, notifications: 2 bảng cuối trong CWS_DATABASE_SCHEMA.md chưa có repository/service (đã tạo bảng ở migration 005, chưa wire code).
 
 ---
 
 # Risks
 
--
+- MISMATCH schema là rủi ro lớn nhất của toàn dự án: Codex Workflow (payment, job, customer) không thể hoàn thiện đúng MVP nếu backend vẫn dùng model render_orders/sites. Cần quyết định: incremental migrate schema, hay giữ song song rồi cắt chuyển 1 lần.
+- Migration 004 sẽ FAIL nếu bảng payments thật đang có bản ghi method khác 'qr_bank' — phải kiểm tra trước khi apply.
 
 ---
 
 # Blockers
 
-Không có
+- CLOUD_VERIFICATION_REQUIRED: không có Supabase project ref / service-role key trong môi trường này để audit live DB hoặc áp dụng migration.
 
 ---
 
 # Next Task
 
-Đọc mục chưa hoàn thành đầu tiên và tiếp tục.
+Đã có Supabase MCP access. Migration 004 (qr_bank only) và 005 (customer_profiles + storage_objects + review_images + downloads + worker_logs + notifications + mở rộng render_orders/payments) đã APPLY thành công lên project ynhxlxetwuiyejcjypsi. Tiếp theo: viết repository/service cho storage_objects, review_images, downloads, worker_logs, notifications (mirror pattern customers.module.ts).
+
+## 🚨 SECURITY INCIDENT
+`backend/.env.example` từng chứa secret thật (Supabase service_role key, B2 application key) bị commit công khai — đã xóa khỏi working tree (commit e296a74) nhưng KHÔNG rewrite được git history (bị cấm force-push/rewrite history). Secret coi như đã lộ vĩnh viễn. **CẦN NGƯỜI DÙNG rotate ngay**: Supabase Dashboard > Settings > API > regenerate service_role key; Backblaze B2 > revoke application key K004COzN4VQn3r4AcniKM1HOrr58deM, tạo key mới. Sau khi rotate, cập nhật lại biến môi trường thật trên Render.
+
+## RLS disabled (advisory)
+render_orders, payments, sites, machine_capability đang KHÔNG bật RLS — anon key đọc/ghi được toàn bộ. CHƯA tự bật (bật sai sẽ chặn truy cập nếu chưa có policy) — cần người dùng xác nhận cách anon key được dùng ở đâu trước khi bật + viết policy.
 
 ---
 

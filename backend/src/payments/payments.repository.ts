@@ -11,6 +11,8 @@ interface PaymentRow {
   status: string;
   created_at: string;
   confirmed_at: string | null;
+  payment_code: string | null;
+  transfer_content: string | null;
 }
 
 function rowToDomain(row: PaymentRow): PaymentRecord {
@@ -21,6 +23,8 @@ function rowToDomain(row: PaymentRow): PaymentRecord {
     status: row.status as PaymentStatus,
     createdAt: new Date(row.created_at).getTime(),
     confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).getTime() : null,
+    paymentCode: row.payment_code,
+    transferContent: row.transfer_content,
   };
 }
 
@@ -39,6 +43,8 @@ export class PaymentsRepository {
         amount_vnd: record.amountVnd,
         method: record.method,
         status: record.status,
+        payment_code: record.paymentCode,
+        transfer_content: record.transferContent,
       })
       .select()
       .single();
@@ -48,6 +54,21 @@ export class PaymentsRepository {
       throw new Error(`Không tạo được payment: ${error.message}`);
     }
     return rowToDomain(data as PaymentRow);
+  }
+
+  async findByPaymentCode(paymentCode: string): Promise<PaymentRecord | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .eq('payment_code', paymentCode)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`findByPaymentCode(${paymentCode}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được payment theo mã: ${error.message}`);
+    }
+    return data ? rowToDomain(data as PaymentRow) : null;
   }
 
   async updateStatus(paymentId: string, status: PaymentStatus): Promise<PaymentRecord | null> {

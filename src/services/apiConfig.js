@@ -14,6 +14,7 @@ export const API_CONFIG = {
     DRIVE_RESOLVE: '/drive/resolve',
     ESTIMATE_JOB: '/jobs/estimate',
     CREATE_PAYMENT: '/payments',
+    GET_PAYMENT_STATUS: (paymentId) => `/payments/${paymentId}`,
     CONFIRM_PAYMENT: (paymentId) => `/payments/${paymentId}/confirm`,
     CREATE_JOB: '/jobs',
     GET_JOB: (jobId) => `/jobs/${jobId}`,

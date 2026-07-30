@@ -160,6 +160,7 @@ export default function App() {
             setMethod={payment.setMethod}
             status={payment.status}
             error={payment.error}
+            transferContent={payment.transferContent}
             onPay={handlePay}
             onBack={() => setScreen(SCREEN.PROFILE)}
           />
