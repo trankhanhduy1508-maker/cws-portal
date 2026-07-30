@@ -381,12 +381,21 @@ Commit `8f0b884` (schema), `9890b31` (Backend endpoint), `40b83c6`
 Backend `nest build`+`jest`(37/37)+eslint PASS, Frontend oxlint+`vite
 build` PASS.
 
-**Chưa làm:** UI/RPC xác nhận `final_amount` (Phase 8), `merge_completed_at`
-wiring (Phase 8), các loại sự cố khác chưa có detection (Phase 6). Route
-mutating (retry/requeue/quarantine/drain) hiện chỉ bảo vệ bằng
-`AdminKeyGuard` + `window.confirm()` phía Frontend — chưa có xác thực
-2 lớp/phân quyền chi tiết hơn (phù hợp với mức bảo vệ Admin Dashboard
-hiện có toàn hệ thống, không phải điểm yếu riêng của tính năng này).
+**Chưa làm (tại thời điểm viết mục này):** UI/RPC xác nhận `final_amount`
+(Phase 8), `merge_completed_at` wiring (Phase 8), các loại sự cố khác
+chưa có detection (Phase 6). Route mutating (retry/requeue/quarantine/
+drain) hiện chỉ bảo vệ bằng `AdminKeyGuard` + `window.confirm()` phía
+Frontend — chưa có xác thực 2 lớp/phân quyền chi tiết hơn (phù hợp với
+mức bảo vệ Admin Dashboard hiện có toàn hệ thống, không phải điểm yếu
+riêng của tính năng này).
+
+**Cập nhật ngay sau đó — xác nhận `final_amount` ĐÃ XONG:** commit
+`7905b24` (RPC `admin_confirm_host_usage_final_amount`, test trên dữ
+liệu synthetic qua MCP, xoá sạch sau test) + `f332c1d` (Backend endpoint
++ Frontend nút "Xác nhận" trong bảng host usage, `prompt()` nhập số tiền
+prefill bằng `estimatedAmount`). CHỈ Postgres + Backend/Frontend, không
+đụng Python. Còn lại `merge_completed_at` và các loại sự cố khác chưa
+làm.
 
 ---
 
@@ -501,6 +510,9 @@ duy nhất. Commit `a28f8df`.
   (ngoài roadmap, KHÔNG đụng Python, ĐÃ test trực tiếp trên dữ liệu thật).
 - `9890b31` — feat(admin): endpoint retry/requeue/quarantine/drain.
 - `40b83c6` — feat(admin): UI retry/requeue/quarantine/drain.
+- `8b2bf01` — docs: thêm mục Admin action vào audit doc.
+- `7905b24` — feat(database): RPC admin_confirm_host_usage_final_amount.
+- `f332c1d` — feat(admin): UI xác nhận final_amount.
 - `c6d64f3` — feat(worker): tích hợp ghép video.
 
 **Quyết định của người dùng (2026-07-31):** do gặp khó khăn khi upload
@@ -553,11 +565,13 @@ hiện có trong repo thay vì tiếp tục chờ.
     `awaiting_rate`, không bao giờ tính ra `estimated_amount`.
 12. ~~Retry/requeue/quarantine/drain (Phase 6)~~ — ĐÃ XONG (`8f0b884`/
     `9890b31`/`40b83c6`), KHÔNG đụng Python, đã test trực tiếp trên dữ
-    liệu thật. Còn thiếu: UI/RPC riêng cho hành động "xác nhận
-    final_amount" của Admin (Phase 8, hiện luôn `null`).
-13. `merge_completed_at` chưa wiring (cần sửa contract trả về của
-    `attempt_job_video_merge()` trước).
-14. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
+    liệu thật.
+13. ~~Xác nhận final_amount (Phase 8)~~ — ĐÃ XONG (`7905b24`/`f332c1d`),
+    KHÔNG đụng Python.
+14. `merge_completed_at` chưa wiring (cần sửa contract trả về của
+    `attempt_job_video_merge()` trước) — mục CÒN LẠI DUY NHẤT có ý nghĩa
+    tính năng (không tính máy thật/giá) chưa làm trong toàn bộ audit này.
+15. Xác nhận trên máy Worker thật (khi có máy online trở lại): job mới
     tạo qua website có tự động sinh đủ task ngoài probe hay không. Đặc
     biệt xác nhận Worker vẫn claim/render/complete bình thường sau khi
     `claim_task()` bị mở rộng thêm kiểm tra quarantine/drain (mục
