@@ -19,6 +19,23 @@ async function adminFetch(path, adminKey) {
   return res.json();
 }
 
+/** Hành động Admin THẬT lên Worker Fleet (retry/requeue/quarantine/drain,
+ * ngoài CWS_WORKER_ROADMAP.md — đóng lỗ hổng Phase 6), khác `adminFetch`
+ * ở trên vì là POST + có body tuỳ chọn. */
+async function adminPost(path, adminKey, body) {
+  if (!IS_BACKEND_CONFIGURED) {
+    throw new Error('Chưa cấu hình Backend thật — Admin Dashboard không dùng được ở chế độ demo.');
+  }
+  const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+  if (res.status === 401) throw new Error('Sai admin key');
+  if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
+  return res.json();
+}
+
 /** Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
 export function adminListCustomers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, adminKey);
@@ -35,10 +52,31 @@ export function adminListWorkers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, adminKey);
 }
 
-/** Sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — chỉ đọc, không
- * có hành động retry/requeue/quarantine/drain (chưa làm ở round này). */
+/** Sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — chỉ đọc. Hành
+ * động retry/requeue/quarantine/drain xem 4 hàm `adminRetryTask`/
+ * `adminRequeueTask`/`adminSetWorkerQuarantine`/`adminSetWorkerDrain` bên dưới. */
 export function adminListIncidents(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, adminKey);
+}
+
+/** Đưa 1 task đang status=failed (permanent) về lại queued để thử lại. */
+export function adminRetryTask(taskId, adminKey) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_RETRY_TASK(taskId), adminKey);
+}
+
+/** Ép 1 task đang active về queued ngay (không đợi requeue_stale_tasks() tự động sau 240s). */
+export function adminRequeueTask(taskId, adminKey) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_REQUEUE_TASK(taskId), adminKey);
+}
+
+/** Bật/tắt quarantine 1 worker — worker bị quarantine sẽ KHÔNG claim được task mới (thực thi thật qua claim_task(), không chỉ là nhãn). */
+export function adminSetWorkerQuarantine(workerId, quarantined, reason, adminKey) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_QUARANTINE_WORKER(workerId), adminKey, { quarantined, reason });
+}
+
+/** Bật/tắt drain 1 worker — worker đang drain sẽ hoàn tất task hiện tại nhưng KHÔNG claim task mới. */
+export function adminSetWorkerDrain(workerId, draining, reason, adminKey) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_DRAIN_WORKER(workerId), adminKey, { draining, reason });
 }
 
 /** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —

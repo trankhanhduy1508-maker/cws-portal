@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
 import {
   adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminListHostUsageSessions,
+  adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
@@ -62,6 +63,42 @@ export default function AdminScreen() {
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // Hành động Admin THẬT lên Worker Fleet (retry/requeue/quarantine/drain,
+  // ngoài CWS_WORKER_ROADMAP.md — đóng lỗ hổng Phase 6) — confirm() trước
+  // khi gọi vì đây là thay đổi trạng thái thật (không chỉ đọc), rồi
+  // loadAll() lại để bảng cập nhật đúng dữ liệu mới nhất.
+  const runAdminAction = useCallback((confirmMessage, actionPromise) => {
+    if (!window.confirm(confirmMessage)) return;
+    setError(null);
+    actionPromise
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
+
+  const handleRetryTask = useCallback((taskId) => {
+    runAdminAction(`Retry task ${taskId}?`, adminRetryTask(taskId, adminKey));
+  }, [adminKey, runAdminAction]);
+
+  const handleRequeueTask = useCallback((taskId) => {
+    runAdminAction(`Requeue task ${taskId} ngay (không đợi tự động)?`, adminRequeueTask(taskId, adminKey));
+  }, [adminKey, runAdminAction]);
+
+  const handleToggleQuarantine = useCallback((workerId, currentlyQuarantined) => {
+    const next = !currentlyQuarantined;
+    runAdminAction(
+      next ? `Quarantine worker ${workerId}? Worker sẽ không claim được task mới.` : `Bỏ quarantine worker ${workerId}?`,
+      adminSetWorkerQuarantine(workerId, next, null, adminKey),
+    );
+  }, [adminKey, runAdminAction]);
+
+  const handleToggleDrain = useCallback((workerId, currentlyDraining) => {
+    const next = !currentlyDraining;
+    runAdminAction(
+      next ? `Drain worker ${workerId}? Worker sẽ hoàn tất task hiện tại nhưng không nhận task mới.` : `Bỏ drain worker ${workerId}?`,
+      adminSetWorkerDrain(workerId, next, null, adminKey),
+    );
+  }, [adminKey, runAdminAction]);
 
   // Phase 6 CWS_WORKER_ROADMAP.md — lọc theo severity/đã xử lý ngay ở
   // Frontend (danh sách tối đa 200 dòng gần nhất từ Backend, không cần
@@ -329,24 +366,45 @@ export default function AdminScreen() {
                   <th style={{ padding: 8 }}>Trạng thái chi tiết</th>
                   <th style={{ padding: 8 }}>Last seen</th>
                   <th style={{ padding: 8 }}>Crash count</th>
+                  <th style={{ padding: 8 }}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {workers.map((w) => (
-                  <tr key={w.workerId} style={{ borderBottom: '1px solid #F0F0F1' }}>
-                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
-                    <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
-                    <td style={{ padding: 8 }}>{w.status}</td>
-                    <td style={{ padding: 8 }} title={w.stateReason ?? ''}>
-                      {w.observedState ?? '—'}
-                      {w.lastTransitionAt ? ` (${formatRelativeTime(w.lastTransitionAt)})` : ''}
-                    </td>
-                    <td style={{ padding: 8 }}>{formatRelativeTime(w.lastSeenAt)}</td>
-                    <td style={{ padding: 8 }}>{w.crashCount}</td>
-                  </tr>
-                ))}
+                {workers.map((w) => {
+                  const isQuarantined = w.healthState === 'QUARANTINED';
+                  const isDraining = w.desiredState === 'DRAINING';
+                  return (
+                    <tr key={w.workerId} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                      <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
+                      <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
+                      <td style={{ padding: 8 }}>{w.status}</td>
+                      <td style={{ padding: 8 }} title={w.stateReason ?? ''}>
+                        {w.observedState ?? '—'}
+                        {w.lastTransitionAt ? ` (${formatRelativeTime(w.lastTransitionAt)})` : ''}
+                      </td>
+                      <td style={{ padding: 8 }}>{formatRelativeTime(w.lastSeenAt)}</td>
+                      <td style={{ padding: 8 }}>{w.crashCount}</td>
+                      <td style={{ padding: 8, display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleQuarantine(w.workerId, isQuarantined)}
+                          style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: isQuarantined ? '#FEE2E2' : '#fff', cursor: 'pointer' }}
+                        >
+                          {isQuarantined ? 'Bỏ quarantine' : 'Quarantine'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDrain(w.workerId, isDraining)}
+                          style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: isDraining ? '#FEF3C7' : '#fff', cursor: 'pointer' }}
+                        >
+                          {isDraining ? 'Bỏ drain' : 'Drain'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {workers.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
+                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
                 )}
               </tbody>
             </table>
@@ -383,9 +441,11 @@ export default function AdminScreen() {
               report_worker_crash() có sẵn) và MERGE_FAIL (Worker tự gọi khi
               attempt_job_video_merge() lỗi) — các loại lỗi khác trong roadmap
               (GPU/CPU quá nhiệt, disk full...) CHƯA có code phát hiện, sẽ
-              không xuất hiện ở đây cho tới khi được làm ở vòng sau. CHƯA có
-              nút retry/requeue/quarantine/drain (rủi ro cao hơn 1 bảng chỉ
-              đọc, để lại vòng sau). */}
+              không xuất hiện ở đây cho tới khi được làm ở vòng sau. Nút
+              Retry/Requeue gọi RPC tương ứng — RPC tự kiểm tra điều kiện
+              (retry chỉ hoạt động nếu task đang failed, requeue chỉ nếu
+              đang active), bấm sai điều kiện chỉ trả về không thành công,
+              không gây hại gì thêm. */}
           <div style={{ overflowX: 'auto', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
@@ -398,6 +458,7 @@ export default function AdminScreen() {
                   <th style={{ padding: 8 }}>Số lần</th>
                   <th style={{ padding: 8 }}>Tóm tắt</th>
                   <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -413,10 +474,30 @@ export default function AdminScreen() {
                       {inc.summary}
                     </td>
                     <td style={{ padding: 8 }}>{inc.resolvedAt ? 'Đã xử lý' : 'Chưa xử lý'}</td>
+                    <td style={{ padding: 8, display: 'flex', gap: 6 }}>
+                      {inc.taskId != null && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryTask(inc.taskId)}
+                            style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: '#fff', cursor: 'pointer' }}
+                          >
+                            Retry
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRequeueTask(inc.taskId)}
+                            style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: '#fff', cursor: 'pointer' }}
+                          >
+                            Requeue
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filteredIncidents.length === 0 && (
-                  <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
+                  <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
                 )}
               </tbody>
             </table>
