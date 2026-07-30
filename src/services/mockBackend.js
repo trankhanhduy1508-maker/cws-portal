@@ -98,11 +98,10 @@ export async function mockCreatePaymentIntent({ amountVnd, method }) {
 }
 
 export async function mockConfirmPayment({ paymentId, method }) {
-  // Ví CWS: xác nhận ngay. QR ngân hàng: giả lập độ trễ như đang chờ
-  // khách quét mã xong. Đây là DEMO — không có giao dịch tiền thật nào
-  // xảy ra.
-  const delayMs = method === 'wallet' ? 400 : 1800;
-  await new Promise((r) => setTimeout(r, delayMs));
+  // QR ngân hàng (MB Bank, duy nhất trong MVP): giả lập độ trễ như đang
+  // chờ khách quét mã xong. Đây là DEMO — không có giao dịch tiền thật
+  // nào xảy ra.
+  await new Promise((r) => setTimeout(r, 1800));
   return { paymentId, status: PAYMENT_STATUS.PAID };
 }
 

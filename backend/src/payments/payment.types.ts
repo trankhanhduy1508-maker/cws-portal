@@ -1,8 +1,5 @@
 export enum PaymentMethod {
-  WALLET = 'wallet',
   QR_BANK = 'qr_bank',
-  STRIPE = 'stripe',
-  PAYPAL = 'paypal',
 }
 
 export enum PaymentStatus {

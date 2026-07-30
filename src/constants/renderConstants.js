@@ -81,23 +81,16 @@ export const RENDER_PROFILES = [
 ];
 
 // ============================================================
-// PAYMENT — chuẩn bị sẵn giao diện cho nhiều phương thức. Stripe/PayPal
-// đánh dấu "sắp ra mắt" vì cần tài khoản merchant + API key thật, dựng
-// UI giả cho chúng chạy được sẽ gây hiểu lầm nghiêm trọng hơn cả việc
-// giả lập tiến trình render — đây là ranh giới KHÔNG được giả.
+// PAYMENT — MVP chỉ dùng MB Bank QR (CWS_ROADMAP_MVP_V1.md, Giai đoạn
+// 5). Wallet/Stripe/PayPal/MoMo không thuộc MVP — không dựng UI cho
+// các phương thức chưa/không dùng.
 // ============================================================
 export const PAYMENT_METHOD = {
-  WALLET: 'wallet',
   QR_BANK: 'qr_bank',
-  STRIPE: 'stripe',
-  PAYPAL: 'paypal',
 };
 
 export const PAYMENT_METHODS = [
-  { id: PAYMENT_METHOD.WALLET, label: 'Ví CWS', available: true },
-  { id: PAYMENT_METHOD.QR_BANK, label: 'Quét mã QR ngân hàng', available: true },
-  { id: PAYMENT_METHOD.STRIPE, label: 'Thẻ quốc tế (Stripe)', available: false },
-  { id: PAYMENT_METHOD.PAYPAL, label: 'PayPal', available: false },
+  { id: PAYMENT_METHOD.QR_BANK, label: 'Quét mã QR ngân hàng (MB Bank)', available: true },
 ];
 
 export const PAYMENT_STATUS = {
