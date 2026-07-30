@@ -39,6 +39,15 @@ set "PYTHON_VERSION=3.12.7"
 set "PYTHON_ZIP_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
 set "GETPIP_URL=https://bootstrap.pypa.io/get-pip.py"
 
+REM ----- Feature flag Ghep Video (CWS_WORKER_ROADMAP.md Phase 2, them
+REM 31/07/2026) - CMD tu ke thua bien moi truong nay cho tien trinh con
+REM (python.exe), giong het cach CWS_DIR da hoat dong, KHONG can sua gi o
+REM phia cws_worker_full.py ngoai doc os.environ. Mac dinh: TICH HOP TAT,
+REM .bat ghep video cu (cws_auto_ghep_video.bat) BAT - giu nguyen hanh vi
+REM hien tai cho toi khi Dy chu dong doi "true" duoi day de bat thu.
+set "CWS_ENABLE_INTEGRATED_VIDEO_MERGE=false"
+set "CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK=true"
+
 REM ----- Cau hinh cho Self Recovery + Auto Update (dua theo condor_master
 REM cua HTCondor: tien trinh cha DON GIAN, tu khoi dong lai neu con crash,
 REM tu kiem tra ban moi truoc moi lan chay). Xem 10_setup_worker_selfheal.sql -----

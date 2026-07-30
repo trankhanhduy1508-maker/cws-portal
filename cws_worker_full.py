@@ -59,6 +59,7 @@ import time
 import threading
 import uuid
 import random
+import shutil
 from pathlib import Path
 
 # ===== SUPABASE =====
@@ -167,6 +168,30 @@ JOB_IDS_MULTI = JOB_IDS_PRIORITY_HIGH + JOB_IDS_PRIORITY_NORMAL + JOB_IDS_PRIORI
 # x 1 lenh/60s = ~3.3 request/giay, rat nhe voi Postgres. -----
 HEARTBEAT_INTERVAL_SEC = 60
 POLL_INTERVAL_SEC = 15
+
+# ----- VIDEO MERGE (them theo CWS_WORKER_ROADMAP.md Phase 2, 31/07/2026):
+# tich hop lai chuc nang cua cws_auto_ghep_video.bat (Khau 8, truoc day la
+# cong cu doc lap chay tay) vao thang trong worker_loop(), TU DONG kich hoat
+# ngay sau khi 1 Worker hoan thanh task CUOI CUNG cua ca JOB (khong phai
+# CHINH task cua Worker do - phai kiem tra is_fully_done qua RPC
+# get_job_render_summary, giong het cach .bat cu da lam, vi merge la thao
+# tac CAP DO JOB trong khi vong lap worker_loop() hoat dong CAP DO TASK).
+#
+# CO CHU DICH giu 2 feature flag rieng (mac dinh: tich hop TAT, .bat cu
+# BAT) - .bat cu VAN giu nguyen, KHONG xoa, dung lam fallback thu cong neu
+# ban tat CWS_ENABLE_INTEGRATED_VIDEO_MERGE hoac merge tu dong that bai.
+CWS_ENABLE_INTEGRATED_VIDEO_MERGE = os.environ.get(
+    "CWS_ENABLE_INTEGRATED_VIDEO_MERGE", "false").strip().lower() == "true"
+CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK = os.environ.get(
+    "CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK", "true").strip().lower() == "true"
+# Duong dan ffmpeg.exe - doc qua bien moi truong de tung may chinh duoc
+# (giong tinh than CWS_DIR), fallback ve dung duong dan da hard-code trong
+# cws_auto_ghep_video.bat (da biet chay dung tren may hien tai).
+CWS_FFMPEG_PATH = os.environ.get(
+    "CWS_FFMPEG_PATH", r"C:\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe")
+MERGE_DOWNLOAD_TIMEOUT_SEC = 1800  # 30 phut - tai het PNG cua ca job tu B2
+MERGE_FFMPEG_TIMEOUT_SEC = 1800  # 30 phut - ghep video bang ffmpeg
+MERGE_MAX_RETRIES = 2  # thu lai them 2 lan (tong 3 lan) neu ffmpeg loi
 
 # Phien ban cua CHINH FILE NAY - phai tang so nay MOI LAN sua code va cap
 # nhat cot latest_version trong bang worker_config (Supabase) tuong ung,
@@ -926,6 +951,180 @@ def log_task_event(task_id, worker_id, message):
         })
     except Exception:
         return False  # log that bai khong quan trong bang viec render tiep tuc
+
+
+def _download_job_frames_from_b2(job_id, flat_dir):
+    """Tai TOAN BO PNG cua 1 JOB (prefix renders/{job_id}/, gom moi task con)
+    ve 1 thu muc PHANG duy nhat - port lai dung logic 'aws s3 sync' + gop
+    thu muc cua cws_auto_ghep_video.bat, nhung dung thang boto3 (da co san
+    trong file nay qua get_b2_client()) THAY VI doi hoi cai them 'aws' CLI
+    rieng tren may Worker - giam 1 dependency ben ngoai so voi ban .bat cu.
+
+    Co gioi han thoi gian tong the (MERGE_DOWNLOAD_TIMEOUT_SEC) - boto3 chi
+    tu dat timeout cho TUNG request rieng le (xem get_b2_client()), khong
+    gioi han duoc tong thoi gian tai HANG TRAM frame cua ca job, nen phai
+    tu kiem tra deadline giua vong lap.
+
+    Tra ve so file PNG da tai duoc (co the < tong so file tren B2 neu het
+    thoi gian giua chung - ham goi se tu phat hien qua so sanh voi
+    total_frames va KHONG ghep video neu thieu, khong coi day la loi cung)."""
+    client = get_b2_client()
+    prefix = f"renders/{job_id}/"
+    flat_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+    continuation_token = None
+    deadline = time.monotonic() + MERGE_DOWNLOAD_TIMEOUT_SEC
+    while True:
+        if time.monotonic() > deadline:
+            print(f"[MERGE] Qua thoi gian cho phep ({MERGE_DOWNLOAD_TIMEOUT_SEC}s) khi tai frame tu B2 cho job {job_id}, dung lai voi {count} file da tai.")
+            break
+        kwargs = {"Bucket": B2_BUCKET, "Prefix": prefix}
+        if continuation_token:
+            kwargs["ContinuationToken"] = continuation_token
+        resp = client.list_objects_v2(**kwargs)
+        for obj in resp.get("Contents", []):
+            key = obj["Key"]
+            if not key.lower().endswith(".png"):
+                continue
+            local_path = flat_dir / os.path.basename(key)
+            client.download_file(B2_BUCKET, key, str(local_path))
+            count += 1
+        if resp.get("IsTruncated"):
+            continuation_token = resp.get("NextContinuationToken")
+        else:
+            break
+    return count
+
+
+def attempt_job_video_merge(job_id, worker_id):
+    """Tu dong ghep video cho CA JOB (khong phai 1 task rieng le) NGAY SAU
+    KHI 1 Worker vua hoan thanh task cuoi cung con lai cua job - port lai
+    dung logic cws_auto_ghep_video.bat (Khau 8) vao Python, giu nguyen thu
+    tu kiem tra AN TOAN cua ban .bat: is_fully_done -> tai PNG -> dem du
+    frame -> ffmpeg -> xac minh output. KHONG rewrite lai tu dau, chi port.
+
+    CHU DICH THIET KE (theo dung CWS_WORKER_ROADMAP.md Phase 2):
+    - Chi chay khi CWS_ENABLE_INTEGRATED_VIDEO_MERGE=true (mac dinh TAT,
+      xem constant o dau file) - neu tat, ham nay khong lam gi ca, hanh vi
+      cu (chi co .bat chay tay) giu nguyen 100%.
+    - Bo qua ro rang (khong coi la loi) neu job chi co 1 frame (anh tinh,
+      khong phai video - dung quy uoc da co san o Backend, xem
+      packaging.service.ts#packageRenderResult "frames.length > 1").
+    - KHONG anh huong toi ket qua complete_task() cua CHINH task worker nay
+      vua xong - merge la buoc PHU o cap do JOB, that bai o day KHONG duoc
+      lam sai lech trang thai task/job da duoc Backend/Scheduler ghi nhan.
+    - Neu that bai o bat ky buoc nao: log ro ly do roi DUNG LAI (khong nem
+      exception ra worker_loop()), de nguyen .bat cu lam fallback thu cong
+      (CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK).
+
+    GIOI HAN DA BIET (ghi ro, khong tu quyet dinh sua vi can schema moi -
+    xem CWS_WORKER_ROADMAP.md Phase 3/7 "generation"/"fencing token"):
+    neu 2 Worker cung hoan thanh 2 task cuoi cung cua CUNG 1 job gan nhu
+    dong thoi, CA HAI co the cung thay is_fully_done=true va CA HAI cung
+    thu merge song song (lang phi, ghep 2 lan cung 1 video) - chua co co
+    che "khoa" cap job nao trong repo hien tai de tranh viec nay (giong
+    han che von co cua cws_auto_ghep_video.bat neu 2 nguoi cung chay tay
+    cho cung 1 job - KHONG PHAI hoi quy moi do tich hop nay gay ra)."""
+    if not CWS_ENABLE_INTEGRATED_VIDEO_MERGE:
+        return
+
+    print(f"[MERGE] Kiem tra job {job_id} co can ghep video khong...")
+    summary = rpc_call("get_job_render_summary", {"p_job_id": job_id})
+    if not summary:
+        print(f"[MERGE] Khong lay duoc get_job_render_summary cho {job_id}, bo qua merge lan nay.")
+        return
+    row = summary[0] if isinstance(summary, list) else summary
+
+    if not row.get("is_fully_done"):
+        print(f"[MERGE] Job {job_id} chua render xong 100% (con task active/queued) - bo qua, se tu kiem tra lai o lan hoan thanh task khac.")
+        return
+
+    total_frames = row.get("total_frames") or 0
+    fps = row.get("fps")
+    frame_start = row.get("frame_start_actual")
+    if total_frames <= 1:
+        print(f"[MERGE] Job {job_id} chi co {total_frames} frame (anh tinh, khong phai video) - bo qua ghep video mot cach ro rang.")
+        return
+    if not fps or frame_start is None:
+        print(f"[MERGE] Job {job_id} thieu fps/frame_start tu get_job_render_summary - khong the ghep an toan, bo qua.")
+        return
+
+    merge_root = BASE_DIR / "video_merge" / job_id
+    flat_dir = merge_root / "flat"
+    output_mp4 = merge_root / f"{job_id}.mp4"
+
+    try:
+        print(f"[MERGE] Dang tai {total_frames} frame PNG cua job {job_id} tu B2...")
+        downloaded = _download_job_frames_from_b2(job_id, flat_dir)
+        if downloaded != total_frames:
+            print(f"[MERGE] DUNG LAI: so file PNG khong khop ({downloaded}/{total_frames}) - "
+                  f"khong ghep de tranh video thieu/sai frame. Co the dung {os.path.basename('cws_auto_ghep_video.bat')} "
+                  f"chay tay sau khi kiem tra lai Backblaze.")
+            log_task_event(job_id, worker_id, f"Merge bo qua: thieu frame ({downloaded}/{total_frames})")
+            return
+
+        attempt = 0
+        ffmpeg_ok = False
+        while attempt <= MERGE_MAX_RETRIES and not ffmpeg_ok:
+            attempt += 1
+            print(f"[MERGE] Ghep video bang ffmpeg (lan {attempt}/{MERGE_MAX_RETRIES + 1})...")
+            try:
+                result = subprocess.run(
+                    [
+                        CWS_FFMPEG_PATH,
+                        "-y",
+                        "-framerate", str(fps),
+                        "-start_number", str(frame_start),
+                        "-i", str(flat_dir / "frame_%04d.png"),
+                        "-c:v", "libx264",
+                        "-pix_fmt", "yuv420p",
+                        "-crf", "18",
+                        str(output_mp4),
+                    ],
+                    capture_output=True, text=True, timeout=MERGE_FFMPEG_TIMEOUT_SEC,
+                )
+                if result.returncode == 0:
+                    ffmpeg_ok = True
+                else:
+                    print(f"[MERGE] ffmpeg tra ve loi (exit {result.returncode}): "
+                          f"{result.stderr[-500:] if result.stderr else '(khong co stderr)'}")
+            except subprocess.TimeoutExpired:
+                print(f"[MERGE] ffmpeg qua thoi gian cho phep ({MERGE_FFMPEG_TIMEOUT_SEC}s), huy lan thu nay.")
+            except FileNotFoundError:
+                print(f"[MERGE] LOI: khong tim thay ffmpeg tai '{CWS_FFMPEG_PATH}' - "
+                      f"kiem tra bien moi truong CWS_FFMPEG_PATH hoac cai ffmpeg dung duong dan mac dinh.")
+                break
+
+        if not ffmpeg_ok:
+            print(f"[MERGE] Ghep video that bai sau {attempt} lan thu cho job {job_id}. "
+                  f"Dung .bat thu cong lam fallback neu can.")
+            log_task_event(job_id, worker_id, f"Merge that bai sau {attempt} lan thu (ffmpeg)")
+            return
+
+        if not output_mp4.exists() or output_mp4.stat().st_size == 0:
+            print(f"[MERGE] LOI: ffmpeg bao thanh cong nhung file output khong ton tai/rong: {output_mp4}")
+            log_task_event(job_id, worker_id, "Merge that bai: output rong/khong ton tai sau ffmpeg")
+            return
+
+        print(f"[MERGE] Ghep thanh cong: {output_mp4} ({output_mp4.stat().st_size} bytes). Dang upload len B2...")
+        merged_key = f"renders/{job_id}/merged/{job_id}.mp4"
+        client = get_b2_client()
+        client.upload_file(str(output_mp4), B2_BUCKET, merged_key)
+        print(f"[MERGE] Da upload video ghep len B2: {merged_key}")
+        log_task_event(job_id, worker_id, f"Merge thanh cong: {merged_key}")
+
+    except Exception as e:
+        print(f"[MERGE] LOI khong luong truoc khi ghep video job {job_id}: {e}")
+        log_task_event(job_id, worker_id, f"Merge loi khong luong truoc: {e}")
+    finally:
+        # Don dep file trung gian - KHONG giu lai PNG/video local sau khi
+        # xong (thanh cong hay that bai), tranh day o cung dung luong may
+        # Worker qua thoi gian (.bat cu KHONG lam buoc nay - cai tien them).
+        try:
+            if merge_root.exists():
+                shutil.rmtree(merge_root, ignore_errors=True)
+        except Exception:
+            pass
 
 
 def report_worker_crash(worker_id, error_message):
@@ -2407,6 +2606,15 @@ def worker_loop():
         if ok:
             print(f"[HOAN THANH] Task {task_id} da render + upload B2 + ghi nhan thanh cong.")
             log_task_event(task_id, worker_id, "Hoan thanh: render + upload B2 thanh cong")
+            # Phase 2 (CWS_WORKER_ROADMAP.md): sau khi task NAY xong, thu
+            # kiem tra xem CA JOB da xong het chua - neu roi thi tu ghep
+            # video (khong lam gi neu CWS_ENABLE_INTEGRATED_VIDEO_MERGE
+            # tat, xem attempt_job_video_merge()). Loi o day KHONG duoc
+            # anh huong task vua complete_task() thanh cong o tren.
+            try:
+                attempt_job_video_merge(current_job_id, worker_id)
+            except Exception as merge_err:
+                print(f"[MERGE] Loi khong luong truoc ngoai attempt_job_video_merge(): {merge_err}")
         else:
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
