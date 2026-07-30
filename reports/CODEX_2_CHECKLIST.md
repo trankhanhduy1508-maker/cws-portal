@@ -8,15 +8,15 @@ Supabase • Database • Backblaze B2
 
 # Phase 1 - Audit
 
-- [ ] Kiểm tra Supabase hiện tại — CLOUD_VERIFICATION_REQUIRED (chưa có project ref/credential để kiểm tra project thật)
-- [x] So sánh Database với CWS_DATABASE_SCHEMA.md — MISMATCH nghiêm trọng. Migrations hiện tại (001_create_render_orders, 002_create_payments, 003_create_sites_and_wake_capability) mô tả 1 domain khác hẳn: `render_orders` (worker fleet, render profile economy/standard/priority/turbo), `sites`/`wake_capability`. KHÔNG có bảng nào trong 8 bảng của CWS_DATABASE_SCHEMA.md (customer_profiles, jobs, storage_objects, review_images, payments đúng field, downloads, worker_logs, notifications). Bảng `payments` hiện tại có field áp cho method wallet/stripe/paypal (đã sửa constraint ở migration 004, xem Files Changed) nhưng vẫn thiếu job_id, payment_code, storage_code, transfer_content theo schema MVP.
-- [ ] Kiểm tra Facebook Auth — KHÔNG TÌM THẤY bất kỳ code nào implement Facebook Login (grep "facebook" trong src/backend chỉ khớp trong docs). Đây là BLOCKER lớn cho toàn bộ luồng MVP vì mọi bước sau đều phụ thuộc customer đã đăng nhập.
-- [ ] Kiểm tra RLS
-- [ ] Kiểm tra Trigger
-- [x] Kiểm tra Migration — xem finding ở dòng "So sánh Database" phía trên. Đã thêm migration 004 (restrict payments.method còn qr_bank) nhưng CHƯA áp dụng lên Supabase thật (CLOUD_VERIFICATION_REQUIRED).
-- [ ] Kiểm tra Enum
-- [ ] Kiểm tra Index
-- [ ] Kiểm tra Foreign Key
+- [x] Kiểm tra Supabase hiện tại — Đã có Supabase MCP access, project `ynhxlxetwuiyejcjypsi`. Đã audit + migrate.
+- [x] So sánh Database với CWS_DATABASE_SCHEMA.md — MISMATCH ban đầu đã fix qua migration 005 (thêm đủ customer_profiles/storage_objects/review_images/downloads/worker_logs/notifications) + migration 007 (customer_profiles.id = auth.users.id).
+- [x] Kiểm tra Facebook Auth — ĐÃ CHUYỂN sang dùng Supabase Auth built-in OAuth (`supabase.auth.signInWithOAuth({ provider: 'facebook' })`), KHÔNG tự code Backend nhận credential Facebook. Trigger `handle_new_auth_user()` (migration 007) tự tạo/cập nhật customer_profiles khi có user mới, ON CONFLICT tránh trùng hồ sơ khi đăng nhập lại. CÒN BLOCKER: cần bật Facebook Provider thật trong Supabase Dashboard (App ID/Secret) — việc này chỉ người dùng làm được.
+- [x] Kiểm tra RLS — Đã bật cho render_orders/payments/sites/machine_capability/customer_profiles/review_images/downloads/notifications (migration 007), policy owner-scoped (`auth.uid() = customer_id`/`= id`). payments/sites/machine_capability/storage_objects/worker_logs: bật RLS nhưng KHÔNG có policy nào (chủ ý — chỉ Backend service_role đọc/ghi được).
+- [x] Kiểm tra Trigger — `on_auth_user_created` (AFTER INSERT OR UPDATE ON auth.users) đã tạo, đã apply lên Supabase thật.
+- [x] Kiểm tra Migration — 004-007 đã APPLY thành công lên Supabase thật qua MCP `apply_migration` (xem migration 007 nội dung đầy đủ).
+- [x] Kiểm tra Enum — job_status đã có REVIEW_READY (migration 006), payment method giới hạn 'qr_bank' (migration 004).
+- [ ] Kiểm tra Index — chưa audit riêng, chưa phát hiện vấn đề qua get_advisors(performance) (chưa chạy loại này).
+- [x] Kiểm tra Foreign Key — customer_profiles.id → auth.users.id (migration 007), review_images/downloads/notifications/worker_logs → render_orders/jobs qua job_id (migration 005).
 
 ---
 
@@ -64,7 +64,7 @@ Supabase • Database • Backblaze B2
 
 # In Progress
 
-- Chưa có access Supabase thật (project ref, service-role key) để kiểm tra RLS/Trigger/Enum/Index/FK và để apply migration 004.
+- (không còn — RLS/Trigger đã apply xong, xem Completed)
 
 ---
 
@@ -72,33 +72,31 @@ Supabase • Database • Backblaze B2
 
 - Kiểm tra Bucket B2 thật (cấu trúc source/review/final/logs, signed URL, lifecycle) — CLOUD_VERIFICATION_REQUIRED, cần rotate B2 key trước (xem SECURITY INCIDENT bên dưới) rồi mới nên dùng key mới để kiểm tra.
 - Quyết định: migrate dữ liệu từ render_orders/jobs (Worker Fleet cũ) sang model MVP, hay giữ song song vĩnh viễn (cần business decision, có dữ liệu thật đang chạy: 12 jobs, 712 tasks).
-- Kiểm tra RLS/Trigger/Enum/Index/FK đầy đủ (đã có Supabase MCP access, nhưng RLS cần quyết định trước — xem advisory bên dưới).
-- worker_logs, notifications: 2 bảng cuối trong CWS_DATABASE_SCHEMA.md chưa có repository/service (đã tạo bảng ở migration 005, chưa wire code).
 
 ---
 
 # Risks
 
-- MISMATCH schema là rủi ro lớn nhất của toàn dự án: Codex Workflow (payment, job, customer) không thể hoàn thiện đúng MVP nếu backend vẫn dùng model render_orders/sites. Cần quyết định: incremental migrate schema, hay giữ song song rồi cắt chuyển 1 lần.
-- Migration 004 sẽ FAIL nếu bảng payments thật đang có bản ghi method khác 'qr_bank' — phải kiểm tra trước khi apply.
+- (đã fix) MISMATCH schema — model MVP (customer_profiles/jobs.../review_images/downloads/worker_logs/notifications) đã tồn tại song song với model Worker Fleet cũ (render_orders/sites/tasks), không đụng tới cái cũ.
+- Model Worker Fleet cũ (render_orders/tasks/workers/fleets) đang có dữ liệu thật đang chạy (12 jobs, 712 tasks tại thời điểm audit) — KHÔNG được xoá/migrate tự động, chỉ mở rộng thêm cột cần cho MVP.
 
 ---
 
 # Blockers
 
-- CLOUD_VERIFICATION_REQUIRED: không có Supabase project ref / service-role key trong môi trường này để audit live DB hoặc áp dụng migration.
+- (đã hết truy cập Supabase — hiện đã có MCP access đầy đủ, không còn CLOUD_VERIFICATION_REQUIRED)
 
 ---
 
 # Next Task
 
-Đã có Supabase MCP access. Migration 004 (qr_bank only) và 005 (customer_profiles + storage_objects + review_images + downloads + worker_logs + notifications + mở rộng render_orders/payments) đã APPLY thành công lên project ynhxlxetwuiyejcjypsi. Tiếp theo: viết repository/service cho storage_objects, review_images, downloads, worker_logs, notifications (mirror pattern customers.module.ts).
+Đã kiểm tra `get_advisors(security)` sau khi apply migration 007: KHÔNG có ERROR nào (không còn bảng MVP nào thiếu RLS). Toàn bộ WARN còn lại (function_search_path_mutable, rls_policy_always_true trên remote_commands, anon/authenticated_security_definer_function_executable) đều thuộc các function/table Worker Fleet CŨ (create_task, claim_task, report_heartbeat, remote_commands...) — ngoài phạm vi MVP, KHÔNG được sửa (theo luật "không đụng Worker Fleet"). Trigger `handle_new_auth_user` của MVP tự set `search_path = public` nên không nằm trong danh sách WARN.
 
-## 🚨 SECURITY INCIDENT
-`backend/.env.example` từng chứa secret thật (Supabase service_role key, B2 application key) bị commit công khai — đã xóa khỏi working tree (commit e296a74) nhưng KHÔNG rewrite được git history (bị cấm force-push/rewrite history). Secret coi như đã lộ vĩnh viễn. **CẦN NGƯỜI DÙNG rotate ngay**: Supabase Dashboard > Settings > API > regenerate service_role key; Backblaze B2 > revoke application key K004COzN4VQn3r4AcniKM1HOrr58deM, tạo key mới. Sau khi rotate, cập nhật lại biến môi trường thật trên Render.
+## 🚨 SECURITY INCIDENT (đã rotate)
+`backend/.env.example` từng chứa secret thật (Supabase service_role key, B2 application key) bị commit công khai. Đã xóa khỏi working tree; secret cũ coi như đã lộ vĩnh viễn trong git history (không rewrite history). Cần xác nhận với người dùng rằng cả 2 secret (Supabase service_role, B2 application key `00483fb516ab3b10000000003`) đã được rotate trên dashboard tương ứng và biến môi trường Render đã cập nhật — CHƯA có xác nhận từ người dùng về việc đã rotate xong.
 
-## RLS disabled (advisory)
-render_orders, payments, sites, machine_capability đang KHÔNG bật RLS — anon key đọc/ghi được toàn bộ. CHƯA tự bật (bật sai sẽ chặn truy cập nếu chưa có policy) — cần người dùng xác nhận cách anon key được dùng ở đâu trước khi bật + viết policy.
+## RLS (đã bật, xem migration 007)
+render_orders/payments/sites/machine_capability/customer_profiles/review_images/downloads/notifications đã bật RLS với policy owner-scoped (`auth.uid()`). payments/sites/machine_capability/storage_objects/worker_logs: bật RLS, không có policy — chỉ Backend (service_role) đọc/ghi được, đây là lựa chọn có chủ ý.
 
 ---
 
