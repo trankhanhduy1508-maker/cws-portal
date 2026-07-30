@@ -7,7 +7,7 @@ import {
 import { WorkerFleetGateway } from '../jobs/worker-fleet.gateway';
 import { JobStatus } from '../jobs/domain/job-status.enum';
 import { RenderOrder } from '../jobs/domain/render-order';
-import { PackagingService } from './packaging.service';
+import { PreviewService } from '../storage/preview.service';
 import { WakeService } from './wake/wake.service';
 
 const TASK_EXPANSION_CHUNK_SIZE = 10;
@@ -39,7 +39,7 @@ export class SchedulerService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
-    private readonly packagingService: PackagingService,
+    private readonly previewService: PreviewService,
     private readonly wakeService: WakeService,
   ) {}
 
@@ -99,7 +99,7 @@ export class SchedulerService {
     const anyQueued = tasks.some((t) => t.status === 'queued');
 
     if (allDone) {
-      await this.finishOrder(order, internalJobId, tasks.length);
+      await this.moveToReview(order, internalJobId);
       return;
     }
 
@@ -150,31 +150,25 @@ export class SchedulerService {
     // SEARCHING_WORKERS/Queue — đúng yêu cầu "Không retry vô hạn".
   }
 
-  private async finishOrder(
-    order: RenderOrder,
-    internalJobId: string,
-    taskCount: number,
-  ): Promise<void> {
-    if (order.status === JobStatus.PACKAGING || order.status === JobStatus.FINISHED) return;
+  /**
+   * Render xong (tất cả task done) — dừng ở REVIEW_READY, KHÔNG tự đóng
+   * gói/mở link tải. CWS_ROADMAP_MVP_V1.md Giai đoạn 4: khách phải xem
+   * qua 3-5 ảnh preview watermark và bấm duyệt (JobsService.approve())
+   * trước khi có file cuối — đóng gói tự động ở đây là đúng lỗ hổng đã
+   * bị phát hiện khi audit (final output lộ ra không qua cổng duyệt nào).
+   */
+  private async moveToReview(order: RenderOrder, internalJobId: string): Promise<void> {
+    if (
+      order.status === JobStatus.REVIEW_READY ||
+      order.status === JobStatus.PACKAGING ||
+      order.status === JobStatus.FINISHED
+    ) {
+      return;
+    }
 
-    await this.updateStatus(order, JobStatus.PACKAGING, 0);
+    await this.previewService.generateReviewPreview(internalJobId, order.id);
+    await this.updateStatus(order, JobStatus.REVIEW_READY, 1);
 
-    const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
-      internalJobId,
-      order.id,
-    );
-
-    const durationSec = Math.round((Date.now() - order.createdAt) / 1000);
-
-    await this.ordersRepository.updateResult(order.id, {
-      downloadUrl,
-      durationSec,
-      resultSizeBytes,
-      isPlaceholder: false,
-    });
-
-    this.logger.log(
-      `Order ${order.id}: hoàn thành đóng gói ${taskCount} task, kết quả tại ${downloadUrl}`,
-    );
+    this.logger.log(`Order ${order.id}: render xong, đã tạo preview — chờ khách duyệt`);
   }
 }

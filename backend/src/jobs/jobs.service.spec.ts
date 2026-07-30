@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobsService } from './jobs.service';
 import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repository.interface';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PACKAGING_SERVICE } from './services/packaging.interface';
+import { StorageService } from '../storage/storage.service';
 import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.estimate()', () => {
@@ -18,6 +20,8 @@ describe('JobsService.estimate()', () => {
         JobsService,
         { provide: RENDER_ORDERS_REPOSITORY, useValue: mockRepository },
         { provide: WorkerFleetGateway, useValue: mockGateway },
+        { provide: PACKAGING_SERVICE, useValue: {} },
+        { provide: StorageService, useValue: {} },
       ],
     }).compile();
 

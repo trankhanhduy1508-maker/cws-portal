@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   IRenderOrdersRepository,
@@ -9,6 +9,9 @@ import { JobStatus } from './domain/job-status.enum';
 import { RENDER_PROFILES, RenderProfileId } from './domain/render-profile';
 import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PACKAGING_SERVICE, IPackagingService } from './services/packaging.interface';
+import { StorageService } from '../storage/storage.service';
+import { ReviewImage } from '../storage/domain/storage-object';
 
 /**
  * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
@@ -38,6 +41,8 @@ export class JobsService {
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
     private readonly workerFleetGateway: WorkerFleetGateway,
+    @Inject(PACKAGING_SERVICE) private readonly packagingService: IPackagingService,
+    private readonly storageService: StorageService,
   ) {}
 
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
@@ -130,5 +135,46 @@ export class JobsService {
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return order;
+  }
+
+  /**
+   * Khách duyệt bản preview (CWS_ROADMAP_MVP_V1.md, Giai đoạn 4) — CHỈ
+   * từ đây mới đóng gói kết quả cuối + mở link tải. Gọi trước đó (khi
+   * order chưa ở REVIEW_READY) là lỗi rõ ràng, không âm thầm bỏ qua.
+   */
+  async approve(id: string): Promise<RenderOrder> {
+    const order = await this.getById(id);
+    if (order.status !== JobStatus.REVIEW_READY) {
+      throw new BadRequestException(
+        `Job ${id} chưa sẵn sàng để duyệt (trạng thái hiện tại: ${order.status})`,
+      );
+    }
+    if (!order.internalJobId) {
+      throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể đóng gói`);
+    }
+
+    await this.ordersRepository.updateStatus(id, JobStatus.PACKAGING, 0);
+
+    const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
+      order.internalJobId,
+      order.id,
+    );
+
+    const durationSec = Math.round((Date.now() - order.createdAt) / 1000);
+
+    const updated = await this.ordersRepository.updateResult(id, {
+      downloadUrl,
+      durationSec,
+      resultSizeBytes,
+      isPlaceholder: false,
+    });
+    if (!updated) throw new NotFoundException(`Không tìm thấy job ${id}`);
+    return updated;
+  }
+
+  /** Danh sách ảnh preview (3-5 ảnh, đã watermark) để khách xem trước khi duyệt. */
+  async getReviewImages(id: string): Promise<ReviewImage[]> {
+    await this.getById(id); // 404 nếu job không tồn tại
+    return this.storageService.getReviewImages(id);
   }
 }

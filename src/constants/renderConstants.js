@@ -13,6 +13,7 @@ export const JOB_STATUS = {
   ALLOCATING_WORKERS: 'allocating_workers',
   WORKERS_CONNECTED: 'workers_connected',
   RENDERING: 'rendering',
+  REVIEW_READY: 'review_ready',
   PACKAGING: 'packaging',
   FINISHED: 'finished',
   ERROR: 'error',
@@ -25,6 +26,7 @@ export const STAGE_SEQUENCE = [
   { key: JOB_STATUS.ALLOCATING_WORKERS, label: 'Đang phân bổ máy' },
   { key: JOB_STATUS.WORKERS_CONNECTED, label: 'Đã kết nối máy xử lý' },
   { key: JOB_STATUS.RENDERING, label: 'Đang render' },
+  { key: JOB_STATUS.REVIEW_READY, label: 'Chờ bạn duyệt bản xem trước' },
   { key: JOB_STATUS.PACKAGING, label: 'Đang đóng gói kết quả' },
   { key: JOB_STATUS.FINISHED, label: 'Hoàn thành' },
 ];

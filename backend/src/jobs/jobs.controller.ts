@@ -56,6 +56,21 @@ export class JobsController {
     return { ok: true };
   }
 
+  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt. */
+  @Get(':id/preview')
+  async getPreview(@Param('id') id: string) {
+    const images = await this.jobsService.getReviewImages(id);
+    return { images: images.map((img) => ({ imagePath: img.imagePath, displayOrder: img.displayOrder })) };
+  }
+
+  /** Khách duyệt bản preview -> đóng gói kết quả cuối + mở link tải. */
+  @Post(':id/approve')
+  @HttpCode(200)
+  async approve(@Param('id') id: string) {
+    const order = await this.jobsService.approve(id);
+    return toPublicJson(order);
+  }
+
   /** Alias REST chuẩn (DELETE) — cùng logic với route POST ở trên,
    * thêm để khớp convention REST nếu có client khác gọi kiểu DELETE. */
   @Delete(':id')

@@ -12,6 +12,9 @@ export enum JobStatus {
   ALLOCATING_WORKERS = 'allocating_workers',
   WORKERS_CONNECTED = 'workers_connected',
   RENDERING = 'rendering',
+  /** Render xong, đã có 3-5 ảnh preview watermark — chờ khách bấm duyệt
+   * (CWS_ROADMAP_MVP_V1.md, Giai đoạn 4) trước khi đóng gói/mở tải. */
+  REVIEW_READY = 'review_ready',
   PACKAGING = 'packaging',
   FINISHED = 'finished',
   ERROR = 'error',
@@ -27,6 +30,7 @@ export const JOB_STAGE_SEQUENCE: JobStatus[] = [
   JobStatus.ALLOCATING_WORKERS,
   JobStatus.WORKERS_CONNECTED,
   JobStatus.RENDERING,
+  JobStatus.REVIEW_READY,
   JobStatus.PACKAGING,
   JobStatus.FINISHED,
 ];
