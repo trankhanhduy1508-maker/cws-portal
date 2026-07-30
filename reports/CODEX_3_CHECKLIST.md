@@ -50,11 +50,11 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Phase 5 - Dashboard
 
-- [ ] Dashboard Customer
-- [ ] Dashboard Admin
-- [ ] Job Detail
-- [ ] Payment Detail
-- [ ] Download History
+- [x] Dashboard Customer — History Screen hiện có (lọc theo customer khi đăng nhập).
+- [x] Dashboard Admin — AdminScreen.jsx tối giản (bảng job + tìm theo storage_code/payment_code), chỉ vào qua #admin, bảo vệ bằng x-admin-key (AdminKeyGuard). Không polish UI (chưa xem bằng mắt), chỉ đảm bảo đúng chức năng + có bảo vệ.
+- [x] Job Detail — GET /jobs/:id đã có đủ field (storage_code, status, payment, download).
+- [x] Payment Detail — GET /payments/by-code/:code (admin), GET /payments/:id (khách tự poll).
+- [x] Download History — bảng downloads + StorageService.logDownload(), chưa có UI riêng hiển thị lịch sử tải nhưng dữ liệu đã ghi đủ.
 
 ---
 
@@ -87,24 +87,21 @@ Customer Workflow • Worker • Payment • Dashboard
 # Completed
 
 - Audit Phase 1 + Phase 4 (Payment): so sánh workflow thật với CWS_MVP_WORKFLOW_FINAL.md, ghi rõ từng mismatch.
-- Cleanup: xóa Stripe/PayPal/Wallet khỏi payment layer. Chỉ còn QR_BANK (MB Bank). Payment webhook thật (payment_code/transfer_content, POST /payments/webhook) — xem PR #6.
-- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp) + GET /jobs/:id/download có ghi log. Backend + Frontend đã nối đủ đầu-cuối (ReviewScreen.jsx mới). mockBackend.js cũng dừng thật ở REVIEW_READY. Xem PR #7.
-
----
-
-# In Progress
-
-- Chưa audit sâu: Upload Flow → B2 (cấu trúc jobs/{storage_code}/...), Delivery, Download.
+- Cleanup: xóa Stripe/PayPal/Wallet khỏi payment layer. Chỉ còn QR_BANK (MB Bank). Payment webhook thật (payment_code/transfer_content, POST /payments/webhook).
+- Preview/approval gate: REVIEW_READY status + POST /jobs/:id/approve + GET /jobs/:id/preview + watermark thật (sharp) + GET /jobs/:id/download có ghi log. Backend + Frontend đã nối đủ đầu-cuối. mockBackend.js cũng dừng thật ở REVIEW_READY.
+- Facebook Login qua Supabase Auth OAuth chuẩn (KHÔNG tự làm form/OAuth thủ công) — trigger Postgres tự tạo customer_profiles, Backend xác thực token qua supabase.auth.getUser(). Frontend: LoginScreen + useAuth + logout, History chỉ khách đăng nhập mới xem được.
+- RLS: bật cho render_orders/payments/sites/machine_capability, policy owner-scoped đơn giản (auth.uid() = customer_id) cho render_orders/review_images/downloads/notifications — không enterprise.
+- VietQR thật: QrBankProvider dựng ảnh QR quét được qua img.vietqr.io khi có MB_BANK_ACCOUNT_NUMBER — chỉ thiếu số tài khoản thật.
+- AdminKeyGuard: khóa GET /jobs (ẩn danh), /jobs/by-storage-code, /payments/by-code bằng x-admin-key — đã kiểm chứng runtime (401/401/pass-through đúng như kỳ vọng).
+- Dashboard Admin tối giản (AdminScreen.jsx qua #admin).
+- Tự sửa 1 lỗi Rules of Hooks do chính mình gây ra lúc nối Admin route vào App.jsx (phát hiện + fix trước khi commit).
 
 ---
 
 # Pending
 
-- CHƯA test bằng mắt trên trình duyệt thật cho toàn luồng Upload → Profile → Payment → Render → Review → Approve → Download (không có công cụ browser trong phiên này).
-- Facebook Login (BLOCKER lớn nhất — chưa có dòng code nào, cần FACEBOOK_APP_ID/SECRET thật). Customer Profile phụ thuộc việc này.
-- QR MB Bank thật cần số tài khoản/BIN thật (business info) để dựng ảnh VietQR quét được — hiện chỉ có nội dung chuyển khoản dạng text.
-- "Yêu cầu chỉnh sửa" (khách từ chối preview) — chưa implement (hiện chỉ có approve, chưa có reject/re-render).
-- Dashboard Admin UI (Giai đoạn 7) — API đã đủ (listAll, by-storage-code, by-code payment, logs, notifications, preview) nhưng CHƯA có màn hình admin nào ở frontend.
+- CHƯA test bằng mắt trên trình duyệt thật cho toàn bộ UI (không có công cụ browser trong phiên này) — bao gồm cả AdminScreen.jsx mới.
+- "Yêu cầu chỉnh sửa" (khách từ chối preview) — chưa implement (hiện chỉ có approve, chưa có reject/re-render) — cần quyết định nghiệp vụ (refund/re-render ra sao).
 - worker-fleet.gateway.ts + scheduler: đã xác nhận KEEP (hạ tầng Worker render bắt buộc cho MVP, không phải Marketplace bị cấm).
 
 ---
@@ -118,17 +115,20 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Blockers
 
-- Không có Facebook App ID/Secret, Supabase credential, MB Bank/webhook credential trong môi trường này — mọi việc liên quan cần các secret này sẽ dừng ở mức code-only (CLOUD_VERIFICATION_REQUIRED) cho đến khi được cung cấp.
+- Facebook App ID/Secret thật (điền vào Supabase Dashboard, không phải env Backend nữa), MB Bank account number thật, rotate Supabase/B2 secret đã lộ, ADMIN_API_KEY thật cho production — tất cả cần bạn cung cấp/thao tác trên dashboard, không tự làm tiếp được.
 
 ---
 
 # Next Task
 
-Đã xong (không cần credential): payment verification, webhook thật, preview/approval gate, download logging, CI, storage_code sinh tự động + tra cứu admin theo storage_code/payment_code, worker_logs (phát hiện task failed → chuyển ERROR + log), notifications (review-ready/error), OneDrive/Dropbox link support, cleanup toàn bộ tính năng ngoài MVP, Facebook Login đủ 2 phía (backend OAuth + frontend LoginScreen), gắn customer_id vào job khi đã đăng nhập, GET /jobs lọc theo customer khi có token hợp lệ.
+Code MVP coi như đã xong hết phần tự làm được không cần credential (xem PR #6/#7/#8). Còn lại hoàn toàn phụ thuộc:
+1. Bạn bật Facebook Provider trong Supabase Dashboard.
+2. Bạn rotate 2 secret đã lộ.
+3. Bạn điền số tài khoản MB Bank thật + ADMIN_API_KEY thật vào env Render.
+4. Bạn (hoặc phiên có browser tool) xác nhận toàn bộ UI bằng mắt, đặc biệt AdminScreen.jsx và ReviewScreen.jsx mới chưa từng được xem qua trình duyệt thật.
+5. Merge PR #6/#7/#8 vào main.
 
-Còn lại KHÔNG bị block nhưng rủi ro cao nếu làm mù (cần xem UI thật): Dashboard Admin UI, "yêu cầu chỉnh sửa" (reject preview) flow.
-
-Bị block chờ người dùng — đây là giới hạn thật của phiên này, đã hết việc tự làm được: Facebook Login App ID/Secret thật (developers.facebook.com), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate Supabase/B2 secret đã lộ, xác nhận toàn bộ UI bằng mắt (không có browser tool phiên này), quyết định cơ chế xác thực cho Dashboard Admin.
+Sau khi có 1 trong các mục trên, việc còn lại chỉ là polish UI + "yêu cầu chỉnh sửa" preview flow (cần quyết định nghiệp vụ riêng).
 
 ---
 
