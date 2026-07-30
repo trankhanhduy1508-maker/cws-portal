@@ -199,6 +199,16 @@ MERGE_MAX_RETRIES = 2  # thu lai them 2 lan (tong 3 lan) neu ffmpeg loi
 # Xem 10_setup_worker_selfheal.sql.
 WORKER_VERSION = "1.14.0"
 
+# Phase 8 (CWS_WORKER_ROADMAP.md, "Thong ke thoi gian thue host"): thoi
+# diem CHINH process Python nay bat dau chay - KHONG doi trong suot vong
+# doi process (chi doi khi cws_worker.bat khoi dong lai 1 process MOI,
+# vd sau crash/update). Gui kem RPC start_task_attempt() de Postgres tu
+# suy ra day co phai lan claim task DAU TIEN cua process nay khong (neu
+# la lan dau, tinh la co pha "khoi dong" - xem worker_migrations/
+# 006_host_usage_billing.sql). Dung time.time() (epoch giay) thay vi
+# datetime object de KHONG can them import moi.
+_WORKER_PROCESS_STARTED_AT = time.time()
+
 # JITTER cho Auto Update (them 22/07/2026 toi): khi phat hien co ban moi,
 # CHO NGAU NHIEN 1 khoang trong [0, AUTO_UPDATE_JITTER_MAX_SEC] giay TRUOC
 # KHI THOAT - tranh tinh huong CA FLEET (vd 50 may) cung phat hien ban moi
@@ -1052,6 +1062,84 @@ def report_incident(worker_id, event_type, severity, summary, task_id=None, erro
     except Exception as e:
         print(f"[INCIDENT] LOI khi bao cao su co '{event_type}' cho worker "
               f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
+
+
+def report_task_attempt_start(task_id, worker_id, generation):
+    """Phase 8 CWS_WORKER_ROADMAP.md - goi NGAY SAU claim_task() thanh cong,
+    tao 1 dong task_attempts qua RPC start_task_attempt(). Gui kem
+    _WORKER_PROCESS_STARTED_AT (khong doi trong suot vong doi process) de
+    RPC tu suy ra day co phai lan claim task DAU TIEN cua process nay
+    khong - neu la lan dau, RPC tinh co pha "khoi dong 7 phut" (xem
+    worker_migrations/006_host_usage_billing.sql).
+
+    BEST-EFFORT - loi o day KHONG duoc lam gian doan render, day la tinh
+    nang thong ke/billing PHU (Admin Dashboard Phase 8), khong phai logic
+    cot loi cua viec claim/render/upload."""
+    try:
+        rpc_call("start_task_attempt", {
+            "p_task_id": task_id,
+            "p_worker_id": worker_id,
+            "p_generation": generation,
+            "p_process_started_at_epoch": _WORKER_PROCESS_STARTED_AT,
+        })
+    except Exception as e:
+        print(f"[BILLING] LOI khi bao start_task_attempt cho task {task_id}: "
+              f"{e} - bo qua, khong anh huong cong viec chinh.")
+
+
+def report_task_attempt_ready(task_id, worker_id, generation):
+    """Phase 8 - goi khi Worker THAT SU san sang render (ngay truoc frame
+    dau tien) qua RPC report_worker_ready(). BEST-EFFORT y het
+    report_task_attempt_start()."""
+    try:
+        rpc_call("report_worker_ready", {
+            "p_task_id": task_id,
+            "p_worker_id": worker_id,
+            "p_generation": generation,
+        })
+    except Exception as e:
+        print(f"[BILLING] LOI khi bao report_worker_ready cho task {task_id}: "
+              f"{e} - bo qua, khong anh huong cong viec chinh.")
+
+
+def report_task_attempt_stage(task_id, worker_id, generation, stage):
+    """Phase 8 - ghi 1 moc thoi gian cho task_attempts dang xu ly qua RPC
+    report_task_attempt_stage(). stage phai la 1 trong: render_completed/
+    merge_completed/upload_completed/verification_completed (RPC tu bo
+    qua gia tri khac, tra ve False, khong loi). BEST-EFFORT y het
+    report_task_attempt_start()."""
+    try:
+        rpc_call("report_task_attempt_stage", {
+            "p_task_id": task_id,
+            "p_worker_id": worker_id,
+            "p_generation": generation,
+            "p_stage": stage,
+        })
+    except Exception as e:
+        print(f"[BILLING] LOI khi bao stage '{stage}' cho task {task_id}: "
+              f"{e} - bo qua, khong anh huong cong viec chinh.")
+
+
+def report_task_attempt_finalize(task_id, worker_id, generation, outcome):
+    """Phase 8 - goi 1 LAN sau khi biet ket qua CUOI CUNG cua attempt nay
+    (sau complete_task()/fail_task()) qua RPC finalize_task_attempt().
+    outcome phai la 1 trong: completed/failed/rejected. Task_attempts bi
+    "quen" finalize (worker chet giua chung, khong con co hoi goi ham
+    nay) se duoc requeue_stale_tasks() (Phase 7) tu dong danh dau
+    superseded, KHONG mo coi 'in_progress' vinh vien.
+
+    BEST-EFFORT y het report_task_attempt_start() - day la tinh nang
+    thong ke/billing PHU, KHONG duoc lam gian doan cong viec chinh."""
+    try:
+        rpc_call("finalize_task_attempt", {
+            "p_task_id": task_id,
+            "p_worker_id": worker_id,
+            "p_generation": generation,
+            "p_outcome": outcome,
+        })
+    except Exception as e:
+        print(f"[BILLING] LOI khi finalize task_attempt cho task {task_id} "
+              f"(outcome={outcome}): {e} - bo qua, khong anh huong cong viec chinh.")
 
 
 def report_total_frames_if_known(job_id, worker_id, optimization_plan):
@@ -2609,6 +2697,7 @@ def worker_loop():
         generation = task["out_generation"]
 
         worker_ping(worker_id)  # Bao con song ngay khi VUA nhan task
+        report_task_attempt_start(task_id, worker_id, generation)
         report_state(worker_id, "PREPARING", task_id=task_id,
                      reason=f"vua claim task {task_id}, dang tai blend/phan tich scene")
         prevent_windows_sleep()
@@ -2626,6 +2715,7 @@ def worker_loop():
             print(f"[LOI] Khong the tai job context cho {current_job_id} - "
                   f"tra lai task {task_id}, thu job khac.")
             fail_task(task_id, generation, worker_id, "transient")
+            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
         blend_path = job_ctx["blend_path"]
         optimization_code = job_ctx["optimization_code"]
@@ -2635,6 +2725,7 @@ def worker_loop():
         log_task_event(task_id, worker_id, f"Nhan viec, dang render frame {frame_start}-{frame_end}")
         report_state(worker_id, "RENDERING", task_id=task_id,
                      reason=f"dang render frame {frame_start}-{frame_end}")
+        report_task_attempt_ready(task_id, worker_id, generation)
 
         # HEARTBEAT THREAD (khoi phuc 25/07/2026): BAT BUOC phai chay suot
         # thoi gian lam task, neu khong requeue_stale_tasks() ben Supabase se
@@ -2741,6 +2832,7 @@ def worker_loop():
                       f"KHONG tinh la loi that) de som update len ban moi.")
                 stop_event.set()  # dung heartbeat truoc khi thoat
                 fail_task(task_id, generation, worker_id, "transient")
+                report_task_attempt_finalize(task_id, worker_id, generation, "failed")
                 apply_update_jitter_and_exit(f"dung giua task {task_id} de nhuong viec")
                 return
 
@@ -2771,6 +2863,7 @@ def worker_loop():
                       f"da bi giao cho worker khac tu truoc.")
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
+            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -2798,10 +2891,21 @@ def worker_loop():
                           f"con lai se requeue")
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
+            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
+
+        # Phase 8 (CWS_WORKER_ROADMAP.md): den day chac chan DU frame da
+        # render + upload thanh cong (kien truc checkpoint-per-frame - moi
+        # frame render xong duoc upload NGAY trong vong lap, khong co "pha
+        # upload" tach biet sau render) - ghi ca 3 moc CUNG luc, dung ban
+        # chat kien truc thay vi bia them 1 "pha" khong ton tai.
+        report_task_attempt_stage(task_id, worker_id, generation, "render_completed")
+        report_task_attempt_stage(task_id, worker_id, generation, "upload_completed")
+        report_task_attempt_stage(task_id, worker_id, generation, "verification_completed")
 
         ok = complete_task(task_id, generation, worker_id)
         if ok:
+            report_task_attempt_finalize(task_id, worker_id, generation, "completed")
             print(f"[HOAN THANH] Task {task_id} da render + upload B2 + ghi nhan thanh cong.")
             log_task_event(task_id, worker_id, "Hoan thanh: render + upload B2 thanh cong")
             # Phase 2 (CWS_WORKER_ROADMAP.md): sau khi task NAY xong, thu
@@ -2818,6 +2922,7 @@ def worker_loop():
                                  f"{type(merge_err).__name__}: {merge_err}",
                                  task_id=task_id)
         else:
+            report_task_attempt_finalize(task_id, worker_id, generation, "rejected")
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
         report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
