@@ -34,6 +34,7 @@ export const API_CONFIG = {
     ADMIN_REQUEUE_TASK: (taskId) => `/fleet/tasks/${taskId}/requeue`,
     ADMIN_QUARANTINE_WORKER: (workerId) => `/fleet/workers/${encodeURIComponent(workerId)}/quarantine`,
     ADMIN_DRAIN_WORKER: (workerId) => `/fleet/workers/${encodeURIComponent(workerId)}/drain`,
+    ADMIN_CONFIRM_FINAL_AMOUNT: (sessionId) => `/fleet/host-usage/${sessionId}/confirm-final-amount`,
     ADMIN_LIST_JOBS: '/jobs',
     ADMIN_JOB_BY_STORAGE_CODE: (code) => `/jobs/by-storage-code/${encodeURIComponent(code)}`,
     ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,

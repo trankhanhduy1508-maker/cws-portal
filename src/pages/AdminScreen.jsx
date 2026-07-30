@@ -3,6 +3,7 @@ import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
 import {
   adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminListHostUsageSessions,
   adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
+  adminConfirmHostUsageFinalAmount,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
@@ -99,6 +100,23 @@ export default function AdminScreen() {
       adminSetWorkerDrain(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
+
+  const handleConfirmFinalAmount = useCallback((sessionId, estimatedAmount) => {
+    const input = window.prompt(
+      'Nhập số tiền cuối cùng (VND):',
+      estimatedAmount != null ? String(estimatedAmount) : '',
+    );
+    if (input == null) return; // người dùng bấm Cancel
+    const finalAmount = Number(input);
+    if (!Number.isFinite(finalAmount) || finalAmount < 0) {
+      setError('Số tiền không hợp lệ');
+      return;
+    }
+    setError(null);
+    adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
 
   // Phase 6 CWS_WORKER_ROADMAP.md — lọc theo severity/đã xử lý ngay ở
   // Frontend (danh sách tối đa 200 dòng gần nhất từ Backend, không cần
@@ -513,8 +531,11 @@ export default function AdminScreen() {
               được cấu hình) — KHÔNG hiện 0 để tránh hiểu lầm miễn phí.
               status=decision_required nghĩa là khởi động vượt quá 7 phút
               (420s), cần Admin xem xét thủ công (roadmap chưa quy định tự
-              động xử lý trường hợp này). Chưa có "Số tiền cuối" (cần hành
-              động xác nhận riêng của Admin, ngoài phạm vi vòng này). */}
+              động xử lý trường hợp này). "Số tiền cuối" — nút "Xác nhận"
+              hỏi số tiền qua prompt() (tiền tệ đơn giản, dashboard nội bộ
+              không cần form phức tạp), gọi RPC admin_confirm_host_usage_final_amount()
+              — hành động DUY NHẤT ghi final_amount, Worker/hệ thống tự
+              động không bao giờ tự quyết định số này. */}
           <div style={{ overflowX: 'auto', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
@@ -527,6 +548,7 @@ export default function AdminScreen() {
                   <th style={{ padding: 8 }}>Upload</th>
                   <th style={{ padding: 8 }}>Billable</th>
                   <th style={{ padding: 8 }}>Ước tính</th>
+                  <th style={{ padding: 8 }}>Số tiền cuối</th>
                   <th style={{ padding: 8 }}>Trạng thái</th>
                 </tr>
               </thead>
@@ -545,11 +567,24 @@ export default function AdminScreen() {
                     <td style={{ padding: 8 }}>
                       {hu.estimatedAmount != null ? hu.estimatedAmount.toLocaleString('vi-VN') : '—'}
                     </td>
+                    <td style={{ padding: 8 }}>
+                      {hu.finalAmount != null ? (
+                        hu.finalAmount.toLocaleString('vi-VN')
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmFinalAmount(hu.id, hu.estimatedAmount)}
+                          style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: '#fff', cursor: 'pointer' }}
+                        >
+                          Xác nhận
+                        </button>
+                      )}
+                    </td>
                     <td style={{ padding: 8 }}>{hu.status}</td>
                   </tr>
                 ))}
                 {hostUsageSessions.length === 0 && (
-                  <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có phiên nào hoàn thành</td></tr>
+                  <tr><td colSpan={10} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có phiên nào hoàn thành</td></tr>
                 )}
               </tbody>
             </table>

@@ -605,4 +605,25 @@ export class WorkerFleetGateway {
     }
     return data === true;
   }
+
+  /** Xác nhận `final_amount` (Phase 8 CWS_WORKER_ROADMAP.md) — hành động
+   * DUY NHẤT ghi số tiền cuối cùng, chỉ Admin gọi (Worker/hệ thống tự
+   * động không bao giờ tự quyết định số này, luôn `null` cho tới đây). */
+  async adminConfirmHostUsageFinalAmount(
+    sessionId: number,
+    finalAmount: number,
+  ): Promise<boolean> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc(
+      'admin_confirm_host_usage_final_amount',
+      { p_session_id: sessionId, p_final_amount: finalAmount },
+    );
+    if (error) {
+      this.logger.error(
+        `adminConfirmHostUsageFinalAmount(${sessionId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không xác nhận được final_amount: ${error.message}`);
+    }
+    return data === true;
+  }
 }

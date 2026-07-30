@@ -92,4 +92,20 @@ export class FleetController {
     );
     return { ok };
   }
+
+  /** Phase 8 CWS_WORKER_ROADMAP.md — xác nhận final_amount, hành động
+   * DUY NHẤT ghi số tiền cuối cùng (Worker/hệ thống tự động không tự
+   * quyết định số này). */
+  @Post('host-usage/:sessionId/confirm-final-amount')
+  @UseGuards(AdminKeyGuard)
+  async confirmHostUsageFinalAmount(
+    @Param('sessionId') sessionId: string,
+    @Body() body: { finalAmount: number },
+  ) {
+    const ok = await this.workerFleetGateway.adminConfirmHostUsageFinalAmount(
+      Number(sessionId),
+      body.finalAmount,
+    );
+    return { ok };
+  }
 }

@@ -79,6 +79,12 @@ export function adminSetWorkerDrain(workerId, draining, reason, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_DRAIN_WORKER(workerId), adminKey, { draining, reason });
 }
 
+/** Xác nhận final_amount cho 1 phiên host_usage_sessions (Phase 8) — hành
+ * động DUY NHẤT ghi số tiền cuối cùng, Worker/hệ thống tự động không tự quyết định. */
+export function adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_CONFIRM_FINAL_AMOUNT(sessionId), adminKey, { finalAmount });
+}
+
 /** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —
  * chỉ đọc, tính bởi RPC compute_host_usage_sessions() (cron), không phải
  * Backend/Frontend tự tính. */
