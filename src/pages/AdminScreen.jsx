@@ -106,7 +106,11 @@ export default function AdminScreen() {
       'Nhập số tiền cuối cùng (VND):',
       estimatedAmount != null ? String(estimatedAmount) : '',
     );
-    if (input == null) return; // người dùng bấm Cancel
+    // Number('') === 0 trong JS - neu khong chan rieng, bam OK voi o
+    // trong (thuong xay ra vi estimatedAmount dang null khi chua cau
+    // hinh hourly_rate) se AM THAM xac nhan final_amount=0, de bi nham
+    // la "co chu dich, khong tinh tien" trong khi thuc ra la bo trong.
+    if (input == null || input.trim() === '') return; // Cancel hoặc để trống
     const finalAmount = Number(input);
     if (!Number.isFinite(finalAmount) || finalAmount < 0) {
       setError('Số tiền không hợp lệ');
