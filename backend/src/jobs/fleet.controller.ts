@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import { AdminKeyGuard } from '../common/guards/admin-key.guard';
 
@@ -14,5 +14,21 @@ export class FleetController {
   @UseGuards(AdminKeyGuard)
   async listWorkers() {
     return this.workerFleetGateway.listWorkers();
+  }
+
+  /** Phase 6 CWS_WORKER_ROADMAP.md — danh sách sự cố, CHỈ đọc. */
+  @Get('incidents')
+  @UseGuards(AdminKeyGuard)
+  async listIncidents(
+    @Query('workerId') workerId?: string,
+    @Query('severity') severity?: string,
+    @Query('resolved') resolved?: string,
+  ) {
+    return this.workerFleetGateway.listIncidents({
+      workerId,
+      severity,
+      resolved:
+        resolved === 'true' ? true : resolved === 'false' ? false : undefined,
+    });
   }
 }

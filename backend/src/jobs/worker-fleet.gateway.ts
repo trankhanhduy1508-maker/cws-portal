@@ -154,7 +154,9 @@ export class WorkerFleetGateway {
         crashCount: row.crash_count,
         observedState: row.observed_state,
         stateReason: row.state_reason,
-        lastTransitionAt: row.last_transition_at ? new Date(row.last_transition_at).getTime() : null,
+        lastTransitionAt: row.last_transition_at
+          ? new Date(row.last_transition_at).getTime()
+          : null,
       };
     });
   }
@@ -346,5 +348,95 @@ export class WorkerFleetGateway {
       );
       throw new Error(`Không tạo được các task còn lại: ${error.message}`);
     }
+  }
+
+  /** Danh sách sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — CHỈ
+   * đọc từ `worker_incidents` (migration `worker_migrations/004_...`),
+   * bảng này được ghi qua RPC `report_worker_incident()` — hiện tại chỉ
+   * WORKER_CRASH được tự động ghi (mở rộng từ `report_worker_crash()` có
+   * sẵn, không cần sửa cws_worker_full.py) và MERGE_FAIL (Worker gọi
+   * trực tiếp khi `attempt_job_video_merge()` lỗi, xem `report_incident()`
+   * trong cws_worker_full.py). Các loại lỗi khác trong "Lỗi tối thiểu"
+   * của roadmap (GPU/CPU quá nhiệt, disk full...) CHƯA có code phát hiện
+   * — không có dữ liệu để hiển thị, không tự bịa logic phát hiện mới.
+   *
+   * KHÔNG có hành động retry/requeue/quarantine/drain ở round này (đó là
+   * thay đổi lên chính luồng dispatch Worker Fleet — rủi ro cao hơn hẳn
+   * 1 bảng chỉ-đọc, để lại cho vòng sau khi Phase 2/3/4 đã được xác nhận
+   * trên máy thật). */
+  async listIncidents(filters?: {
+    workerId?: string;
+    severity?: string;
+    resolved?: boolean;
+    limit?: number;
+  }): Promise<
+    {
+      id: number;
+      workerId: string | null;
+      taskId: number | null;
+      eventType: string;
+      severity: string;
+      errorCode: string | null;
+      summary: string;
+      firstSeenAt: number;
+      lastSeenAt: number;
+      occurrenceCount: number;
+      resolvedAt: number | null;
+      resolution: string | null;
+    }[]
+  > {
+    const client = this.supabaseService.getClient();
+    let query = client
+      .from('worker_incidents')
+      .select(
+        'id, worker_id, task_id, event_type, severity, error_code, summary, first_seen_at, last_seen_at, occurrence_count, resolved_at, resolution',
+      )
+      .order('last_seen_at', { ascending: false })
+      .limit(filters?.limit ?? 200);
+
+    if (filters?.workerId) query = query.eq('worker_id', filters.workerId);
+    if (filters?.severity) query = query.eq('severity', filters.severity);
+    if (filters?.resolved === true)
+      query = query.not('resolved_at', 'is', null);
+    if (filters?.resolved === false) query = query.is('resolved_at', null);
+
+    const { data, error } = await query;
+    if (error) {
+      this.logger.error(`listIncidents() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được danh sách sự cố: ${error.message}`);
+    }
+
+    return (data ?? []).map((r) => {
+      const row = r as {
+        id: number;
+        worker_id: string | null;
+        task_id: number | null;
+        event_type: string;
+        severity: string;
+        error_code: string | null;
+        summary: string;
+        first_seen_at: string;
+        last_seen_at: string;
+        occurrence_count: number;
+        resolved_at: string | null;
+        resolution: string | null;
+      };
+      return {
+        id: row.id,
+        workerId: row.worker_id,
+        taskId: row.task_id,
+        eventType: row.event_type,
+        severity: row.severity,
+        errorCode: row.error_code,
+        summary: row.summary,
+        firstSeenAt: new Date(row.first_seen_at).getTime(),
+        lastSeenAt: new Date(row.last_seen_at).getTime(),
+        occurrenceCount: row.occurrence_count,
+        resolvedAt: row.resolved_at
+          ? new Date(row.resolved_at).getTime()
+          : null,
+        resolution: row.resolution,
+      };
+    });
   }
 }

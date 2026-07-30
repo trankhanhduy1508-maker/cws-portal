@@ -35,6 +35,12 @@ export function adminListWorkers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, adminKey);
 }
 
+/** Sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — chỉ đọc, không
+ * có hành động retry/requeue/quarantine/drain (chưa làm ở round này). */
+export function adminListIncidents(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, adminKey);
+}
+
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
  * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
  * xem JobsService.assertOwnership() trong Backend (trước đây route này

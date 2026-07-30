@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
 import {
-  adminListCustomers, adminListJobs, adminListWorkers, adminGetJobByStorageCode,
+  adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminGetJobByStorageCode,
   adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
@@ -24,6 +24,9 @@ export default function AdminScreen() {
   const [jobs, setJobs] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [incidentSeverityFilter, setIncidentSeverityFilter] = useState('all');
+  const [incidentShowResolved, setIncidentShowResolved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -35,15 +38,29 @@ export default function AdminScreen() {
   const loadAll = useCallback((key) => {
     setIsLoading(true);
     setError(null);
-    Promise.all([adminListJobs(key), adminListCustomers(key), adminListWorkers(key)])
-      .then(([jobsRes, customersRes, workersRes]) => {
+    Promise.all([
+      adminListJobs(key), adminListCustomers(key), adminListWorkers(key), adminListIncidents(key),
+    ])
+      .then(([jobsRes, customersRes, workersRes, incidentsRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
+        setIncidents(incidentsRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // Phase 6 CWS_WORKER_ROADMAP.md — lọc theo severity/đã xử lý ngay ở
+  // Frontend (danh sách tối đa 200 dòng gần nhất từ Backend, không cần
+  // gọi lại API mỗi lần đổi filter).
+  const filteredIncidents = useMemo(() => (
+    incidents.filter((inc) => {
+      if (incidentSeverityFilter !== 'all' && inc.severity !== incidentSeverityFilter) return false;
+      if (!incidentShowResolved && inc.resolvedAt) return false;
+      return true;
+    })
+  ), [incidents, incidentSeverityFilter, incidentShowResolved]);
 
   const handleOpenPreview = useCallback((job) => {
     setPreviewJob({ id: job.id, projectName: job.projectName, images: [], isLoading: true, error: null });
@@ -318,6 +335,76 @@ export default function AdminScreen() {
                 ))}
                 {workers.length === 0 && (
                   <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, margin: 0 }}>
+              Sự cố Worker Fleet
+            </h3>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}>
+              <select
+                value={incidentSeverityFilter}
+                onChange={(e) => setIncidentSeverityFilter(e.target.value)}
+                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+              >
+                <option value="all">Mọi mức độ</option>
+                <option value="critical">critical</option>
+                <option value="error">error</option>
+                <option value="warning">warning</option>
+              </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={incidentShowResolved}
+                  onChange={(e) => setIncidentShowResolved(e.target.checked)}
+                />
+                Hiện cả đã xử lý
+              </label>
+            </div>
+          </div>
+          {/* Phase 6 CWS_WORKER_ROADMAP.md — CHỈ đọc (worker_incidents qua
+              RPC report_worker_incident(), xem worker_migrations/004_...).
+              Hiện tại chỉ có WORKER_CRASH (tự động, mở rộng từ
+              report_worker_crash() có sẵn) và MERGE_FAIL (Worker tự gọi khi
+              attempt_job_video_merge() lỗi) — các loại lỗi khác trong roadmap
+              (GPU/CPU quá nhiệt, disk full...) CHƯA có code phát hiện, sẽ
+              không xuất hiện ở đây cho tới khi được làm ở vòng sau. CHƯA có
+              nút retry/requeue/quarantine/drain (rủi ro cao hơn 1 bảng chỉ
+              đọc, để lại vòng sau). */}
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Gần nhất</th>
+                  <th style={{ padding: 8 }}>Worker</th>
+                  <th style={{ padding: 8 }}>Task</th>
+                  <th style={{ padding: 8 }}>Loại</th>
+                  <th style={{ padding: 8 }}>Mức độ</th>
+                  <th style={{ padding: 8 }}>Số lần</th>
+                  <th style={{ padding: 8 }}>Tóm tắt</th>
+                  <th style={{ padding: 8 }}>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredIncidents.map((inc) => (
+                  <tr key={inc.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(inc.lastSeenAt)}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{inc.workerId ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{inc.taskId ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{inc.eventType}</td>
+                    <td style={{ padding: 8 }}>{inc.severity}</td>
+                    <td style={{ padding: 8 }}>{inc.occurrenceCount}</td>
+                    <td style={{ padding: 8, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inc.summary}>
+                      {inc.summary}
+                    </td>
+                    <td style={{ padding: 8 }}>{inc.resolvedAt ? 'Đã xử lý' : 'Chưa xử lý'}</td>
+                  </tr>
+                ))}
+                {filteredIncidents.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
                 )}
               </tbody>
             </table>

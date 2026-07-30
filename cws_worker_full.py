@@ -1031,6 +1031,29 @@ def report_state(worker_id, to_state, task_id=None, reason=None):
               f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
 
 
+def report_incident(worker_id, event_type, severity, summary, task_id=None, error_code=None, details=None):
+    """Bao su co (Phase 6 CWS_WORKER_ROADMAP.md) qua RPC report_worker_incident()
+    - RPC tu dedup theo (worker_id, event_type, error_code, task_id) VA tu tang
+    occurrence_count neu incident cung loai CHUA duoc resolve (xem worker_migrations/
+    004_worker_incidents_schema.sql), worker KHONG can tu kiem tra trung lap.
+
+    BEST-EFFORT y het report_state() - loi o day KHONG duoc lam gian doan cong
+    viec chinh (render/merge), day la tinh nang PHU (Admin Dashboard Phase 6)."""
+    try:
+        rpc_call("report_worker_incident", {
+            "p_worker_id": worker_id,
+            "p_task_id": task_id,
+            "p_event_type": event_type,
+            "p_severity": severity,
+            "p_error_code": error_code,
+            "p_summary": str(summary)[:2000],
+            "p_details": details,
+        })
+    except Exception as e:
+        print(f"[INCIDENT] LOI khi bao cao su co '{event_type}' cho worker "
+              f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
+
+
 def report_total_frames_if_known(job_id, worker_id, optimization_plan):
     """Bao lai jobs.total_frames/fps THAT cho Backend (sua lo hong goc re
     khien luong end-to-end khong bao gio hoan thanh - xem worker_migrations/
@@ -2790,6 +2813,10 @@ def worker_loop():
                 attempt_job_video_merge(current_job_id, worker_id)
             except Exception as merge_err:
                 print(f"[MERGE] Loi khong luong truoc ngoai attempt_job_video_merge(): {merge_err}")
+                report_incident(worker_id, "MERGE_FAIL", "error",
+                                 f"Loi ghep video job {current_job_id}: "
+                                 f"{type(merge_err).__name__}: {merge_err}",
+                                 task_id=task_id)
         else:
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 

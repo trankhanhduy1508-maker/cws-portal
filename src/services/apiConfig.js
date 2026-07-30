@@ -28,6 +28,7 @@ export const API_CONFIG = {
     // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.
     ADMIN_LIST_CUSTOMERS: '/customers',
     ADMIN_LIST_WORKERS: '/fleet/workers',
+    ADMIN_LIST_INCIDENTS: '/fleet/incidents',
     ADMIN_LIST_JOBS: '/jobs',
     ADMIN_JOB_BY_STORAGE_CODE: (code) => `/jobs/by-storage-code/${encodeURIComponent(code)}`,
     ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,
