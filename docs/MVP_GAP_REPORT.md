@@ -23,8 +23,9 @@ rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
   Landing; khách chưa đăng nhập không xem được Job Dashboard.
 
 ### Tạo Job / Upload
-- Dán link Google Drive/OneDrive/Dropbox (`SHARED_LINK_PATTERNS`); Upload
-  File trực tiếp lên Backblaze B2 (`B2StorageService`).
+- Dán link Google Drive/OneDrive/Dropbox/**Direct Link** (đủ 4 nguồn
+  `SHARED_LINK_PATTERNS` — trước đây thiếu Direct Link dù roadmap liệt
+  kê rõ); Upload File trực tiếp lên Backblaze B2 (`B2StorageService`).
 - Kiểm tra quyền truy cập THẬT cho Google Drive (Drive API v3, khi có
   `GOOGLE_DRIVE_API_KEY`) — phát hiện sớm lỗi link thư mục thay vì file;
   báo lỗi có hướng dẫn cụ thể ("kiểm tra lại quyền chia sẻ — chọn 'Bất
@@ -156,6 +157,14 @@ thêm `JobsService` vào `SchedulerService`.
 
 Build/test/lint đã chạy lại lần nữa sau các fix này, vẫn PASS toàn bộ;
 đã verify boot thật xác nhận route `GET /customers` đăng ký đúng.
+
+### Direct Link — mismatch nhỏ khác vừa phát hiện
+
+CWS_MVP_WORKFLOW_FINAL.md, mục "Tạo Job" liệt kê 4 nguồn: "Google
+Drive. OneDrive. Dropbox. Direct Link." — Portal chỉ chấp nhận 3 nguồn
+đầu (`SHARED_LINK_PATTERNS`), từ chối mọi URL khác kể cả hợp lệ. Đã
+thêm `DIRECT_LINK_PATTERN` (catch-all URL `https://` bất kỳ) làm nguồn
+thứ 4 — Backend đã sẵn xử lý an toàn từ trước, không cần sửa gì.
 
 ### 2 mục Admin còn lại — đã hoàn thành nốt
 

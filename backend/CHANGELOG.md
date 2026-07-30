@@ -52,6 +52,14 @@
   tên/email/id trong `AdminScreen.jsx` (lọc luôn cả bảng Job theo
   customer được chọn). `customerId` cũng được thêm vào response của
   `GET /jobs`/`GET /jobs/:id` để admin đối chiếu.
+- **Thiếu "Direct Link"** — CWS_MVP_WORKFLOW_FINAL.md, mục "Tạo Job"
+  liệt kê 4 nguồn: "Google Drive. OneDrive. Dropbox. Direct Link."
+  nhưng `SHARED_LINK_PATTERNS` (Portal) chỉ chấp nhận 3 nguồn đầu, từ
+  chối mọi URL khác. Đã thêm `DIRECT_LINK_PATTERN` (catch-all bất kỳ
+  URL `https://` nào) làm nguồn thứ 4 — Backend (`google-drive.service.ts`)
+  đã sẵn xử lý an toàn URL không phải Google Drive từ trước (trả
+  `fileName`/`fileSizeBytes` = `null`, không bịa dữ liệu), không cần
+  sửa gì phía Backend.
 - **Admin thiếu "Worker" + "Preview"** — CWS_MVP_WORKFLOW_FINAL.md, mục
   Admin liệt kê cả 2 mục này trong danh sách theo dõi. Đã thêm
   `GET /fleet/workers` (mới, `AdminKeyGuard`, CHỈ đọc bảng `workers` nội

@@ -55,13 +55,13 @@ export function validateDriveLink(link) {
   const trimmed = (link || '').trim();
 
   if (!trimmed) {
-    return { valid: false, error: 'Vui lòng dán link chia sẻ (Google Drive/OneDrive/Dropbox)' };
+    return { valid: false, error: 'Vui lòng dán link chia sẻ (Google Drive/OneDrive/Dropbox/Direct Link)' };
   }
 
   if (!SHARED_LINK_PATTERNS.some((pattern) => pattern.test(trimmed))) {
     return {
       valid: false,
-      error: 'Link không đúng định dạng Google Drive/OneDrive/Dropbox. Vui lòng kiểm tra lại link chia sẻ.',
+      error: 'Link phải bắt đầu bằng https://. Vui lòng kiểm tra lại link chia sẻ.',
     };
   }
 

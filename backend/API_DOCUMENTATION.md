@@ -58,7 +58,7 @@ Request body:
 `software`/`softwareVersion`/`notes` — không bắt buộc (CWS_MVP_WORKFLOW_FINAL.md,
 mục "Tạo Job"), chỉ là thông tin tham khảo cho admin/Worker.
 `fileRef` và `driveLink` — chỉ cần 1 trong 2 (tùy nguồn khách chọn).
-`driveLink` chấp nhận Google Drive/OneDrive/Dropbox (validate cú pháp ở
+`driveLink` chấp nhận Google Drive/OneDrive/Dropbox/Direct Link (validate cú pháp ở
 Portal qua `SHARED_LINK_PATTERNS`); chỉ Google Drive có kiểm tra quyền
 truy cập thật qua API (nếu có `GOOGLE_DRIVE_API_KEY`).
 
@@ -218,7 +218,7 @@ Response: `{ "fileRef": "uploads/uuid-name.blend", "fileName": "name.blend", "fi
 Giới hạn: chỉ `.blend`, tối đa 2GB.
 
 ### POST /drive/resolve
-Xác nhận + đọc metadata 1 link chia sẻ (Google Drive/OneDrive/Dropbox).
+Xác nhận + đọc metadata 1 link chia sẻ (Google Drive/OneDrive/Dropbox/Direct Link).
 
 Request: `{ "driveLink": "https://..." }`
 
