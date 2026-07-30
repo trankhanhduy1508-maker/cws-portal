@@ -124,11 +124,11 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Next Task
 
-Đã xong (không cần credential): payment verification, webhook thật, preview/approval gate, download logging, CI, storage_code sinh tự động + tra cứu admin theo storage_code/payment_code, worker_logs (phát hiện task failed → chuyển ERROR + log), notifications (review-ready/error), OneDrive/Dropbox link support, cleanup toàn bộ tính năng ngoài MVP (xác nhận N/A cho MoMo/Google Login/OTP/Zalo/AI ETA/Marketplace).
+Đã xong (không cần credential): payment verification, webhook thật, preview/approval gate, download logging, CI, storage_code sinh tự động + tra cứu admin theo storage_code/payment_code, worker_logs (phát hiện task failed → chuyển ERROR + log), notifications (review-ready/error), OneDrive/Dropbox link support, cleanup toàn bộ tính năng ngoài MVP, Facebook Login đủ 2 phía (backend OAuth + frontend LoginScreen), gắn customer_id vào job khi đã đăng nhập, GET /jobs lọc theo customer khi có token hợp lệ.
 
-Còn lại không bị block: Dashboard Admin UI (frontend, cần thiết kế màn hình mới — rủi ro cao nếu làm mù không xem được UI thật); "yêu cầu chỉnh sửa" (reject preview) flow.
+Còn lại KHÔNG bị block nhưng rủi ro cao nếu làm mù (cần xem UI thật): Dashboard Admin UI, "yêu cầu chỉnh sửa" (reject preview) flow.
 
-Bị block chờ người dùng: Facebook Login (FACEBOOK_APP_ID/SECRET), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate secret đã lộ, xác nhận UI bằng mắt (không có browser tool phiên này).
+Bị block chờ người dùng — đây là giới hạn thật của phiên này, đã hết việc tự làm được: Facebook Login App ID/Secret thật (developers.facebook.com), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate Supabase/B2 secret đã lộ, xác nhận toàn bộ UI bằng mắt (không có browser tool phiên này), quyết định cơ chế xác thực cho Dashboard Admin.
 
 ---
 
