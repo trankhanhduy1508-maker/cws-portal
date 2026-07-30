@@ -26,10 +26,15 @@ rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
 - Dán link Google Drive/OneDrive/Dropbox (`SHARED_LINK_PATTERNS`); Upload
   File trực tiếp lên Backblaze B2 (`B2StorageService`).
 - Kiểm tra quyền truy cập THẬT cho Google Drive (Drive API v3, khi có
-  `GOOGLE_DRIVE_API_KEY`) — phát hiện sớm lỗi link thư mục thay vì file.
+  `GOOGLE_DRIVE_API_KEY`) — phát hiện sớm lỗi link thư mục thay vì file;
+  báo lỗi có hướng dẫn cụ thể ("kiểm tra lại quyền chia sẻ — chọn 'Bất
+  kỳ ai có link'") — đúng "Hướng dẫn sửa quyền nếu cần".
 - Sinh `storage_code` (`CWS-XXXXXXXX`) tự động khi tạo job.
 - **Job tạo NGAY, KHÔNG cần thanh toán trước** — sửa lại đúng thứ tự
   roadmap (xem mục "Sửa lỗi nghiêm trọng" bên dưới).
+- Khách nhập Phần mềm/Phiên bản/Ghi chú lúc tạo job (`software`/
+  `softwareVersion`/`notes`, migration 009) — trước đây hoàn toàn
+  không có trường nào lưu 3 thông tin này dù roadmap yêu cầu rõ.
 
 ### Render (Worker)
 - Worker Fleet (`cws_worker_full.py`, không sửa) nhận job qua bảng
@@ -67,9 +72,13 @@ rộng Enterprise/Security cấp ngân hàng/Marketplace/AI ETA.
 
 ### Trang quản trị (Giai đoạn 7)
 - `AdminScreen.jsx` (chỉ vào qua `#admin`, không có link từ UI khách
-  hàng) — danh sách job, tìm theo Storage Code/Payment Code.
+  hàng) — danh sách job (kèm tên khách hàng), danh sách khách hàng, tìm
+  theo Storage Code/Payment Code/Customer (đủ 3 tiêu chí roadmap yêu cầu).
+- `GET /customers` (mới, `AdminKeyGuard`) — trước đây hoàn toàn không
+  có route/UI nào cho "Danh sách khách hàng" dù roadmap liệt kê rõ.
 - Bảo vệ bằng `AdminKeyGuard` (header `x-admin-key`) trên `GET /jobs`
-  (ẩn danh), `GET /jobs/by-storage-code/:code`, `GET /payments/by-code/:code`.
+  (ẩn danh), `GET /jobs/by-storage-code/:code`, `GET /payments/by-code/:code`,
+  `GET /customers`.
 
 ### Database & RLS
 - Đủ 8 bảng theo `CWS_DATABASE_SCHEMA.md`: customer_profiles,
@@ -125,6 +134,18 @@ sau khi khách đã xem và đồng ý với bản preview — không phải đi
 boot thật (`node dist/main.js`, xác nhận "Nest application successfully
 started" + đầy đủ route map) để chắc chắn không có lỗi DI circular do
 thêm `JobsService` vào `SchedulerService`.
+
+### 2 mismatch nhỏ hơn phát hiện cùng đợt audit
+
+- **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** (migration 009 +
+  `CreateJobDto` + `UploadScreen.jsx`) — xem chi tiết ở mục DONE và
+  `backend/CHANGELOG.md`.
+- **Admin thiếu "Danh sách khách hàng" + "Tìm kiếm theo Customer"**
+  (`GET /customers` mới + `AdminScreen.jsx`) — xem chi tiết ở mục DONE
+  và `backend/CHANGELOG.md`.
+
+Build/test/lint đã chạy lại lần nữa sau 2 fix này, vẫn PASS toàn bộ;
+đã verify boot thật xác nhận route `GET /customers` đăng ký đúng.
 
 ---
 

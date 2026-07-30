@@ -92,6 +92,9 @@ export class JobsService {
     const order: RenderOrder = {
       id,
       projectName,
+      software: dto.software ?? null,
+      softwareVersion: dto.softwareVersion ?? null,
+      notes: dto.notes ?? null,
       storageCode,
       customerId,
       profileId: dto.profileId,

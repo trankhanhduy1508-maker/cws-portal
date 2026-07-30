@@ -19,6 +19,11 @@ async function adminFetch(path, adminKey) {
   return res.json();
 }
 
+/** Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+export function adminListCustomers(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, adminKey);
+}
+
 /** Danh sách toàn bộ job của mọi khách hàng. */
 export function adminListJobs(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_JOBS, adminKey);

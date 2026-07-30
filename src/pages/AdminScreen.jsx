@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, RefreshCw, KeyRound } from 'lucide-react';
-import { adminListJobs, adminGetJobByStorageCode, adminGetPaymentByCode } from '../services/adminApi';
+import { adminListCustomers, adminListJobs, adminGetJobByStorageCode, adminGetPaymentByCode } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
@@ -19,24 +19,55 @@ export default function AdminScreen() {
   });
   const [keyInput, setKeyInput] = useState('');
   const [jobs, setJobs] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
   const [paymentCodeQuery, setPaymentCodeQuery] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
   const [searchResult, setSearchResult] = useState(null);
 
-  const loadJobs = useCallback((key) => {
+  const loadAll = useCallback((key) => {
     setIsLoading(true);
     setError(null);
-    adminListJobs(key)
-      .then(setJobs)
+    Promise.all([adminListJobs(key), adminListCustomers(key)])
+      .then(([jobsRes, customersRes]) => {
+        setJobs(jobsRes);
+        setCustomers(customersRes);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
 
   useEffect(() => {
-    if (adminKey) loadJobs(adminKey);
-  }, [adminKey, loadJobs]);
+    if (adminKey) loadAll(adminKey);
+  }, [adminKey, loadAll]);
+
+  // customerId -> tên hiển thị — dùng để hiện tên khách ở bảng Job thay
+  // vì UUID trần, và để lọc Job theo Customer (Giai đoạn 7: "Tìm kiếm
+  // theo Customer").
+  const customerNameById = useMemo(() => {
+    const map = new Map();
+    customers.forEach((c) => map.set(c.id, c.fullName || c.email || c.id));
+    return map;
+  }, [customers]);
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter((c) =>
+      (c.fullName || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q)
+    );
+  }, [customers, customerQuery]);
+
+  const visibleJobs = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return jobs;
+    const matchingCustomerIds = new Set(filteredCustomers.map((c) => c.id));
+    return jobs.filter((job) => job.customerId && matchingCustomerIds.has(job.customerId));
+  }, [jobs, customerQuery, filteredCustomers]);
 
   const handleSaveKey = (e) => {
     e.preventDefault();
@@ -97,8 +128,8 @@ export default function AdminScreen() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600 }}>CWS Admin — Jobs</h2>
-        <button onClick={() => loadJobs(adminKey)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#3B5BFF' }}>
+        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600 }}>CWS Admin</h2>
+        <button onClick={() => loadAll(adminKey)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#3B5BFF' }}>
           <RefreshCw size={14} strokeWidth={2} /> Tải lại
         </button>
       </div>
@@ -122,6 +153,14 @@ export default function AdminScreen() {
           />
           <button type="submit" style={{ padding: '10px 12px' }}><Search size={16} strokeWidth={2} /></button>
         </form>
+        <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 220 }}>
+          <input
+            value={customerQuery}
+            onChange={(e) => setCustomerQuery(e.target.value)}
+            placeholder="Tìm theo Customer (tên/email/id)"
+            style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
+          />
+        </div>
       </div>
 
       {error && <p style={{ color: '#E5484D', fontSize: 13.5, marginBottom: 12 }}>{error}</p>}
@@ -138,11 +177,12 @@ export default function AdminScreen() {
       {isLoading && <p>Đang tải...</p>}
 
       {!isLoading && (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', marginBottom: 28 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
                 <th style={{ padding: 8 }}>Project</th>
+                <th style={{ padding: 8 }}>Customer</th>
                 <th style={{ padding: 8 }}>Status</th>
                 <th style={{ padding: 8 }}>Payment</th>
                 <th style={{ padding: 8 }}>Tạo lúc</th>
@@ -150,9 +190,10 @@ export default function AdminScreen() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
+              {visibleJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
                   <td style={{ padding: 8 }}>{job.projectName}</td>
+                  <td style={{ padding: 8 }}>{job.customerId ? (customerNameById.get(job.customerId) ?? job.customerId) : '—'}</td>
                   <td style={{ padding: 8 }}>{JOB_STATUS_LABEL[job.status] ?? job.status}</td>
                   <td style={{ padding: 8 }}>{PAYMENT_STATUS_LABEL[job.paymentStatus] ?? job.paymentStatus}</td>
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
@@ -161,12 +202,45 @@ export default function AdminScreen() {
                   </td>
                 </tr>
               ))}
-              {jobs.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
+              {visibleJobs.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
               )}
             </tbody>
           </table>
         </div>
+      )}
+
+      {!isLoading && (
+        <>
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Khách hàng
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Tên</th>
+                  <th style={{ padding: 8 }}>Email</th>
+                  <th style={{ padding: 8 }}>ID</th>
+                  <th style={{ padding: 8 }}>Tham gia lúc</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((c) => (
+                  <tr key={c.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8 }}>{c.fullName ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{c.email ?? '—'}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{c.id}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(c.createdAt)}</td>
+                  </tr>
+                ))}
+                {filteredCustomers.length === 0 && (
+                  <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có khách hàng nào</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

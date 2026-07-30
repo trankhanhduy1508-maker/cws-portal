@@ -51,4 +51,18 @@ export class SupabaseCustomerProfilesRepository implements ICustomerProfilesRepo
     }
     return data ? rowToDomain(data as CustomerProfileRow) : null;
   }
+
+  async findAll(): Promise<CustomerProfile[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error(`findAll() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được danh sách customer: ${error.message}`);
+    }
+    return (data as CustomerProfileRow[]).map(rowToDomain);
+  }
 }

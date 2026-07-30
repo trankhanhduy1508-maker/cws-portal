@@ -22,6 +22,11 @@ export interface JobEstimate {
 export interface RenderOrder {
   id: string;
   projectName: string;
+  /** "Tạo Job" (CWS_MVP_WORKFLOW_FINAL.md): Phần mềm/Phiên bản/Ghi chú —
+   * không bắt buộc, chỉ là thông tin tham khảo cho admin/Worker. */
+  software: string | null;
+  softwareVersion: string | null;
+  notes: string | null;
   /** Mã tra cứu ngắn cho khách/admin (CWS_ROADMAP_MVP_V1.md: "Sinh Storage Code"). */
   storageCode: string;
   /** Khách đã đăng nhập Facebook tạo job này — null nếu chưa đăng nhập
@@ -59,5 +64,8 @@ export interface CreateRenderOrderInput {
   driveLink: string | null;
   fileName: string | null;
   fileSizeBytes: number | null;
+  software: string | null;
+  softwareVersion: string | null;
+  notes: string | null;
   profileId: RenderProfileId;
 }

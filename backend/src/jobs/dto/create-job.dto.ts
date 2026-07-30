@@ -18,6 +18,20 @@ export class CreateJobDto {
   @IsNumber()
   fileSizeBytes?: number | null;
 
+  // "Tạo Job" (CWS_MVP_WORKFLOW_FINAL.md): Phần mềm/Phiên bản/Ghi chú —
+  // không bắt buộc, chỉ là thông tin tham khảo cho admin.
+  @IsOptional()
+  @IsString()
+  software?: string | null;
+
+  @IsOptional()
+  @IsString()
+  softwareVersion?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+
   @IsIn(Object.values(RenderProfileId))
   profileId!: RenderProfileId;
 }

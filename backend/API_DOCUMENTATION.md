@@ -17,6 +17,14 @@ Các route admin (Giai đoạn 7) yêu cầu header `x-admin-key` khớp
 `ADMIN_API_KEY` (env Backend) — xem `AdminKeyGuard`, đánh dấu rõ bên
 dưới ở từng route.
 
+## Customers
+
+### GET /customers
+Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7 —
+"Danh sách khách hàng"). **Yêu cầu header `x-admin-key`** (`AdminKeyGuard`).
+
+Response: `[{ "id", "fullName", "email", "avatarUrl", "phone", "preferredContact", "marketingConsent", "createdAt", "updatedAt" }, ...]`
+
 ## Jobs
 
 ### POST /jobs
@@ -31,9 +39,14 @@ Request body:
   "driveLink": null,
   "fileName": "scene.blend",
   "fileSizeBytes": 52428800,
+  "software": "Blender",
+  "softwareVersion": "4.2",
+  "notes": "Ghi chú cho đội render (không bắt buộc)",
   "profileId": "standard"
 }
 ```
+`software`/`softwareVersion`/`notes` — không bắt buộc (CWS_MVP_WORKFLOW_FINAL.md,
+mục "Tạo Job"), chỉ là thông tin tham khảo cho admin/Worker.
 `fileRef` và `driveLink` — chỉ cần 1 trong 2 (tùy nguồn khách chọn).
 `driveLink` chấp nhận Google Drive/OneDrive/Dropbox (validate cú pháp ở
 Portal qua `SHARED_LINK_PATTERNS`); chỉ Google Drive có kiểm tra quyền
@@ -63,7 +76,8 @@ Tra cứu 1 job theo Storage Code (Giai đoạn 7). **Yêu cầu header
 `x-admin-key`** (`AdminKeyGuard`).
 
 ### GET /jobs/:id
-Chi tiết 1 render order — bao gồm `storageCode`.
+Chi tiết 1 render order — bao gồm `storageCode`, `customerId` (để admin
+đối chiếu với `GET /customers`, "Tìm kiếm theo Customer").
 
 ### GET /jobs/:id/status
 Alias — chỉ trả `{ status, stageProgress }`.

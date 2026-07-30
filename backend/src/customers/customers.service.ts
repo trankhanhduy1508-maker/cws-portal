@@ -17,4 +17,9 @@ export class CustomersService {
     if (!profile) throw new NotFoundException(`Không tìm thấy customer ${id}`);
     return profile;
   }
+
+  /** Admin xem "Danh sách khách hàng" (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  async listAll(): Promise<CustomerProfile[]> {
+    return this.repository.findAll();
+  }
 }

@@ -45,14 +45,15 @@ Kiểm tra: `curl http://localhost:3000/health` → `{"status":"ok",...}`
 
 ## 3. Chạy Migration (CHỈ CẦN LÀM 1 LẦN)
 
-Migration 001-008 đã được chạy thật trên Supabase project
+Migration 001-009 đã được chạy thật trên Supabase project
 `ynhxlxetwuiyejcjypsi` (render_orders, payments, sites,
 machine_capability, customer_profiles, storage_objects, review_images,
 downloads, worker_logs, notifications, RLS owner-scoped + trigger
 Supabase Auth, payments.job_id/storage_code/bank_name/account_number/
-qr_image_url — không đụng bảng jobs/tasks/workers cũ của Worker
-Fleet). Nếu deploy sang Supabase project khác, chạy lần lượt các file
-trong `migrations/` theo đúng thứ tự số (001 đến 008) qua Supabase SQL
+qr_image_url, render_orders.software/software_version/notes — không
+đụng bảng jobs/tasks/workers cũ của Worker Fleet). Nếu deploy sang
+Supabase project khác, chạy lần lượt các file trong `migrations/` theo
+đúng thứ tự số (001 đến 009) qua Supabase SQL
 Editor, **và** bật Facebook Provider trong Authentication > Providers
 (xem mục 3b).
 

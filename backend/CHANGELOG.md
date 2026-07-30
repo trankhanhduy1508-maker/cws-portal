@@ -37,6 +37,22 @@
   Xóa `usePayment.js`/`PaymentMethodPicker` (dead code sau khi bỏ màn
   Payment độc lập — MVP chỉ có 1 phương thức nên không cần picker).
 
+### Sửa mismatch khác phát hiện cùng đợt audit
+- **"Tạo Job" thiếu Phần mềm/Phiên bản/Ghi chú** — CWS_MVP_WORKFLOW_FINAL.md
+  ghi rõ khách nhập "Tên dự án. Phần mềm. Phiên bản. ... Ghi chú." lúc
+  tạo job, nhưng `render_orders` không có cột nào lưu 3 thông tin này.
+  Đã thêm `software`/`software_version`/`notes` (migration 009,
+  `CreateJobDto`, `RenderOrder`, UploadScreen.jsx) — không bắt buộc,
+  chỉ là thông tin tham khảo.
+- **Admin thiếu "Danh sách khách hàng" + "Tìm kiếm theo Customer"** —
+  CWS_ROADMAP_MVP_V1.md, Giai đoạn 7 liệt kê rõ cả 2 mục này nhưng
+  Backend chưa từng có `CustomersController`/route nào, `AdminScreen.jsx`
+  chỉ có bảng Job + tìm theo Storage Code/Payment Code. Đã thêm
+  `GET /customers` (AdminKeyGuard), bảng "Khách hàng" +  ô tìm theo
+  tên/email/id trong `AdminScreen.jsx` (lọc luôn cả bảng Job theo
+  customer được chọn). `customerId` cũng được thêm vào response của
+  `GET /jobs`/`GET /jobs/:id` để admin đối chiếu.
+
 ## [1.2.0] - Supabase Auth + RLS + VietQR + Admin Dashboard (2026-07-30)
 
 ### Thêm mới

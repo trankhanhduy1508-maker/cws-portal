@@ -10,4 +10,6 @@ export const CUSTOMER_PROFILES_REPOSITORY = Symbol('CUSTOMER_PROFILES_REPOSITORY
  */
 export interface ICustomerProfilesRepository {
   findById(id: string): Promise<CustomerProfile | null>;
+  /** Admin xem "Danh sách khách hàng" (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+  findAll(): Promise<CustomerProfile[]>;
 }

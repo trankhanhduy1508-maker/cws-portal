@@ -159,6 +159,9 @@ export async function createJob({ input, profileId }) {
     fileName: input.fileName,
     fileSizeBytes: input.fileSizeBytes,
     driveLink: input.driveLink,
+    software: input.software,
+    softwareVersion: input.softwareVersion,
+    notes: input.notes,
     profileId,
     downloadSourceFile,
   });

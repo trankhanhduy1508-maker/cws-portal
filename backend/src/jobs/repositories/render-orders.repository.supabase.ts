@@ -13,6 +13,9 @@ const TABLE = 'render_orders';
 interface RenderOrderRow {
   id: string;
   project_name: string;
+  software: string | null;
+  software_version: string | null;
+  notes: string | null;
   storage_code: string;
   customer_id: string | null;
   profile_id: string;
@@ -38,6 +41,9 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
   return {
     id: row.id,
     projectName: row.project_name,
+    software: row.software,
+    softwareVersion: row.software_version,
+    notes: row.notes,
     storageCode: row.storage_code,
     customerId: row.customer_id,
     profileId: row.profile_id as RenderProfileId,
@@ -66,6 +72,9 @@ function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at
   return {
     id: order.id,
     project_name: order.projectName,
+    software: order.software,
+    software_version: order.softwareVersion,
+    notes: order.notes,
     storage_code: order.storageCode,
     customer_id: order.customerId,
     profile_id: order.profileId,

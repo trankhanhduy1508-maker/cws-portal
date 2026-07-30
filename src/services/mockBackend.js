@@ -139,7 +139,7 @@ export async function mockGetPaymentDetails(paymentId) {
 // ============================================================
 // JOB LIFECYCLE (mock)
 // ============================================================
-export function mockCreateJob({ fileName, fileSizeBytes, driveLink, profileId, downloadSourceFile }) {
+export function mockCreateJob({ fileName, fileSizeBytes, driveLink, profileId, software, softwareVersion, notes, downloadSourceFile }) {
   const jobId = `job-${Date.now()}`;
   const storageCode = `CWS-${jobId.slice(-8).toUpperCase()}`;
   const estimate = computeEstimate({ fileSizeBytes, profileId });
@@ -147,6 +147,9 @@ export function mockCreateJob({ fileName, fileSizeBytes, driveLink, profileId, d
   jobsStore[jobId] = {
     id: jobId,
     projectName: fileName || (driveLink ? '(File từ Google Drive)' : 'Không rõ tên file'),
+    software: software || null,
+    softwareVersion: softwareVersion || null,
+    notes: notes || null,
     storageCode,
     profileId,
     status: estimate.queueSeconds > 0 ? JOB_STATUS.QUEUED : JOB_STATUS.SEARCHING_WORKERS,

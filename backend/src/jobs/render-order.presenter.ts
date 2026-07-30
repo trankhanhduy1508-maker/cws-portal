@@ -7,7 +7,14 @@ import { RenderOrder } from './domain/render-order';
 export interface RenderOrderPublicJson {
   id: string;
   projectName: string;
+  software: string | null;
+  softwareVersion: string | null;
+  notes: string | null;
   storageCode: string;
+  /** Chính khách hàng xem job của mình (biết trước đó là mình) hoặc
+   * admin (Giai đoạn 7, "Tìm kiếm theo Customer") — không lộ thông tin
+   * nhạy cảm hơn ID mà chủ job đã biết sẵn. */
+  customerId: string | null;
   profileId: string;
   status: string;
   stageProgress: number;
@@ -25,7 +32,11 @@ export function toPublicJson(order: RenderOrder): RenderOrderPublicJson {
   return {
     id: order.id,
     projectName: order.projectName,
+    software: order.software,
+    softwareVersion: order.softwareVersion,
+    notes: order.notes,
     storageCode: order.storageCode,
+    customerId: order.customerId,
     profileId: order.profileId,
     status: order.status,
     stageProgress: order.stageProgress,
