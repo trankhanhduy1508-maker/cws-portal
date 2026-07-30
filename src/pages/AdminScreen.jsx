@@ -293,6 +293,11 @@ export default function AdminScreen() {
                   <th style={{ padding: 8 }}>Worker ID</th>
                   <th style={{ padding: 8 }}>GPU</th>
                   <th style={{ padding: 8 }}>Status</th>
+                  {/* Phase 5 CWS_WORKER_ROADMAP.md: cot chi tiet hon o BEN
+                      CANH "Status" (idle/busy/offline, van la nguon su that
+                      chinh) - null neu Worker dang chay ban cu chua co
+                      tinh nang bao cao observed_state (Phase 3). */}
+                  <th style={{ padding: 8 }}>Trạng thái chi tiết</th>
                   <th style={{ padding: 8 }}>Last seen</th>
                   <th style={{ padding: 8 }}>Crash count</th>
                 </tr>
@@ -303,12 +308,16 @@ export default function AdminScreen() {
                     <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
                     <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
                     <td style={{ padding: 8 }}>{w.status}</td>
+                    <td style={{ padding: 8 }} title={w.stateReason ?? ''}>
+                      {w.observedState ?? '—'}
+                      {w.lastTransitionAt ? ` (${formatRelativeTime(w.lastTransitionAt)})` : ''}
+                    </td>
                     <td style={{ padding: 8 }}>{formatRelativeTime(w.lastSeenAt)}</td>
                     <td style={{ padding: 8 }}>{w.crashCount}</td>
                   </tr>
                 ))}
                 {workers.length === 0 && (
-                  <tr><td colSpan={5} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
                 )}
               </tbody>
             </table>

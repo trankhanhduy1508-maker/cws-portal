@@ -98,7 +98,16 @@ export class WorkerFleetGateway {
 
   /** Danh sách Worker Fleet — Admin theo dõi "Worker"
    * (CWS_MVP_WORKFLOW_FINAL.md, mục Admin). CHỈ đọc, không sửa gì lên
-   * bảng `workers` (đúng nguyên tắc "không đụng Worker Fleet"). */
+   * bảng `workers` (đúng nguyên tắc "không đụng Worker Fleet").
+   *
+   * `observedState`/`stateReason`/`lastTransitionAt` (Phase 5
+   * CWS_WORKER_ROADMAP.md, thêm 31/07/2026) đọc từ các cột mới của
+   * Phase 3 (migration `worker_migrations/001_...`, Worker ghi qua RPC
+   * `report_worker_state_transition` — xem `cws_worker_full.py#report_state()`).
+   * CHỈ hiển thị THÊM, không thay thế `status` (idle/busy/offline) hiện
+   * có — đó vẫn là nguồn sự thật chính (do cron `mark_stale_workers_offline`
+   * duy trì), `observedState` là lớp chi tiết hơn ở BÊN CẠNH, có thể null
+   * nếu Worker đang chạy bản cũ chưa có tính năng này. */
   async listWorkers(): Promise<
     {
       workerId: string;
@@ -107,28 +116,47 @@ export class WorkerFleetGateway {
       status: string;
       lastSeenAt: number;
       crashCount: number;
+      observedState: string | null;
+      stateReason: string | null;
+      lastTransitionAt: number | null;
     }[]
   > {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('workers')
-      .select('worker_id, gpu_name, vram_mb, status, last_seen_at, crash_count')
+      .select(
+        'worker_id, gpu_name, vram_mb, status, last_seen_at, crash_count, observed_state, state_reason, last_transition_at',
+      )
       .order('last_seen_at', { ascending: false });
 
     if (error) {
       this.logger.error(`listWorkers() thất bại: ${error.message}`);
       throw new Error(`Không đọc được danh sách Worker: ${error.message}`);
     }
-    return (data ?? []).map((r) => ({
-      workerId: (r as { worker_id: string }).worker_id,
-      gpuName: (r as { gpu_name: string | null }).gpu_name,
-      vramMb: (r as { vram_mb: number | null }).vram_mb,
-      status: (r as { status: string }).status,
-      lastSeenAt: new Date(
-        (r as { last_seen_at: string }).last_seen_at,
-      ).getTime(),
-      crashCount: (r as { crash_count: number }).crash_count,
-    }));
+    return (data ?? []).map((r) => {
+      const row = r as {
+        worker_id: string;
+        gpu_name: string | null;
+        vram_mb: number | null;
+        status: string;
+        last_seen_at: string;
+        crash_count: number;
+        observed_state: string | null;
+        state_reason: string | null;
+        last_transition_at: string | null;
+      };
+      return {
+        workerId: row.worker_id,
+        gpuName: row.gpu_name,
+        vramMb: row.vram_mb,
+        status: row.status,
+        lastSeenAt: new Date(row.last_seen_at).getTime(),
+        crashCount: row.crash_count,
+        observedState: row.observed_state,
+        stateReason: row.state_reason,
+        lastTransitionAt: row.last_transition_at ? new Date(row.last_transition_at).getTime() : null,
+      };
+    });
   }
 
   /** Số lượng Worker đang online (last_seen_at gần đây) — dùng cho

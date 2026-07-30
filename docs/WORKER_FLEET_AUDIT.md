@@ -158,6 +158,35 @@ cao nhất trong tất cả các Phase đã làm, xem mục cảnh báo ở đ�
 
 ---
 
+## Phase 5 — Admin Dashboard cho Worker (MỘT PHẦN, ĐÃ TEST BUILD THẬT)
+
+Commit `<xem Tổng hợp commit>` — khác Phase 2/3/4 (Python, chỉ kiểm tra
+tĩnh), phần này là Backend/Frontend nên đã build/test/lint THẬT + boot
+thật, không chỉ đọc lại thủ công.
+
+- `WorkerFleetGateway.listWorkers()` — thêm đọc `observed_state`/
+  `state_reason`/`last_transition_at` (cột Phase 3, `worker_migrations/001_...`)
+  BÊN CẠNH `status` hiện có (idle/busy/offline, vẫn là nguồn sự thật
+  chính) — trả `null` an toàn nếu Worker đang chạy bản cũ chưa có tính
+  năng báo cáo `observed_state` (Phase 3, commit `f313e93`).
+- `AdminScreen.jsx` — thêm cột "Trạng thái chi tiết" trong bảng Worker
+  Fleet, hiển thị `observedState` + thời gian tương đối kể từ
+  `lastTransitionAt`, tooltip hiện `stateReason`.
+
+**Range đầy đủ Phase 5 CHƯA làm** (cần dữ liệu Worker chưa từng thu
+thập — CPU/RAM/disk/version/incident — đòi hỏi thêm code Python thu
+thập thông tin hệ thống, một hạng mục riêng, chưa làm trong đợt này để
+tránh dồn thêm rủi ro chưa test vào `cws_worker_full.py`): `worker_incidents`
+(Phase 6), CPU/RAM/disk trống/Agent version/Blender version, các trạng
+thái hiển thị mở rộng (`POWER_LOSS_SUSPECTED`/`NETWORK_DISCONNECTED`/
+`WORKER_CRASHED`/`BLENDER_CRASHED`/`GPU_ERROR`/`DISK_FULL`/`DEGRADED`/
+`QUARANTINED`/`MAINTENANCE`).
+
+Build/test backend (37/37) + lint + boot thật đã xác nhận PASS. Frontend
+oxlint + vite build PASS.
+
+---
+
 ## 🔴 Lỗ hổng gốc rễ nghiêm trọng nhất đã phát hiện: `jobs.total_frames`
 ## không bao giờ được ghi cho job tạo qua Backend hiện tại
 
