@@ -1329,6 +1329,13 @@ def attempt_job_video_merge(job_id, worker_id):
     output_mp4 = merge_root / f"{job_id}.mp4"
 
     report_state(worker_id, "MERGING", reason=f"job {job_id} da xong 100%, dang ghep video")
+    # QUAN TRONG (sua loi tu commit them khoa lac quan o tren): PHAI biet
+    # merge co THAT SU thanh cong hay khong de quyet dinh co GIU khoa hay
+    # THA khoa trong finally - neu khong, moi lan merge that bai (vd
+    # is_fully_done tra ve true SOM do chi co probe task, xem
+    # worker_migrations/011_release_merge_lock.sql) se khoa CHET job do
+    # vinh vien, lan merge THAT SU sau nay khong bao gio tu dong chay nua.
+    merge_succeeded = False
     try:
         print(f"[MERGE] Dang tai {total_frames} frame PNG cua job {job_id} tu B2...")
         downloaded = _download_job_frames_from_b2(job_id, flat_dir)
@@ -1388,6 +1395,7 @@ def attempt_job_video_merge(job_id, worker_id):
         client.upload_file(str(output_mp4), B2_BUCKET, merged_key)
         print(f"[MERGE] Da upload video ghep len B2: {merged_key}")
         log_task_event(job_id, worker_id, f"Merge thanh cong: {merged_key}")
+        merge_succeeded = True
         return "success"
 
     except Exception as e:
@@ -1402,6 +1410,16 @@ def attempt_job_video_merge(job_id, worker_id):
                 shutil.rmtree(merge_root, ignore_errors=True)
         except Exception:
             pass
+
+        # THA khoa lac quan neu merge KHONG thanh cong that su (moi nhanh
+        # return o tren deu di qua day truoc khi ham thuc su ket thuc) -
+        # de lan merge THAT SU sau nay (khi job da that su xong) van tu
+        # dong thu lai duoc, khong bi khoa chet boi 1 lan thu gia truoc do.
+        if not merge_succeeded:
+            try:
+                rpc_call("release_merge_lock", {"p_job_id": job_id})
+            except Exception:
+                pass
 
 
 def report_worker_crash(worker_id, error_message):
