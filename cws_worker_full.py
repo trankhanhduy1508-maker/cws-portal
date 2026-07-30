@@ -927,6 +927,31 @@ def fail_task(task_id, generation, worker_id, error_type):
     })
 
 
+def report_state(worker_id, to_state, task_id=None, reason=None):
+    """Bao cao observed_state (Phase 3 CWS_WORKER_ROADMAP.md) qua RPC
+    report_worker_state_transition() - CHI ghi vao worker_state_events khi
+    THAT SU doi trang thai (logic nam trong RPC), khong tao log rac moi lan
+    goi lap lai cung trang thai. KHONG dong vao workers.status hien co (idle/
+    busy/offline) - do van la nguon su that cho cac co che dang chay that
+    (mark_stale_workers_offline/requeue_stale_tasks/claim_task/...), day CHI
+    la lop theo doi CHI TIET HON o BEN CANH, hoan toan moi, chua co code nao
+    khac phu thuoc vao.
+
+    BEST-EFFORT - loi o day KHONG duoc lam gian doan cong viec chinh (render),
+    day la tinh nang PHU (quan sat/Admin Dashboard sau nay), khong phai logic
+    cot loi."""
+    try:
+        rpc_call("report_worker_state_transition", {
+            "p_worker_id": worker_id,
+            "p_to_state": to_state,
+            "p_task_id": task_id,
+            "p_reason": reason,
+        })
+    except Exception as e:
+        print(f"[STATE] LOI khi bao cao trang thai '{to_state}' cho worker "
+              f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
+
+
 def report_total_frames_if_known(job_id, worker_id, optimization_plan):
     """Bao lai jobs.total_frames/fps THAT cho Backend (sua lo hong goc re
     khien luong end-to-end khong bao gio hoan thanh - xem worker_migrations/
@@ -1093,6 +1118,7 @@ def attempt_job_video_merge(job_id, worker_id):
     flat_dir = merge_root / "flat"
     output_mp4 = merge_root / f"{job_id}.mp4"
 
+    report_state(worker_id, "MERGING", reason=f"job {job_id} da xong 100%, dang ghep video")
     try:
         print(f"[MERGE] Dang tai {total_frames} frame PNG cua job {job_id} tu B2...")
         downloaded = _download_job_frames_from_b2(job_id, flat_dir)
@@ -2414,6 +2440,7 @@ def worker_loop():
 
     # Dang ky vao Fleet 1 LAN LUC KHOI DONG (schema 09_setup_fleet_capacity.sql)
     register_worker(worker_id, FLEET_ID, gpu_name=None, vram_mb=worker_vram_mb)
+    report_state(worker_id, "BOOTING", reason="worker_loop() vua khoi dong")
     # Ghi chu: gpu_name khong doc rieng o day vi get_worker_vram_mb() da in ra
     # ten GPU qua bien "name" cuc bo nhung khong return - de don gian, tam
     # thoi truyen None; neu can luu ten GPU that, sua get_worker_vram_mb()
@@ -2452,6 +2479,7 @@ def worker_loop():
             worker_ping(worker_id)  # QUAN TRONG: worker dang RANH van phai
                                      # bao con song, neu khong bang workers
                                      # se khong bao gio biet may nay dang idle
+            report_state(worker_id, "IDLE_WAITING_JOB")
 
             # ----- TU KIEM TRA BAN MOI (yeu cau Dy 22/07/2026 toi): TRUOC day
             # file .bat (lop vo ngoai) CO san co che auto-update, nhung CHI
@@ -2478,6 +2506,8 @@ def worker_loop():
         generation = task["out_generation"]
 
         worker_ping(worker_id)  # Bao con song ngay khi VUA nhan task
+        report_state(worker_id, "PREPARING", task_id=task_id,
+                     reason=f"vua claim task {task_id}, dang tai blend/phan tich scene")
 
         # LOAD JOB CONTEXT (25/07/2026, Job 4): tai blend_path/optimization_code
         # DUNG CHO JOB VUA CLAIM DUOC (co the KHAC job lan truoc, vi random
@@ -2498,6 +2528,8 @@ def worker_loop():
         print(f"\n[NHAN VIEC] Job {current_job_id} - Task {task_id}: frame "
               f"{frame_start}-{frame_end} (generation={generation})")
         log_task_event(task_id, worker_id, f"Nhan viec, dang render frame {frame_start}-{frame_end}")
+        report_state(worker_id, "RENDERING", task_id=task_id,
+                     reason=f"dang render frame {frame_start}-{frame_end}")
 
         # HEARTBEAT THREAD (khoi phuc 25/07/2026): BAT BUOC phai chay suot
         # thoi gian lam task, neu khong requeue_stale_tasks() ben Supabase se
@@ -2678,6 +2710,8 @@ def worker_loop():
                 print(f"[MERGE] Loi khong luong truoc ngoai attempt_job_video_merge(): {merge_err}")
         else:
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
+
+        report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
 
         # ----- TU KIEM TRA BAN MOI, DIEM THU 2 (bo sung 22/07/2026 toi):
         # kiem tra o nhanh "task is None" (dang ranh) o tren KHONG DU - neu
