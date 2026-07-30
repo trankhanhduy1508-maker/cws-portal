@@ -63,12 +63,12 @@ Customer Workflow • Worker • Payment • Dashboard
 - [x] Xóa Stripe — gỡ khỏi PaymentMethod enum (backend), PAYMENT_METHOD/PAYMENT_METHODS (frontend). Đã ở trạng thái disabled từ trước, giờ xóa hẳn.
 - [x] Xóa PayPal — tương tự Stripe.
 - [x] Xóa Wallet (Ví CWS) — KHÔNG có trong danh sách cleanup gốc nhưng PHÁT HIỆN THÊM: Wallet đang `available: true` và có WalletProvider thật (dù confirm() giả), vi phạm "Chỉ dùng: MB Bank QR". Đã xóa WalletProvider, gỡ khỏi PaymentsModule/PaymentsService/renderConstants.js. Đã thêm migration 004 để giới hạn DB constraint (chưa apply, CLOUD_VERIFICATION_REQUIRED).
-- [ ] Xóa MoMo — không tìm thấy code MoMo nào trong repo (N/A, có thể do chưa từng được thêm).
-- [ ] Xóa Google Login — chưa tìm thấy code (N/A, hoặc chưa audit đủ sâu authService).
-- [ ] Xóa OTP — chưa audit.
-- [ ] Xóa Zalo Login — chưa audit.
-- [ ] Xóa AI ETA — RENDER_PROFILES dùng durationMultiplier/queueMultiplier tĩnh (không phải AI), có vẻ KHÔNG phải "AI ETA" theo nghĩa cấm — cần xác nhận lại tên gọi/ý định roadmap.
-- [ ] Xóa Marketplace — chưa tìm thấy code Marketplace rõ ràng, nhưng worker-fleet.gateway.ts + scheduler có thể là tiền thân của mô hình marketplace nhiều máy — cần audit kỹ hơn để quyết định KEEP/REMOVE.
+- [x] Xóa MoMo — grep toàn bộ src/ + backend/src/ (case-insensitive): không có dòng code nào. N/A, không cần xóa gì.
+- [x] Xóa Google Login — grep xác nhận: không có code nào. N/A.
+- [x] Xóa OTP — grep xác nhận: không có code nào. N/A.
+- [x] Xóa Zalo Login — grep xác nhận: không có code nào. N/A.
+- [x] Xóa AI ETA/AI Pricing — grep xác nhận: không có code nào. RENDER_PROFILES chỉ dùng hệ số tĩnh (durationMultiplier/costMultiplier), không phải AI. N/A.
+- [x] Xóa Marketplace — grep xác nhận: không có code Marketplace (nhiều vendor/nhiều bên bán). worker-fleet.gateway.ts + scheduler là hạ tầng render nội bộ (Worker Fleet) — điều kiện BẮT BUỘC để MVP thực hiện được bước "Worker render", không phải tính năng Marketplace bị cấm. KEEP.
 
 ---
 
@@ -104,8 +104,8 @@ Customer Workflow • Worker • Payment • Dashboard
 - Facebook Login (BLOCKER lớn nhất — chưa có dòng code nào, cần FACEBOOK_APP_ID/SECRET thật). Customer Profile phụ thuộc việc này.
 - QR MB Bank thật cần số tài khoản/BIN thật (business info) để dựng ảnh VietQR quét được — hiện chỉ có nội dung chuyển khoản dạng text.
 - "Yêu cầu chỉnh sửa" (khách từ chối preview) — chưa implement (hiện chỉ có approve, chưa có reject/re-render).
-- Hỗ trợ OneDrive/Dropbox/Direct Link ngoài Google Drive.
-- Quyết định KEEP/REMOVE cho worker-fleet/scheduler (mô hình render farm nhiều máy) — có thể vượt phạm vi MVP.
+- Dashboard Admin UI (Giai đoạn 7) — API đã đủ (listAll, by-storage-code, by-code payment, logs, notifications, preview) nhưng CHƯA có màn hình admin nào ở frontend.
+- worker-fleet.gateway.ts + scheduler: đã xác nhận KEEP (hạ tầng Worker render bắt buộc cho MVP, không phải Marketplace bị cấm).
 
 ---
 
@@ -124,11 +124,11 @@ Customer Workflow • Worker • Payment • Dashboard
 
 # Next Task
 
-Đã xong: payment verification ở createOrder, webhook thật (PR #6), preview/approval gate + download logging (PR #7), CI GitHub Actions (PR #8). Đã tạo backend/src/customers module, chờ Facebook App credential để viết OAuth strategy.
+Đã xong (không cần credential): payment verification, webhook thật, preview/approval gate, download logging, CI, storage_code sinh tự động + tra cứu admin theo storage_code/payment_code, worker_logs (phát hiện task failed → chuyển ERROR + log), notifications (review-ready/error), OneDrive/Dropbox link support, cleanup toàn bộ tính năng ngoài MVP (xác nhận N/A cho MoMo/Google Login/OTP/Zalo/AI ETA/Marketplace).
 
-Còn lại không bị block: viết repository/service cho worker_logs/notifications (bảng đã tạo, chưa có code); wire StorageService vào Worker render pipeline thật (publishReviewImages() hiện chưa được gọi từ đâu khi Worker thật render xong — cần audit worker-fleet.gateway.ts/scheduler.service.ts để tìm điểm nối); Dashboard Admin (Phase 5, chưa bắt đầu).
+Còn lại không bị block: Dashboard Admin UI (frontend, cần thiết kế màn hình mới — rủi ro cao nếu làm mù không xem được UI thật); "yêu cầu chỉnh sửa" (reject preview) flow.
 
-Bị block chờ người dùng: Facebook Login (FACEBOOK_APP_ID/SECRET), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate secret đã lộ.
+Bị block chờ người dùng: Facebook Login (FACEBOOK_APP_ID/SECRET), QR MB Bank thật (số tài khoản/BIN), RLS (quyết định + policy), rotate secret đã lộ, xác nhận UI bằng mắt (không có browser tool phiên này).
 
 ---
 
