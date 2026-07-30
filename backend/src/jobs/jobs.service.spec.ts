@@ -2,22 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobsService } from './jobs.service';
 import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repository.interface';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
+import { PaymentsService } from '../payments/payments.service';
 import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.estimate()', () => {
   let service: JobsService;
   let mockRepository: { findActiveOrders: jest.Mock };
   let mockGateway: { countOnlineWorkers: jest.Mock };
+  let mockPaymentsService: { getStatus: jest.Mock };
 
   beforeEach(async () => {
     mockRepository = { findActiveOrders: jest.fn().mockResolvedValue([]) };
     mockGateway = { countOnlineWorkers: jest.fn().mockResolvedValue(1) }; // giả định có worker online -> queueSeconds = 0
+    mockPaymentsService = { getStatus: jest.fn().mockResolvedValue('paid') };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobsService,
         { provide: RENDER_ORDERS_REPOSITORY, useValue: mockRepository },
         { provide: WorkerFleetGateway, useValue: mockGateway },
+        { provide: PaymentsService, useValue: mockPaymentsService },
       ],
     }).compile();
 
