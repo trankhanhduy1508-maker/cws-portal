@@ -45,11 +45,19 @@ Kiểm tra: `curl http://localhost:3000/health` → `{"status":"ok",...}`
 
 ## 3. Chạy Migration (CHỈ CẦN LÀM 1 LẦN)
 
-Migration đã được chạy thật trên Supabase project `ynhxlxetwuiyejcjypsi`
-trong quá trình phát triển (4 bảng mới: render_orders, payments,
-sites, machine_capability, không đụng bảng cũ). Nếu deploy sang
-Supabase project khác, chạy lần lượt các file trong `migrations/` theo
-đúng thứ tự số (001 rồi 002 rồi 003) qua Supabase SQL Editor.
+Migration 001-006 đã được chạy thật trên Supabase project
+`ynhxlxetwuiyejcjypsi` (render_orders, payments, sites,
+machine_capability, customer_profiles, storage_objects, review_images,
+downloads, worker_logs, notifications — không đụng bảng jobs/tasks/
+workers cũ của Worker Fleet). Nếu deploy sang Supabase project khác,
+chạy lần lượt các file trong `migrations/` theo đúng thứ tự số (001
+đến 006) qua Supabase SQL Editor.
+
+**Lưu ý bảo mật:** `SUPABASE_SERVICE_ROLE_KEY` và `B2_APPLICATION_KEY`
+từng bị commit nhầm vào `backend/.env.example` (đã xóa khỏi working
+tree nhưng còn trong git history) — nếu chưa rotate 2 key này trên
+Supabase Dashboard (Settings > API) và Backblaze B2 (App Keys), PHẢI
+làm trước khi deploy production.
 
 ## 4. Deploy lên Render.com (khuyến nghị cho MVP)
 
@@ -86,9 +94,17 @@ bất kỳ dòng code nào ở Portal.
 - Đóng gói kết quả: hiện tại chỉ nén các frame PNG thành 1 file
   .zip — CHƯA tự động dựng thành video MP4 (vẫn cần Dy làm tay bằng
   ffmpeg như quy trình cũ nếu cần video).
-- Thanh toán: Wallet/QR Bank là placeholder (xác nhận ngay/mô phỏng
-  độ trễ), CHƯA nối cổng thanh toán thật. Stripe/PayPal trả lỗi rõ ràng
-  nếu gọi tới (Portal cũng đã ẩn 2 lựa chọn này ở UI).
+- Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
+  gỡ hoàn toàn. Webhook thật (`POST /payments/webhook`) đã đối chiếu
+  đúng nội dung+số tiền, nhưng CHƯA có ảnh VietQR quét được (cần số
+  tài khoản/BIN MB Bank thật) và CHƯA có webhook thật từ ngân hàng gọi
+  vào — cần business info trước khi vận hành thật.
+- Preview/duyệt: render xong dừng ở `review_ready`, tạo 3-5 ảnh
+  preview watermark thật — chỉ `POST /jobs/:id/approve` mới mở
+  `downloadUrl`. Tải file PHẢI qua `GET /jobs/:id/download` (có ghi
+  log), không dùng thẳng `downloadUrl` raw.
+- Facebook Login: CHƯA implement — cần `FACEBOOK_APP_ID`/`FACEBOOK_APP_SECRET`
+  thật. Không có bước này thì Customer Profile cũng chưa gắn được vào job.
 - Wake System (Model 2): luôn trả về thất bại vì
   cws_worker_full.py chưa có cơ chế relay Magic Packet — job sẽ tự
   rơi vào hàng đợi (Queue) đúng thiết kế, không bị treo.
