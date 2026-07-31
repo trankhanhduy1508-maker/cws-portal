@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CWS Payment Listener"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <!-- ===== Thiết bị (PHẦN 2.3) ===== -->
+        <TextView style="@style/SectionLabel" android:text="Thiết bị" />
+        <TextView android:id="@+id/tvDeviceId" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvManufacturer" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvModel" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvAndroidVersion" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvSdkVersion" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvAppVersion" style="@style/StatusRow" />
+
+        <!-- ===== Trạng thái quyền (PHẦN 2.2) ===== -->
+        <TextView style="@style/SectionLabel" android:text="Quyền / trạng thái" />
+        <TextView android:id="@+id/tvNotificationAccess" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvPostNotificationPermission" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvBatteryOptimization" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvBackendConnection" style="@style/StatusRow" />
+
+        <!-- ===== Hoạt động gần nhất ===== -->
+        <TextView style="@style/SectionLabel" android:text="Hoạt động gần nhất" />
+        <TextView android:id="@+id/tvLastHeartbeat" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvLastNotification" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvLastSyncResult" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvPendingCount" style="@style/StatusRow" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Nội dung raw gần nhất:"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/tvLastRawContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#F0F0F0"
+            android:padding="8dp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
+        <!-- ===== Hành động ===== -->
+        <TextView style="@style/SectionLabel" android:text="Hành động" android:layout_marginTop="16dp" />
+
+        <Button android:id="@+id/btnOpenNotificationAccess" style="@style/ActionButton"
+            android:text="Mở cài đặt cấp Notification Access" />
+        <Button android:id="@+id/btnOpenNotificationSettings" style="@style/ActionButton"
+            android:text="Mở cài đặt thông báo" />
+        <Button android:id="@+id/btnOpenBatterySettings" style="@style/ActionButton"
+            android:text="Mở cài đặt tối ưu pin" />
+        <Button android:id="@+id/btnCheckBackend" style="@style/ActionButton"
+            android:text="Kiểm tra kết nối backend" />
+        <Button android:id="@+id/btnResendPending" style="@style/ActionButton"
+            android:text="Gửi lại sự kiện đang chờ" />
+        <Button android:id="@+id/btnClearLog" style="@style/ActionButton"
+            android:text="Xoá log cục bộ" />
+        <Button android:id="@+id/btnCopyRaw" style="@style/ActionButton"
+            android:text="Sao chép raw notification để debug" />
+
+    </LinearLayout>
+</ScrollView>

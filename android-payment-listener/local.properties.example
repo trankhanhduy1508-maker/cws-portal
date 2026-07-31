@@ -1,0 +1,19 @@
+# Copy file này thành local.properties (CÙNG THƯ MỤC, ngang hàng file này)
+# trước khi build — local.properties BỊ GIT IGNORE, KHÔNG BAO GIỜ commit
+# file thật (xem PHẦN 5 — bảo mật: secret không được nằm trong source
+# code/APK repository dạng plaintext trong git).
+#
+# sdk.dir do chính Android Studio tự điền khi mở project lần đầu — KHÔNG
+# cần bạn tự thêm dòng đó ở đây.
+
+# URL Backend CWS thật (không có dấu / ở cuối), vd https://cws-backend.onrender.com
+cws.backend.base.url=
+
+# Secret CHỌN TRƯỚC khi build (vd chạy `openssl rand -hex 32`) — dùng để
+# ký request HMAC (xem RequestSigner.kt). Sau khi build + cài app, màn
+# hình trạng thái sẽ hiện device_id do app TỰ SINH NGẪU NHIÊN lúc chạy
+# lần đầu — đăng ký CẶP (device_id đó, ĐÚNG secret này) vào bảng
+# payment_devices qua Supabase SQL Editor (xem
+# backend/migrations/015_payment_devices.sql, mục ví dụ đăng ký).
+# ĐỔI secret = phải build lại APK.
+cws.device.secret=

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Chỉ 2 quyền THẬT SỰ cần: gọi HTTPS về Backend, và (Android 13+)
+         hiện thông báo trạng thái/lỗi cho chính app này (KHÔNG phải đọc
+         thông báo app khác — đó là NotificationListenerService, xin qua
+         màn hình Cài đặt riêng, không phải quyền runtime thường). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".App"
+        android:allowBackup="false"
+        android:label="CWS Payment Listener"
+        android:icon="@drawable/ic_launcher"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.CwsPaymentListener">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="CWS Payment Listener">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- PHẦN 2.1: chỉ nhận onNotificationPosted, KHÔNG dùng Accessibility
+             Service (permission khác hoàn toàn, không khai báo ở đây). -->
+        <service
+            android:name=".notification.MbBankNotificationListenerService"
+            android:label="CWS Payment Listener"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>
