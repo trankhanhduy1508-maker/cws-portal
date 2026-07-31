@@ -238,8 +238,8 @@ lần chạy mới nhất → mục **Artifacts** → `cws-mbbank-listener-debug
 
 ### Commit hash
 
-`<sẽ điền commit thật ở đây sau khi commit — theo đúng quy ước repo, xem lịch
-sử `docs(reports): dien commit hash that vao bao cao...`>`
+`ae711617a57d17dfb33739649e33a8bc68e3738e` — commit "feat(android): build APK
+that + Gradle Wrapper that + GitHub Actions CI".
 
 ## 9. Việc CHƯA làm (ngoài phạm vi lần này, theo đúng yêu cầu "không cần hoàn thiện app Android")
 
