@@ -150,7 +150,102 @@ pipeline này đã tồn tại sẵn từ trước, không cần sửa) → tr�
   `backend/src/common/guards/notification-secret.guard.spec.ts` (3 test case) —
   toàn bộ 65/65 test backend pass.
 
-## 8. Việc CHƯA làm (ngoài phạm vi lần này, theo đúng yêu cầu "không cần hoàn thiện app Android")
+## 8. Trạng thái build APK (cập nhật 2026-07-31, phiên làm việc build môi trường)
+
+### PHẦN 1 — Kiểm tra môi trường (kết quả THẬT, không đoán)
+
+Môi trường sandbox này **ban đầu KHÔNG có** Java/JDK/Gradle/Android SDK/ADB/
+sdkmanager (đã kiểm tra trực tiếp bằng `java -version`, `gradle -version`,
+`which adb sdkmanager` — tất cả "command not found"). Đã tự cài để build thật
+(không dừng ở "thiếu SDK", theo đúng yêu cầu):
+
+| Thành phần | Trạng thái | Nguồn |
+|---|---|---|
+| JDK | Đã cài Temurin 17.0.20+8 | `github.com/adoptium/temurin17-binaries` |
+| Gradle | Đã cài 8.7 (dùng để sinh wrapper), sau đó dùng qua Gradle Wrapper | `services.gradle.org` |
+| Android SDK cmdline-tools | Đã cài (`commandlinetools-win-11076708`) | `dl.google.com/android/repository` |
+| ANDROID_HOME/ANDROID_SDK_ROOT | `C:\Users\Administrator\android-toolchain\android-sdk` | — |
+| platform-tools/build-tools/platform | `platform-tools`, `build-tools;34.0.0`, `platforms;android-34` (khớp `compileSdk=34`) | cài qua `sdkmanager` |
+| License | Đã accept toàn bộ (`sdkmanager --licenses`) | — |
+| Gradle Wrapper | Đã sinh THẬT (không phải tay viết) bằng `gradle wrapper --gradle-version 8.7` — `gradlew`, `gradlew.bat`, `gradle-wrapper.jar`, `gradle-wrapper.properties` đều là file chuẩn Gradle | — |
+| compileSdk / targetSdk / minSdk | 34 / 34 / 24 (`app/build.gradle.kts`) | — |
+| AGP | 8.5.2 | `build.gradle.kts` (root) |
+| Kotlin | 1.9.24 | `build.gradle.kts` (root) |
+| namespace / applicationId | `com.cws.paymentlistener` | `app/build.gradle.kts` |
+| local.properties | Tạo tại chỗ CHỈ để build (placeholder, KHÔNG commit — xem `.gitignore`) | — |
+
+**Lỗi thật gặp phải và cách sửa** (PHẦN 7): lần chạy `testDebugUnitTest` đầu
+tiên fail với `java.io.IOException: The filename, directory name, or volume
+label syntax is incorrect` từ `SdkLocator.kt` — nguyên nhân: `sdk.dir` trong
+`local.properties` dùng escape backslash kiểu Windows (`C\:\\Users\\...`) bị
+ghi sai thành single-backslash khi qua heredoc, khiến Java Properties parser
+làm hỏng đường dẫn. **Sửa bằng cách dùng forward-slash** (`sdk.dir=C:/Users/...`)
+— AGP/Java File API trên Windows chấp nhận forward-slash bình thường, tránh
+toàn bộ vấn đề escape.
+
+### PHẦN 3/8 — Build THẬT đã chạy (không phải giả lập)
+
+```
+./gradlew clean                 -> BUILD SUCCESSFUL
+./gradlew testDebugUnitTest     -> BUILD SUCCESSFUL, 9/9 test pass, 0 failures
+  (NotificationParserTest: 4 test, RequestSignerTest: 5 test)
+./gradlew lintDebug             -> BUILD SUCCESSFUL, 0 error, 58 warning (không sửa hàng loạt warning)
+./gradlew assembleDebug         -> BUILD SUCCESSFUL
+```
+
+**APK**: `android-payment-listener/app/build/outputs/apk/debug/app-debug.apk`
+- Dung lượng: 6,288,843 bytes (6.28 MB) — KHÔNG rỗng, KHÔNG placeholder.
+- Xác nhận bằng `file` (Android package (APK), có APK Signing Block) + `aapt
+  dump badging` (package `com.cws.paymentlistener`, versionCode 1, versionName
+  `0.1.0-mvp`, minSdk 24, targetSdk 34, đúng permissions khai báo trong
+  Manifest — không có permission lạ nào ngoài INTERNET/ACCESS_NETWORK_STATE/
+  POST_NOTIFICATIONS + permission tự động của WorkManager (WAKE_LOCK,
+  RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE)).
+
+**CAPTURE_ONLY**: APK build ở trên có `PAYMENT_ENABLED=false` (mặc định khi
+`local.properties` không khai báo `cws.payment.enabled=true`, xem
+`app/build.gradle.kts`) — `SyncWorker` sẽ KHÔNG BAO GIỜ gọi
+`POST /payment/notification` cho tới khi chủ dự án chủ động build lại với cờ
+này bật, sau khi đã hiệu chỉnh xong parser + đăng ký thiết bị thật.
+
+### GitHub Actions (PHẦN 5 — vẫn tạo dù build local đã thành công, để có pipeline tái lặp được)
+
+File: `.github/workflows/android-payment-listener-build.yml` — trigger khi
+push/PR đổi `android-payment-listener/**` hoặc chạy tay (workflow_dispatch).
+Các bước: checkout → setup JDK 17 → setup Android SDK (`android-actions/
+setup-android@v3`, cài đúng `platforms;android-34`/`build-tools;34.0.0`) →
+cache Gradle → `testDebugUnitTest` → `lintDebug` → `assembleDebug` → kiểm tra
+APK không rỗng → upload artifact **`cws-mbbank-listener-debug-apk`**. KHÔNG
+publish release, KHÔNG dùng secret thật (local.properties trong CI chỉ có
+placeholder, `cws.payment.enabled` để trống = mặc định false).
+
+Cách tải: GitHub → tab **Actions** → **"Build Android Payment Listener"** →
+lần chạy mới nhất → mục **Artifacts** → `cws-mbbank-listener-debug-apk`.
+
+### Chưa xác nhận / CẦN CHỦ DỰ ÁN LÀM
+
+- **Chưa test trên điện thoại thật** — build/compile/unit test PASS không đồng
+  nghĩa `NotificationListenerService` hoạt động đúng trên Android thật (cần
+  cấp quyền Notification Access thật, nhận notification thật). KHÔNG tuyên bố
+  đã hoạt động.
+- **Parser vẫn là ước lượng** — 9 unit test ở trên test ĐÚNG LOGIC của regex,
+  KHÔNG chứng minh regex khớp định dạng MBBank thật (xem mục 4 phía trên).
+- Chủ dự án cần: (1) cài APK debug (xem `INSTALL_APK_VI.md`) lên điện thoại
+  thật có app MBBank, (2) dump mẫu thông báo thật, (3) sửa
+  `NotificationParser.kt` theo mẫu thật, (4) build lại với
+  `cws.payment.enabled=true` + secret/backend URL thật, (5) đăng ký device_id
+  vào `payment_devices` (migration 015).
+
+### Commit hash
+
+`<sẽ điền commit thật ở đây sau khi commit — theo đúng quy ước repo, xem lịch
+sử `docs(reports): dien commit hash that vao bao cao...`>`
+
+## 9. Việc CHƯA làm (ngoài phạm vi lần này, theo đúng yêu cầu "không cần hoàn thiện app Android")
+
+*(Ghi chú: mục "app Android chưa build" ở phần dưới đây thuộc lần nghiên cứu
+ban đầu — nay ĐÃ build được APK thật, xem mục 8 phía trên. Phần "chưa test
+điện thoại thật" và "chưa dump mẫu format thật" VẪN còn đúng.)*
 
 - App Android thật (NotificationListenerService + chuẩn hoá payload + gửi HTTPS)
   — cần thiết bị MBBank thật để dump format thông báo chính xác trước khi code

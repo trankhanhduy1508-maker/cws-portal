@@ -37,6 +37,16 @@ android {
             "DEVICE_SECRET",
             "\"${localProps.getProperty("cws.device.secret", "")}\"",
         )
+        // PHẦN 6 — an toàn mặc định: build debug LUÔN capture-only (vẫn đọc/
+        // parse/lưu notification cục bộ để hiệu chỉnh parser, nhưng KHÔNG
+        // BAO GIỜ gọi POST /payment/notification) trừ khi CHỦ ĐỘNG bật
+        // cws.payment.enabled=true trong local.properties. Heartbeat KHÔNG
+        // bị chặn (không ảnh hưởng tài chính).
+        buildConfigField(
+            "boolean",
+            "PAYMENT_ENABLED",
+            localProps.getProperty("cws.payment.enabled", "false"),
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -62,6 +72,7 @@ android {
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
+    sourceSets["test"].kotlin.srcDirs("src/test/kotlin")
 }
 
 dependencies {

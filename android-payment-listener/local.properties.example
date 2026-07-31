@@ -17,3 +17,10 @@ cws.backend.base.url=
 # backend/migrations/015_payment_devices.sql, mục ví dụ đăng ký).
 # ĐỔI secret = phải build lại APK.
 cws.device.secret=
+
+# An toàn mặc định: false (CAPTURE_ONLY — app vẫn đọc/parse/lưu notification
+# cục bộ để hiệu chỉnh parser, nhưng KHÔNG gọi POST /payment/notification).
+# CHỈ đổi thành true sau khi đã: (1) hiệu chỉnh xong NotificationParser bằng
+# mẫu MBBank thật, (2) đăng ký device_id + secret khớp vào payment_devices,
+# (3) xác nhận backend URL là backend THẬT (không phải môi trường test).
+cws.payment.enabled=false

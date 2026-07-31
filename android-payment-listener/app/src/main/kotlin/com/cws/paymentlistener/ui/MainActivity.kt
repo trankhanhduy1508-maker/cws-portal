@@ -79,6 +79,11 @@ class MainActivity : AppCompatActivity() {
             if (BuildConfig.BACKEND_BASE_URL.isBlank()) "❌ CHƯA cấu hình (xem local.properties)"
             else "Đã cấu hình: ${BuildConfig.BACKEND_BASE_URL}"
         }"
+        binding.tvPaymentMode.text = if (BuildConfig.PAYMENT_ENABLED) {
+            "⚠️ CHẾ ĐỘ: PAYMENT_ENABLED — sự kiện hợp lệ SẼ được gửi để xử lý thanh toán thật"
+        } else {
+            "🔒 CHẾ ĐỘ: CAPTURE_ONLY — chỉ ghi nhận/parse cục bộ, KHÔNG gửi thanh toán"
+        }
 
         lifecycleScope.launch {
             val dao = AppDatabase.get(applicationContext).eventDao()
@@ -169,7 +174,12 @@ class MainActivity : AppCompatActivity() {
             val request = OneTimeWorkRequestBuilder<SyncWorker>().build()
             WorkManager.getInstance(applicationContext)
                 .enqueueUniqueWork(SyncWorker.IMMEDIATE_WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
-            Toast.makeText(this, "Đã yêu cầu gửi lại — xem kết quả sau vài giây", Toast.LENGTH_SHORT).show()
+            val message = if (BuildConfig.PAYMENT_ENABLED) {
+                "Đã yêu cầu gửi lại — xem kết quả sau vài giây"
+            } else {
+                "Đang ở chế độ CAPTURE_ONLY — sự kiện KHÔNG được gửi đi (chỉ ghi nhận cục bộ)"
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         }
 
         binding.btnClearLog.setOnClickListener {

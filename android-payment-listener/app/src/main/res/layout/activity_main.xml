@@ -32,6 +32,7 @@
         <TextView android:id="@+id/tvPostNotificationPermission" style="@style/StatusRow" />
         <TextView android:id="@+id/tvBatteryOptimization" style="@style/StatusRow" />
         <TextView android:id="@+id/tvBackendConnection" style="@style/StatusRow" />
+        <TextView android:id="@+id/tvPaymentMode" style="@style/StatusRow" />
 
         <!-- ===== Hoạt động gần nhất ===== -->
         <TextView style="@style/SectionLabel" android:text="Hoạt động gần nhất" />

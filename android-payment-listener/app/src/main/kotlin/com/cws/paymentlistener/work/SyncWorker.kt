@@ -41,6 +41,13 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val deviceId = DeviceIdentity.getOrCreateDeviceId(applicationContext)
         val pending = dao.getSendable()
 
+        // PHẦN 6 — CAPTURE_ONLY: build chưa bật cws.payment.enabled=true thì
+        // KHÔNG BAO GIỜ gọi /payment/notification, dù đã parse hợp lệ. Sự
+        // kiện vẫn nằm nguyên trong Room (KHÔNG mất), chỉ chờ tới khi bật cờ.
+        if (!BuildConfig.PAYMENT_ENABLED) {
+            return@withContext Result.success()
+        }
+
         var hadTransientFailure = false
 
         for (event in pending) {
