@@ -135,6 +135,6 @@ truc tiep, khong thu lai duoi hinh thuc nao khac), can 1 trong 2 huong:
 
 ---
 
-**Commit:** (dien sau khi tao file nay va commit)
+**Commit:** `df40ab3`
 **Trang thai:** ⚠️ Con viec can lam — chua the ket luan day du vi thieu
 du lieu tu Backblaze B2.
