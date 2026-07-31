@@ -115,3 +115,138 @@ describe('PaymentsService.confirmViaWebhook()', () => {
     expect(mockRepository.updateStatus).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Test cho POST /payment/notification (Android Notification Listener
+ * MBBank) — dùng LẠI logic đối chiếu của confirmViaWebhook (matchAndConfirm,
+ * xem test suite ở trên), nên trọng tâm test ở đây là phần RIÊNG: chống
+ * trùng/replay qua transaction_id + audit log (payment_notifications).
+ */
+describe('PaymentsService.confirmViaMbbankNotification()', () => {
+  let service: PaymentsService;
+  let mockRepository: {
+    findByPaymentCode: jest.Mock;
+    updateStatus: jest.Mock;
+    findById: jest.Mock;
+    insertNotificationProcessing: jest.Mock;
+    findNotificationByTransactionId: jest.Mock;
+    markNotificationOutcome: jest.Mock;
+  };
+
+  function baseRecord(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
+    return {
+      paymentId: 'pay-1',
+      amountVnd: 45000,
+      method: PaymentMethod.QR_BANK,
+      status: PaymentStatus.PROCESSING,
+      createdAt: Date.now(),
+      confirmedAt: null,
+      paymentCode: 'AB12CD34',
+      transferContent: 'CWS CWS-AAAAAAAA AB12CD34',
+      jobId: 'job-1',
+      storageCode: 'CWS-AAAAAAAA',
+      bankName: 'MB Bank',
+      accountNumber: '0123456789',
+      qrImageUrl: null,
+      ...overrides,
+    };
+  }
+
+  function baseDto(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      transaction_id: 'FT2607310001',
+      amount: 45000,
+      transfer_content: 'CWS CWS-AAAAAAAA AB12CD34',
+      transaction_time: '2026-07-31T10:00:00Z',
+      sender_name: 'NGUYEN VAN A',
+      sender_account: '0987654321',
+      balance_after: 1000000,
+      raw_notification: { title: 'Biến động số dư' },
+      ...overrides,
+    } as never;
+  }
+
+  beforeEach(async () => {
+    mockRepository = {
+      findByPaymentCode: jest.fn(),
+      updateStatus: jest.fn(),
+      findById: jest.fn(),
+      insertNotificationProcessing: jest.fn(),
+      findNotificationByTransactionId: jest.fn(),
+      markNotificationOutcome: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PaymentsService,
+        { provide: PaymentsRepository, useValue: mockRepository },
+        { provide: QrBankProvider, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(PaymentsService);
+  });
+
+  it('notification hợp lệ -> set PAID và ghi payment_notifications.status=processed', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 1 });
+    mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
+    mockRepository.updateStatus.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
+
+    const result = await service.confirmViaMbbankNotification(baseDto());
+
+    expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: false });
+    expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(1, {
+      status: 'processed',
+      paymentId: 'pay-1',
+    });
+  });
+
+  it('notification KHÔNG hợp lệ (sai số tiền) -> KHÔNG mở khoá, ghi payment_notifications.status=rejected kèm lý do', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 2 });
+    mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
+
+    await expect(
+      service.confirmViaMbbankNotification(baseDto({ amount: 1 })),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(
+      2,
+      expect.objectContaining({ status: 'rejected' }),
+    );
+  });
+
+  it('CHỐNG TRÙNG/REPLAY: transaction_id đã xử lý trước đó -> KHÔNG xử lý lại, trả về kết quả cũ (idempotent)', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue(null); // unique_violation
+    mockRepository.findNotificationByTransactionId.mockResolvedValue({
+      id: 1,
+      transaction_id: 'FT2607310001',
+      status: 'processed',
+      reject_reason: null,
+      payment_id: 'pay-1',
+    });
+    mockRepository.findById.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
+
+    const result = await service.confirmViaMbbankNotification(baseDto());
+
+    expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: true });
+    expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('replay của 1 notification TRƯỚC ĐÓ đã bị rejected -> vẫn từ chối, không xử lý lại', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue(null);
+    mockRepository.findNotificationByTransactionId.mockResolvedValue({
+      id: 2,
+      transaction_id: 'FT2607310001',
+      status: 'rejected',
+      reject_reason: 'Số tiền không khớp',
+      payment_id: null,
+    });
+
+    await expect(service.confirmViaMbbankNotification(baseDto())).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
+  });
+});

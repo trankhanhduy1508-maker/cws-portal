@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PaymentsRepository } from './payments.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
@@ -6,9 +6,11 @@ import { IPaymentProvider } from './providers/payment-provider.interface';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
+import { MbbankNotificationDto } from './dto/mbbank-notification.dto';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
   private readonly providers: Partial<Record<PaymentMethod, IPaymentProvider>>;
 
   constructor(
@@ -137,10 +139,23 @@ export class PaymentsService {
    * (không phải luồng thật của MVP nên chấp nhận giới hạn này).
    */
   async confirmViaWebhook(dto: WebhookPaymentDto): Promise<{ paymentId: string; status: PaymentStatus }> {
-    const match = dto.transferContent.match(/CWS\s+(\S+)\s+([A-Za-z0-9]+)/);
+    return this.matchAndConfirm(dto.transferContent, dto.amountVnd);
+  }
+
+  /**
+   * Logic đối chiếu + đặt PAID DÙNG CHUNG cho mọi nguồn báo thanh toán
+   * (webhook ngân hàng/cổng trung gian THẬT, hoặc app Android đọc thông
+   * báo MBBank — xem confirmViaMbbankNotification()) — CHỈ 1 nơi duy
+   * nhất được phép set PAID, tránh 2 luồng đối chiếu lệch nhau.
+   */
+  private async matchAndConfirm(
+    transferContent: string,
+    amountVnd: number,
+  ): Promise<{ paymentId: string; status: PaymentStatus }> {
+    const match = transferContent.match(/CWS\s+(\S+)\s+([A-Za-z0-9]+)/);
     if (!match) {
       throw new BadRequestException(
-        `Nội dung chuyển khoản không đúng định dạng "CWS {storage_code} {payment_code}": "${dto.transferContent}"`,
+        `Nội dung chuyển khoản không đúng định dạng "CWS {storage_code} {payment_code}": "${transferContent}"`,
       );
     }
     const [, storageCodeRaw, paymentCodeRaw] = match;
@@ -159,14 +174,75 @@ export class PaymentsService {
         `Storage code không khớp cho payment ${record.paymentId}: kỳ vọng ${record.storageCode ?? '(không có)'}, nhận ${storageCode}`,
       );
     }
-    if (record.amountVnd !== dto.amountVnd) {
+    if (record.amountVnd !== amountVnd) {
       throw new BadRequestException(
-        `Số tiền không khớp cho payment ${record.paymentId}: kỳ vọng ${record.amountVnd}, nhận ${dto.amountVnd}`,
+        `Số tiền không khớp cho payment ${record.paymentId}: kỳ vọng ${record.amountVnd}, nhận ${amountVnd}`,
       );
     }
 
     const updated = await this.paymentsRepository.updateStatus(record.paymentId, PaymentStatus.PAID);
     if (!updated) throw new NotFoundException(`Không tìm thấy payment ${record.paymentId}`);
     return { paymentId: updated.paymentId, status: updated.status };
+  }
+
+  /**
+   * App Android Notification Listener báo về sau khi đọc được thông báo
+   * biến động số dư MBBank thật trên điện thoại (xem NotificationSecretGuard
+   * + reports/payments/MBBANK_NOTIFICATION_LISTENER_RESEARCH.md). Điện
+   * thoại CHỈ đưa tin — hàm này (Backend) mới là nơi quyết định thanh
+   * toán thành công, dùng LẠI đúng logic đối chiếu của confirmViaWebhook
+   * (matchAndConfirm), không tạo đường tắt riêng.
+   *
+   * Chống trùng/replay: ghi payment_notifications NGAY LẬP TỨC với
+   * transaction_id UNIQUE (migration 014) TRƯỚC khi xử lý — insert thất
+   * bại vì trùng nghĩa là request này đã xử lý trước đó (hoặc đang xử lý
+   * đồng thời), trả lại đúng kết quả cũ (idempotent), KHÔNG xử lý lại,
+   * KHÔNG coi là lỗi (điện thoại có thể gửi lại do mất mạng/retry).
+   * Notification không hợp lệ (sai định dạng/sai số tiền/không tìm thấy
+   * payment...) -> ghi rejected + lý do vào payment_notifications
+   * (audit log), KHÔNG mở khoá gì, ném lỗi lại cho caller.
+   */
+  async confirmViaMbbankNotification(
+    dto: MbbankNotificationDto,
+  ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean }> {
+    const inserted = await this.paymentsRepository.insertNotificationProcessing(dto);
+
+    if (!inserted) {
+      const existing = await this.paymentsRepository.findNotificationByTransactionId(
+        dto.transaction_id,
+      );
+      if (!existing) {
+        throw new BadRequestException(
+          `transaction_id ${dto.transaction_id} bị trùng nhưng không đọc lại được — thử lại sau`,
+        );
+      }
+      if (existing.status === 'rejected') {
+        throw new BadRequestException(
+          existing.reject_reason ?? `transaction_id ${dto.transaction_id} đã bị từ chối trước đó`,
+        );
+      }
+      const payment = existing.payment_id
+        ? await this.paymentsRepository.findById(existing.payment_id)
+        : null;
+      this.logger.warn(
+        `confirmViaMbbankNotification: transaction_id ${dto.transaction_id} đã xử lý trước đó — trả lại kết quả cũ (replay/retry)`,
+      );
+      return { paymentId: existing.payment_id, status: payment?.status ?? null, duplicate: true };
+    }
+
+    try {
+      const result = await this.matchAndConfirm(dto.transfer_content, dto.amount);
+      await this.paymentsRepository.markNotificationOutcome(inserted.id, {
+        status: 'processed',
+        paymentId: result.paymentId,
+      });
+      return { ...result, duplicate: false };
+    } catch (err) {
+      await this.paymentsRepository.markNotificationOutcome(inserted.id, {
+        status: 'rejected',
+        rejectReason: (err as Error).message,
+      });
+      throw err;
+    }
   }
 }

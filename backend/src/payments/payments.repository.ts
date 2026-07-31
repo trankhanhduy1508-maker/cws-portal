@@ -1,8 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
+import { MbbankNotificationDto } from './dto/mbbank-notification.dto';
 
 const TABLE = 'payments';
+const NOTIFICATIONS_TABLE = 'payment_notifications';
+
+export interface PaymentNotificationRow {
+  id: number;
+  transaction_id: string;
+  status: 'processing' | 'processed' | 'rejected';
+  reject_reason: string | null;
+  payment_id: string | null;
+}
+
+/** Postgres unique_violation — dùng để phát hiện transaction_id đã tồn
+ * tại (race condition an toàn hơn "select trước rồi insert sau", 2 request
+ * đồng thời cùng transaction_id vẫn chỉ 1 cái insert thành công). */
+const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 interface PaymentRow {
   id: string;
@@ -118,5 +133,81 @@ export class PaymentsRepository {
       throw new Error(`Không đọc được payment: ${error.message}`);
     }
     return data ? rowToDomain(data as PaymentRow) : null;
+  }
+
+  /** Ghi 1 dòng payment_notifications với status='processing' NGAY LẬP
+   * TỨC khi nhận request — transaction_id UNIQUE (migration 014) là cơ
+   * chế chống trùng/replay THẬT SỰ (không phải chỉ check-rồi-insert, dễ
+   * dính race condition nếu 2 request cùng transaction_id đến gần như
+   * đồng thời). Trả về `null` nếu transaction_id đã tồn tại — gọi nơi
+   * (PaymentsService) tự lấy dòng cũ qua findNotificationByTransactionId()
+   * để trả lại kết quả cũ, KHÔNG xử lý lại. */
+  async insertNotificationProcessing(
+    dto: MbbankNotificationDto,
+  ): Promise<PaymentNotificationRow | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(NOTIFICATIONS_TABLE)
+      .insert({
+        transaction_id: dto.transaction_id,
+        amount_vnd: dto.amount,
+        transaction_time: dto.transaction_time ?? null,
+        sender_name: dto.sender_name ?? null,
+        sender_account: dto.sender_account ?? null,
+        transfer_content: dto.transfer_content,
+        balance_after: dto.balance_after ?? null,
+        raw_notification: dto.raw_notification ?? null,
+        status: 'processing',
+      })
+      .select('id, transaction_id, status, reject_reason, payment_id')
+      .single();
+
+    if (error) {
+      if (error.code === POSTGRES_UNIQUE_VIOLATION) return null;
+      this.logger.error(
+        `insertNotificationProcessing(${dto.transaction_id}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không ghi được payment_notifications: ${error.message}`);
+    }
+    return data as PaymentNotificationRow;
+  }
+
+  async findNotificationByTransactionId(
+    transactionId: string,
+  ): Promise<PaymentNotificationRow | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(NOTIFICATIONS_TABLE)
+      .select('id, transaction_id, status, reject_reason, payment_id')
+      .eq('transaction_id', transactionId)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(
+        `findNotificationByTransactionId(${transactionId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không đọc được payment_notifications: ${error.message}`);
+    }
+    return data as PaymentNotificationRow | null;
+  }
+
+  async markNotificationOutcome(
+    id: number,
+    outcome: { status: 'processed' | 'rejected'; rejectReason?: string; paymentId?: string },
+  ): Promise<void> {
+    const { error } = await this.supabaseService
+      .getClient()
+      .from(NOTIFICATIONS_TABLE)
+      .update({
+        status: outcome.status,
+        reject_reason: outcome.rejectReason ?? null,
+        payment_id: outcome.paymentId ?? null,
+      })
+      .eq('id', id);
+
+    if (error) {
+      this.logger.error(`markNotificationOutcome(${id}) thất bại: ${error.message}`);
+      throw new Error(`Không cập nhật được payment_notifications: ${error.message}`);
+    }
   }
 }
