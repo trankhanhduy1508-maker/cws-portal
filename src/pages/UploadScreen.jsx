@@ -13,7 +13,6 @@ export default function UploadScreen({
   source, setSource,
   file, fileError, onFileSelected,
   driveLink, linkError, resolvedInfo, isResolving, onDriveLinkSubmit,
-  software, setSoftware, softwareVersion, setSoftwareVersion, notes, setNotes,
   onContinue, isContinuing,
 }) {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
@@ -63,35 +62,6 @@ export default function UploadScreen({
           </button>
         )
       )}
-
-      {/* Phần mềm/Phiên bản/Ghi chú — CWS_MVP_WORKFLOW_FINAL.md, mục "Tạo
-          Job" ("Khách nhập: ... Phần mềm. Phiên bản. ... Ghi chú.").
-          Không bắt buộc — Worker hiện chỉ render Blender (.blend) nên
-          đây chủ yếu là thông tin tham khảo cho admin, không phải điều
-          kiện chặn tạo job. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <input
-            value={software}
-            onChange={(e) => setSoftware(e.target.value)}
-            placeholder="Phần mềm (vd Blender)"
-            style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
-          />
-          <input
-            value={softwareVersion}
-            onChange={(e) => setSoftwareVersion(e.target.value)}
-            placeholder="Phiên bản (vd 4.2)"
-            style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
-          />
-        </div>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Ghi chú cho đội render (không bắt buộc)"
-          rows={2}
-          style={{ padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5, resize: 'vertical' }}
-        />
-      </div>
 
       <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
         {isContinuing ? 'Đang tải lên...' : 'Tiếp tục'}

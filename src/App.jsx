@@ -57,14 +57,9 @@ function CustomerPortalApp() {
   const [screen, setScreen] = useState(SCREEN.LANDING);
   const [screenBeforeHistory, setScreenBeforeHistory] = useState(SCREEN.LANDING);
   const [source, setSource] = useState(FILE_SOURCE.UPLOAD);
-  const [resolvedInput, setResolvedInput] = useState(null); // { fileRef, driveLink, fileName, fileSizeBytes, software, softwareVersion, notes }
+  const [resolvedInput, setResolvedInput] = useState(null); // { fileRef, driveLink, fileName, fileSizeBytes }
   const [activeProjectName, setActiveProjectName] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
-  // "Tạo Job": Phần mềm/Phiên bản/Ghi chú (CWS_MVP_WORKFLOW_FINAL.md,
-  // mục "Tạo Job") — không bắt buộc, chỉ là thông tin tham khảo cho admin.
-  const [software, setSoftware] = useState('');
-  const [softwareVersion, setSoftwareVersion] = useState('');
-  const [notes, setNotes] = useState('');
 
   const { file, fileError, setFile, clearFile } = useFileSelection();
   const { driveLink, linkError, resolvedInfo, isResolving, submitLink, clearLink } = useDriveLink();
@@ -93,18 +88,13 @@ function CustomerPortalApp() {
   // ---- Bước 1: Upload/Drive -> Render Profile ----
   const handleContinueFromUpload = useCallback(async () => {
     try {
-      const jobDetails = {
-        software: software.trim() || null,
-        softwareVersion: softwareVersion.trim() || null,
-        notes: notes.trim() || null,
-      };
       if (source === FILE_SOURCE.UPLOAD) {
         const uploaded = await fileUploadResolver.resolve(file);
-        setResolvedInput({ fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes, ...jobDetails });
+        setResolvedInput({ fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes });
         setActiveProjectName(uploaded.fileName);
       } else {
         const fileName = resolvedInfo?.fileName || driveLink;
-        setResolvedInput({ fileRef: null, driveLink, fileName, fileSizeBytes: resolvedInfo?.fileSizeBytes, ...jobDetails });
+        setResolvedInput({ fileRef: null, driveLink, fileName, fileSizeBytes: resolvedInfo?.fileSizeBytes });
         setActiveProjectName(fileName);
       }
       setScreen(SCREEN.PROFILE);
@@ -112,7 +102,7 @@ function CustomerPortalApp() {
       // Lỗi đã được lưu trong fileUploadResolver.uploadError, hiển thị
       // ngay trên UploadScreen (xem UploadZone/fileError phía dưới).
     }
-  }, [source, file, driveLink, resolvedInfo, fileUploadResolver, software, softwareVersion, notes]);
+  }, [source, file, driveLink, resolvedInfo, fileUploadResolver]);
 
   // ---- Bước 2: Render Profile -> Processing (tạo job NGAY, render miễn
   // phí — thanh toán chỉ diễn ra sau khi khách duyệt preview, xem
@@ -143,9 +133,6 @@ function CustomerPortalApp() {
     setResolvedInput(null);
     setActiveProjectName(null);
     setSelectedProfileId(null);
-    setSoftware('');
-    setSoftwareVersion('');
-    setNotes('');
     setScreen(SCREEN.UPLOAD);
   }, [job, clearFile, clearLink]);
 
@@ -218,12 +205,6 @@ function CustomerPortalApp() {
             resolvedInfo={resolvedInfo}
             isResolving={isResolving}
             onDriveLinkSubmit={submitLink}
-            software={software}
-            setSoftware={setSoftware}
-            softwareVersion={softwareVersion}
-            setSoftwareVersion={setSoftwareVersion}
-            notes={notes}
-            setNotes={setNotes}
             onContinue={handleContinueFromUpload}
             isContinuing={fileUploadResolver.isUploading}
           />

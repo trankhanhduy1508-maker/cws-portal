@@ -1,23 +1,18 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { UploadCloud, FileBox, AlertCircle } from 'lucide-react';
 import { formatBytes } from '../utils/fileUtils';
 import { ACCEPTED_FILE_EXTENSIONS } from '../constants/renderConstants';
 import './UploadZone.css';
 
+/** Chọn file bằng bấm nút — KHÔNG hỗ trợ kéo-thả (dropzone kéo-thả từng
+ * gây hiểu nhầm trên mobile, nơi không có thao tác kéo-thả file). */
 export default function UploadZone({ file, fileError, onFileSelected }) {
   const inputRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const handleFiles = useCallback((fileList) => {
     const f = fileList?.[0];
     if (f) onFileSelected(f);
   }, [onFileSelected]);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFiles(e.dataTransfer.files);
-  }, [handleFiles]);
 
   if (file) {
     return (
@@ -50,22 +45,18 @@ export default function UploadZone({ file, fileError, onFileSelected }) {
   return (
     <div>
       <div
-        className={`upload-zone ${isDragging ? 'is-dragging' : ''} ${fileError ? 'has-error' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
+        className={`upload-zone ${fileError ? 'has-error' : ''}`}
         onClick={() => inputRef.current?.click()}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
-        aria-label="Kéo thả file vào đây hoặc bấm để chọn file"
+        aria-label="Bấm để chọn file từ máy"
       >
-        {isDragging && <div className="upload-zone__scanline" />}
         <div className="upload-zone__icon">
           <UploadCloud size={32} strokeWidth={1.5} />
         </div>
-        <p className="upload-zone__title">Kéo thả file vào đây</p>
-        <p className="upload-zone__subtitle">hoặc bấm để chọn từ máy</p>
+        <p className="upload-zone__title">Chọn file để tải lên</p>
+        <p className="upload-zone__subtitle">Bấm để chọn từ máy</p>
         <input
           ref={inputRef}
           type="file"
