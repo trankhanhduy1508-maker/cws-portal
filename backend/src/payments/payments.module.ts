@@ -4,11 +4,12 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { PaymentsRepository } from './payments.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
+import { RoleGuard } from '../common/guards/role.guard';
 
 @Module({
   imports: [SupabaseModule],
   controllers: [PaymentsController],
-  providers: [PaymentsService, PaymentsRepository, QrBankProvider],
+  providers: [PaymentsService, PaymentsRepository, QrBankProvider, RoleGuard],
   exports: [PaymentsService],
 })
 export class PaymentsModule {}

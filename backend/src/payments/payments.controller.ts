@@ -10,7 +10,7 @@ import {
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
-import { AdminKeyGuard } from '../common/guards/admin-key.guard';
+import { RoleGuard } from '../common/guards/role.guard';
 import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
 
 @Controller('payments')
@@ -24,7 +24,7 @@ export class PaymentsController {
 
   /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   @Get('by-code/:paymentCode')
-  @UseGuards(AdminKeyGuard)
+  @UseGuards(RoleGuard)
   async getByPaymentCode(@Param('paymentCode') paymentCode: string) {
     return this.paymentsService.getByPaymentCode(paymentCode);
   }

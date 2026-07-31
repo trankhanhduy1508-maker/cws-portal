@@ -12,6 +12,9 @@ import PreviewDownloadScreen from './pages/PreviewDownloadScreen';
 import ErrorScreen from './pages/ErrorScreen';
 import HistoryScreen from './pages/HistoryScreen';
 import AdminScreen from './pages/AdminScreen';
+import StaffLoginScreen from './pages/StaffLoginScreen';
+import HostScreen from './pages/HostScreen';
+import { getStaffMe } from './services/staffApi';
 import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
 import { useFileUploadResolver } from './hooks/useFileUploadResolver';
@@ -50,7 +53,44 @@ export default function App() {
   if (window.location.hash === '#admin') {
     return <AdminScreen />;
   }
+  // Đăng nhập nhân sự thật (Phần 6) — tách biệt Facebook Login của
+  // khách hàng. #host BẮT BUỘC qua đây (không có secret key thay thế
+  // như #admin) — xem HostGate bên dưới, kiểm tra role qua Backend
+  // (GET /staff/me), KHÔNG tự đoán ở Frontend.
+  if (window.location.hash === '#staff-login') {
+    return <StaffLoginScreen />;
+  }
+  if (window.location.hash === '#host') {
+    return <HostGate />;
+  }
   return <CustomerPortalApp />;
+}
+
+/** Chặn #host cho tới khi xác nhận ĐÚNG role='host' qua Backend thật
+ * (RoleGuard) — không chỉ dựa vào việc có access token Supabase hay
+ * không (1 khách Facebook đã đăng nhập cũng có access token, nhưng
+ * KHÔNG có role trong staff_roles nên GET /staff/me sẽ trả 403). */
+function HostGate() {
+  const [state, setState] = useState('loading'); // loading | ok | denied
+
+  useEffect(() => {
+    getStaffMe()
+      .then((me) => setState(me.role === 'host' ? 'ok' : 'denied'))
+      .catch(() => setState('denied'));
+  }, []);
+
+  useEffect(() => {
+    // window.location.hash không tự kích hoạt App() render lại (không có
+    // hashchange listener) — reload() để chắc chắn StaffLoginScreen hiện
+    // ra, cùng cách StaffLoginScreen/HostScreen đang làm sau đăng nhập/xuất.
+    if (state === 'denied') {
+      window.location.hash = '#staff-login';
+      window.location.reload();
+    }
+  }, [state]);
+
+  if (state === 'ok') return <HostScreen />;
+  return <p style={{ padding: 24 }}>Đang kiểm tra quyền truy cập...</p>;
 }
 
 function CustomerPortalApp() {

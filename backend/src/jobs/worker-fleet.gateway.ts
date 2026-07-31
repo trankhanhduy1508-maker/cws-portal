@@ -121,13 +121,14 @@ export class WorkerFleetGateway {
       lastTransitionAt: number | null;
       healthState: string | null;
       desiredState: string | null;
+      currentTaskId: number | null;
     }[]
   > {
     const client = this.supabaseService.getClient();
     const { data, error } = await client
       .from('workers')
       .select(
-        'worker_id, gpu_name, vram_mb, status, last_seen_at, crash_count, observed_state, state_reason, last_transition_at, health_state, desired_state',
+        'worker_id, gpu_name, vram_mb, status, last_seen_at, crash_count, observed_state, state_reason, last_transition_at, health_state, desired_state, current_task_id',
       )
       .order('last_seen_at', { ascending: false });
 
@@ -148,6 +149,7 @@ export class WorkerFleetGateway {
         last_transition_at: string | null;
         health_state: string | null;
         desired_state: string | null;
+        current_task_id: number | null;
       };
       return {
         workerId: row.worker_id,
@@ -163,6 +165,7 @@ export class WorkerFleetGateway {
           : null,
         healthState: row.health_state,
         desiredState: row.desired_state,
+        currentTaskId: row.current_task_id,
       };
     });
   }
