@@ -22,7 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
--e 
+
+# Vercel CLI project link (chứa projectId/orgId, không phải secret nhưng
+# không nên commit — tránh gắn nhầm checkout cục bộ vào 1 trong nhiều
+# project Vercel đang tồn tại cho repo này, xem reports/deployment/)
+.vercel
+
 # Local env (chứa API key/URL thật khi có Backend)
 .env
 .env.local
