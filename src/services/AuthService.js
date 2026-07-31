@@ -2,9 +2,13 @@
 // AuthService — Facebook Login qua Supabase Auth (KHÔNG tự làm OAuth
 // thủ công, KHÔNG có form nhập username/password Facebook ở đây hay
 // bất kỳ đâu trong CWS — Facebook lo đăng nhập/xác minh/xin quyền,
-// Supabase Auth lo phiên đăng nhập, CWS chỉ ĐỌC session). Cùng nguyên
-// tắc mock/real với RenderService.js: chưa cấu hình Supabase thì dùng
-// mockFacebookLogin() để demo vẫn dùng được.
+// Supabase Auth lo phiên đăng nhập, CWS chỉ ĐỌC session).
+//
+// mockFacebookLogin() KHÔNG còn là fallback tự động khi thiếu cấu
+// hình (lỗi đã gặp: thiếu .env khiến khách bị đăng nhập giả và nhảy
+// thẳng qua màn hình Facebook thật). Mock chỉ bật khi CHỦ ĐỘNG khai
+// báo VITE_ENABLE_MOCK_AUTH=true lúc chạy dev (import.meta.env.DEV) —
+// không bao giờ tự kích hoạt trên bản build production.
 // ============================================================
 
 import { supabase, IS_SUPABASE_CONFIGURED } from './supabaseClient';
@@ -12,6 +16,11 @@ import * as mock from './mockBackend';
 
 const MOCK_TOKEN_KEY = 'cws_mock_auth_token';
 const MOCK_CUSTOMER_KEY = 'cws_mock_auth_customer';
+
+const USE_MOCK_AUTH =
+  !IS_SUPABASE_CONFIGURED &&
+  import.meta.env.DEV &&
+  import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true';
 
 function getMockSession() {
   try {
@@ -50,7 +59,8 @@ export async function getAccessToken() {
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   }
-  return getMockSession()?.token ?? null;
+  if (USE_MOCK_AUTH) return getMockSession()?.token ?? null;
+  return null;
 }
 
 /**
@@ -69,9 +79,12 @@ export async function startFacebookLogin() {
     if (error) throw new Error(error.message || 'Không bắt đầu được đăng nhập Facebook');
     return null;
   }
-  const { token, customer } = await mock.mockFacebookLogin();
-  storeMockSession(token, customer);
-  return customer;
+  if (USE_MOCK_AUTH) {
+    const { token, customer } = await mock.mockFacebookLogin();
+    storeMockSession(token, customer);
+    return customer;
+  }
+  throw new Error('Đăng nhập Facebook chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
 }
 
 export async function logout() {
@@ -79,7 +92,7 @@ export async function logout() {
     await supabase.auth.signOut();
     return;
   }
-  clearMockSession();
+  if (USE_MOCK_AUTH) clearMockSession();
 }
 
 /** Lắng nghe thay đổi trạng thái đăng nhập (đăng nhập/đăng xuất/token
@@ -92,7 +105,7 @@ export function onAuthStateChange(callback) {
     });
     return () => data.subscription.unsubscribe();
   }
-  callback(getMockSession()?.customer ?? null);
+  callback(USE_MOCK_AUTH ? getMockSession()?.customer ?? null : null);
   return () => {};
 }
 
@@ -102,7 +115,8 @@ export async function getCurrentUser() {
     const { data } = await supabase.auth.getSession();
     return data.session?.user ?? null;
   }
-  return getMockSession()?.customer ?? null;
+  if (USE_MOCK_AUTH) return getMockSession()?.customer ?? null;
+  return null;
 }
 
 /**

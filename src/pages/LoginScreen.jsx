@@ -19,12 +19,15 @@ export default function LoginScreen({ onLogin, isLoading, error }) {
 
       <div style={{ width: '100%', maxWidth: 320, marginTop: 8 }}>
         <Button icon={LogIn} onClick={onLogin} disabled={isLoading}>
-          {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Facebook'}
+          {isLoading ? 'Đang đăng nhập...' : error ? 'Thử lại đăng nhập với Facebook' : 'Đăng nhập với Facebook'}
         </Button>
       </div>
 
       {error && (
-        <p style={{ fontSize: 13.5, color: '#E5484D', textAlign: 'center', marginTop: 12 }}>
+        <p
+          role="alert"
+          style={{ fontSize: 13.5, color: '#E5484D', textAlign: 'center', marginTop: 12 }}
+        >
           {error}
         </p>
       )}
