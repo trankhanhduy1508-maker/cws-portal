@@ -158,7 +158,7 @@ Vercel Dashboard tu moi truong nay).
 
 ---
 
-**Commit:** (dien sau khi tao file va commit)
+**Commit:** `dffafb4`
 **Trang thai:** ⚠️ Con viec can lam — da xac dinh chinh xac CO CHE gay
 ra nhieu project (import lap lai tren Dashboard, khong phai loi
 script/CI/token trong repo), nhung **can Dy tu xac nhan tren Vercel
