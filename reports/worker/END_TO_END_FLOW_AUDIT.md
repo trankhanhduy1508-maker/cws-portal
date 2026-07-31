@@ -228,7 +228,7 @@ KHONG doi `worker_config.latest_version` cho toi khi Dy xac nhan.**
 
 ---
 
-**Commit:** (dien sau khi tao file va commit)
+**Commit:** `0e8f620`
 **Trang thai:** ⚠️ Con viec can lam — audit code cho ca 7 buoc HOAN TAT,
 khong phat hien sai lech nao trong code, nhung CHUA THE ket luan day du
 vi dang cho xac nhan tu B2 (Buoc 2) va can may Worker that de xac nhan
