@@ -197,7 +197,7 @@ MERGE_MAX_RETRIES = 2  # thu lai them 2 lan (tong 3 lan) neu ffmpeg loi
 # nhat cot latest_version trong bang worker_config (Supabase) tuong ung,
 # de cws_worker.bat (lop vo ngoai) biet khi nao can tu tai ban moi ve.
 # Xem 10_setup_worker_selfheal.sql.
-WORKER_VERSION = "1.14.0"
+WORKER_VERSION = "1.17.0"
 
 # Phase 8 (CWS_WORKER_ROADMAP.md, "Thong ke thoi gian thue host"): thoi
 # diem CHINH process Python nay bat dau chay - KHONG doi trong suot vong
