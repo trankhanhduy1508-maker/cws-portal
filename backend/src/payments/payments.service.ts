@@ -204,8 +204,9 @@ export class PaymentsService {
    */
   async confirmViaMbbankNotification(
     dto: MbbankNotificationDto,
+    deviceId: string,
   ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean }> {
-    const inserted = await this.paymentsRepository.insertNotificationProcessing(dto);
+    const inserted = await this.paymentsRepository.insertNotificationProcessing(dto, deviceId);
 
     if (!inserted) {
       const existing = await this.paymentsRepository.findNotificationByTransactionId(

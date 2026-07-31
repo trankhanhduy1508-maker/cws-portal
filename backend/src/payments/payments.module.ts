@@ -6,7 +6,7 @@ import { PaymentsService } from './payments.service';
 import { PaymentsRepository } from './payments.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
 import { RoleGuard } from '../common/guards/role.guard';
-import { NotificationSecretGuard } from '../common/guards/notification-secret.guard';
+import { DeviceSignatureGuard } from '../common/guards/device-signature.guard';
 
 @Module({
   imports: [SupabaseModule],
@@ -16,7 +16,7 @@ import { NotificationSecretGuard } from '../common/guards/notification-secret.gu
     PaymentsRepository,
     QrBankProvider,
     RoleGuard,
-    NotificationSecretGuard,
+    DeviceSignatureGuard,
   ],
   exports: [PaymentsService],
 })

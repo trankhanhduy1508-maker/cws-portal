@@ -192,9 +192,13 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
     mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
     mockRepository.updateStatus.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
 
-    const result = await service.confirmViaMbbankNotification(baseDto());
+    const result = await service.confirmViaMbbankNotification(baseDto(), 'device-1');
 
     expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: false });
+    expect(mockRepository.insertNotificationProcessing).toHaveBeenCalledWith(
+      expect.objectContaining({ transaction_id: 'FT2607310001' }),
+      'device-1',
+    );
     expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(1, {
       status: 'processed',
       paymentId: 'pay-1',
@@ -206,7 +210,7 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
     mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
 
     await expect(
-      service.confirmViaMbbankNotification(baseDto({ amount: 1 })),
+      service.confirmViaMbbankNotification(baseDto({ amount: 1 }), 'device-1'),
     ).rejects.toThrow(BadRequestException);
 
     expect(mockRepository.updateStatus).not.toHaveBeenCalled();
@@ -227,7 +231,7 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
     });
     mockRepository.findById.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
 
-    const result = await service.confirmViaMbbankNotification(baseDto());
+    const result = await service.confirmViaMbbankNotification(baseDto(), 'device-1');
 
     expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: true });
     expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
@@ -244,7 +248,7 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
       payment_id: null,
     });
 
-    await expect(service.confirmViaMbbankNotification(baseDto())).rejects.toThrow(
+    await expect(service.confirmViaMbbankNotification(baseDto(), 'device-1')).rejects.toThrow(
       BadRequestException,
     );
     expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();

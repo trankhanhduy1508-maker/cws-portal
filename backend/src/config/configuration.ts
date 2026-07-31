@@ -16,7 +16,6 @@ export interface AppConfig {
   };
   adminApiKey: string | null;
   paymentWebhookSecret: string | null;
-  mbbankNotificationSecret: string | null;
 }
 
 /**
@@ -62,12 +61,10 @@ export function loadConfig(): AppConfig {
     // chỉ validate 3 trường đó là chưa đủ để xác nhận request đến từ ngân
     // hàng thật — xem common/guards/webhook-secret.guard.ts.
     paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? null,
-    // Shared secret xác thực app Android Notification Listener (đọc thông
-    // báo biến động số dư MBBank) gọi vào POST /payment/notification —
-    // xem common/guards/notification-secret.guard.ts. Secret RIÊNG với
-    // paymentWebhookSecret ở trên (điện thoại là thiết bị vật lý, cần
-    // rotate độc lập với webhook ngân hàng chính thức).
-    mbbankNotificationSecret: process.env.MBBANK_NOTIFICATION_SECRET ?? null,
+    // POST /payment/notification (app Android MBBank Notification Listener)
+    // KHÔNG dùng 1 secret tĩnh chung nữa — mỗi thiết bị có secret RIÊNG lưu
+    // trong bảng payment_devices (migration 015), xác thực qua chữ ký HMAC
+    // (xem common/guards/device-signature.guard.ts), không đọc từ env.
   };
 }
 

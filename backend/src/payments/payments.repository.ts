@@ -144,6 +144,7 @@ export class PaymentsRepository {
    * để trả lại kết quả cũ, KHÔNG xử lý lại. */
   async insertNotificationProcessing(
     dto: MbbankNotificationDto,
+    deviceId: string,
   ): Promise<PaymentNotificationRow | null> {
     const { data, error } = await this.supabaseService
       .getClient()
@@ -158,6 +159,7 @@ export class PaymentsRepository {
         balance_after: dto.balance_after ?? null,
         raw_notification: dto.raw_notification ?? null,
         status: 'processing',
+        device_id: deviceId,
       })
       .select('id, transaction_id, status, reject_reason, payment_id')
       .single();
