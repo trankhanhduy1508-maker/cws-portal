@@ -108,7 +108,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     updateStatus: jest.Mock;
     updateResult: jest.Mock;
   };
-  let mockGateway: { getJobMeta: jest.Mock };
+  let mockGateway: { getJobMeta: jest.Mock; adminCancelJob: jest.Mock };
   let mockPackagingService: { packageRenderResult: jest.Mock };
   let mockPaymentsService: { createIntent: jest.Mock; getStatus: jest.Mock };
   let mockPricingService: { computeFinalPriceVnd: jest.Mock };
@@ -153,6 +153,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     };
     mockGateway = {
       getJobMeta: jest.fn().mockResolvedValue({ totalFrames: 48, fps: 24 }),
+      adminCancelJob: jest.fn().mockResolvedValue(1),
     };
     mockPackagingService = {
       packageRenderResult: jest.fn().mockResolvedValue({
@@ -294,6 +295,7 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     findById: jest.Mock;
     markCancelled: jest.Mock;
   };
+  let mockGateway: { adminCancelJob: jest.Mock };
 
   function baseOrder(overrides: Partial<RenderOrder> = {}): RenderOrder {
     return {
@@ -330,12 +332,13 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
       findById: jest.fn(),
       markCancelled: jest.fn(),
     };
+    mockGateway = { adminCancelJob: jest.fn().mockResolvedValue(1) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobsService,
         { provide: RENDER_ORDERS_REPOSITORY, useValue: mockRepository },
-        { provide: WorkerFleetGateway, useValue: {} },
+        { provide: WorkerFleetGateway, useValue: mockGateway },
         { provide: PACKAGING_SERVICE, useValue: {} },
         { provide: StorageService, useValue: {} },
         { provide: B2StorageService, useValue: {} },
@@ -412,6 +415,46 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
       service.cancel('job-1', 'customer-owner'),
     ).resolves.toMatchObject({ status: JobStatus.CANCELLED });
     expect(mockRepository.markCancelled).toHaveBeenCalledWith('job-1');
+  });
+
+  it('cancel() báo Worker Fleet huỷ task qua internalJobId (không phải render_orders.id) — bug đã sửa: trước đây cancel() không hề báo Worker', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.REVIEW_READY, internalJobId: 'internal-1' }),
+    );
+    mockRepository.markCancelled.mockResolvedValue(
+      baseOrder({ status: JobStatus.CANCELLED }),
+    );
+
+    await service.cancel('job-1', 'customer-owner');
+
+    expect(mockGateway.adminCancelJob).toHaveBeenCalledWith('internal-1');
+  });
+
+  it('cancel() bỏ qua việc báo Worker Fleet nếu job chưa có internalJobId (chưa từng tạo internal job)', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.REVIEW_READY, internalJobId: null }),
+    );
+    mockRepository.markCancelled.mockResolvedValue(
+      baseOrder({ status: JobStatus.CANCELLED }),
+    );
+
+    await service.cancel('job-1', 'customer-owner');
+
+    expect(mockGateway.adminCancelJob).not.toHaveBeenCalled();
+  });
+
+  it('cancel() vẫn trả về job đã huỷ dù RPC báo Worker Fleet lỗi (không chặn khách nhìn thấy trạng thái huỷ)', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.REVIEW_READY, internalJobId: 'internal-1' }),
+    );
+    mockRepository.markCancelled.mockResolvedValue(
+      baseOrder({ status: JobStatus.CANCELLED }),
+    );
+    mockGateway.adminCancelJob.mockRejectedValue(new Error('RPC lỗi mạng'));
+
+    await expect(
+      service.cancel('job-1', 'customer-owner'),
+    ).resolves.toMatchObject({ status: JobStatus.CANCELLED });
   });
 
   it('cancel() TỪ CHỐI huỷ khi job đã AWAITING_PAYMENT (bug tự phát hiện: tránh khách mất tiền mà không nhận được file)', async () => {

@@ -566,6 +566,27 @@ export class WorkerFleetGateway {
     return data === true;
   }
 
+  /** Khách/Admin huỷ job (đóng lỗ hổng: cancel() ở JobsService trước đây
+   * chỉ update render_orders.status, KHÔNG báo Worker Fleet biết) — đổi
+   * mọi task queued/active của job sang status='cancelled' (migration
+   * `worker_migrations/012_admin_cancel_job.sql`) để claim_task() tự bỏ
+   * qua (chỉ claim status='queued'), không cần sửa claim_task() hay
+   * cws_worker_full.py. Task đang active sẽ hoàn tất lần render hiện
+   * tại rồi mới dừng hẳn — xem giới hạn đã ghi trong migration 012. */
+  async adminCancelJob(internalJobId: string): Promise<number> {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client.rpc('admin_cancel_job', {
+      p_job_id: internalJobId,
+    });
+    if (error) {
+      this.logger.error(
+        `adminCancelJob(${internalJobId}) thất bại: ${error.message}`,
+      );
+      throw new Error(`Không huỷ được job trên Worker Fleet: ${error.message}`);
+    }
+    return typeof data === 'number' ? data : 0;
+  }
+
   async adminSetWorkerQuarantine(
     workerId: string,
     quarantined: boolean,

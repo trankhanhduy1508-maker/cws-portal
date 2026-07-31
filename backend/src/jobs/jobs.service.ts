@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -62,6 +63,8 @@ function computeEstimate(
 
 @Injectable()
 export class JobsService {
+  private readonly logger = new Logger(JobsService.name);
+
   constructor(
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
@@ -270,6 +273,25 @@ export class JobsService {
     }
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
+
+    // Đóng lỗ hổng: trước đây chỉ update render_orders.status, Worker
+    // Fleet không hề biết job đã bị huỷ nên vẫn tiếp tục render. Dùng
+    // internalJobId (khoá nối sang bảng `jobs`/`tasks` của Worker Fleet,
+    // xem WorkerFleetGateway) — KHÔNG phải render_orders.id, dù 2 giá
+    // trị này thường trùng nhau lúc tạo job (xem start()). Có thể null
+    // nếu job chưa từng tạo internal job (huỷ ngay khi mới queued) —
+    // bỏ qua, không có gì bên Worker Fleet để huỷ. Lỗi RPC (network/DB)
+    // chỉ log, KHÔNG chặn việc khách nhìn thấy job đã huỷ.
+    if (existing.internalJobId) {
+      try {
+        await this.workerFleetGateway.adminCancelJob(existing.internalJobId);
+      } catch (err) {
+        this.logger.error(
+          `cancel(${id}): huỷ trên Worker Fleet thất bại — ${(err as Error).message}`,
+        );
+      }
+    }
+
     return order;
   }
 
