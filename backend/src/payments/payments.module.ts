@@ -4,9 +4,11 @@ import { PaymentsController } from './payments.controller';
 import { PaymentNotificationController } from './payment-notification.controller';
 import { PaymentsService } from './payments.service';
 import { PaymentsRepository } from './payments.repository';
+import { PaymentDevicesRepository } from './payment-devices.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
 import { RoleGuard } from '../common/guards/role.guard';
 import { DeviceSignatureGuard } from '../common/guards/device-signature.guard';
+import { DeviceHeartbeatGuard } from '../common/guards/device-heartbeat.guard';
 
 @Module({
   imports: [SupabaseModule],
@@ -14,10 +16,12 @@ import { DeviceSignatureGuard } from '../common/guards/device-signature.guard';
   providers: [
     PaymentsService,
     PaymentsRepository,
+    PaymentDevicesRepository,
     QrBankProvider,
     RoleGuard,
     DeviceSignatureGuard,
+    DeviceHeartbeatGuard,
   ],
-  exports: [PaymentsService],
+  exports: [PaymentsService, PaymentDevicesRepository],
 })
 export class PaymentsModule {}

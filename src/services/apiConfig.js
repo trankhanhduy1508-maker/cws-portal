@@ -39,6 +39,7 @@ export const API_CONFIG = {
     ADMIN_JOB_BY_STORAGE_CODE: (code) => `/jobs/by-storage-code/${encodeURIComponent(code)}`,
     ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,
     ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
+    ADMIN_LIST_PAYMENT_DEVICES: '/payments/devices',
     // Staff (Admin/Host thật, Phần 6) — cần Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',

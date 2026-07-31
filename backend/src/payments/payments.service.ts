@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PaymentsRepository } from './payments.repository';
+import { PaymentDevicesRepository } from './payment-devices.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
 import { IPaymentProvider } from './providers/payment-provider.interface';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
@@ -15,6 +16,7 @@ export class PaymentsService {
 
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
+    private readonly paymentDevicesRepository: PaymentDevicesRepository,
     qrBankProvider: QrBankProvider,
   ) {
     // MVP chỉ dùng MB Bank QR (CWS_ROADMAP_MVP_V1.md, Giai đoạn 5).
@@ -237,12 +239,15 @@ export class PaymentsService {
         status: 'processed',
         paymentId: result.paymentId,
       });
+      await this.paymentDevicesRepository.touchNotification(deviceId, null);
       return { ...result, duplicate: false };
     } catch (err) {
+      const message = (err as Error).message;
       await this.paymentsRepository.markNotificationOutcome(inserted.id, {
         status: 'rejected',
-        rejectReason: (err as Error).message,
+        rejectReason: message,
       });
+      await this.paymentDevicesRepository.touchNotification(deviceId, message);
       throw err;
     }
   }

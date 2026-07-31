@@ -5,6 +5,7 @@ import {
   adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
   adminConfirmHostUsageFinalAmount,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
+  adminListPaymentDevices,
 } from '../services/adminApi';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
@@ -39,6 +40,7 @@ export default function AdminScreen() {
   const [incidentSeverityFilter, setIncidentSeverityFilter] = useState('all');
   const [incidentShowResolved, setIncidentShowResolved] = useState(false);
   const [hostUsageSessions, setHostUsageSessions] = useState([]);
+  const [paymentDevices, setPaymentDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -52,14 +54,15 @@ export default function AdminScreen() {
     setError(null);
     Promise.all([
       adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
-      adminListIncidents(key), adminListHostUsageSessions(key),
+      adminListIncidents(key), adminListHostUsageSessions(key), adminListPaymentDevices(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
         setIncidents(incidentsRes);
         setHostUsageSessions(hostUsageRes);
+        setPaymentDevices(paymentDevicesRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -632,6 +635,49 @@ export default function AdminScreen() {
                 ))}
                 {filteredCustomers.length === 0 && (
                   <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có khách hàng nào</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10, marginTop: 28 }}>
+            Thiết bị thanh toán (MBBank Notification Listener)
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Thiết bị</th>
+                  <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Model</th>
+                  <th style={{ padding: 8 }}>App version</th>
+                  <th style={{ padding: 8 }}>Heartbeat cuối</th>
+                  <th style={{ padding: 8 }}>Thông báo gần nhất</th>
+                  <th style={{ padding: 8 }}>Lỗi gần nhất</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentDevices.map((d) => {
+                  const isOnline = d.lastHeartbeatAt && Date.now() - d.lastHeartbeatAt < 2 * 60 * 1000;
+                  return (
+                    <tr key={d.deviceId} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                      <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{d.label ?? d.deviceId}</td>
+                      <td style={{ padding: 8 }}>
+                        <span style={{ color: isOnline ? '#1E9E5A' : '#9a9aa0' }}>
+                          {isOnline ? '● Online' : '○ Offline'}
+                        </span>
+                        {!d.isActive && <span style={{ color: '#E5484D', marginLeft: 6 }}>(vô hiệu hoá)</span>}
+                      </td>
+                      <td style={{ padding: 8 }}>{[d.manufacturer, d.model].filter(Boolean).join(' ') || '—'}</td>
+                      <td style={{ padding: 8 }}>{d.appVersion ?? '—'}</td>
+                      <td style={{ padding: 8 }}>{d.lastHeartbeatAt ? formatRelativeTime(d.lastHeartbeatAt) : 'Chưa từng'}</td>
+                      <td style={{ padding: 8 }}>{d.lastNotificationAt ? formatRelativeTime(d.lastNotificationAt) : 'Chưa từng'}</td>
+                      <td style={{ padding: 8, color: d.lastError ? '#E5484D' : undefined }}>{d.lastError ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+                {paymentDevices.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có thiết bị nào đăng ký</td></tr>
                 )}
               </tbody>
             </table>

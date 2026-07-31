@@ -92,6 +92,12 @@ export function adminListHostUsageSessions(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_HOST_USAGE, adminKey);
 }
 
+/** Danh sách thiết bị Android gửi payment notification (MBBank Notification
+ * Listener MVP) — chỉ đọc, xem payment-devices.repository.ts. */
+export function adminListPaymentDevices(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_DEVICES, adminKey);
+}
+
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
  * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
  * xem JobsService.assertOwnership() trong Backend (trước đây route này

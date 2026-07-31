@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PaymentsRepository } from './payments.repository';
+import { PaymentDevicesRepository } from './payment-devices.repository';
 import { QrBankProvider } from './providers/qr-bank.provider';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
 
@@ -48,6 +49,7 @@ describe('PaymentsService.confirmViaWebhook()', () => {
       providers: [
         PaymentsService,
         { provide: PaymentsRepository, useValue: mockRepository },
+        { provide: PaymentDevicesRepository, useValue: { touchNotification: jest.fn() } },
         { provide: QrBankProvider, useValue: {} },
       ],
     }).compile();
@@ -180,6 +182,7 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
       providers: [
         PaymentsService,
         { provide: PaymentsRepository, useValue: mockRepository },
+        { provide: PaymentDevicesRepository, useValue: { touchNotification: jest.fn() } },
         { provide: QrBankProvider, useValue: {} },
       ],
     }).compile();
