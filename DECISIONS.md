@@ -22,6 +22,12 @@ No MoMo.
 
 No PayPal.
 
+Official workflow order (confirmed 2026-08-01, already implemented — see CreateJobDto/JobsService.createOrder/JobsService.approve): Upload/Drive link -> confirm render -> create real Job in database -> Worker picks up Job -> Render -> generate watermarked Preview -> customer views Preview -> customer approves -> only then request payment -> confirm PAID -> unlock Final Output -> customer Download.
+
+Payment must never be required before Render/Preview.
+
+Job creation must never wait until the payment step.
+
 ---
 
 Storage

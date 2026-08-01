@@ -64,6 +64,8 @@
 
 ⬜ Auto Detect / Unlock — RUNTIME NOT VERIFIED (code is complete; what's missing is a real MB Bank transaction + real webhook gateway credentials to trigger it against, which this environment doesn't have)
 
+✅ **Job-creation-before-payment ordering re-verified against current code (2026-08-01, Owner asked to formalize this as an official decision)**: `CreateJobDto` (`backend/src/jobs/dto/create-job.dto.ts`) has no `paymentId` field at all; `JobsService.createOrder()` explicitly sets `paymentId: null` on creation; payment is only created inside `JobsService.approve()`, called from `POST /jobs/:id/approve` — which only fires after the customer views and approves the watermarked Preview. Frontend (`App.jsx#handleContinueToProcessing`) calls `job.start()` immediately after Render Profile selection, with no payment step in between. `CWS_ROADMAP_MVP_V1.md` already lists Giai đoạn 3 (Render) → 4 (Preview) → 5 (Thanh toán) in the correct order — no contradiction found. **No code/UI/API change was needed — already correctly implemented.** Recorded as an explicit official decision in `DECISIONS.md` since it had never been written down there before, only implied by code/other docs.
+
 ---
 
 ## Security
