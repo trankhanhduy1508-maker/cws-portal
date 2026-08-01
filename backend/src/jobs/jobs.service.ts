@@ -97,7 +97,7 @@ export class JobsService {
   /**
    * Tạo job NGAY, không cần thanh toán trước — render là miễn phí, chỉ
    * việc MỞ TẢI file gốc mới cần thanh toán (CWS_MVP_WORKFLOW_FINAL.md:
-   * Facebook Login → Job → Upload → Render → Preview → Khách duyệt →
+   * Google Login → Job → Upload → Render → Preview → Khách duyệt →
    * Sinh QR → Webhook → PAID → Mở tải). Payment chỉ được tạo sau, tại
    * approve() — xem ghi chú ở đó.
    */
@@ -231,7 +231,7 @@ export class JobsService {
     return order;
   }
 
-  /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Facebook).
+  /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Google).
    * customerId null -> TRẢ TOÀN BỘ job của mọi khách (giới hạn đã biết:
    * Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts và
    * API_DOCUMENTATION.md). */

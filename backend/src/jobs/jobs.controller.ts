@@ -39,7 +39,7 @@ export class JobsController {
 
   @Post()
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
-    // Gắn customerId NẾU khách đã đăng nhập Facebook qua Supabase Auth
+    // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
     // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
     // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
     const customerId = await getOptionalCustomerId(req, this.supabaseService);

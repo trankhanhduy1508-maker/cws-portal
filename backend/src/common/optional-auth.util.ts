@@ -25,7 +25,7 @@ export async function resolveCustomerId(
  * này chỉ trả null). Dùng cho các route công khai muốn "biết thêm" khách
  * là ai nếu đã đăng nhập, mà không chặn khách chưa đăng nhập.
  *
- * Token ở đây là session token do SUPABASE AUTH cấp (Facebook OAuth qua
+ * Token ở đây là session token do SUPABASE AUTH cấp (Google OAuth qua
  * supabase.auth.signInWithOAuth() ở Portal) — KHÔNG phải JWT tự ký nữa.
  * Xác thực bằng cách hỏi thẳng Supabase Auth (auth.getUser), không tự
  * verify chữ ký — đơn giản, đúng, không cần biết JWT secret của Supabase.
@@ -36,7 +36,7 @@ export async function resolveCustomerId(
  * header cho điều hướng thường, chỉ `fetch()` mới set được). Không có
  * fallback này thì `JobsService.assertOwnership()` sẽ luôn coi khách
  * đã đăng nhập là "ẩn danh" trên route download — tự chặn nhầm chính
- * chủ job của họ ngay khi Facebook Provider bật thật.
+ * chủ job của họ ngay khi Google Provider bật thật.
  */
 export async function getOptionalCustomerId(
   req: Request,

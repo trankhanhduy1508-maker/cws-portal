@@ -54,20 +54,28 @@ qr_image_url, render_orders.software/software_version/notes/
 final_price_vnd/worker_runtime_seconds — không đụng bảng
 jobs/tasks/workers cũ của Worker Fleet). Nếu deploy sang Supabase
 project khác, chạy lần lượt các file trong `migrations/` theo đúng thứ
-tự số (001 đến 011) qua Supabase SQL
-Editor, **và** bật Facebook Provider trong Authentication > Providers
+tự số (001 đến 016) qua Supabase SQL
+Editor, **và** bật Google Provider trong Authentication > Providers
 (xem mục 3b).
 
-### 3b. Bật Facebook Login (Supabase Auth, không phải code riêng)
+### 3b. Bật Google Login (Supabase Auth, không phải code riêng)
 
-Facebook Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth —
+Google Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth —
 Backend/Portal KHÔNG tự code OAuth strategy. Chỉ cần:
-1. Supabase Dashboard > Authentication > Providers > Facebook > Enable,
-   điền App ID/App Secret thật (tạo ở developers.facebook.com).
-2. Authentication > URL Configuration > Site URL + Redirect URLs điền
+1. Google Cloud Console (console.cloud.google.com) > APIs & Services >
+   Credentials > Create Credentials > OAuth client ID > Web application
+   — tạo Client ID/Client Secret. Authorized redirect URIs điền đúng
+   giá trị Supabase yêu cầu (xem bước 2).
+2. Supabase Dashboard > Authentication > Providers > Google > Enable,
+   điền Client ID/Client Secret vừa tạo. Supabase hiện sẵn Redirect URL
+   cần khai ở Google Cloud Console (dạng
+   `https://<project-ref>.supabase.co/auth/v1/callback`) ngay trên
+   trang cấu hình Provider này.
+3. Authentication > URL Configuration > Site URL + Redirect URLs điền
    đúng domain Vercel thật của Portal.
-3. Xong — `customer_profiles` tự tạo qua trigger `handle_new_auth_user()`,
-   không cần thao tác gì thêm ở Backend.
+4. Xong — `customer_profiles` tự tạo qua trigger `handle_new_auth_user()`,
+   không cần thao tác gì thêm ở Backend. KHÔNG BAO GIỜ commit Client
+   Secret vào repo — chỉ điền trực tiếp trên Supabase Dashboard.
 
 **Lưu ý bảo mật:** `SUPABASE_SERVICE_ROLE_KEY` và `B2_APPLICATION_KEY`
 từng bị commit nhầm vào `backend/.env.example` (đã xóa khỏi working
@@ -138,7 +146,7 @@ bất kỳ dòng code nào ở Portal.
   `downloadUrl` raw. Khách có thể `POST /jobs/:id/request-changes` để
   yêu cầu chỉnh sửa thay vì duyệt (chỉ ghi nhận, không tự động
   re-render/hoàn tiền).
-- Facebook Login: dùng Supabase Auth built-in OAuth (xem mục 3b) — cần
+- Google Login: dùng Supabase Auth built-in OAuth (xem mục 3b) — cần
   bật Provider thật trong Supabase Dashboard, KHÔNG cần code Backend
   riêng. RLS owner-scoped đã bật (migration 007) nên khách chỉ đọc
   được dữ liệu của chính mình.

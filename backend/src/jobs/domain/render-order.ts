@@ -29,7 +29,7 @@ export interface RenderOrder {
   notes: string | null;
   /** Mã tra cứu ngắn cho khách/admin (CWS_ROADMAP_MVP_V1.md: "Sinh Storage Code"). */
   storageCode: string;
-  /** Khách đã đăng nhập Facebook tạo job này — null nếu chưa đăng nhập
+  /** Khách đã đăng nhập Google tạo job này — null nếu chưa đăng nhập
    * (Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts). */
   customerId: string | null;
   profileId: RenderProfileId;

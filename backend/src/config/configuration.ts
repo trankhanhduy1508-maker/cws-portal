@@ -25,8 +25,8 @@ export interface AppConfig {
  * này đọc 100% qua process.env, secret thật nằm ở .env (không commit)
  * hoặc biến môi trường của nền tảng hosting (Render/Railway/Fly.io).
  *
- * Facebook Login KHÔNG cấu hình ở đây nữa — dùng Supabase Auth
- * (Dashboard > Authentication > Providers > Facebook), Backend chỉ cần
+ * Google Login KHÔNG cấu hình ở đây nữa — dùng Supabase Auth
+ * (Dashboard > Authentication > Providers > Google), Backend chỉ cần
  * xác thực Bearer token qua SupabaseService.getClient().auth.getUser()
  * (xem common/optional-auth.util.ts), không tự ký/verify JWT riêng nữa.
  */

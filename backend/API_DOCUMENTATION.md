@@ -4,10 +4,10 @@ Base URL: `{VITE_CWS_API_BASE_URL}` (xem BACKEND_SETUP.md)
 
 ## Auth
 
-Facebook Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth
-(`supabase.auth.signInWithOAuth({ provider: 'facebook' })` phía Portal)
+Google Login dùng NGUYÊN cơ chế OAuth có sẵn của Supabase Auth
+(`supabase.auth.signInWithOAuth({ provider: 'google' })` phía Portal)
 — Backend KHÔNG tự code OAuth strategy, KHÔNG nhận/xử lý mật khẩu
-Facebook ở bất kỳ đâu. Sau khi đăng nhập, Portal gửi
+Google ở bất kỳ đâu. Sau khi đăng nhập, Portal gửi
 `Authorization: Bearer <supabase-access-token>` cho các route cần biết
 khách là ai; Backend xác minh token qua `supabase.auth.getUser(token)`.
 `customer_profiles` tự tạo/cập nhật qua trigger Postgres

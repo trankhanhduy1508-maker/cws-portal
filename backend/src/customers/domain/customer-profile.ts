@@ -1,7 +1,7 @@
 /**
  * id CHÍNH LÀ auth.users.id của Supabase Auth (migration 007) — không
  * còn là UUID tự sinh riêng. Được tạo/cập nhật tự động bởi Postgres
- * trigger `handle_new_auth_user()` mỗi khi khách đăng nhập Facebook
+ * trigger `handle_new_auth_user()` mỗi khi khách đăng nhập Google
  * qua Supabase Auth, Backend không tự tay tạo/sửa hồ sơ này.
  */
 export interface CustomerProfile {
