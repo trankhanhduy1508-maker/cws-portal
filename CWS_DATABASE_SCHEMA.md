@@ -21,10 +21,13 @@ Lưu hồ sơ khách hàng.
   email               text        Có thể rỗng
   avatar_url          text        Ảnh đại diện
   phone               text        Có thể bổ sung sau
-  preferred_contact   text        Facebook/Zalo/Email
+  preferred_contact   text        Google/Zalo/Email
   marketing_consent   boolean     Đồng ý nhận quảng cáo
   created_at          timestamp   
   updated_at          timestamp   
+  consent_source      text        Provider thật lúc đăng nhập lần đầu (vd "google_login"), đọc động từ auth.users.raw_app_meta_data (migration 016), không ghi đè ở lần đăng nhập sau
+  consent_at          timestamp   Lần đăng nhập đầu tiên, không ghi đè
+  last_login_at       timestamp   Cập nhật mỗi lần đăng nhập lại
 
 ------------------------------------------------------------------------
 
