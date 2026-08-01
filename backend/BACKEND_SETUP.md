@@ -102,20 +102,39 @@ Nguồn: [SePay bảng giá](https://sepay.vn/bang-gia.html), [SePay webhook doc
 MVP (Casso free không có webhook, phải trả phí mới dùng được, không
 hợp yêu cầu "ưu tiên miễn phí"). Đã ghi vào `DECISIONS.md`.
 
+**Quyết định bổ sung (2026-08-01, sau khi research sâu hơn — xem
+`reports/SEPAY_PAYMENT_ARCHITECTURE_RESEARCH.md`): chỉ dùng "SePay
+Webhook", KHÔNG triển khai "SePay IPN"** — dù đây là 2 tính năng khác
+nhau (payload/auth khác shape), cả hai đều phụ thuộc SePay đọc được
+biến động MB Bank trước tiên nên KHÔNG tạo redundancy nguồn dữ liệu
+thật, chỉ tăng độ phức tạp không cần thiết cho MVP. Fallback độc lập
+thật sự (khác failure domain) đã có sẵn: Android MBBank Notification
+Listener (`POST /payment/notification`, đọc trực tiếp app MBBank trên
+điện thoại, không qua SePay).
+
 **Setup (Owner tự làm — cần liên kết tài khoản MB Bank thật, agent
 không thể tự đăng ký/liên kết ngân hàng)**:
 1. Đăng ký tài khoản tại [sepay.vn](https://sepay.vn), liên kết MB
    Bank thật của CWS (Owner tự đăng nhập ngân hàng để liên kết, đúng
    quy trình bảo mật của SePay — không chia sẻ thông tin đăng nhập
    ngân hàng cho bất kỳ ai/công cụ nào khác).
-2. SePay Dashboard > Webhooks > Add webhook:
+2. SePay Dashboard > **Webhooks** (KHÔNG phải mục "IPN") > Add webhook:
    - **URL**: `https://<backend-domain-thật>/payments/webhook/sepay`
    - **Event type**: chọn "Money in" (khuyến nghị — Backend cũng tự lọc
      lại `transferType=in`, an toàn kể cả nếu chọn "Both")
-   - **Security**: chọn **API Key** > tự sinh 1 chuỗi ngẫu nhiên dài
-     (vd `openssl rand -hex 32`) làm giá trị Apikey.
-3. Điền đúng chuỗi đó vào biến môi trường `SEPAY_WEBHOOK_API_KEY` của
-   Backend (Render.com > Environment Variables), KHÔNG commit vào repo.
+   - **Security**: **ưu tiên chọn HMAC-SHA256** nếu dashboard hiển thị
+     lựa chọn này (khuyến nghị chính thức của SePay, mạnh hơn API Key
+     vì ký cả nội dung request + chống replay bằng timestamp) — tự sinh
+     1 chuỗi ngẫu nhiên dài (vd `openssl rand -hex 32`) làm Secret Key.
+     **Nếu dashboard không hỗ trợ/không chọn được HMAC-SHA256** (tuỳ
+     gói/loại tài khoản), chọn **API Key** thay thế — Backend tự nhận
+     diện chế độ nào dựa trên biến môi trường nào được điền, không cần
+     đổi code.
+3. Điền đúng chuỗi đó vào Backend (Render.com > Environment Variables):
+   - Nếu chọn HMAC-SHA256: điền vào `SEPAY_WEBHOOK_HMAC_SECRET`.
+   - Nếu chọn API Key: điền vào `SEPAY_WEBHOOK_API_KEY`.
+   - Chỉ cần điền 1 trong 2 (không cần cả hai) — KHÔNG commit giá trị
+     thật vào repo.
 4. Test: SePay Dashboard có nút giả lập giao dịch để kiểm tra webhook
    nhận được trước khi có giao dịch thật.
 
