@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import PortalShell from './layouts/PortalShell';
 import LandingScreen from './pages/LandingScreen';
-import LoginScreen from './pages/LoginScreen';
 import UploadScreen from './pages/UploadScreen';
 import RenderProfileScreen from './pages/RenderProfileScreen';
 import PaymentScreen from './pages/PaymentScreen';
@@ -25,8 +24,12 @@ import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 import { getDownloadUrl } from './services/RenderService';
 
-// Screen điều hướng — tuyến tính theo đúng end-to-end workflow:
-// Google Login -> Upload -> Render Profile -> Processing (Job chạy
+// Screen điều hướng: LANDING giờ là 1 trang DUY NHẤT gộp cả hero +
+// Upload/Drive link + nút Google Login + CTA "Bắt đầu render" (yêu cầu
+// mới: khách phải thấy hết các hành động ngay từ đầu, KHÔNG bắt bấm
+// "Bắt đầu" mới lộ ra Upload, và KHÔNG có màn hình Login riêng chặn
+// trước — đăng nhập chỉ được yêu cầu đúng lúc khách bấm Render, xem
+// handleContinueFromUpload). -> Render Profile -> Processing (Job chạy
 // thật, MIỄN PHÍ, bao gồm cả lúc xong/lỗi/hủy/preview/CHỜ THANH TOÁN —
 // xem điều kiện render bên trong PROCESSING). Thanh toán (QR MB Bank)
 // chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
@@ -35,12 +38,17 @@ import { getDownloadUrl } from './services/RenderService';
 // REVIEW_READY/FINISHED. History có thể mở từ bất kỳ đâu qua nút ở header.
 const SCREEN = {
   LANDING: 'landing',
-  LOGIN: 'login',
-  UPLOAD: 'upload',
   PROFILE: 'profile',
   PROCESSING: 'processing',
   HISTORY: 'history',
 };
+
+// Google/Supabase OAuth redirect (redirectTo: window.location.origin) là
+// điều hướng TRANG THẬT — làm mất toàn bộ state React đang có (kể cả
+// driveLink đã dán). Lưu tạm ở đây (chỉ chuỗi text, KHÔNG lưu File object
+// vì File không sống sót qua điều hướng trang) để khôi phục lại sau khi
+// khách quay về đã đăng nhập xong, xem effect khôi phục trong CustomerPortalApp.
+const PENDING_DRIVE_LINK_KEY = 'cws_pending_drive_link';
 
 export default function App() {
   // Admin Dashboard (Giai đoạn 7) — hoàn toàn tách biệt khỏi luồng
@@ -110,23 +118,76 @@ function CustomerPortalApp() {
   const job = useRenderJob();
   const jobHistory = useJobHistory();
   const auth = useAuth();
+  // true đúng 1 nhịp: vừa khôi phục xong driveLink sau khi Google redirect
+  // về (xem 2 effect bên dưới) -> tự bấm tiếp giúp khách, không bắt thao
+  // tác lại từ đầu chỉ vì vừa phải đăng nhập.
+  const autoContinueRef = useRef(false);
 
-  // Backend thật redirect khách về đây kèm ?token= sau khi đăng nhập
-  // Google xong (useAuth đã bắt token lúc mount) — nếu vừa đăng nhập
-  // xong mà vẫn đang ở Landing/Login thì tự chuyển tiếp sang Upload.
+  // Google/Supabase redirect thật đã tải lại trang xong (mất hết state) —
+  // nếu khách từng dán link Drive trước khi bị yêu cầu đăng nhập, khôi
+  // phục lại link đó (đã lưu tạm ở handleContinueFromUpload) rồi tự
+  // resolve lại qua Backend thật (KHÔNG bịa dữ liệu, gọi lại y hệt lúc
+  // dán tay). Trường hợp source=UPLOAD (chọn file tay): KHÔNG khôi phục
+  // được — File object không sống sót qua điều hướng trang, đây là giới
+  // hạn thật của trình duyệt, khách cần chọn lại file (vẫn đã đăng nhập
+  // sẵn nên bấm "Bắt đầu render" lần 2 sẽ qua ngay).
   useEffect(() => {
-    if (auth.isAuthenticated && (screen === SCREEN.LANDING || screen === SCREEN.LOGIN)) {
-      setScreen(SCREEN.UPLOAD);
+    if (!auth.isAuthenticated || screen !== SCREEN.LANDING) return;
+    let pendingLink = null;
+    try {
+      pendingLink = sessionStorage.getItem(PENDING_DRIVE_LINK_KEY);
+    } catch {
+      // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán lại link.
     }
-  }, [auth.isAuthenticated, screen]);
+    if (!pendingLink) return;
+    try {
+      sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
+    } catch {
+      // xem ghi chú ở trên
+    }
+    autoContinueRef.current = true;
+    setSource(FILE_SOURCE.GOOGLE_DRIVE);
+    submitLink(pendingLink);
+  }, [auth.isAuthenticated, screen, submitLink]);
 
-  // ---- Bước 0: Landing -> Login (nếu chưa đăng nhập) hoặc thẳng Upload ----
-  const handleStart = useCallback(() => {
-    setScreen(auth.isAuthenticated ? SCREEN.UPLOAD : SCREEN.LOGIN);
-  }, [auth.isAuthenticated]);
+  // ---- Đăng nhập Google — dùng chung cho nút Google trên Landing lẫn
+  // bước bắt buộc đăng nhập khi bấm Render (handleContinueFromUpload).
+  // Lưu tạm driveLink (nếu đang ở nhánh Drive và đã có link) TRƯỚC khi
+  // gọi auth.login() vì Backend thật điều hướng rời trang gần như ngay lập tức. ----
+  const triggerGoogleLogin = useCallback(async () => {
+    if (source === FILE_SOURCE.GOOGLE_DRIVE && driveLink) {
+      try {
+        sessionStorage.setItem(PENDING_DRIVE_LINK_KEY, driveLink);
+      } catch {
+        // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán
+        // lại link sau khi đăng nhập nếu trình duyệt không hỗ trợ.
+      }
+    }
+    return auth.login();
+  }, [auth, source, driveLink]);
 
-  // ---- Bước 1: Upload/Drive -> Render Profile ----
+  // ---- Bước 1: Upload/Drive -> Render Profile. Đăng nhập Google chỉ
+  // thực sự BẮT BUỘC tại đây (khách được xem/chọn Upload hoặc dán link
+  // tự do trước đó trên cùng trang Landing, xem UploadScreen bên dưới). ----
   const handleContinueFromUpload = useCallback(async () => {
+    if (!auth.isAuthenticated) {
+      // Backend thật: triggerGoogleLogin() điều hướng rời trang ngay
+      // (Supabase OAuth) -> loggedInNow luôn false, hàm return ở đây,
+      // flow thật sự tiếp tục sau khi khách quay về (xem 2 effect trên).
+      // Mock (demo, không có Google thật): trả về true ngay, KHÔNG điều
+      // hướng, nên tiếp tục luôn bên dưới không cần khách bấm lại.
+      const loggedInNow = await triggerGoogleLogin();
+      if (!loggedInNow) return;
+      // Mock: đăng nhập xong ngay, KHÔNG điều hướng -> tiếp tục luôn bên
+      // dưới trong cùng lượt gọi này, key tạm ở sessionStorage (nếu vừa
+      // ghi trong triggerGoogleLogin) không còn cần nữa, xoá để tránh
+      // effect khôi phục đọc nhầm 1 link cũ ở lần đăng nhập/tải trang sau.
+      try {
+        sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
+      } catch {
+        // bỏ qua an toàn, xem ghi chú tương tự ở trên
+      }
+    }
     try {
       if (source === FILE_SOURCE.UPLOAD) {
         const uploaded = await fileUploadResolver.resolve(file);
@@ -142,7 +203,18 @@ function CustomerPortalApp() {
       // Lỗi đã được lưu trong fileUploadResolver.uploadError, hiển thị
       // ngay trên UploadScreen (xem UploadZone/fileError phía dưới).
     }
-  }, [source, file, driveLink, resolvedInfo, fileUploadResolver]);
+  }, [auth.isAuthenticated, triggerGoogleLogin, source, file, driveLink, resolvedInfo, fileUploadResolver]);
+
+  // Vừa khôi phục xong driveLink sau khi đăng nhập xong (effect phía
+  // trên) VÀ backend vừa resolve xong (isResolving chuyển false) -> tự
+  // tiếp tục luôn, khách không phải bấm "Bắt đầu render" lần 2.
+  useEffect(() => {
+    if (!autoContinueRef.current || isResolving) return;
+    autoContinueRef.current = false;
+    if (resolvedInfo && !linkError) {
+      handleContinueFromUpload();
+    }
+  }, [isResolving, resolvedInfo, linkError, handleContinueFromUpload]);
 
   // ---- Bước 2: Render Profile -> Processing (tạo job NGAY, render miễn
   // phí — thanh toán chỉ diễn ra sau khi khách duyệt preview, xem
@@ -173,7 +245,7 @@ function CustomerPortalApp() {
     setResolvedInput(null);
     setActiveProjectName(null);
     setSelectedProfileId(null);
-    setScreen(SCREEN.UPLOAD);
+    setScreen(SCREEN.LANDING);
   }, [job, clearFile, clearLink]);
 
   // ---- Job Dashboard / History (chỉ khách đã đăng nhập mới xem được) ----
@@ -220,34 +292,29 @@ function CustomerPortalApp() {
     >
       <AnimatePresence mode="wait">
         {screen === SCREEN.LANDING && (
-          <LandingScreen key="landing" onStart={handleStart} />
-        )}
-
-        {screen === SCREEN.LOGIN && (
-          <LoginScreen
-            key="login"
-            onLogin={auth.login}
-            isLoading={auth.isLoading}
-            error={auth.error}
-          />
-        )}
-
-        {screen === SCREEN.UPLOAD && (
-          <UploadScreen
-            key="upload"
-            source={source}
-            setSource={setSource}
-            file={file}
-            fileError={fileError || fileUploadResolver.uploadError}
-            onFileSelected={setFile}
-            driveLink={driveLink}
-            linkError={linkError}
-            resolvedInfo={resolvedInfo}
-            isResolving={isResolving}
-            onDriveLinkSubmit={submitLink}
-            onContinue={handleContinueFromUpload}
-            isContinuing={fileUploadResolver.isUploading}
-          />
+          <div key="landing" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, width: '100%' }}>
+            <LandingScreen
+              isAuthenticated={auth.isAuthenticated}
+              customerName={auth.customer?.user_metadata?.full_name || auth.customer?.fullName || auth.customer?.email || null}
+              isAuthLoading={auth.isLoading}
+              authError={auth.error}
+              onGoogleLogin={triggerGoogleLogin}
+            />
+            <UploadScreen
+              source={source}
+              setSource={setSource}
+              file={file}
+              fileError={fileError || fileUploadResolver.uploadError}
+              onFileSelected={setFile}
+              driveLink={driveLink}
+              linkError={linkError}
+              resolvedInfo={resolvedInfo}
+              isResolving={isResolving}
+              onDriveLinkSubmit={submitLink}
+              onContinue={handleContinueFromUpload}
+              isContinuing={fileUploadResolver.isUploading}
+            />
+          </div>
         )}
 
         {screen === SCREEN.PROFILE && (
@@ -258,7 +325,7 @@ function CustomerPortalApp() {
             selectedProfileId={selectedProfileId}
             onSelectProfile={setSelectedProfileId}
             onContinue={handleContinueToProcessing}
-            onBack={() => setScreen(SCREEN.UPLOAD)}
+            onBack={() => setScreen(SCREEN.LANDING)}
           />
         )}
 

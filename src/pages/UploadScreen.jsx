@@ -64,7 +64,7 @@ export default function UploadScreen({
       )}
 
       <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
-        {isContinuing ? 'Đang tải lên...' : 'Tiếp tục'}
+        {isContinuing ? 'Đang xử lý...' : 'Bắt đầu render'}
       </Button>
 
       {isDriveModalOpen && (

@@ -32,20 +32,27 @@ export function useAuth() {
     return unsubscribe;
   }, []);
 
+  /** @returns {Promise<boolean>} true nếu đã đăng nhập XONG ngay trong lệnh
+   * gọi này (chỉ xảy ra ở mock — không có Google thật để điều hướng).
+   * Backend thật: startGoogleLogin() điều hướng rời trang gần như ngay
+   * lập tức (Supabase OAuth), nên luôn trả về false ở đây — trang sắp
+   * unload, isAuthenticated thật sẽ được set SAU khi Google/Supabase
+   * redirect về (onAuthStateChange ở trên). Gọi nơi cần biết "có nên
+   * tiếp tục flow ngay bây giờ không" (xem App.jsx#handleContinueFromUpload). */
   const login = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const result = await startGoogleLogin();
       if (result) {
-        // Mock: trả về customer ngay. Backend thật: startGoogleLogin()
-        // điều hướng rời trang (trả về null) — khi Google/Supabase
-        // redirect về, onAuthStateChange ở trên tự cập nhật state.
         setIsAuthenticated(true);
         setCustomer(result);
+        return true;
       }
+      return false;
     } catch (err) {
       setError(err.message || 'Đăng nhập thất bại');
+      return false;
     } finally {
       setIsLoading(false);
     }
