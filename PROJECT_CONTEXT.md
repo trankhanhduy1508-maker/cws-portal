@@ -36,7 +36,7 @@ Python
 
 ## MVP Workflow
 
-Facebook Login
+Google Login
 
 ↓
 
@@ -102,7 +102,7 @@ Unlock Download
 
 1 Worker
 
-2 Facebook Login
+2 Google Login
 
 3 Payment
 

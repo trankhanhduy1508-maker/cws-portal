@@ -15,7 +15,7 @@
 
 -   Vercel
 -   Trang chủ
--   Facebook Login
+-   Google Login
 -   Dashboard khách hàng
 
 ## 2. Backend
@@ -45,7 +45,7 @@
 
 # Giai đoạn 2 -- Luồng khách hàng
 
--   Facebook Login
+-   Google Login
 -   Tạo Customer Profile
 -   Tạo Job
 -   Dán Google Drive / OneDrive / Dropbox
@@ -120,7 +120,7 @@ Khách chỉ xem preview, chưa được tải file gốc.
 -   MoMo
 -   Stripe
 -   PayPal
--   Google Login
+-   Facebook Login (đã gỡ khỏi MVP)
 -   OTP
 -   Zalo Login
 -   AI ETA
@@ -134,7 +134,7 @@ Khách chỉ xem preview, chưa được tải file gốc.
 # Definition of Done
 
 ``` text
-Facebook Login
+Google Login
 → Customer Profile
 → Tạo Job
 → Kiểm tra link

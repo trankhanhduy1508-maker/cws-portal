@@ -36,9 +36,9 @@
 
 ## Login
 
-✅ Frontend
+✅ Frontend (Google Login — provider: google, replaces Facebook per DECISIONS.md 2026-08-01)
 
-⬜ Facebook OAuth (BLOCKED — needs Supabase Auth provider config + Meta Developer App + Vercel env vars VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY, no CLI/API access to these dashboards in this environment)
+⬜ Google OAuth provider enable (BLOCKED — needs Supabase Auth provider config + Google Cloud Console OAuth Client (Web) + Vercel env vars VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY, no CLI/API access to Supabase Auth Providers UI or Google Cloud Console in this environment — see reports/AUTH_GOOGLE_MIGRATION_REPORT.md for exact values/URLs)
 
 ⬜ Production Test
 
@@ -72,7 +72,7 @@ No longer MVP priority.
 
 ## Next Task
 
-Facebook OAuth — BLOCKED, needs Project Owner action (Supabase Dashboard + Meta Developer Console + Vercel env vars, see reports/ for exact values).
+Google OAuth — BLOCKED, needs Project Owner action (Supabase Dashboard + Google Cloud Console + Vercel env vars, see reports/AUTH_GOOGLE_MIGRATION_REPORT.md for exact values).
 
 Payment Auto Detect / Unlock — BLOCKED, needs real MB Bank account + webhook gateway credentials.
 

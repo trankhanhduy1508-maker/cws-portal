@@ -15,8 +15,8 @@ Lưu hồ sơ khách hàng.
 
   Field               Type        Ghi chú
   ------------------- ----------- -----------------------
-  id                  UUID        PK
-  facebook_id         text        ID Facebook
+  id                  UUID        PK (= auth.users.id, Supabase Auth)
+  facebook_id         text        DEPRECATED — Facebook Login đã gỡ khỏi MVP, cột không còn được ghi (migration 016)
   full_name           text        Họ tên
   email               text        Có thể rỗng
   avatar_url          text        Ảnh đại diện

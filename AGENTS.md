@@ -105,7 +105,7 @@ REPORT
 ### Phạm vi
 
 - Customer Workflow
-- Facebook Login
+- Google Login
 - Worker
 - Dashboard
 - Progress
@@ -188,7 +188,7 @@ Ví dụ:
 
 feat(worker): add auto update
 
-fix(auth): facebook oauth redirect
+fix(auth): google oauth redirect
 
 docs(report): update progress
 

@@ -19,7 +19,7 @@
 # Luồng tổng thể
 
 ``` text
-Facebook Login
+Google Login
     ↓
 Customer Profile
     ↓
@@ -62,17 +62,17 @@ COMPLETED
 
 # Đăng nhập
 
--   Chỉ dùng Facebook Login.
+-   Chỉ dùng Google Login (qua Supabase Auth).
 -   Không OTP.
--   Không Google Login.
+-   Không Facebook Login (đã gỡ khỏi MVP).
 -   Không Zalo Login.
 -   Không Email/Password.
 
 Sau đăng nhập:
 
--   Tạo Customer Profile.
--   Lưu tên, avatar, email (nếu Facebook cung cấp).
--   Có thể bổ sung số điện thoại và kênh liên hệ sau.
+-   Tạo hoặc cập nhật Customer Profile (dùng UUID của Supabase Auth làm identity).
+-   Lưu tên, avatar, email (theo dữ liệu Google cung cấp).
+-   Không giả định có số điện thoại — có thể bổ sung số điện thoại và kênh liên hệ sau.
 
 ------------------------------------------------------------------------
 
@@ -220,7 +220,7 @@ Theo dõi:
 
 # Không thuộc MVP
 
--   Google Login
+-   Facebook Login (đã gỡ khỏi MVP)
 -   OTP
 -   Zalo Login
 -   Stripe
@@ -238,5 +238,5 @@ Theo dõi:
 
 MVP chỉ hoàn thành khi toàn bộ luồng chạy end-to-end:
 
-Facebook Login → Customer Profile → Job → Upload → Render → Progress →
+Google Login → Customer Profile → Job → Upload → Render → Progress →
 Preview → MB QR → Webhook → PAID → Download → COMPLETED.

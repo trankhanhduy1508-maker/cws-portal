@@ -2,9 +2,15 @@
 
 Authentication
 
-Facebook only.
+Google OAuth through Supabase only for MVP (updated 2026-08-01, replaces prior decision).
 
-No Google Login.
+Facebook Login is removed from MVP.
+
+No email/password.
+
+No OTP.
+
+No Zalo Login.
 
 ---
 
