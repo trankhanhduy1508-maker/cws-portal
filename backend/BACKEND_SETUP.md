@@ -83,6 +83,52 @@ tree nhưng còn trong git history) — nếu chưa rotate 2 key này trên
 Supabase Dashboard (Settings > API) và Backblaze B2 (App Keys), PHẢI
 làm trước khi deploy production.
 
+### 3c. Payment verification tự động — SePay (nghiên cứu 2026-08-01)
+
+MVP cần tự động phát hiện tiền vào MB Bank thay vì chờ Admin kiểm tra
+tay. Đã research từ tài liệu chính thức 2 giải pháp phổ biến nhất cho
+thị trường Việt Nam:
+
+| | **SePay** | Casso |
+|---|---|---|
+| Free tier | 0đ/tháng, 50 giao dịch/tháng | 0đ/tháng, 30 giao dịch/tháng |
+| MB Bank ở free tier | Có | Có |
+| Webhook/API ở free tier | **Có, ngay từ đầu** | **Không** — Free chỉ có Telegram/email báo cáo; custom webhook chỉ có từ gói Starter (99k/tháng) trở lên |
+| Xác thực webhook | Header cố định `Authorization: Apikey <key>` (hoặc HMAC-SHA256/OAuth2) | Header tuỳ chỉnh (secret key) |
+
+Nguồn: [SePay bảng giá](https://sepay.vn/bang-gia.html), [SePay webhook docs](https://developer.sepay.vn/en/sepay-webhooks/tich-hop-webhook), [Casso pricing table](https://api.casso.vn/pricing-table), [Casso webhook docs](https://developer.casso.vn/webhook/thiet-lap-webhook-thu-cong).
+
+**Quyết định: dùng SePay** — free tier duy nhất thực sự dùng được cho
+MVP (Casso free không có webhook, phải trả phí mới dùng được, không
+hợp yêu cầu "ưu tiên miễn phí"). Đã ghi vào `DECISIONS.md`.
+
+**Setup (Owner tự làm — cần liên kết tài khoản MB Bank thật, agent
+không thể tự đăng ký/liên kết ngân hàng)**:
+1. Đăng ký tài khoản tại [sepay.vn](https://sepay.vn), liên kết MB
+   Bank thật của CWS (Owner tự đăng nhập ngân hàng để liên kết, đúng
+   quy trình bảo mật của SePay — không chia sẻ thông tin đăng nhập
+   ngân hàng cho bất kỳ ai/công cụ nào khác).
+2. SePay Dashboard > Webhooks > Add webhook:
+   - **URL**: `https://<backend-domain-thật>/payments/webhook/sepay`
+   - **Event type**: chọn "Money in" (khuyến nghị — Backend cũng tự lọc
+     lại `transferType=in`, an toàn kể cả nếu chọn "Both")
+   - **Security**: chọn **API Key** > tự sinh 1 chuỗi ngẫu nhiên dài
+     (vd `openssl rand -hex 32`) làm giá trị Apikey.
+3. Điền đúng chuỗi đó vào biến môi trường `SEPAY_WEBHOOK_API_KEY` của
+   Backend (Render.com > Environment Variables), KHÔNG commit vào repo.
+4. Test: SePay Dashboard có nút giả lập giao dịch để kiểm tra webhook
+   nhận được trước khi có giao dịch thật.
+
+Chi tiết implementation: `PaymentsController.sepayWebhook()`
+(`POST /payments/webhook/sepay`) → `SepayWebhookGuard` (xác thực) →
+`PaymentsService.confirmViaSepayWebhook()` (lọc transferType, chống
+trùng/replay qua bảng `payment_notifications` có sẵn — migration 014,
+dùng chung với luồng MBBank Notification Listener — rồi gọi lại
+`matchAndConfirm()` y hệt `POST /payments/webhook` để đối chiếu
+payment_code + storage_code + số tiền trước khi set PAID). Không tạo
+bảng/luồng payment song song. Test: `payments.service.spec.ts` +
+`sepay-webhook.guard.spec.ts`.
+
 ## 4. Deploy lên Render.com (khuyến nghị cho MVP)
 
 1. Đăng nhập render.com bằng GitHub

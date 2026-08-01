@@ -230,9 +230,39 @@ thấy/storage_code không khớp/số tiền không khớp → lỗi rõ ràng,
 âm thầm bỏ qua. Payment tạo qua `POST /payments` trực tiếp (không qua
 job) không có `storage_code` nên webhook cho payment đó luôn bị từ chối.
 
-Ảnh QR (VietQR) đã dựng thật khi có `MB_BANK_ACCOUNT_NUMBER` — phần
-CÒN THIẾU duy nhất là webhook thật từ MB Bank/cổng trung gian gọi vào
-route này (hiện chưa nối, cần thao tác trên tài khoản ngân hàng thật).
+Ảnh QR (VietQR) đã dựng thật khi có `MB_BANK_ACCOUNT_NUMBER`.
+
+### POST /payments/webhook/sepay
+Endpoint riêng cho **SePay** (nghiên cứu 2026-08-01, xem
+`backend/BACKEND_SETUP.md` mục 3c) — gateway trung gian THẬT tự động
+phát hiện tiền vào MB Bank, đã chọn chính thức làm giải pháp payment
+verification cho MVP (xem `DECISIONS.md`). Payload có shape khác
+`/payments/webhook` ở trên nên tách route riêng, không ép chung 1 DTO.
+
+**Yêu cầu header** `Authorization: Apikey <SEPAY_WEBHOOK_API_KEY>` —
+tên header cố định do SePay quy định (`SepayWebhookGuard`, fail-closed
+giống `WebhookSecretGuard`).
+
+Request (nguyên payload SePay, xem `SepayWebhookDto`):
+```json
+{
+  "id": 92704,
+  "gateway": "MBBank",
+  "transactionDate": "2026-08-01 20:00:00",
+  "accountNumber": "0123456789",
+  "content": "CWS CWS-A1B2C3D4 AB12CD34",
+  "transferType": "in",
+  "transferAmount": 45000,
+  "referenceCode": "FT24012345678"
+}
+```
+
+Logic: bỏ qua an toàn (không lỗi) nếu `transferType != "in"`. Chống
+trùng/replay qua `id` (lưu vào `payment_notifications.transaction_id`,
+UNIQUE — bảng dùng chung với luồng MBBank Notification Listener, không
+tạo bảng riêng). Đối chiếu `content` + `transferAmount` bằng ĐÚNG logic
+`matchAndConfirm()` của `/payments/webhook` ở trên (payment_code +
+storage_code + amount phải khớp cả 3) — chỉ khớp mới set PAID.
 
 ## Files
 
