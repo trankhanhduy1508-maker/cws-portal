@@ -102,18 +102,26 @@ Minor pre-existing observation (NOT caused by this session's changes, not fixed 
 
 ⬜ RUNTIME NOT VERIFIED against the real backend (Supabase/NestJS/B2/Worker Fleet) or real Vercel production — same blockers as above (Vercel SSO wall, no physical Worker, no real payment credentials).
 
-**🔴 P0 FINDING (2026-08-01): production frontend is not wired to any backend.** The deployed JS bundle (`https://cws-portal.vercel.app/assets/*.js`) contains only the Supabase URL — no backend API URL anywhere in it. `IS_BACKEND_CONFIGURED` (`src/services/apiConfig.js`) is derived from `Boolean(import.meta.env.VITE_CWS_API_BASE_URL)`, so this proves that env var is unset on Vercel, meaning **production currently runs entirely on the client-side mock backend** (`mockBackend.js`) — any job a customer creates right now stays in their browser's `sessionStorage` and never reaches the real database, B2, or a Worker. Separately checked whether the example backend URL from `BACKEND_SETUP.md` (`cws-backend.onrender.com`) is real: DNS resolves to genuine Render.com infrastructure and TLS connects, but it does not respond to `GET /health` even after a 90-second wait (well past a normal free-tier cold-start). Cannot determine from this environment whether that service is asleep, crashed, or was decommissioned — no Render.com dashboard/API access here. **This, not "needs Owner to click through a job," is the real blocker for verifying Job/Upload/Render/Payment on production** — fixing it needs Owner to (1) confirm/redeploy the Render backend and get its real URL, then (2) set `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` on Vercel and redeploy.
+**🟢 P0 FINDING RESOLVED (2026-08-01):** Owner found the real backend URL is **`https://cws-portal.onrender.com`** (not the `cws-backend.onrender.com` example from `BACKEND_SETUP.md` — that was always just illustrative), set `VITE_CWS_API_BASE_URL` on Vercel, and redeployed. Independently re-verified, not assumed:
+- `GET https://cws-portal.onrender.com/health` → `200`, `{"status":"ok","service":"cws-backend",...}`.
+- Production bundle hash changed (`index-DnVtLEJ9.js` → `index-CeCG97lI.js`, confirming a real new deploy) and now contains `https://cws-portal.onrender.com` baked in — proves the env var was picked up at build time.
+- CORS preflight from `https://cws-portal.vercel.app` → `204`, `access-control-allow-origin: *` (permissive but functional; not the tightest practice for later hardening, not a blocker).
+- **Live network trace via Playwright against production** (pasted a real Drive link, unauthenticated — this path runs before the login gate): `POST https://cws-portal.onrender.com/drive/resolve` → **`201`**, real backend response rendered correctly in the UI. `GET /jobs` → `401` (correct — matches the documented `AdminKeyGuard` fix for anonymous job listing, not a bug).
+- **Production is now genuinely running against the real backend, not the mock.**
+
+Bug found and fixed via this trace: `useJobHistory()` (`src/hooks/useJobHistory.js`) auto-fetched `GET /jobs` on every page mount unconditionally — guaranteed to 401 for every anonymous visitor, and redundant even when logged in since `handleOpenHistory` in `App.jsx` already calls `reload()` explicitly when History is actually opened. Removed the eager mount-time fetch; `oxlint`/`vitest`/`vite build` all still pass.
 
 ---
 
 ## Next Task
 
-**LOOP stopped here (2026-08-01, updated after Owner completed a real Google login)** — remaining items for MVP Definition of Done are blocked on Owner/external action, not on further autonomous code work:
+**LOOP continuing (2026-08-01, updated after backend connected to production)**:
 
-1. ~~Vercel production URL~~ — RESOLVED: https://cws-portal.vercel.app/, fully verified.
-2. ~~Real Google login~~ — RESOLVED: Owner completed it on production; verified end-to-end directly in the database (`auth.users`, `customer_profiles`, RLS) — see Login section above.
-3. **Job/Upload/Render/Payment against the real backend — actually blocked on the backend not being connected to production at all** (see 🔴 P0 finding above), not merely on someone clicking through the UI. Owner needs to: (a) confirm the Render.com backend service is running and get its real URL (the documented example `cws-backend.onrender.com` doesn't currently respond), (b) set `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` on Vercel to that URL, (c) redeploy. I have no Render.com or Vercel dashboard/API access to do either step myself. Once done, creating one job through the real UI would then genuinely exercise the real backend, and I can verify each step directly against the database.
-4. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
-5. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
+1. ~~Vercel production URL~~ — RESOLVED.
+2. ~~Real Google login~~ — RESOLVED, verified against the database.
+3. ~~Backend connected to production~~ — RESOLVED: `https://cws-portal.onrender.com`, verified live (health check, CORS, real network trace of an actual API call succeeding). Fixed one real bug found via this verification (`useJobHistory` wasteful/failing eager fetch).
+4. **Job/Upload/Render/Payment through the real UI while logged in** — this can now genuinely exercise the real backend (previously it couldn't, even if attempted). Still needs the Owner to drive it (upload a file or paste a Drive link, proceed through render profile selection while logged in) — I have no access to the Owner's authenticated browser session to do this myself. Once done, I can verify each step (job row, B2 storage, worker pickup, payment webhook) directly against the database the same way login was verified.
+5. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
+6. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
 
-Once any of the above becomes available, resume with that specific verification. No other independent MVP code task was found this session — see reports/MVP_LOOP_2026-08-01.md for the full audit.
+Once any of the above becomes available, resume with that specific verification.
