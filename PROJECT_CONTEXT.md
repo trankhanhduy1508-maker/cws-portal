@@ -29,6 +29,9 @@ Backblaze B2
 Hosting
 Vercel
 
+Production URL
+https://cws-portal.vercel.app/ (Owner-confirmed 2026-08-01)
+
 Worker
 Python
 

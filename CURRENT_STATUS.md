@@ -42,7 +42,11 @@
 
 ✅ Google OAuth provider enabled on Supabase (Owner-confirmed 2026-08-01, independently verified via public `GET /auth/v1/settings` endpoint: `"google": true`, `"facebook": false`)
 
-⬜ Production Test — real end-to-end OAuth redirect (initiate → Google consent → callback → session restore → auto-continue → refresh → logout) not yet verified against the live Vercel deployment, only against mock auth locally. Needs: (1) confirm `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are set on Vercel, (2) production URL to test against, (3) a human to complete the actual Google account consent screen click (cannot be automated by an agent).
+✅ Production URL confirmed (Owner, 2026-08-01): **https://cws-portal.vercel.app/** — RUNTIME VERIFIED (one-off Playwright against the live site, not a project dependency, removed after use): page loads (`HTTP 200`), renders all 4 required elements identically to local (hero, Upload/Drive tabs, "Đăng nhập với Google", "Bắt đầu render"), zero "Facebook" text anywhere, zero browser console errors. `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` confirmed correctly set on Vercel (proven, not assumed — see below).
+
+✅ Google OAuth initiation chain RUNTIME VERIFIED end-to-end up to the point requiring real human credentials: clicked "Đăng nhập với Google" on production → correctly redirected through Supabase's OAuth authorize flow → landed on the **real** `accounts.google.com` sign-in page, confirmed via full URL inspection: `redirect_uri=https://ynhxlxetwuiyejcjypsi.supabase.co/auth/v1/callback` (exact match to the correct Supabase project), `client_id=767392504649-...apps.googleusercontent.com` (a real registered Google OAuth client), `opparams` embeds `redirect_to=https://cws-portal.vercel.app` (confirms the post-login return trip is correctly configured for this exact production domain), `scope=email+profile`. Screen showed Google's real "Sign in with Google / to continue to ynhxlxetwuiyejcjypsi.supabase.co". **Stopped exactly there — no credentials entered, cannot be automated further.**
+
+⬜ Remaining: the actual credential entry + consent click (requires Owner, a human, one time) — then session restore / refresh / logout against the real Supabase session, which I can verify immediately after if Owner does that one click and reports back (or if a session cookie is somehow shared, though a fresh manual login is simplest).
 
 ---
 
@@ -78,7 +82,7 @@ No longer MVP priority.
 
 ✅ Vercel auto-deploy confirmed working via GitHub integration (verified through GitHub's Deployments/commit-status API, read-only, no Vercel access needed): both pushed commits (`ce3a37e`, `19d964c`) triggered builds across **5** separate Vercel projects all linked to this repo (`cws-portal`, `cws-portal-janb`, `cws-portal-azen`, `cws-portal-s9o5`, `cws-portal-project` — likely leftover duplicates from earlier setup, not something fixed here since it wasn't in scope), all showing `state: success`.
 
-⬜ Cannot visually verify the deployed site — every deployment URL (`https://cws-portal-*-nulyai825-7736s-projects.vercel.app`) redirects to `vercel.com/sso-api` (Vercel's deployment-protection/SSO wall), which needs an actual Vercel account login to bypass. If there's a public custom domain or an alias with protection disabled, it isn't recorded anywhere in this repo — Owner needs to provide it, or share/disable protection, for automated or manual production verification.
+✅ Production URL: **https://cws-portal.vercel.app/** (Owner-confirmed 2026-08-01 — this is the stable alias, separate from the per-deployment SSO-walled preview URLs found earlier; no protection on this one). `curl` confirms `HTTP 200`, served by Vercel, `<title>cws-portal</title>`.
 
 ---
 
@@ -94,10 +98,10 @@ Minor pre-existing observation (NOT caused by this session's changes, not fixed 
 
 ## Next Task
 
-**LOOP stopped here (2026-08-01)** — every remaining item for MVP Definition of Done is blocked on Owner/external action, not on further autonomous code work (checked against real code/tests this session, not assumed from old docs):
+**LOOP stopped here (2026-08-01, updated after Owner provided production URL)** — remaining items for MVP Definition of Done are blocked on Owner/external action, not on further autonomous code work:
 
-1. Vercel production URL / SSO access — needed to visually verify the live site and run a real Google OAuth round-trip.
-2. A human to click through the actual Google consent screen — cannot be automated by an agent.
+1. ~~Vercel production URL~~ — RESOLVED: https://cws-portal.vercel.app/, fully verified (page content + Google OAuth initiation chain, up to the real Google sign-in screen).
+2. A human to type real Google credentials and click consent — cannot be automated by an agent. One click unlocks: session restore, refresh, logout, and the rest of the real job-creation flow verification.
 3. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
 4. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
 
