@@ -78,7 +78,9 @@ No longer MVP priority.
 
 ✅ 8 pending commits pushed to `origin/main` as of this update (Facebook→Google migration, landing/upload flow merge, MODEL_POLICY.md integration, this investigation report).
 
-⬜ Vercel production deployment status — not yet checked, production URL not yet known in this environment.
+✅ Vercel auto-deploy confirmed working via GitHub integration (verified through GitHub's Deployments/commit-status API, read-only, no Vercel access needed): both pushed commits (`ce3a37e`, `19d964c`) triggered builds across **5** separate Vercel projects all linked to this repo (`cws-portal`, `cws-portal-janb`, `cws-portal-azen`, `cws-portal-s9o5`, `cws-portal-project` — likely leftover duplicates from earlier setup, not something fixed here since it wasn't in scope), all showing `state: success`.
+
+⬜ Cannot visually verify the deployed site — every deployment URL (`https://cws-portal-*-nulyai825-7736s-projects.vercel.app`) redirects to `vercel.com/sso-api` (Vercel's deployment-protection/SSO wall), which needs an actual Vercel account login to bypass. If there's a public custom domain or an alias with protection disabled, it isn't recorded anywhere in this repo — Owner needs to provide it, or share/disable protection, for automated or manual production verification.
 
 ---
 
