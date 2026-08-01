@@ -102,6 +102,8 @@ Minor pre-existing observation (NOT caused by this session's changes, not fixed 
 
 ⬜ RUNTIME NOT VERIFIED against the real backend (Supabase/NestJS/B2/Worker Fleet) or real Vercel production — same blockers as above (Vercel SSO wall, no physical Worker, no real payment credentials).
 
+**🔴 P0 FINDING (2026-08-01): production frontend is not wired to any backend.** The deployed JS bundle (`https://cws-portal.vercel.app/assets/*.js`) contains only the Supabase URL — no backend API URL anywhere in it. `IS_BACKEND_CONFIGURED` (`src/services/apiConfig.js`) is derived from `Boolean(import.meta.env.VITE_CWS_API_BASE_URL)`, so this proves that env var is unset on Vercel, meaning **production currently runs entirely on the client-side mock backend** (`mockBackend.js`) — any job a customer creates right now stays in their browser's `sessionStorage` and never reaches the real database, B2, or a Worker. Separately checked whether the example backend URL from `BACKEND_SETUP.md` (`cws-backend.onrender.com`) is real: DNS resolves to genuine Render.com infrastructure and TLS connects, but it does not respond to `GET /health` even after a 90-second wait (well past a normal free-tier cold-start). Cannot determine from this environment whether that service is asleep, crashed, or was decommissioned — no Render.com dashboard/API access here. **This, not "needs Owner to click through a job," is the real blocker for verifying Job/Upload/Render/Payment on production** — fixing it needs Owner to (1) confirm/redeploy the Render backend and get its real URL, then (2) set `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` on Vercel and redeploy.
+
 ---
 
 ## Next Task
@@ -110,7 +112,7 @@ Minor pre-existing observation (NOT caused by this session's changes, not fixed 
 
 1. ~~Vercel production URL~~ — RESOLVED: https://cws-portal.vercel.app/, fully verified.
 2. ~~Real Google login~~ — RESOLVED: Owner completed it on production; verified end-to-end directly in the database (`auth.users`, `customer_profiles`, RLS) — see Login section above.
-3. **Job/Upload/Render/Payment against the real backend** — needs the Owner to actually create a job through the real UI while logged in (upload a file or paste a Drive link, proceed through render profile selection). I have no access to the Owner's authenticated browser session to do this myself; a fresh unauthenticated session of my own would just hit the same "must log in" gate again. If the Owner does this, I can verify each subsequent step (job row created, B2 storage, worker pickup, payment webhook) directly against the database/API the same way login was just verified.
+3. **Job/Upload/Render/Payment against the real backend — actually blocked on the backend not being connected to production at all** (see 🔴 P0 finding above), not merely on someone clicking through the UI. Owner needs to: (a) confirm the Render.com backend service is running and get its real URL (the documented example `cws-backend.onrender.com` doesn't currently respond), (b) set `VITE_CWS_API_BASE_URL`/`VITE_CWS_WS_BASE_URL` on Vercel to that URL, (c) redeploy. I have no Render.com or Vercel dashboard/API access to do either step myself. Once done, creating one job through the real UI would then genuinely exercise the real backend, and I can verify each step directly against the database.
 4. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
 5. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
 
