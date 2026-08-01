@@ -48,11 +48,9 @@
 
 ## Payment
 
-✅ Backend
+✅ Backend — CODE VERIFIED: webhook (`POST /payments/webhook`, `WebhookSecretGuard`), MBBank Android Notification Listener (`POST /payment/notification`, `DeviceSignatureGuard` — per-device HMAC, not a shared secret), device heartbeat, admin device listing — all real implementations, not stubs (confirmed by reading the actual controller/service code, not assuming from docs). 73/73 backend unit tests pass.
 
-⬜ Auto Detect
-
-⬜ Unlock
+⬜ Auto Detect / Unlock — RUNTIME NOT VERIFIED (code is complete; what's missing is a real MB Bank transaction + real webhook gateway credentials to trigger it against, which this environment doesn't have)
 
 ---
 
@@ -84,14 +82,23 @@ No longer MVP priority.
 
 ---
 
+## End-to-End Flow (frontend, mock backend)
+
+✅ RUNTIME VERIFIED (2026-08-01, one-off Playwright, not a project dependency, removed after use): Landing (merged Upload/Drive/Google-login/Render CTA) → file selected → "Bắt đầu render" while logged out → mock Google login fires → auto-continues to Render Profile → profile selected → Processing (queued→searching→allocating→connected→rendering) → Review screen (REVIEW_READY) → "Duyệt kết quả này" → Payment screen (AWAITING_PAYMENT, QR/transfer content shown) → auto-confirmed PAID by mock → Packaging → Finished screen with working "Tải thành phẩm" download link → Logout → back on Landing (not a dead-end screen). Zero browser console errors throughout. This confirms the landing/upload merge from earlier today didn't regress anything downstream.
+
+Minor pre-existing observation (NOT caused by this session's changes, not fixed — out of scope): Review screen showed "Chưa có ảnh xem trước." (no preview images) in this run even though `mockBackend.js` does generate 3 placeholder images for `REVIEW_READY`. Not investigated further since it didn't block the flow and isn't related to any code touched this session.
+
+⬜ RUNTIME NOT VERIFIED against the real backend (Supabase/NestJS/B2/Worker Fleet) or real Vercel production — same blockers as above (Vercel SSO wall, no physical Worker, no real payment credentials).
+
+---
+
 ## Next Task
 
-Verify Vercel picked up the new commits and redeployed production (need production URL from Owner or a working way to discover it).
+**LOOP stopped here (2026-08-01)** — every remaining item for MVP Definition of Done is blocked on Owner/external action, not on further autonomous code work (checked against real code/tests this session, not assumed from old docs):
 
-Google OAuth production end-to-end test — needs Vercel env vars confirmed + a human to complete the actual Google consent click (cannot be automated).
+1. Vercel production URL / SSO access — needed to visually verify the live site and run a real Google OAuth round-trip.
+2. A human to click through the actual Google consent screen — cannot be automated by an agent.
+3. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
+4. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
 
-Payment Auto Detect / Unlock — BLOCKED, needs real MB Bank account + webhook gateway credentials.
-
-Worker Runtime Test — BLOCKED, needs physical Worker machine online.
-
-After the above: continue MVP North Star (Google Login → Upload/Drive link → Queue → Worker → Render → Preview → Payment → Signed URL → Customer Download) per CWS_ROADMAP_MVP_V1.md priority order.
+Once any of the above becomes available, resume with that specific verification. No other independent MVP code task was found this session — see reports/MVP_LOOP_2026-08-01.md for the full audit.
