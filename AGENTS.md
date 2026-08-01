@@ -3,7 +3,11 @@
 > Version: 2.0
 > Purpose: Shared operating rules for all AI agents working on Computer Workspace (CWS).
 
----
+---## Model Policy
+
+Before selecting or delegating any model, read and follow `MODEL_POLICY.md`.
+
+`MODEL_POLICY.md` is the source of truth for model selection and escalation rules.
 
 # SOURCE OF TRUTH
 
