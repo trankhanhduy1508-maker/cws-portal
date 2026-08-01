@@ -2,6 +2,47 @@
 
 Date: 2026-08-01
 
+## Addendum 2026-08-01: REAL production verification (closes this migration's open item)
+
+Owner completed an actual Google login + consent on production
+(https://cws-portal.vercel.app/). Verified directly against the
+database (read-only, no assumptions):
+
+- `auth.users`: real account `galavang9999@gmail.com`, `provider: google`.
+- `customer_profiles`: `full_name`/`avatar_url` correctly populated from
+  Google's real OAuth claims, `phone: null` (not fabricated).
+- **`consent_source: "google_login"`** — direct proof the migration 016
+  fix (deriving consent source from `raw_app_meta_data->>'provider'`
+  instead of the old hardcoded `'facebook_login'`) works correctly
+  against a real login, not just in the migration's own logic review.
+- Repeat-login upsert verified correct: `consent_at`/`created_at`
+  preserved from the first login, `last_login_at`/`updated_at` refreshed
+  — no duplicate profile row, matches the `ON CONFLICT (id) DO UPDATE`
+  design.
+- RLS re-verified against this real row specifically (not a synthetic
+  test row): anonymous REST requests to `customer_profiles`, including
+  one targeting this exact `id`, return `[]`.
+
+Also independently re-verified via one-off Playwright (not a project
+dependency, removed after use) against the live production URL: page
+renders all required elements identically to local, zero console
+errors, and clicking "Đăng nhập với Google" correctly chains through
+Supabase's OAuth authorize flow to the real `accounts.google.com`
+sign-in screen with the correct `redirect_uri`
+(`ynhxlxetwuiyejcjypsi.supabase.co/auth/v1/callback`), a real Google
+`client_id`, and the correct return-to production domain — proving
+Vercel's `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are
+correctly configured. Stopped exactly at the credential-entry screen,
+as it must — an agent cannot and should not enter real human
+credentials.
+
+**This closes the "Production Test" gap** noted as open at the end of
+the original migration below. Remaining: job creation and the rest of
+the pipeline against the real backend still need the Owner to drive
+one job through the real UI (no access to their authenticated browser
+session), plus a physical Worker and real bank credentials for the
+final stages — tracked in `CURRENT_STATUS.md` / `reports/MVP_LOOP_2026-08-01.md`.
+
 ## Scope
 
 Replaced Facebook Login with Google OAuth via Supabase Auth, per updated

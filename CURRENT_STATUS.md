@@ -44,6 +44,14 @@
 
 ✅ Production URL confirmed (Owner, 2026-08-01): **https://cws-portal.vercel.app/** — RUNTIME VERIFIED (one-off Playwright against the live site, not a project dependency, removed after use): page loads (`HTTP 200`), renders all 4 required elements identically to local (hero, Upload/Drive tabs, "Đăng nhập với Google", "Bắt đầu render"), zero "Facebook" text anywhere, zero browser console errors. `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` confirmed correctly set on Vercel (proven, not assumed — see below).
 
+✅ **REAL Google login completed by Owner on production (2026-08-01) — verified end-to-end directly against the database, not assumed:**
+- `auth.users`: real user `galavang9999@gmail.com`, `provider: google`, `last_sign_in_at` matches the reported login time.
+- `customer_profiles` trigger (`handle_new_auth_user()`) correctly fired: `full_name: "Tran Khanh"` and `avatar_url` (real Google profile photo URL) both correctly extracted from Google's OAuth claims; `phone: null` (correctly not fabricated, per requirement).
+- **`consent_source: "google_login"`** — this is live proof the migration 016 fix (dynamic provider instead of the old hardcoded `'facebook_login'`) works correctly on a real account, not just in theory.
+- Repeat-login upsert behavior confirmed correct: `consent_at`/`created_at` preserved from first login, `last_login_at`/`updated_at` refreshed on the later login — matches the `ON CONFLICT (id) DO UPDATE` design exactly (no duplicate profile created).
+- RLS re-verified against this **real** row (not a test row): anonymous/unauthenticated REST requests to `customer_profiles` — both unfiltered and targeting this exact `id` directly — return `[]`. Confirms row-level security genuinely protects real customer data, not just passes a synthetic test.
+- No `render_orders` yet for this customer (Owner completed login only, hasn't created a job) — Job/Upload/Render/Payment steps remain unverified against the real backend; that requires either the Owner driving the real UI through a job (I have no access to their authenticated browser session to do this myself), a physical Worker machine, or real bank credentials — see Next Task.
+
 ✅ Google OAuth initiation chain RUNTIME VERIFIED end-to-end up to the point requiring real human credentials: clicked "Đăng nhập với Google" on production → correctly redirected through Supabase's OAuth authorize flow → landed on the **real** `accounts.google.com` sign-in page, confirmed via full URL inspection: `redirect_uri=https://ynhxlxetwuiyejcjypsi.supabase.co/auth/v1/callback` (exact match to the correct Supabase project), `client_id=767392504649-...apps.googleusercontent.com` (a real registered Google OAuth client), `opparams` embeds `redirect_to=https://cws-portal.vercel.app` (confirms the post-login return trip is correctly configured for this exact production domain), `scope=email+profile`. Screen showed Google's real "Sign in with Google / to continue to ynhxlxetwuiyejcjypsi.supabase.co". **Stopped exactly there — no credentials entered, cannot be automated further.**
 
 ⬜ Remaining: the actual credential entry + consent click (requires Owner, a human, one time) — then session restore / refresh / logout against the real Supabase session, which I can verify immediately after if Owner does that one click and reports back (or if a session cookie is somehow shared, though a fresh manual login is simplest).
@@ -98,11 +106,12 @@ Minor pre-existing observation (NOT caused by this session's changes, not fixed 
 
 ## Next Task
 
-**LOOP stopped here (2026-08-01, updated after Owner provided production URL)** — remaining items for MVP Definition of Done are blocked on Owner/external action, not on further autonomous code work:
+**LOOP stopped here (2026-08-01, updated after Owner completed a real Google login)** — remaining items for MVP Definition of Done are blocked on Owner/external action, not on further autonomous code work:
 
-1. ~~Vercel production URL~~ — RESOLVED: https://cws-portal.vercel.app/, fully verified (page content + Google OAuth initiation chain, up to the real Google sign-in screen).
-2. A human to type real Google credentials and click consent — cannot be automated by an agent. One click unlocks: session restore, refresh, logout, and the rest of the real job-creation flow verification.
-3. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
-4. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
+1. ~~Vercel production URL~~ — RESOLVED: https://cws-portal.vercel.app/, fully verified.
+2. ~~Real Google login~~ — RESOLVED: Owner completed it on production; verified end-to-end directly in the database (`auth.users`, `customer_profiles`, RLS) — see Login section above.
+3. **Job/Upload/Render/Payment against the real backend** — needs the Owner to actually create a job through the real UI while logged in (upload a file or paste a Drive link, proceed through render profile selection). I have no access to the Owner's authenticated browser session to do this myself; a fresh unauthenticated session of my own would just hit the same "must log in" gate again. If the Owner does this, I can verify each subsequent step (job row created, B2 storage, worker pickup, payment webhook) directly against the database/API the same way login was just verified.
+4. Real MB Bank account + webhook gateway credentials — needed to verify Payment Auto Detect/Unlock against a real transaction (code is complete and unit-tested).
+5. A physical Worker machine (Python/Blender) — needed for Worker Runtime Test.
 
 Once any of the above becomes available, resume with that specific verification. No other independent MVP code task was found this session — see reports/MVP_LOOP_2026-08-01.md for the full audit.
