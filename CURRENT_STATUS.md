@@ -38,9 +38,11 @@
 
 ✅ Frontend (Google Login — provider: google, replaces Facebook per DECISIONS.md 2026-08-01)
 
+✅ Landing/Upload flow merged into a single first page (2026-08-01): hero + Upload zone + Drive-link paste + "Đăng nhập với Google" + "Bắt đầu render" CTA are all visible immediately, no forced login gate before seeing them. Login is only required when the render CTA is actually pressed; on success (mock-verified via Playwright screenshot, see reports/AUTH_GOOGLE_MIGRATION_REPORT.md) the flow auto-continues straight to Render Profile selection — no dead-end login screen. Pasted Drive links survive a real OAuth full-page redirect (persisted via sessionStorage, re-resolved through the real backend call on return); a manually-selected file does not (browser File objects can't survive a page reload) — customer re-selects it once, already authenticated.
+
 ⬜ Google OAuth provider enable (BLOCKED — needs Supabase Auth provider config + Google Cloud Console OAuth Client (Web) + Vercel env vars VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY, no CLI/API access to Supabase Auth Providers UI or Google Cloud Console in this environment — see reports/AUTH_GOOGLE_MIGRATION_REPORT.md for exact values/URLs)
 
-⬜ Production Test
+⬜ Production Test — real end-to-end OAuth redirect resume (Drive-link case) not yet verified against a live Google provider, only against mock auth
 
 ---
 

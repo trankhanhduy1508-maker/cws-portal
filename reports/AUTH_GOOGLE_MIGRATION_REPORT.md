@@ -8,6 +8,63 @@ Replaced Facebook Login with Google OAuth via Supabase Auth, per updated
 `DECISIONS.md`. Auth-only change — no unrelated refactor, no new auth
 server, no email/password login added.
 
+## Addendum 2026-08-01: landing/upload flow reorganization
+
+Follow-up request: the first page must show Upload, Drive-link paste,
+"Đăng nhập với Google", and "Bắt đầu render" all at once — no forced
+login screen before the customer even sees these actions. Login should
+only be required at the moment they actually try to render, and after
+login they must land back in the real flow, not a dead-end login page.
+
+**Changed** (auth-flow-adjacent files only, no redesign):
+- `src/App.jsx` — merged the `LANDING` and `UPLOAD` screen states into
+  one screen (removed `SCREEN.LOGIN`/`SCREEN.UPLOAD` from the state
+  machine, kept `SCREEN.LANDING` as the single entry screen rendering
+  both `LandingScreen` and `UploadScreen` together). Auth is now
+  enforced inside `handleContinueFromUpload` (the "Bắt đầu render"
+  handler) instead of gating the whole page.
+- `src/hooks/useAuth.js` — `login()` now returns `true`/`false` so the
+  caller can tell a synchronous mock login (continue immediately) apart
+  from a real Supabase redirect (page is navigating away, nothing more
+  to do here) or a failure.
+- `src/pages/LandingScreen.jsx` — dropped the old `onStart` screen-nav
+  button; added an inline Google login button/status (reusing the
+  existing `Button`/error-copy style, no new design system).
+- `src/pages/UploadScreen.jsx` — renamed the CTA from "Tiếp tục" to
+  "Bắt đầu render" per the acceptance criteria wording. No other
+  changes; `LoginScreen.jsx` is left in place, unused, for reference/
+  rollback — not deleted.
+
+**Real browser redirect vs. resume**: `signInWithOAuth` does a full-page
+navigation (`redirectTo: window.location.origin`), which discards all
+React state, including any in-progress `File` selection — this is a
+hard browser limitation, not something fixable without switching to a
+popup-based OAuth flow (out of scope, over-engineering for MVP). What
+*is* preserved: if the customer pasted a Drive link (a plain string,
+already backend-validated) before being asked to log in,
+`handleContinueFromUpload` persists it to `sessionStorage` first; after
+the redirect returns authenticated, an effect restores it, re-resolves
+it through the real backend call (not faked), and auto-continues to
+Render Profile — no second click needed. A manually-selected file
+cannot be restored this way; the customer simply re-selects it once,
+already logged in.
+
+**Verified**: `oxlint` clean, 5/5 vitest pass, `vite build` clean.
+Visually verified with a one-off Playwright (installed `--no-save`,
+uninstalled afterward, not a project dependency) headless-Chromium
+script against mock auth (`VITE_ENABLE_MOCK_AUTH=true` in a local,
+gitignored `.env`, removed after testing) at a 390×844 mobile viewport:
+first paint shows all 4 required elements simultaneously (Upload tab,
+Drive-link tab, Google login button, disabled "Bắt đầu render"); after
+pasting+resolving a Drive link the render CTA enables; clicking it
+while logged out triggers the (mock) Google login and the app
+auto-continues straight through to the Render Profile screen — no
+separate login page shown at any point. Zero browser console errors
+during the run. **Not verified**: the real full-page-redirect resume
+path against a live Google provider (blocked on the same Owner Action
+as the rest of this migration — no real OAuth credentials in this
+environment).
+
 ## Why this was low-risk
 
 The backend was already provider-agnostic: it never called a
