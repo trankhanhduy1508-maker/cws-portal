@@ -8,6 +8,7 @@ import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
 import { MbbankNotificationDto } from './dto/mbbank-notification.dto';
+import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -208,7 +209,19 @@ export class PaymentsService {
     dto: MbbankNotificationDto,
     deviceId: string,
   ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean }> {
-    const inserted = await this.paymentsRepository.insertNotificationProcessing(dto, deviceId);
+    const inserted = await this.paymentsRepository.insertNotificationProcessing(
+      {
+        transactionId: dto.transaction_id,
+        amountVnd: dto.amount,
+        transactionTime: dto.transaction_time,
+        senderName: dto.sender_name,
+        senderAccount: dto.sender_account,
+        transferContent: dto.transfer_content,
+        balanceAfter: dto.balance_after,
+        rawNotification: dto.raw_notification,
+      },
+      deviceId,
+    );
 
     if (!inserted) {
       const existing = await this.paymentsRepository.findNotificationByTransactionId(
@@ -248,6 +261,74 @@ export class PaymentsService {
         rejectReason: message,
       });
       await this.paymentDevicesRepository.touchNotification(deviceId, message);
+      throw err;
+    }
+  }
+
+  /**
+   * Webhook SePay báo giao dịch MB Bank thật (nghiên cứu 2026-08-01, xem
+   * backend/BACKEND_SETUP.md mục 3c) — dùng LẠI đúng logic đối chiếu của
+   * matchAndConfirm() và cùng bảng chống trùng payment_notifications với
+   * luồng MBBank Notification Listener (deviceId = null, không phải thiết
+   * bị). SePay có thể gửi cả giao dịch 'out' nếu Owner lỡ cấu hình Event
+   * type = "Both" trên SePay Dashboard — bỏ qua AN TOÀN (không throw, vì
+   * đây là hành vi hợp lệ tuỳ cấu hình phía SePay), chỉ xử lý 'in'.
+   */
+  async confirmViaSepayWebhook(
+    dto: SepayWebhookDto,
+  ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean; ignored: boolean }> {
+    if (dto.transferType !== 'in') {
+      this.logger.warn(`confirmViaSepayWebhook: bỏ qua giao dịch transferType=${dto.transferType} (id=${dto.id})`);
+      return { paymentId: null, status: null, duplicate: false, ignored: true };
+    }
+
+    const transactionId = String(dto.id);
+    const inserted = await this.paymentsRepository.insertNotificationProcessing(
+      {
+        transactionId,
+        amountVnd: dto.transferAmount,
+        transactionTime: dto.transactionDate,
+        senderAccount: dto.accountNumber,
+        transferContent: dto.content,
+        rawNotification: dto as unknown as Record<string, unknown>,
+      },
+      null,
+    );
+
+    if (!inserted) {
+      const existing = await this.paymentsRepository.findNotificationByTransactionId(transactionId);
+      if (!existing) {
+        throw new BadRequestException(
+          `transaction_id ${transactionId} bị trùng nhưng không đọc lại được — thử lại sau`,
+        );
+      }
+      if (existing.status === 'rejected') {
+        throw new BadRequestException(
+          existing.reject_reason ?? `transaction_id ${transactionId} đã bị từ chối trước đó`,
+        );
+      }
+      const payment = existing.payment_id
+        ? await this.paymentsRepository.findById(existing.payment_id)
+        : null;
+      this.logger.warn(
+        `confirmViaSepayWebhook: transaction_id ${transactionId} đã xử lý trước đó — trả lại kết quả cũ (replay/retry)`,
+      );
+      return { paymentId: existing.payment_id, status: payment?.status ?? null, duplicate: true, ignored: false };
+    }
+
+    try {
+      const result = await this.matchAndConfirm(dto.content, dto.transferAmount);
+      await this.paymentsRepository.markNotificationOutcome(inserted.id, {
+        status: 'processed',
+        paymentId: result.paymentId,
+      });
+      return { ...result, duplicate: false, ignored: false };
+    } catch (err) {
+      const message = (err as Error).message;
+      await this.paymentsRepository.markNotificationOutcome(inserted.id, {
+        status: 'rejected',
+        rejectReason: message,
+      });
       throw err;
     }
   }

@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
-import { MbbankNotificationDto } from './dto/mbbank-notification.dto';
 
 const TABLE = 'payments';
 const NOTIFICATIONS_TABLE = 'payment_notifications';
@@ -141,23 +140,38 @@ export class PaymentsRepository {
    * dính race condition nếu 2 request cùng transaction_id đến gần như
    * đồng thời). Trả về `null` nếu transaction_id đã tồn tại — gọi nơi
    * (PaymentsService) tự lấy dòng cũ qua findNotificationByTransactionId()
-   * để trả lại kết quả cũ, KHÔNG xử lý lại. */
+   * để trả lại kết quả cũ, KHÔNG xử lý lại.
+   *
+   * Dùng chung cho MỌI nguồn báo thanh toán (app Android MBBank Notification
+   * Listener LẪN webhook SePay) — nhận input tổng quát thay vì DTO riêng
+   * của 1 nguồn, tránh phải ép kiểu giả khi thêm nguồn mới. `deviceId`
+   * chỉ có ý nghĩa với app Android (migration 015, FK NULLABLE tới
+   * payment_devices) — `null` cho các nguồn không phải thiết bị (SePay). */
   async insertNotificationProcessing(
-    dto: MbbankNotificationDto,
-    deviceId: string,
+    input: {
+      transactionId: string;
+      amountVnd: number;
+      transactionTime?: string | null;
+      senderName?: string | null;
+      senderAccount?: string | null;
+      transferContent: string;
+      balanceAfter?: number | null;
+      rawNotification?: Record<string, unknown> | null;
+    },
+    deviceId: string | null,
   ): Promise<PaymentNotificationRow | null> {
     const { data, error } = await this.supabaseService
       .getClient()
       .from(NOTIFICATIONS_TABLE)
       .insert({
-        transaction_id: dto.transaction_id,
-        amount_vnd: dto.amount,
-        transaction_time: dto.transaction_time ?? null,
-        sender_name: dto.sender_name ?? null,
-        sender_account: dto.sender_account ?? null,
-        transfer_content: dto.transfer_content,
-        balance_after: dto.balance_after ?? null,
-        raw_notification: dto.raw_notification ?? null,
+        transaction_id: input.transactionId,
+        amount_vnd: input.amountVnd,
+        transaction_time: input.transactionTime ?? null,
+        sender_name: input.senderName ?? null,
+        sender_account: input.senderAccount ?? null,
+        transfer_content: input.transferContent,
+        balance_after: input.balanceAfter ?? null,
+        raw_notification: input.rawNotification ?? null,
         status: 'processing',
         device_id: deviceId,
       })
@@ -167,7 +181,7 @@ export class PaymentsRepository {
     if (error) {
       if (error.code === POSTGRES_UNIQUE_VIOLATION) return null;
       this.logger.error(
-        `insertNotificationProcessing(${dto.transaction_id}) thất bại: ${error.message}`,
+        `insertNotificationProcessing(${input.transactionId}) thất bại: ${error.message}`,
       );
       throw new Error(`Không ghi được payment_notifications: ${error.message}`);
     }

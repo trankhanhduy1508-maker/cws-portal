@@ -199,7 +199,7 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
 
     expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: false });
     expect(mockRepository.insertNotificationProcessing).toHaveBeenCalledWith(
-      expect.objectContaining({ transaction_id: 'FT2607310001' }),
+      expect.objectContaining({ transactionId: 'FT2607310001' }),
       'device-1',
     );
     expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(1, {
@@ -255,5 +255,158 @@ describe('PaymentsService.confirmViaMbbankNotification()', () => {
       BadRequestException,
     );
     expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Test cho POST /payments/webhook/sepay (nghiên cứu 2026-08-01, xem
+ * backend/BACKEND_SETUP.md mục 3c) — dùng LẠI matchAndConfirm() (đã test
+ * kỹ ở suite confirmViaWebhook phía trên) và cùng cơ chế chống trùng
+ * payment_notifications với luồng MBBank Notification Listener, nên
+ * trọng tâm ở đây là phần RIÊNG của SePay: lọc transferType, map field
+ * đúng payload thật, deviceId=null.
+ */
+describe('PaymentsService.confirmViaSepayWebhook()', () => {
+  let service: PaymentsService;
+  let mockRepository: {
+    findByPaymentCode: jest.Mock;
+    updateStatus: jest.Mock;
+    findById: jest.Mock;
+    insertNotificationProcessing: jest.Mock;
+    findNotificationByTransactionId: jest.Mock;
+    markNotificationOutcome: jest.Mock;
+  };
+
+  function baseRecord(overrides: Partial<PaymentRecord> = {}): PaymentRecord {
+    return {
+      paymentId: 'pay-1',
+      amountVnd: 5000000,
+      method: PaymentMethod.QR_BANK,
+      status: PaymentStatus.PROCESSING,
+      createdAt: Date.now(),
+      confirmedAt: null,
+      paymentCode: 'AB12CD34',
+      transferContent: 'CWS CWS-AAAAAAAA AB12CD34',
+      jobId: 'job-1',
+      storageCode: 'CWS-AAAAAAAA',
+      bankName: 'MB Bank',
+      accountNumber: '0123456789',
+      qrImageUrl: null,
+      ...overrides,
+    };
+  }
+
+  // Payload mẫu đúng theo tài liệu chính thức SePay (developer.sepay.vn).
+  function baseSepayDto(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: 92704,
+      gateway: 'MBBank',
+      transactionDate: '2026-08-01 20:00:00',
+      accountNumber: '0123456789',
+      code: null,
+      content: 'CWS CWS-AAAAAAAA AB12CD34',
+      transferType: 'in',
+      description: 'CWS CWS-AAAAAAAA AB12CD34',
+      transferAmount: 5000000,
+      referenceCode: 'FT24012345678',
+      ...overrides,
+    } as never;
+  }
+
+  beforeEach(async () => {
+    mockRepository = {
+      findByPaymentCode: jest.fn(),
+      updateStatus: jest.fn(),
+      findById: jest.fn(),
+      insertNotificationProcessing: jest.fn(),
+      findNotificationByTransactionId: jest.fn(),
+      markNotificationOutcome: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PaymentsService,
+        { provide: PaymentsRepository, useValue: mockRepository },
+        { provide: PaymentDevicesRepository, useValue: { touchNotification: jest.fn() } },
+        { provide: QrBankProvider, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(PaymentsService);
+  });
+
+  it('giao dịch tiền vào hợp lệ -> set PAID, ghi payment_notifications với deviceId=null', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 1 });
+    mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
+    mockRepository.updateStatus.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
+
+    const result = await service.confirmViaSepayWebhook(baseSepayDto());
+
+    expect(result).toMatchObject({
+      paymentId: 'pay-1',
+      status: PaymentStatus.PAID,
+      duplicate: false,
+      ignored: false,
+    });
+    expect(mockRepository.insertNotificationProcessing).toHaveBeenCalledWith(
+      expect.objectContaining({ transactionId: '92704', amountVnd: 5000000 }),
+      null,
+    );
+    expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(1, {
+      status: 'processed',
+      paymentId: 'pay-1',
+    });
+  });
+
+  it('BỎ QUA AN TOÀN giao dịch transferType=out -- không ghi/không xử lý gì, không throw', async () => {
+    const result = await service.confirmViaSepayWebhook(baseSepayDto({ transferType: 'out' }));
+
+    expect(result).toEqual({ paymentId: null, status: null, duplicate: false, ignored: true });
+    expect(mockRepository.insertNotificationProcessing).not.toHaveBeenCalled();
+    expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
+  });
+
+  it('sai số tiền -> KHÔNG set PAID, ghi payment_notifications.status=rejected', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 3 });
+    mockRepository.findByPaymentCode.mockResolvedValue(baseRecord());
+
+    await expect(
+      service.confirmViaSepayWebhook(baseSepayDto({ transferAmount: 1 })),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({ status: 'rejected' }),
+    );
+  });
+
+  it('sai payment_code/storage_code trong content -> KHÔNG set PAID', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 4 });
+    mockRepository.findByPaymentCode.mockResolvedValue(null);
+
+    await expect(
+      service.confirmViaSepayWebhook(baseSepayDto({ content: 'CWS CWS-AAAAAAAA WRONGCODE' })),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('CHỐNG TRÙNG/REPLAY: id giao dịch đã xử lý trước đó -> trả kết quả cũ, không xử lý lại', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue(null); // unique_violation
+    mockRepository.findNotificationByTransactionId.mockResolvedValue({
+      id: 1,
+      transaction_id: '92704',
+      status: 'processed',
+      reject_reason: null,
+      payment_id: 'pay-1',
+    });
+    mockRepository.findById.mockResolvedValue(baseRecord({ status: PaymentStatus.PAID }));
+
+    const result = await service.confirmViaSepayWebhook(baseSepayDto());
+
+    expect(result).toMatchObject({ paymentId: 'pay-1', status: PaymentStatus.PAID, duplicate: true });
+    expect(mockRepository.findByPaymentCode).not.toHaveBeenCalled();
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
   });
 });

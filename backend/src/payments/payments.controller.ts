@@ -11,8 +11,10 @@ import { PaymentsService } from './payments.service';
 import { PaymentDevicesRepository } from './payment-devices.repository';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
+import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 import { RoleGuard } from '../common/guards/role.guard';
 import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
+import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 
 @Controller('payments')
 export class PaymentsController {
@@ -62,5 +64,18 @@ export class PaymentsController {
   @UseGuards(WebhookSecretGuard)
   async webhook(@Body() dto: WebhookPaymentDto) {
     return this.paymentsService.confirmViaWebhook(dto);
+  }
+
+  /** SePay gọi vào đây khi có biến động số dư MB Bank thật (nghiên cứu
+   * 2026-08-01, xem backend/BACKEND_SETUP.md mục 3c) — route RIÊNG với
+   * /webhook ở trên vì payload SePay có shape khác hẳn (field name khác,
+   * cần lọc transferType), không ép chung 1 DTO cho 2 nguồn khác nhau.
+   * Bảo vệ bằng SepayWebhookGuard (header Authorization: Apikey <key>,
+   * tên header cố định do SePay quy định). */
+  @Post('webhook/sepay')
+  @HttpCode(200)
+  @UseGuards(SepayWebhookGuard)
+  async sepayWebhook(@Body() dto: SepayWebhookDto) {
+    return this.paymentsService.confirmViaSepayWebhook(dto);
   }
 }

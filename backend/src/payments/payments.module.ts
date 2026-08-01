@@ -9,6 +9,7 @@ import { QrBankProvider } from './providers/qr-bank.provider';
 import { RoleGuard } from '../common/guards/role.guard';
 import { DeviceSignatureGuard } from '../common/guards/device-signature.guard';
 import { DeviceHeartbeatGuard } from '../common/guards/device-heartbeat.guard';
+import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 
 @Module({
   imports: [SupabaseModule],
@@ -21,6 +22,7 @@ import { DeviceHeartbeatGuard } from '../common/guards/device-heartbeat.guard';
     RoleGuard,
     DeviceSignatureGuard,
     DeviceHeartbeatGuard,
+    SepayWebhookGuard,
   ],
   exports: [PaymentsService, PaymentDevicesRepository],
 })
