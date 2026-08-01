@@ -1,12 +1,12 @@
 // ============================================================
-// AuthService — Facebook Login qua Supabase Auth (KHÔNG tự làm OAuth
-// thủ công, KHÔNG có form nhập username/password Facebook ở đây hay
-// bất kỳ đâu trong CWS — Facebook lo đăng nhập/xác minh/xin quyền,
+// AuthService — Google Login qua Supabase Auth (KHÔNG tự làm OAuth
+// thủ công, KHÔNG có form nhập username/password Google ở đây hay
+// bất kỳ đâu trong CWS — Google lo đăng nhập/xác minh/xin quyền,
 // Supabase Auth lo phiên đăng nhập, CWS chỉ ĐỌC session).
 //
-// mockFacebookLogin() KHÔNG còn là fallback tự động khi thiếu cấu
+// mockGoogleLogin() KHÔNG còn là fallback tự động khi thiếu cấu
 // hình (lỗi đã gặp: thiếu .env khiến khách bị đăng nhập giả và nhảy
-// thẳng qua màn hình Facebook thật). Mock chỉ bật khi CHỦ ĐỘNG khai
+// thẳng qua màn hình Google thật). Mock chỉ bật khi CHỦ ĐỘNG khai
 // báo VITE_ENABLE_MOCK_AUTH=true lúc chạy dev (import.meta.env.DEV) —
 // không bao giờ tự kích hoạt trên bản build production.
 // ============================================================
@@ -64,27 +64,27 @@ export async function getAccessToken() {
 }
 
 /**
- * Bắt đầu đăng nhập Facebook. Backend thật: Supabase Auth tự lo TOÀN
- * BỘ OAuth (redirect Facebook, xin quyền, tạo phiên) — hàm này chỉ
+ * Bắt đầu đăng nhập Google. Backend thật: Supabase Auth tự lo TOÀN
+ * BỘ OAuth (redirect Google, xin quyền, tạo phiên) — hàm này chỉ
  * kích hoạt điều hướng, luôn trả về null (trang sẽ rời đi, quay lại
- * qua useAuth's onAuthStateChange khi Facebook redirect xong). Mock:
- * không có Facebook thật để chuyển hướng, tạo ngay 1 phiên demo.
+ * qua useAuth's onAuthStateChange khi Google redirect xong). Mock:
+ * không có Google thật để chuyển hướng, tạo ngay 1 phiên demo.
  */
-export async function startFacebookLogin() {
+export async function startGoogleLogin() {
   if (IS_SUPABASE_CONFIGURED) {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
+      provider: 'google',
       options: { redirectTo: window.location.origin },
     });
-    if (error) throw new Error(error.message || 'Không bắt đầu được đăng nhập Facebook');
+    if (error) throw new Error(error.message || 'Không bắt đầu được đăng nhập Google');
     return null;
   }
   if (USE_MOCK_AUTH) {
-    const { token, customer } = await mock.mockFacebookLogin();
+    const { token, customer } = await mock.mockGoogleLogin();
     storeMockSession(token, customer);
     return customer;
   }
-  throw new Error('Đăng nhập Facebook chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
+  throw new Error('Đăng nhập Google chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
 }
 
 export async function logout() {
@@ -120,7 +120,7 @@ export async function getCurrentUser() {
 }
 
 /**
- * Facebook/Supabase báo lỗi OAuth qua query string sau khi redirect về
+ * Google/Supabase báo lỗi OAuth qua query string sau khi redirect về
  * (khách hủy cấp quyền, callback lỗi...) — vd
  * ?error=access_denied&error_description=.... Đọc 1 lần rồi dọn URL.
  * @returns {string|null} mô tả lỗi (đã dịch nếu là lỗi thường gặp), null nếu không có lỗi
@@ -137,6 +137,6 @@ export function consumeOAuthErrorFromUrl() {
   const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
   window.history.replaceState({}, '', cleanUrl);
 
-  if (error === 'access_denied') return 'Bạn đã hủy đăng nhập Facebook';
-  return errorDescription || 'Đăng nhập Facebook thất bại, vui lòng thử lại';
+  if (error === 'access_denied') return 'Bạn đã hủy đăng nhập Google';
+  return errorDescription || 'Đăng nhập Google thất bại, vui lòng thử lại';
 }

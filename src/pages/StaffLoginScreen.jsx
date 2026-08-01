@@ -15,7 +15,7 @@ const inputStyle = {
 };
 
 /** Đăng nhập Admin/Host THẬT (Phần 6) — tách biệt hoàn toàn khỏi
- * LoginScreen.jsx (Facebook, dành cho khách hàng). Tài khoản tạo thủ
+ * LoginScreen.jsx (Google, dành cho khách hàng). Tài khoản tạo thủ
  * công qua Supabase (xem backend/migrations/013_staff_roles_rbac.sql),
  * không có màn hình tự đăng ký. Sau khi đăng nhập, gọi GET /staff/me để
  * biết role thật rồi điều hướng #admin/#host — KHÔNG tự đoán ở đây. */

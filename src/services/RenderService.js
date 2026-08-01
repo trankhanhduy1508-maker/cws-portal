@@ -224,7 +224,7 @@ export async function getJob(jobId) {
   return mock.mockGetJob(jobId);
 }
 
-/** Danh sách job (Job Dashboard / History) — nếu đã đăng nhập Facebook,
+/** Danh sách job (Job Dashboard / History) — nếu đã đăng nhập Google,
  * Backend chỉ trả job của đúng khách đó (xem JobsController.listAll()). */
 export async function listJobs() {
   if (IS_BACKEND_CONFIGURED) {

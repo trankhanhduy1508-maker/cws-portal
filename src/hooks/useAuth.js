@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
-  startFacebookLogin,
+  startGoogleLogin,
   logout as logoutService,
   onAuthStateChange,
   getCurrentUser,
@@ -22,7 +22,7 @@ export function useAuth() {
       setCustomer(user);
     });
 
-    // Bắt sự kiện đăng nhập/đăng xuất xảy ra SAU (vd Facebook redirect
+    // Bắt sự kiện đăng nhập/đăng xuất xảy ra SAU (vd Google redirect
     // về xong, hoặc đăng xuất từ tab khác) — Supabase tự bắn sự kiện
     // này, không cần Portal tự poll.
     const unsubscribe = onAuthStateChange((user) => {
@@ -36,10 +36,10 @@ export function useAuth() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await startFacebookLogin();
+      const result = await startGoogleLogin();
       if (result) {
-        // Mock: trả về customer ngay. Backend thật: startFacebookLogin()
-        // điều hướng rời trang (trả về null) — khi Facebook/Supabase
+        // Mock: trả về customer ngay. Backend thật: startGoogleLogin()
+        // điều hướng rời trang (trả về null) — khi Google/Supabase
         // redirect về, onAuthStateChange ở trên tự cập nhật state.
         setIsAuthenticated(true);
         setCustomer(result);

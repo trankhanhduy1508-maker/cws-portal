@@ -1,5 +1,5 @@
 // ============================================================
-// Supabase client — CHỈ dùng cho Auth (Facebook Login qua Supabase
+// Supabase client — CHỈ dùng cho Auth (Google Login qua Supabase
 // Auth, xem AuthService.js). Dữ liệu nghiệp vụ (jobs/payments/...) vẫn
 // đi qua RenderService.js -> Backend NestJS như cũ, KHÔNG gọi thẳng
 // Supabase từ đây — publishable key này chỉ có quyền theo RLS

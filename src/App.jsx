@@ -26,7 +26,7 @@ import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 import { getDownloadUrl } from './services/RenderService';
 
 // Screen điều hướng — tuyến tính theo đúng end-to-end workflow:
-// Facebook Login -> Upload -> Render Profile -> Processing (Job chạy
+// Google Login -> Upload -> Render Profile -> Processing (Job chạy
 // thật, MIỄN PHÍ, bao gồm cả lúc xong/lỗi/hủy/preview/CHỜ THANH TOÁN —
 // xem điều kiện render bên trong PROCESSING). Thanh toán (QR MB Bank)
 // chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
@@ -53,7 +53,7 @@ export default function App() {
   if (window.location.hash === '#admin') {
     return <AdminScreen />;
   }
-  // Đăng nhập nhân sự thật (Phần 6) — tách biệt Facebook Login của
+  // Đăng nhập nhân sự thật (Phần 6) — tách biệt Google Login của
   // khách hàng. #host BẮT BUỘC qua đây (không có secret key thay thế
   // như #admin) — xem HostGate bên dưới, kiểm tra role qua Backend
   // (GET /staff/me), KHÔNG tự đoán ở Frontend.
@@ -68,7 +68,7 @@ export default function App() {
 
 /** Chặn #host cho tới khi xác nhận ĐÚNG role='host' qua Backend thật
  * (RoleGuard) — không chỉ dựa vào việc có access token Supabase hay
- * không (1 khách Facebook đã đăng nhập cũng có access token, nhưng
+ * không (1 khách Google đã đăng nhập cũng có access token, nhưng
  * KHÔNG có role trong staff_roles nên GET /staff/me sẽ trả 403). */
 function HostGate() {
   const [state, setState] = useState('loading'); // loading | ok | denied
@@ -112,7 +112,7 @@ function CustomerPortalApp() {
   const auth = useAuth();
 
   // Backend thật redirect khách về đây kèm ?token= sau khi đăng nhập
-  // Facebook xong (useAuth đã bắt token lúc mount) — nếu vừa đăng nhập
+  // Google xong (useAuth đã bắt token lúc mount) — nếu vừa đăng nhập
   // xong mà vẫn đang ở Landing/Login thì tự chuyển tiếp sang Upload.
   useEffect(() => {
     if (auth.isAuthenticated && (screen === SCREEN.LANDING || screen === SCREEN.LOGIN)) {

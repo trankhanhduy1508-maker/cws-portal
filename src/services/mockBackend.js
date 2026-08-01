@@ -107,10 +107,10 @@ export function computeEstimate({ fileSizeBytes, profileId }) {
 }
 
 // ============================================================
-// AUTH (mock) — không có Facebook thật để chuyển hướng, tạo ngay 1
+// AUTH (mock) — không có Google thật để chuyển hướng, tạo ngay 1
 // khách demo cố định để luồng end-to-end vẫn chạy được không cần Backend.
 // ============================================================
-export async function mockFacebookLogin() {
+export async function mockGoogleLogin() {
   await new Promise((r) => setTimeout(r, 400));
   return {
     token: 'mock-token-demo',
