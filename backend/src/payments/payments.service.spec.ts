@@ -381,7 +381,7 @@ describe('PaymentsService.confirmViaSepayWebhook()', () => {
     );
   });
 
-  it('sai payment_code/storage_code trong content -> KHÔNG set PAID', async () => {
+  it('sai payment_code trong content (không tìm thấy payment) -> KHÔNG set PAID', async () => {
     mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 4 });
     mockRepository.findByPaymentCode.mockResolvedValue(null);
 
@@ -390,6 +390,25 @@ describe('PaymentsService.confirmViaSepayWebhook()', () => {
     ).rejects.toThrow(NotFoundException);
 
     expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('ĐÚNG payment_code nhưng SAI storage_code trong content -> KHÔNG set PAID (khác trường hợp payment_code sai ở trên)', async () => {
+    mockRepository.insertNotificationProcessing.mockResolvedValue({ id: 5 });
+    // payment thật gắn với storage_code CWS-AAAAAAAA, nhưng content webhook
+    // ghi nhầm/giả mạo storage_code khác (CWS-BBBBBBBB) dù payment_code đúng.
+    mockRepository.findByPaymentCode.mockResolvedValue(baseRecord({ storageCode: 'CWS-AAAAAAAA' }));
+
+    await expect(
+      service.confirmViaSepayWebhook(
+        baseSepayDto({ content: `CWS CWS-BBBBBBBB ${baseRecord().paymentCode}` }),
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(mockRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockRepository.markNotificationOutcome).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({ status: 'rejected' }),
+    );
   });
 
   it('CHỐNG TRÙNG/REPLAY: id giao dịch đã xử lý trước đó -> trả kết quả cũ, không xử lý lại', async () => {

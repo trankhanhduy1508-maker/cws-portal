@@ -6,7 +6,11 @@ import { JobsRealtimeServer } from './realtime/jobs-realtime.server';
 import type { Server as HttpServer } from 'http';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true — cần cho SepayWebhookGuard xác thực chữ ký HMAC-SHA256
+  // (SePay ký trên "{timestamp}.{raw_body}" — phải dùng ĐÚNG byte gốc,
+  // không phải JSON.stringify(req.body) sau khi Nest đã parse lại, vì
+  // thứ tự field/khoảng trắng có thể khác byte gốc, làm sai lệch chữ ký).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? '*',

@@ -17,6 +17,7 @@ export interface AppConfig {
   adminApiKey: string | null;
   paymentWebhookSecret: string | null;
   sepayWebhookApiKey: string | null;
+  sepayWebhookHmacSecret: string | null;
 }
 
 /**
@@ -68,14 +69,18 @@ export function loadConfig(): AppConfig {
     // (xem common/guards/device-signature.guard.ts), không đọc từ env.
     //
     // SePay (POST /payments/webhook/sepay) — gateway trung gian THẬT tự
-    // động phát hiện tiền vào MB Bank, nghiên cứu 2026-08-01 (xem
-    // backend/BACKEND_SETUP.md mục 3c): free tier 0đ/tháng, 50 giao dịch,
-    // có MB Bank + webhook/API ngay từ free (Casso free KHÔNG có custom
-    // webhook, chỉ Starter 99k/tháng trở lên mới có — không phù hợp MVP
-    // miễn phí). SePay xác thực webhook bằng header cố định
-    // "Authorization: Apikey <key>" (không tùy chỉnh được tên header,
-    // chỉ giá trị) — xem common/guards/sepay-webhook.guard.ts.
+    // động phát hiện tiền vào MB Bank (Webhook-only cho MVP, quyết định
+    // chính thức 2026-08-01 sau khi research Webhook vs IPN — xem
+    // DECISIONS.md + reports/SEPAY_PAYMENT_ARCHITECTURE_RESEARCH.md,
+    // KHÔNG triển khai IPN). SepayWebhookGuard ưu tiên HMAC-SHA256
+    // (SEPAY_WEBHOOK_HMAC_SECRET) nếu có cấu hình — mạnh hơn vì ký cả
+    // nội dung request + chống replay bằng timestamp, đúng khuyến nghị
+    // chính thức của SePay. Nếu dashboard SePay của Owner không hỗ trợ/
+    // không chọn HMAC được, fallback về API Key tĩnh (SEPAY_WEBHOOK_API_KEY,
+    // header cố định "Authorization: Apikey <key>"). Chỉ cần cấu hình 1
+    // trong 2 biến bên dưới, không cần cả hai.
     sepayWebhookApiKey: process.env.SEPAY_WEBHOOK_API_KEY ?? null,
+    sepayWebhookHmacSecret: process.env.SEPAY_WEBHOOK_HMAC_SECRET ?? null,
   };
 }
 
