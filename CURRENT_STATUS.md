@@ -40,9 +40,9 @@
 
 ✅ Landing/Upload flow merged into a single first page (2026-08-01): hero + Upload zone + Drive-link paste + "Đăng nhập với Google" + "Bắt đầu render" CTA are all visible immediately, no forced login gate before seeing them. Login is only required when the render CTA is actually pressed; on success (mock-verified via Playwright screenshot, see reports/AUTH_GOOGLE_MIGRATION_REPORT.md) the flow auto-continues straight to Render Profile selection — no dead-end login screen. Pasted Drive links survive a real OAuth full-page redirect (persisted via sessionStorage, re-resolved through the real backend call on return); a manually-selected file does not (browser File objects can't survive a page reload) — customer re-selects it once, already authenticated.
 
-⬜ Google OAuth provider enable (BLOCKED — needs Supabase Auth provider config + Google Cloud Console OAuth Client (Web) + Vercel env vars VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY, no CLI/API access to Supabase Auth Providers UI or Google Cloud Console in this environment — see reports/AUTH_GOOGLE_MIGRATION_REPORT.md for exact values/URLs)
+✅ Google OAuth provider enabled on Supabase (Owner-confirmed 2026-08-01, independently verified via public `GET /auth/v1/settings` endpoint: `"google": true`, `"facebook": false`)
 
-⬜ Production Test — real end-to-end OAuth redirect resume (Drive-link case) not yet verified against a live Google provider, only against mock auth
+⬜ Production Test — real end-to-end OAuth redirect (initiate → Google consent → callback → session restore → auto-continue → refresh → logout) not yet verified against the live Vercel deployment, only against mock auth locally. Needs: (1) confirm `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are set on Vercel, (2) production URL to test against, (3) a human to complete the actual Google account consent screen click (cannot be automated by an agent).
 
 ---
 
@@ -72,12 +72,24 @@ No longer MVP priority.
 
 ---
 
+## Git / Deployment
+
+✅ `git push` to `origin/main` restored (2026-08-01) — root cause was NOT the credential-helper precedence conflict initially suspected (that was real and fixed, but proven-not-causal via SHA256 comparison showing `manager`/`store` cached the identical token); actual cause was GitHub denying that one PAT specifically for `git-receive-pack`, confirmed by hitting that exact endpoint directly. Fix: registered an SSH deploy key (`cws-portal-deploy`, "Allow write access") and switched this repo's remote to SSH (`git@github.com:...`, `core.sshCommand` pinned locally to the deploy key — scoped to this repo only). Full investigation: reports/GIT_PUSH_403_INVESTIGATION.md.
+
+✅ 8 pending commits pushed to `origin/main` as of this update (Facebook→Google migration, landing/upload flow merge, MODEL_POLICY.md integration, this investigation report).
+
+⬜ Vercel production deployment status — not yet checked, production URL not yet known in this environment.
+
+---
+
 ## Next Task
 
-Google OAuth — BLOCKED, needs Project Owner action (Supabase Dashboard + Google Cloud Console + Vercel env vars, see reports/AUTH_GOOGLE_MIGRATION_REPORT.md for exact values).
+Verify Vercel picked up the new commits and redeployed production (need production URL from Owner or a working way to discover it).
+
+Google OAuth production end-to-end test — needs Vercel env vars confirmed + a human to complete the actual Google consent click (cannot be automated).
 
 Payment Auto Detect / Unlock — BLOCKED, needs real MB Bank account + webhook gateway credentials.
 
 Worker Runtime Test — BLOCKED, needs physical Worker machine online.
 
-Production testing — depends on above.
+After the above: continue MVP North Star (Google Login → Upload/Drive link → Queue → Worker → Render → Preview → Payment → Signed URL → Customer Download) per CWS_ROADMAP_MVP_V1.md priority order.

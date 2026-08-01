@@ -51,6 +51,18 @@ Pick one:
   ```
 - **Or fix the PAT**: Settings → Developer settings → Fine-grained tokens → confirm `cws-portal` is selected and `Contents: Read and write` is actually saved (re-save even if it looks correct) → or check Settings → Branches for a rule on `main`.
 
+## Resolution (2026-08-01)
+
+Owner chose Option A (deploy key). Two attempts were needed:
+
+1. First public key handed to Owner had a **trailing CRLF** (Windows line ending) baked into the source `.pub` file — confirmed via `xxd` (file ended in `0d0a` instead of `0a`). `ssh-keygen -lf` tolerated it and validated the key fine, but GitHub's paste-field rejected it: `"Key is invalid. You must supply a key in OpenSSH public key format."` A CRLF-stripped copy was produced and verified byte-for-byte (same SHA256 fingerprint) before re-sending, but Owner opted to generate a fresh key instead.
+2. Generated a brand-new keypair, `~/.ssh/cws_portal_deploy_new` (ed25519, no passphrase, existing key left untouched, never overwritten). Verified with `ssh-keygen -lf` before ever handing over the public half. Also built `~/.ssh/cws_portal_deploy_clean.pub` — the same key normalized to guarantee single line / no BOM / no CRLF / no leading-trailing whitespace, byte-verified via `xxd`, and opened directly in Notepad for the Owner to copy from (avoiding any chat-transcription risk).
+3. Owner added it to `cws-portal → Settings → Deploy keys` with "Allow write access". `ssh -T git@github.com` then returned: `Hi trankhanhduy1508-maker/cws-portal! You've successfully authenticated, but GitHub does not provide shell access.`
+4. Switched this repo's remote to SSH (`git remote set-url origin git@github.com:trankhanhduy1508-maker/cws-portal.git`) and pinned the deploy key via a **repo-local** `core.sshCommand` (not global `~/.ssh/config`), so nothing outside this repo is affected.
+5. `git push --dry-run origin main` → PASS (`560ce41..ce3a37e main -> main`). Real `git push origin main` → succeeded. Verified `git rev-parse HEAD` == `git rev-parse origin/main` == `ce3a37e...`, all 8 pending commits now on GitHub.
+
+**Root cause of the original PAT 403 remains unresolved/unknown** — the deploy-key path sidesteps it entirely rather than explaining it. If push-via-PAT is needed again later (e.g. CI), the two open hypotheses from the investigation above (unsaved permission state, or branch protection requiring `Administration: Read` to inspect) still stand and would need separate Owner-side investigation on github.com.
+
 ## Next Task
 
-Waiting on one of the two Owner actions above. Once done, retry is a single command (`git push --dry-run origin main` then `git push origin main`) — no further local changes needed.
+Closed. Git push is fully functional via SSH deploy key for this repo. Proceeding to verify Vercel deployment and continue MVP roadmap work.
