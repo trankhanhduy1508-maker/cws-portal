@@ -18,7 +18,7 @@ create table if not exists public.payment_notifications (
   raw_notification jsonb,
   status text not null check (status in ('processing', 'processed', 'rejected')),
   reject_reason text,
-  payment_id text references public.payments(id),
+  payment_id uuid references public.payments(id),
   created_at timestamptz not null default now()
 );
 

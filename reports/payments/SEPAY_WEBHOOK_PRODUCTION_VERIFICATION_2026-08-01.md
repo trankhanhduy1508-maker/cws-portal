@@ -47,41 +47,47 @@ SEPAY_WEBHOOK_HMAC_SECRET
 (Khac voi `SEPAY_WEBHOOK_API_KEY` — day la bien fallback cho phuong an API
 Key tinh, khong dung khi da chon HMAC-SHA256.)
 
-## 4. Blocker con lai — CHUA duoc giai quyet
+## 4. Cap nhat 2026-08-01 (sau khi sua): migration 014/015 da ap dung thanh cong
 
-### 4.1 Migration 014/015 chua ap dung duoc len production
-
-Khi thu ap dung migration 014 (`payment_notifications`) len production
-Supabase, nhan loi:
-
-```
-ERROR 42804: foreign key constraint "payment_notifications_payment_id_fkey"
-cannot be implemented
-DETAIL: Key columns "payment_id" and "id" are of incompatible types:
-text and uuid.
-```
-
-Nguyen nhan xac minh truc tiep tu schema production (`list_tables`): bang
-`public.payments.id` la kieu **uuid**, nhung file migration
+**Nguyen nhan (da xac dinh o ban dau):** file migration
 `backend/migrations/014_payment_notifications.sql` viet cot `payment_id`
-la kieu **text**. Day la loi co san trong file migration (chua tung chay
-duoc tren production tu truoc).
+kieu `text`, trong khi `public.payments.id` tren production la kieu
+`uuid` — FK khong the tao duoc do lech kieu du lieu.
 
-De xuat sua (dang cho Owner xac nhan): doi `payment_id text references
-public.payments(id)` thanh `payment_id uuid references public.payments(id)`.
+**Kiem tra tuong thich truoc khi sua** (khong doan, doc truc tiep code):
+tat ca gia tri `paymentId` trong code (`payments.service.ts`,
+`payments.repository.ts`) deu la UUID that, sinh boi `randomUUID()` khi
+tao payment va lay lai tu `payments.id`. Khong co dong code nao ghi gia
+tri khac-UUID vao cot nay — doi kieu `text` → `uuid` khong phat sinh
+incompatibility.
 
-**Anh huong:** bang `payment_notifications` (dung de audit + chong
-trung/replay cho ca SePay Webhook va MBBank Notification Listener) hien
-**chua ton tai** tren production. Neu HMAC auth pass ma bang nay chua co,
-code se loi 500 khi ghi audit log — vi vay khong duoc test giao dich that
-cho toi khi migration nay duoc ap dung xong.
+**Da sua:** `backend/migrations/014_payment_notifications.sql` — cot
+`payment_id` doi tu `text` sang `uuid`. Khong doi logic HMAC/guard.
 
-### 4.2 Xac nhan production da nhan secret HMAC hay chua
+**Da ap dung len production qua Supabase migration** (tracked):
+- `20260801161807_014_payment_notifications`
+- `20260801161815_015_payment_devices`
 
-Tai thoi diem viet bao cao nay, Owner dang tu nhap Secret Key that vao
-Render (khong gui qua chat/report). Can curl lai production sau khi Owner
-xac nhan da luu bien + redeploy xong de kiem tra guard khong con tra ve
-loi "chua duoc cau hinh".
+**Verify schema thuc te sau khi ap dung** (`list_tables`, xac nhan truc
+tiep, khong doan):
+- `public.payment_notifications` ton tai, `payment_id` kieu **uuid**, FK
+  `payment_notifications_payment_id_fkey` → `payments.id` thanh cong.
+- `device_id` kieu text, FK `payment_notifications_device_id_fkey` →
+  `payment_devices.device_id` thanh cong.
+- `public.payment_devices` ton tai, PK `device_id`, RLS enabled.
+- Ca hai bang: `rows: 0` (chua co du lieu that — dung nhu ky vong, chua
+  co giao dich nao duoc xu ly).
+
+**Test/build sau khi sua + ap dung migration:** `npm run build` sach,
+`npm run test` — 96/96 pass (khong test nao lien quan schema bi anh
+huong, vi test dung Supabase client da mock).
+
+### Con lai: xac nhan production da nhan Secret Key HMAC hay chua
+
+Owner dang tu nhap Secret Key that vao Render (khong gui qua chat/report,
+dung theo yeu cau). Can curl lai production sau khi Owner xac nhan da
+luu bien `SEPAY_WEBHOOK_HMAC_SECRET` + redeploy xong, de kiem tra guard
+khong con tra ve loi "chua duoc cau hinh".
 
 ## 5. Checklist tong hop production readiness
 
@@ -89,9 +95,10 @@ loi "chua duoc cau hinh".
 |---|---|
 | Endpoint webhook ton tai dung URL | PASS |
 | Logic guard HMAC-SHA256 (code) | PASS |
-| Secret da luu dung ten bien tren Render | Owner tu thao tac, chua xac nhan lai |
-| Bang `payment_notifications`/`payment_devices` tren production | FAIL — migration loi kieu du lieu, dang cho huong sua |
+| Secret da luu dung ten bien tren Render | Owner tu thao tac, cho xac nhan lai qua curl |
+| Bang `payment_notifications`/`payment_devices` tren production | **PASS** — da ap dung migration 014 (sua kieu du lieu) + 015 thanh cong, verify schema that khop |
 | Test/build local | PASS (96/96 test, build sach) |
 
-**Chua duoc tao giao dich that / test tren SePay cho toi khi ca 5 hang muc
-tren deu PASS.**
+**Chua duoc tao giao dich that / test tren SePay cho toi khi Owner xac
+nhan Render da nhan Secret Key va curl production khong con bao "chua
+duoc cau hinh".**
