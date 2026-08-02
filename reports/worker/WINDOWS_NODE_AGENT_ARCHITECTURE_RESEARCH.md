@@ -543,13 +543,13 @@ cao kien truc nay, truoc khi trien khai Node Agent moi.
 
 ## SO SANH CAC PHUONG AN KIEN TRUC
 
-| Tieu chi | A. 1 Service lam tat ca (Service goi truc tiep Blender) | B. Service Node Agent + Worker process rieng (session that) | C. Service supervisor + user-session Worker + Blender (nhu B, nhan manh Worker luon o session dang nhap that) | D. Task Scheduler / startup agent (khong dung Service) |
-|---|---|---|---|---|
-| Rui ro Session 0 chan GPU (muc B) | **Cao** — chua co bang chung GPU compute hoat dong on dinh tu Session 0 tren GPU tieu dung, EXPERIMENT REQUIRED chua lam se la rui ro production truc tiep | Thap hon — Blender luon chay o session that, tranh hoan toan cau hoi Session 0 + GPU | Giong B | Thap nhat — moi thu (ke ca supervisor) chay trong session that tu dau, giong dung kien truc HIEN TAI |
-| Tuong thich may diskless/BootROM (muc 0) | Xau — Service dang ky qua SCM (ghi C:\), can BootROM ho tro nung vao golden image | Xau (giong A) o phan Service, nhung Worker (process thuong) khong bi rang buoc nay | Giong B | **Tot nhat** — Scheduled Task "at logon" hoac chinh .bat hien tai deu la co che it phu thuoc trang thai SCM hon, de "nung" vao golden image hon (chi can 1 shortcut/script trong Startup folder cua user, khong can `sc create`) |
-| Do phuc tap trien khai | Thap (1 process) nhung rui ro ky thuat cao | Cao (2 process, 1 kenh giao tiep IPC, dong bo trang thai) | Cao tuong tu B, but ro rang hoa vai tro hon | Thap nhat — gan voi kien truc hien tai, it thay doi nhat |
-| Kha nang quan ly tap trung (health, remote command, auto-update tach biet) | Trung binh | **Cao nhat** — dung tach lifecycle (Node Agent) khoi cong viec render (Worker), moi ben update doc lap | Cao tuong tu B | Thap hon — khong co "supervisor" tach biet, giong mo hinh hien tai (1 vong lap .bat lam tat) |
-| Phu hop long-term "hang tram may" | Kem (rui ro GPU + rui ro diskless cong don) | Tot **NEU** giai quyet duoc van de diskless (muc 0) va Session0-GPU (PoC) | Tot, tuong tu B nhung it mo ho hon ve vai tro | Tot cho quan net diskless, nhung **khong tan dung duoc loi ich quan ly tap trung cua mo hinh Service (health/report/remote-control chuan SCM)** |
+| Tieu chi | A. 1 Service lam tat ca (Service goi truc tiep Blender) | B. Service Node Agent + Worker process rieng (session that) | C. Service supervisor + user-session Worker + Blender (nhu B, nhan manh Worker luon o session dang nhap that) | D. Task Scheduler / startup agent (khong dung Service) | E. Hybrid theo kich ban trien khai (de xuat moi, xem ben duoi) |
+|---|---|---|---|---|---|
+| Rui ro Session 0 chan GPU (muc B) | **Cao** — chua co bang chung GPU compute hoat dong on dinh tu Session 0 tren GPU tieu dung, EXPERIMENT REQUIRED chua lam se la rui ro production truc tiep | Thap hon — Blender luon chay o session that, tranh hoan toan cau hoi Session 0 + GPU | Giong B | Thap nhat — moi thu (ke ca supervisor) chay trong session that tu dau, giong dung kien truc HIEN TAI | Thap nhat — ap dung dung nguyen tac cua C/D (Blender luon o session that) o CA HAI nhanh trien khai |
+| Tuong thich may diskless/BootROM (muc 0) | Xau — Service dang ky qua SCM (ghi C:\), can BootROM ho tro nung vao golden image | Xau (giong A) o phan Service, nhung Worker (process thuong) khong bi rang buoc nay | Giong B | **Tot** — Scheduled Task "at logon" hoac chinh .bat hien tai deu la co che it phu thuoc trang thai SCM hon, de "nung" vao golden image hon (chi can 1 shortcut/script trong Startup folder cua user, khong can `sc create`) | **Tot nhat** — nhanh quan net dung dung mo hinh D (khong phu thuoc SCM), nhanh PC thuong dung mo hinh B/C — khong ep 1 giai phap duy nhat cho 2 moi truong khac han nhau |
+| Do phuc tap trien khai | Thap (1 process) nhung rui ro ky thuat cao | Cao (2 process, 1 kenh giao tiep IPC, dong bo trang thai) | Cao tuong tu B, but ro rang hoa vai tro hon | Thap nhat — gan voi kien truc hien tai, it thay doi nhat | **Cao nhat** — phai duy tri/test 2 nhanh trien khai song song (chi phi ky thuat that, danh doi lay dung dan cho ca 2 moi truong) |
+| Kha nang quan ly tap trung (health, remote command, auto-update tach biet) | Trung binh | **Cao nhat** (rieng nhanh Service) | Cao tuong tu B | Thap hon — khong co "supervisor" tach biet, giong mo hinh hien tai (1 vong lap .bat lam tat) | Cao — ca 2 nhanh deu tach lifecycle khoi render (nguyen tac B/C), chi khac co che autostart nen tang |
+| Phu hop long-term "hang tram may" | Kem (rui ro GPU + rui ro diskless cong don) | Tot **NEU** giai quyet duoc van de diskless (muc 0) va Session0-GPU (PoC) | Tot, tuong tu B nhung it mo ho hon ve vai tro | Tot cho quan net diskless, nhung **khong tan dung duoc loi ich quan ly tap trung cua mo hinh Service (health/report/remote-control chuan SCM)** | **Tot nhat cho ca 2 nhom may thuc te CWS dang/se co** — danh doi bang chi phi bao tri 2 nhanh |
 
 **Phan bien truc tiep gia thuyet ban dau ("Windows Service Node Agent +
 Render Worker process rieng"):** day khong phai phuong an te, nhung no
@@ -558,19 +558,35 @@ quan net diskless ma khong giai quyet muc 0 truoc, kien truc se **khong
 hoat dong duoc ngay tu buoc dau tien (cai Service khong ton tai sau
 reset)**, bat ke thiet ke ben trong tot the nao.
 
-`[INFERENCE]` khuyen nghi tong hop: **kien truc dung KHONG PHAI 1 trong
-4 cot tren duy nhat, ma la hybrid theo tung kich ban trien khai:**
-- PC doi tac thuong (khong diskless): **Phuong an B/C** (Service Node
-  Agent that su, Worker process rieng trong session dang nhap that) —
-  tan dung duoc quan ly SCM chuan.
-- May quan net diskless/BootROM: **Phuong an D bien the** — giu nguyen
-  tinh than kien truc HIEN TAI (`.bat` supervisor chay trong session
-  that, tu update, tu restart) nhung **tach ro logic "giam sat/lifecycle"
-  (co the goi la Node Agent, du no la 1 script .bat/Python nho chu
-  khong phai Windows Service that) khoi logic "Worker render"** — vay
-  van dat duoc muc tieu tach biet vai tro cua phuong an B/C, chi khac o
-  cho khong dung Windows Service that (SCM) ma dung "supervisor loop"
+### Phuong an E (de xuat, `[INFERENCE]`) — hybrid theo kich ban trien khai
+
+Day la cau tra loi cho yeu cau "phuong an khac neu nghien cuu cho thay
+tot hon": **kien truc dung KHONG PHAI 1 trong 4 cot A-D duy nhat, ma la
+hybrid theo tung kich ban trien khai**, vi CWS thuc te co 2 nhom may voi
+rang buoc doi lap nhau (diskless vs khong diskless):
+
+- **Nhanh 1 — PC doi tac thuong (khong diskless):** dung **Phuong an B/C**
+  (Service Node Agent that su qua SCM, Worker process rieng trong session
+  dang nhap that) — tan dung duoc quan ly SCM chuan (recovery options,
+  health qua SCM, `sc query`...).
+- **Nhanh 2 — May quan net diskless/BootROM:** dung **Phuong an D bien
+  the** — giu nguyen tinh than kien truc HIEN TAI (`.bat` supervisor
+  chay trong session that, tu update, tu restart) nhung **tach ro logic
+  "giam sat/lifecycle" (goi la Node Agent, du no la 1 script .bat/Python
+  nho chu khong phai Windows Service that) khoi logic "Worker render"**
+  — van dat duoc muc tieu tach biet vai tro cua phuong an B/C, chi khac
+  o cho khong dung Windows Service that (SCM) ma dung "supervisor loop"
   ben vung qua BootROM golden image.
+
+**Danh doi ro rang cua Phuong an E (khong ne tranh trong bang tren):**
+chi phi ky thuat/bao tri cao hon vi phai giu 2 nhanh trien khai song
+song, thay vi 1 codebase Node Agent duy nhat cho moi may. Day la ly do
+Phuong an E **khong tu dong "thang" A-D** — no chi hop ly NEU xac nhan
+duoc (qua PoC) rang mot giai phap duy nhat thuc su khong the phuc vu
+dong thoi ca 2 nhom may. Neu PoC #2 (BootROM identity/persistence) cho
+thay BootROM cua Owner co ho tro nung Windows Service that vao golden
+image, khoang cach giua nhanh 1 va nhanh 2 co the thu hep lai, giam bot
+ly do can tach hybrid.
 
 ---
 
