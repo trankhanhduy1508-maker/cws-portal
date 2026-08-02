@@ -58,15 +58,18 @@
 
 # Giai đoạn 3 -- Render [NEEDS_VERIFICATION]
 
--   Worker nhận Job — NEEDS_VERIFICATION (code tồn tại: heartbeat/register/claim job, có unit test; **chưa từng chạy với Worker vật lý thật** — không có máy Windows+Python+Blender trong môi trường agent)
--   Chuẩn bị môi trường — NEEDS_VERIFICATION (cùng lý do trên, logic nằm trong `cws_worker_full.py`)
--   Render — NEEDS_VERIFICATION (chưa có 1 lần render thật nào được quan sát trong các phiên làm việc này)
--   Cập nhật % tiến độ thật — NEEDS_VERIFICATION
--   Báo lỗi nếu có — NEEDS_VERIFICATION
+-   Worker nhận Job — NEEDS_VERIFICATION (audit code đầy đủ 2026-08-02, xem `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`: cơ chế claim/fencing token/RPC đều xác nhận đúng và tồn tại thật trên database, nhưng **`cws_worker_full.py` hiện hardcode 1 danh sách `job_id` cố định (`JOB_IDS_MULTI`) cho công việc riêng của Owner — CHƯA claim job MVP bất kỳ do khách tạo qua Portal**. Đây là gap thiết kế thật, không chỉ "chưa có máy vật lý")
+-   Chuẩn bị môi trường — NEEDS_VERIFICATION (cùng lý do trên)
+-   Render — NEEDS_VERIFICATION (chưa từng chạy với Worker vật lý thật trong môi trường agent; `--enable-autoexec` đang bật, chỉ an toàn khi nguồn file vẫn do Owner tự chọn — xem report audit mục 2.3, cần quyết định trước khi dùng cho MVP tự-phục-vụ)
+-   Cập nhật % tiến độ thật — NEEDS_VERIFICATION (cơ chế code tồn tại, chưa verify runtime)
+-   Báo lỗi nếu có — NEEDS_VERIFICATION (cơ chế code tồn tại, chưa verify runtime)
 
-BLOCKED (lý do khách quan, không phải chưa làm): không có máy Worker vật
-lý trong môi trường agent. Cần Owner cung cấp máy thật hoặc tự chạy job
-qua UI thật để mở khoá verify — xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`.
+BLOCKED (2 lý do khách quan, không phải chưa làm): (1) không có máy
+Worker vật lý trong môi trường agent, (2) Worker hiện tại không claim
+được job MVP chung — cần Owner quyết định hướng (sửa sang claim theo
+queue chung, hoặc giữ nguyên cho business riêng và làm 1 worker MVP
+khác). Xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md` +
+`reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`.
 
 ------------------------------------------------------------------------
 

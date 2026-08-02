@@ -21,27 +21,31 @@ check + audit log confirmed). Chi tiết:
 
 ## Current Task
 
-Nâng cấp cơ chế Source-of-Truth (AGENTS.md/Roadmap/DECISIONS.md) +
-reconciliation audit toàn bộ docs so với code/tests/evidence thật.
-Chi tiết: `reports/SOURCE_OF_TRUTH_RECONCILIATION_2026-08-02.md`.
+Task 1 (Owner uỷ quyền) — audit Worker `.bat`/`.py` thật trong repo
+HOÀN TẤT. Kết quả: `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`.
+Đã STOP theo đúng yêu cầu, chờ Owner xác nhận trước khi làm gì tiếp
+(kể cả Task 2 — Admin MFA — CHƯA bắt đầu).
 
 ## Next
 
-LOOP phát triển feature đang **tạm dừng theo yêu cầu Owner** — chờ Owner
-xác nhận trước khi tiếp tục. Khi tiếp tục, 2 hướng đã xác định:
+LOOP phát triển feature vẫn **tạm dừng** — chờ Owner xác nhận. Việc cần
+quyết định trước khi tiếp tục, theo thứ tự ưu tiên:
 
-1. Full MVP Core Flow chưa đạt điểm dừng E2E — cần Owner tự chạy 1 job
-   thật qua UI (đăng nhập thật) HOẶC cung cấp máy Worker vật lý
-   (Windows + Python + Blender). Chi tiết:
+1. **Worker hiện tại KHÔNG claim được job MVP chung** (hardcode 1 danh
+   sách `job_id` cố định cho công việc riêng của Owner) — cần Owner
+   quyết định hướng trước khi Giai đoạn 3 (Render) có thể tiến thêm.
+   Chi tiết: `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` mục 2.1.
+2. Phát hiện bảo mật: B2 key đầy đủ quyền hardcode plaintext trong
+   `cws_worker_full.py` (mục 2.5 report trên) — cần Owner tạo key mới
+   giới hạn quyền trước khi mở rộng Fleet.
+3. Full MVP Core Flow chưa đạt điểm dừng E2E — cần Owner tự chạy 1 job
+   thật qua UI HOẶC cung cấp máy Worker vật lý. Chi tiết:
    `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`.
-2. 2 task ưu tiên Owner đã nêu (đang chờ xác nhận LOOP tiếp tục để bắt
-   đầu): (a) audit Worker `.bat`/`.py` thật trong repo xem đã sẵn sàng
-   chạy trên Windows+Python+Blender hay chưa; (b) nâng cấp bảo mật
-   Admin Dashboard (Giai đoạn 7) lên MFA/TOTP, backend enforce
-   authorization đầy đủ (không chỉ chặn ở frontend route).
+4. Task 2 (Admin MFA/TOTP) — chưa bắt đầu, chờ xác nhận LOOP tiếp tục.
 
 ## Last Updated
 
-2026-08-02 — xem `reports/SOURCE_OF_TRUTH_RECONCILIATION_2026-08-02.md`
-cho chi tiết reconciliation, `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md`
-cho lịch sử đầy đủ trước khi file này được rút gọn.
+2026-08-02 — xem `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`
+(Task 1), `reports/SOURCE_OF_TRUTH_RECONCILIATION_2026-08-02.md` cho
+reconciliation, `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` cho lịch
+sử đầy đủ trước khi file này được rút gọn.
