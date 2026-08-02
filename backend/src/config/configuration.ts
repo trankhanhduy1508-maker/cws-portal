@@ -18,6 +18,8 @@ export interface AppConfig {
   paymentWebhookSecret: string | null;
   sepayWebhookApiKey: string | null;
   sepayWebhookHmacSecret: string | null;
+  sepayWebhookApiKeyTest: string | null;
+  sepayWebhookHmacSecretTest: string | null;
 }
 
 /**
@@ -81,6 +83,14 @@ export function loadConfig(): AppConfig {
     // trong 2 biến bên dưới, không cần cả hai.
     sepayWebhookApiKey: process.env.SEPAY_WEBHOOK_API_KEY ?? null,
     sepayWebhookHmacSecret: process.env.SEPAY_WEBHOOK_HMAC_SECRET ?? null,
+    // POST /payments/webhook/sepay/test — SePay Test Mode/Sandbox
+    // (my.dev.sepay.vn, tài khoản TÁCH BIỆT hoàn toàn khỏi Live, nghiên
+    // cứu 2026-08-02, CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md).
+    // BẮT BUỘC dùng secret KHÁC với SEPAY_WEBHOOK_HMAC_SECRET/
+    // SEPAY_WEBHOOK_API_KEY của Live — đây là cơ chế tách Sandbox/Live,
+    // xem SepayWebhookTestGuard.
+    sepayWebhookApiKeyTest: process.env.SEPAY_WEBHOOK_API_KEY_TEST ?? null,
+    sepayWebhookHmacSecretTest: process.env.SEPAY_WEBHOOK_HMAC_SECRET_TEST ?? null,
   };
 }
 

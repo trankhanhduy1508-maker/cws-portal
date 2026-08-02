@@ -41,6 +41,59 @@ const SEPAY_HMAC_REPLAY_WINDOW_MS = 5 * 60 * 1000;
  * riêng, fail-closed giống các guard khác trong dự án: chưa cấu hình gì
  * thì từ chối mọi request thay vì để công khai.
  */
+/** Logic xác thực HMAC/API Key dùng chung cho CẢ webhook Live
+ * (`SepayWebhookGuard`) VÀ webhook Test Mode/Sandbox (`SepayWebhookTestGuard`,
+ * xem `sepay-webhook-test.guard.ts`) — tách ra module-level function thay vì
+ * để trong class để 2 guard KHÔNG copy-paste cùng 1 đoạn verify (nghiên cứu
+ * 2026-08-02, CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md mục 6: tách
+ * Sandbox/Live phải ở tầng SECRET + ROUTE riêng biệt, không phải sửa logic
+ * xác thực — logic xác thực HMAC-SHA256 của SePay giống hệt nhau cho cả 2
+ * môi trường theo đúng tài liệu chính thức, xem developer.sepay.vn/en/
+ * sepay-webhooks/xac-thuc — "does not differentiate HMAC-SHA256 signing
+ * behavior between Test Mode and Live"). */
+export function verifySepayHmacSignature(
+  request: RawBodyRequest<Request>,
+  secret: string,
+): void {
+  const signatureHeader = request.headers['x-sepay-signature'];
+  const timestampHeader = request.headers['x-sepay-timestamp'];
+
+  if (typeof signatureHeader !== 'string' || typeof timestampHeader !== 'string') {
+    throw new UnauthorizedException('Thiếu header X-SePay-Signature/X-SePay-Timestamp từ SePay');
+  }
+
+  const timestamp = Number(timestampHeader);
+  if (!Number.isFinite(timestamp)) {
+    throw new UnauthorizedException('X-SePay-Timestamp không hợp lệ');
+  }
+  // SePay gửi timestamp bằng GIÂY (unix seconds), không phải mili-giây.
+  if (Math.abs(Date.now() - timestamp * 1000) > SEPAY_HMAC_REPLAY_WINDOW_MS) {
+    throw new UnauthorizedException(
+      'X-SePay-Timestamp lệch quá xa so với thời gian Backend — từ chối (chống replay)',
+    );
+  }
+
+  const providedSignature = signatureHeader.startsWith('sha256=')
+    ? signatureHeader.slice('sha256='.length)
+    : signatureHeader;
+
+  const rawBody = request.rawBody ? request.rawBody.toString('utf8') : '';
+  const canonical = `${timestampHeader}.${rawBody}`;
+  const expectedSignature = createHmac('sha256', secret).update(canonical).digest('hex');
+
+  if (!safeCompareHex(providedSignature, expectedSignature)) {
+    throw new UnauthorizedException('Sai chữ ký X-SePay-Signature từ SePay');
+  }
+}
+
+export function verifySepayApiKey(request: Request, apiKey: string): void {
+  const authHeader = request.headers.authorization;
+  const expected = `Apikey ${apiKey}`;
+  if (authHeader !== expected) {
+    throw new UnauthorizedException('Thiếu hoặc sai Authorization header từ SePay');
+  }
+}
+
 @Injectable()
 export class SepayWebhookGuard implements CanActivate {
   constructor(private readonly configService: ConfigService<AppConfig, true>) {}
@@ -58,51 +111,11 @@ export class SepayWebhookGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RawBodyRequest<Request>>();
 
     if (hmacSecret) {
-      this.verifyHmac(request, hmacSecret);
+      verifySepayHmacSignature(request, hmacSecret);
       return true;
     }
 
-    this.verifyApiKey(request, apiKey!);
+    verifySepayApiKey(request, apiKey!);
     return true;
-  }
-
-  private verifyHmac(request: RawBodyRequest<Request>, secret: string): void {
-    const signatureHeader = request.headers['x-sepay-signature'];
-    const timestampHeader = request.headers['x-sepay-timestamp'];
-
-    if (typeof signatureHeader !== 'string' || typeof timestampHeader !== 'string') {
-      throw new UnauthorizedException('Thiếu header X-SePay-Signature/X-SePay-Timestamp từ SePay');
-    }
-
-    const timestamp = Number(timestampHeader);
-    if (!Number.isFinite(timestamp)) {
-      throw new UnauthorizedException('X-SePay-Timestamp không hợp lệ');
-    }
-    // SePay gửi timestamp bằng GIÂY (unix seconds), không phải mili-giây.
-    if (Math.abs(Date.now() - timestamp * 1000) > SEPAY_HMAC_REPLAY_WINDOW_MS) {
-      throw new UnauthorizedException(
-        'X-SePay-Timestamp lệch quá xa so với thời gian Backend — từ chối (chống replay)',
-      );
-    }
-
-    const providedSignature = signatureHeader.startsWith('sha256=')
-      ? signatureHeader.slice('sha256='.length)
-      : signatureHeader;
-
-    const rawBody = request.rawBody ? request.rawBody.toString('utf8') : '';
-    const canonical = `${timestampHeader}.${rawBody}`;
-    const expectedSignature = createHmac('sha256', secret).update(canonical).digest('hex');
-
-    if (!safeCompareHex(providedSignature, expectedSignature)) {
-      throw new UnauthorizedException('Sai chữ ký X-SePay-Signature từ SePay');
-    }
-  }
-
-  private verifyApiKey(request: Request, apiKey: string): void {
-    const authHeader = request.headers.authorization;
-    const expected = `Apikey ${apiKey}`;
-    if (authHeader !== expected) {
-      throw new UnauthorizedException('Thiếu hoặc sai Authorization header từ SePay');
-    }
   }
 }
