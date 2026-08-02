@@ -1,18 +1,13 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { AppConfig } from '../../config/configuration';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { RoleGuard, ROLES_KEY, StaffContext } from './role.guard';
 
 function makeContext(headers: Record<string, string>): {
   context: ExecutionContext;
-  request: { headers: Record<string, string>; query: Record<string, string>; staff?: StaffContext };
+  request: { headers: Record<string, string>; staff?: StaffContext };
 } {
-  const request: { headers: Record<string, string>; query: Record<string, string>; staff?: StaffContext } = {
-    headers,
-    query: {},
-  };
+  const request: { headers: Record<string, string>; staff?: StaffContext } = { headers };
   const context = {
     switchToHttp: () => ({ getRequest: () => request }),
     getHandler: () => ({}),
@@ -24,61 +19,69 @@ function makeReflector(roles: string[] | undefined): Reflector {
   return { get: jest.fn().mockReturnValue(roles) } as unknown as Reflector;
 }
 
-function makeConfigService(adminApiKey: string | null): ConfigService<AppConfig, true> {
-  return { get: jest.fn().mockReturnValue(adminApiKey) } as unknown as ConfigService<AppConfig, true>;
+/** Sinh 1 Bearer token GIẢ chỉ để test decode claim `aal` — guard KHÔNG
+ * tự verify chữ ký (đã dựa vào `client.auth.getUser()` mock ở dưới để
+ * "xác thực"), nên chữ ký ở đây để rỗng cũng không sao, chỉ cần đúng
+ * cấu trúc 3 phần header.payload.signature. */
+function fakeSupabaseToken(aal: 'aal1' | 'aal2' | undefined): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify(aal ? { aal } : {})).toString('base64url');
+  return `${header}.${payload}.fake-signature`;
 }
 
-describe('RoleGuard', () => {
-  it('cho qua với role admin khi x-admin-key hợp lệ (lớp phòng thủ phụ, tương thích AdminScreen.jsx)', async () => {
-    const guard = new RoleGuard(
-      makeReflector(undefined),
-      {} as SupabaseService,
-      makeConfigService('secret-key'),
-    );
-    const { context, request } = makeContext({ 'x-admin-key': 'secret-key' });
+function makeSupabaseWithRole(role: 'admin' | 'host' | null, userId = 'user-1'): SupabaseService {
+  return {
+    getClient: () => ({
+      auth: {
+        getUser: jest.fn().mockResolvedValue(
+          role === null
+            ? { data: { user: null }, error: { message: 'invalid' } }
+            : { data: { user: { id: userId } }, error: null },
+        ),
+      },
+      from: (table: string) => {
+        if (table === 'staff_roles') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: jest
+                  .fn()
+                  .mockResolvedValue(role ? { data: { role }, error: null } : { data: null, error: null }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+        };
+      },
+    }),
+  } as unknown as SupabaseService;
+}
 
-    await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(request.staff?.role).toBe('admin');
-  });
-
-  it('TỪ CHỐI route yêu cầu role host dù x-admin-key hợp lệ (admin-key không thay thế được quyền host)', async () => {
-    const guard = new RoleGuard(
-      makeReflector(['host']),
-      { getClient: jest.fn() } as unknown as SupabaseService,
-      makeConfigService('secret-key'),
-    );
-    const { context } = makeContext({ 'x-admin-key': 'secret-key' });
-
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
-  });
-
-  it('từ chối khi thiếu cả Bearer token lẫn x-admin-key', async () => {
-    const guard = new RoleGuard(
-      makeReflector(undefined),
-      {} as SupabaseService,
-      makeConfigService('secret-key'),
-    );
+describe('RoleGuard — TEST SECURITY ADMIN (2026-08-02, bắt buộc MFA qua Supabase Auth)', () => {
+  it('1. anonymous (không Bearer) → DENIED', async () => {
+    const guard = new RoleGuard(makeReflector(undefined), {} as SupabaseService);
     const { context } = makeContext({});
 
     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('từ chối khi Bearer token không hợp lệ', async () => {
-    const mockSupabase = {
-      getClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } }) },
-      }),
-    } as unknown as SupabaseService;
-    const guard = new RoleGuard(makeReflector(undefined), mockSupabase, makeConfigService(null));
-    const { context } = makeContext({ authorization: 'Bearer bad-token' });
+  it('KHÔNG còn hỗ trợ x-admin-key làm bypass (đã bỏ theo yêu cầu "Không tạo bypass")', async () => {
+    const guard = new RoleGuard(makeReflector(undefined), {} as SupabaseService);
+    const { context } = makeContext({ 'x-admin-key': 'bat-ky-gia-tri-nao' });
 
     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('từ chối khi user hợp lệ nhưng chưa có staff_roles (chưa được cấp quyền)', async () => {
+  it('2. customer authenticated (Bearer hợp lệ, KHÔNG có staff_roles) → DENIED', async () => {
+    // getUser() thành công (khách THẬT SỰ đã đăng nhập) nhưng bảng
+    // staff_roles không có dòng nào cho user này — khác hẳn "token sai".
     const mockSupabase = {
       getClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }) },
+        auth: {
+          getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'customer-1' } }, error: null }),
+        },
         from: () => ({
           select: () => ({
             eq: () => ({ maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) }),
@@ -86,33 +89,67 @@ describe('RoleGuard', () => {
         }),
       }),
     } as unknown as SupabaseService;
-    const guard = new RoleGuard(makeReflector(undefined), mockSupabase, makeConfigService(null));
-    const { context } = makeContext({ authorization: 'Bearer good-token' });
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal2')}` });
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });
 
-  it('TỪ CHỐI khi role không khớp yêu cầu (host cố gọi route admin)', async () => {
-    const mockSupabase = {
-      getClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'host-1' } }, error: null }) },
-        from: () => ({
-          select: () => ({
-            eq: () => ({ maybeSingle: jest.fn().mockResolvedValue({ data: { role: 'host' }, error: null }) }),
-          }),
-        }),
-      }),
-    } as unknown as SupabaseService;
-    const guard = new RoleGuard(makeReflector(['admin']), mockSupabase, makeConfigService(null));
-    const { context } = makeContext({ authorization: 'Bearer host-token' });
+  it('3. admin CHƯA hoàn tất MFA (aal1) → DENIED', async () => {
+    const mockSupabase = makeSupabaseWithRole('admin');
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal1')}` });
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });
 
-  it('cho qua role host và gắn ĐÚNG danh sách worker_id của host đó vào request.staff (Host không được thấy worker của Host khác)', async () => {
+  it('3b. admin token KHÔNG có claim aal (mặc định coi là aal1) → DENIED', async () => {
+    const mockSupabase = makeSupabaseWithRole('admin');
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken(undefined)}` });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('4. admin + MFA hợp lệ (aal2) → PASS', async () => {
+    const mockSupabase = makeSupabaseWithRole('admin', 'admin-1');
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context, request } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal2')}` });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.staff).toEqual({ userId: 'admin-1', role: 'admin', workerIds: [] });
+  });
+
+  it('5. gọi trực tiếp route Admin API với Bearer hợp lệ nhưng thiếu MFA assurance → DENIED (không có đường tắt nào khác)', async () => {
+    const mockSupabase = makeSupabaseWithRole('admin');
+    const guard = new RoleGuard(makeReflector(['admin']), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal1')}` });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('6. cross-role/privilege escalation: role host cố gọi route yêu cầu admin (dù đã MFA) → DENIED', async () => {
+    const mockSupabase = makeSupabaseWithRole('host');
+    const guard = new RoleGuard(makeReflector(['admin']), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal2')}` });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('từ chối khi Bearer token không hợp lệ (Supabase getUser lỗi)', async () => {
+    const mockSupabase = makeSupabaseWithRole(null);
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context } = makeContext({ authorization: 'Bearer bad-token' });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('host + MFA hợp lệ → PASS, gắn ĐÚNG danh sách worker_id của host đó (Host không thấy worker của Host khác)', async () => {
     const mockSupabase = {
       getClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'host-1' } }, error: null }) },
+        auth: {
+          getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'host-1' } }, error: null }),
+        },
         from: (table: string) => {
           if (table === 'staff_roles') {
             return {
@@ -129,26 +166,17 @@ describe('RoleGuard', () => {
         },
       }),
     } as unknown as SupabaseService;
-    const guard = new RoleGuard(makeReflector(['host']), mockSupabase, makeConfigService(null));
-    const { context, request } = makeContext({ authorization: 'Bearer host-token' });
+    const guard = new RoleGuard(makeReflector(['host']), mockSupabase);
+    const { context, request } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal2')}` });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(request.staff).toEqual({ userId: 'host-1', role: 'host', workerIds: ['W1', 'W2'] });
   });
 
-  it('mặc định yêu cầu role admin khi route không khai báo @Roles() nào', async () => {
-    const mockSupabase = {
-      getClient: () => ({
-        auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'host-1' } }, error: null }) },
-        from: () => ({
-          select: () => ({
-            eq: () => ({ maybeSingle: jest.fn().mockResolvedValue({ data: { role: 'host' }, error: null }) }),
-          }),
-        }),
-      }),
-    } as unknown as SupabaseService;
-    const guard = new RoleGuard(makeReflector(undefined), mockSupabase, makeConfigService(null));
-    const { context } = makeContext({ authorization: 'Bearer host-token' });
+  it('mặc định yêu cầu role admin khi route không khai báo @Roles() nào (host không qua được dù đã MFA)', async () => {
+    const mockSupabase = makeSupabaseWithRole('host');
+    const guard = new RoleGuard(makeReflector(undefined), mockSupabase);
+    const { context } = makeContext({ authorization: `Bearer ${fakeSupabaseToken('aal2')}` });
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });

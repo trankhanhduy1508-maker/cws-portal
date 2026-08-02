@@ -7,11 +7,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { SupabaseService } from '../../supabase/supabase.service';
-import { AppConfig } from '../../config/configuration';
-import { isValidAdminKey } from './admin-key.guard';
+import { getAuthenticatorAssuranceLevel } from './jwt-claims.util';
 
 export type StaffRole = 'admin' | 'host';
 
@@ -36,22 +34,34 @@ declare module 'express' {
 }
 
 /**
- * RBAC thật (thay AdminKeyGuard ở các route Admin/Host) — kiểm tra role
- * ở TẦNG BACKEND, không chỉ ẩn nút trên Frontend (yêu cầu bắt buộc).
- * Tài khoản Admin/Host provision thủ công qua Supabase Auth + 1 dòng
- * staff_roles (migration 013), KHÔNG hardcode email nào trong code.
+ * RBAC thật cho toàn bộ Admin/Host API — kiểm tra role ở TẦNG BACKEND,
+ * không chỉ ẩn nút trên Frontend (yêu cầu bắt buộc). Tài khoản Admin/Host
+ * provision thủ công qua Supabase Auth + 1 dòng staff_roles (migration
+ * 013), KHÔNG hardcode email nào trong code.
  *
- * Giữ x-admin-key làm lớp phòng thủ phụ TÙY CHỌN (tương thích ngược
- * AdminScreen.jsx/luồng vận hành hiện tại đang dùng key) — hợp lệ luôn
- * được coi là role 'admin', nhưng route chỉ chấp nhận nếu 'admin' nằm
- * trong danh sách role yêu cầu của chính route đó.
+ * BẮT BUỘC MFA (TOTP) qua chính cơ chế Auth provider đang dùng — Supabase
+ * Auth hỗ trợ TOTP MFA có sẵn, miễn phí, bật mặc định trên mọi project
+ * (developer.supabase.com/docs/guides/auth/auth-mfa, xác nhận 2026-08-02),
+ * KHÔNG tự lưu/quản lý TOTP secret riêng. Access token của 1 session đã
+ * hoàn tất thử thách MFA mang claim `aal: "aal2"` — claim này đã được
+ * chính `client.auth.getUser(token)` xác thực chữ ký/tính hợp lệ ở trên,
+ * nên đọc thêm claim `aal` từ CÙNG token đó (không verify lại) là an
+ * toàn (xem jwt-claims.util.ts + tài liệu chính thức "Checking AAL
+ * Server-Side" của Supabase).
+ *
+ * ĐÃ BỎ nhánh `x-admin-key` (2026-08-02, theo yêu cầu Owner "Không tạo
+ * bypass" khi thêm MFA) — trước đây key tĩnh này cho qua thẳng role
+ * 'admin' mà KHÔNG cần Bearer/MFA gì cả, mâu thuẫn trực tiếp với yêu
+ * cầu MFA bắt buộc. Route Admin/Host giờ CHỈ chấp nhận Supabase session
+ * thật đã hoàn tất MFA. `x-admin-key`/`AdminKeyGuard` vẫn còn ở nơi
+ * khác (vd `GET /jobs` khi ẩn danh) — đó là phạm vi/mục đích KHÁC
+ * (không phải Admin Portal), không thuộc yêu cầu MFA lần này.
  */
 @Injectable()
 export class RoleGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -61,15 +71,9 @@ export class RoleGuard implements CanActivate {
     ) ?? ['admin'];
     const request = context.switchToHttp().getRequest<Request>();
 
-    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    if (requiredRoles.includes('admin') && isValidAdminKey(request, adminApiKey)) {
-      request.staff = { userId: 'x-admin-key', role: 'admin', workerIds: [] };
-      return true;
-    }
-
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Thiếu Bearer token hoặc x-admin-key');
+      throw new UnauthorizedException('Thiếu Bearer token — Admin/Host API yêu cầu đăng nhập thật (Supabase Auth) kèm MFA, không còn hỗ trợ x-admin-key.');
     }
 
     const token = authHeader.slice('Bearer '.length);
@@ -91,6 +95,13 @@ export class RoleGuard implements CanActivate {
     if (!requiredRoles.includes(role)) {
       throw new ForbiddenException(
         `Route yêu cầu quyền ${requiredRoles.join('/')}, tài khoản hiện có quyền '${role}'`,
+      );
+    }
+
+    const aal = getAuthenticatorAssuranceLevel(token);
+    if (aal !== 'aal2') {
+      throw new ForbiddenException(
+        'Tài khoản Admin/Host bắt buộc hoàn tất xác thực MFA (TOTP) trước khi truy cập — hãy hoàn tất bước quét mã Authenticator khi đăng nhập.',
       );
     }
 

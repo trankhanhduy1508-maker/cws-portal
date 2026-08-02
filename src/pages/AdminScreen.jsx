@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, RefreshCw, KeyRound, Eye, X } from 'lucide-react';
+import { Search, RefreshCw, LogOut, Eye, X } from 'lucide-react';
 import {
   adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminListHostUsageSessions,
   adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
@@ -7,10 +7,12 @@ import {
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
   adminListPaymentDevices,
 } from '../services/adminApi';
+import { signOutStaff } from '../services/staffAuth';
+import StaffMfaLogin from '../components/StaffMfaLogin';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
-const ADMIN_KEY_STORAGE = 'cws_admin_key';
+const STAFF_TOKEN_STORAGE = 'cws_staff_token';
 
 // Phase 8 CWS_WORKER_ROADMAP.md — hiển thị giây dạng "Xp Ys" ngắn gọn cho
 // bảng thống kê host usage (số giây thô từ Backend khó đọc trực tiếp).
@@ -29,10 +31,15 @@ function formatDurationSeconds(totalSeconds) {
  * phải hệ thống đăng nhập/phân quyền enterprise.
  */
 export default function AdminScreen() {
+  // adminKey giờ giữ ACCESS TOKEN Supabase (Bearer) thay vì shared key
+  // tĩnh cũ — chỉ có giá trị SAU KHI đăng nhập + MFA thật thành công
+  // (xem StaffMfaLogin/services/staffAuth.js). Đọc lại từ sessionStorage
+  // lúc mount CHỈ để tránh hiện lại màn login khi user F5 trong CÙNG
+  // tab — Backend vẫn tự kiểm tra lại claim aal của chính token này ở
+  // MỌI request (không tin tưởng việc token có mặt là đủ).
   const [adminKey, setAdminKey] = useState(() => {
-    try { return sessionStorage.getItem(ADMIN_KEY_STORAGE) || ''; } catch { return ''; }
+    try { return sessionStorage.getItem(STAFF_TOKEN_STORAGE) || ''; } catch { return ''; }
   });
-  const [keyInput, setKeyInput] = useState('');
   const [jobs, setJobs] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -187,11 +194,16 @@ export default function AdminScreen() {
     return jobs.filter((job) => job.customerId && matchingCustomerIds.has(job.customerId));
   }, [jobs, customerQuery, filteredCustomers]);
 
-  const handleSaveKey = (e) => {
-    e.preventDefault();
-    try { sessionStorage.setItem(ADMIN_KEY_STORAGE, keyInput); } catch { /* ignore */ }
-    setAdminKey(keyInput);
-  };
+  const handleAuthenticated = useCallback((accessToken) => {
+    try { sessionStorage.setItem(STAFF_TOKEN_STORAGE, accessToken); } catch { /* ignore */ }
+    setAdminKey(accessToken);
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    try { sessionStorage.removeItem(STAFF_TOKEN_STORAGE); } catch { /* ignore */ }
+    setAdminKey('');
+    signOutStaff().catch(() => { /* đã xoá token local, không chặn UI vì lỗi mạng */ });
+  }, []);
 
   const handleSearchStorageCode = async (e) => {
     e.preventDefault();
@@ -220,36 +232,21 @@ export default function AdminScreen() {
   };
 
   if (!adminKey) {
-    return (
-      <div style={{ maxWidth: 360, margin: '80px auto', padding: 20 }}>
-        <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-          CWS Admin
-        </h2>
-        <form onSubmit={handleSaveKey} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input
-            type="password"
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-            placeholder="Admin API Key"
-            style={{ padding: 12, borderRadius: 10, border: '1.5px solid #E8E8EA', fontFamily: 'monospace' }}
-            autoFocus
-          />
-          <button type="submit" className="btn btn--primary btn--full">
-            <KeyRound size={16} strokeWidth={2} style={{ marginRight: 6 }} />
-            Vào Dashboard
-          </button>
-        </form>
-      </div>
-    );
+    return <StaffMfaLogin onAuthenticated={handleAuthenticated} />;
   }
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600 }}>CWS Admin</h2>
-        <button onClick={() => loadAll(adminKey)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#3B5BFF' }}>
-          <RefreshCw size={14} strokeWidth={2} /> Tải lại
-        </button>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <button onClick={() => loadAll(adminKey)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#3B5BFF' }}>
+            <RefreshCw size={14} strokeWidth={2} /> Tải lại
+          </button>
+          <button onClick={handleSignOut} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#666' }}>
+            <LogOut size={14} strokeWidth={2} /> Đăng xuất
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>

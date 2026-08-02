@@ -113,22 +113,33 @@ tách rời khỏi 1 lần Render thật.
 
 ------------------------------------------------------------------------
 
-# Giai đoạn 7 -- Trang quản trị [IN_PROGRESS]
+# Giai đoạn 7 -- Trang quản trị [DONE — code+unit test; HUMAN_VERIFICATION_PENDING — enroll MFA thật]
 
--   Danh sách khách hàng — TODO/IN_PROGRESS (chưa xác nhận đủ trong `AdminScreen.jsx`, cần audit riêng)
--   Danh sách Job — IN_PROGRESS (route `GET /jobs/by-storage-code`, `GET /payments/by-code` tồn tại với `RoleGuard`)
--   Tiến độ — TODO/IN_PROGRESS (chưa audit riêng)
--   Thanh toán — IN_PROGRESS (`GET /payments/devices`, `GET /payments/by-code/:paymentCode` tồn tại)
--   Preview — TODO/IN_PROGRESS (chưa audit riêng)
--   File cuối — TODO/IN_PROGRESS (chưa audit riêng)
--   Tìm kiếm theo Customer / Storage Code / Payment Code — IN_PROGRESS (1 phần route tra cứu theo storage_code/payment_code đã tồn tại)
+Audit lại `AdminScreen.jsx` (689 dòng) 2026-08-02: nội dung dashboard đã
+đầy đủ, không cần viết lại — chỉ thiếu lớp xác thực đúng chuẩn (đã bổ
+sung, xem dưới).
 
-Xác thực Admin hiện dùng `RoleGuard`/`x-admin-key` (shared secret đơn
-giản, xem `AGENTS.md` — không phải hệ thống phân quyền enterprise theo
-chủ ý MVP). Owner đã yêu cầu nâng cấp lên MFA/TOTP cho Admin — CHƯA bắt
-đầu, đây là Task riêng đang chờ Owner xác nhận LOOP tiếp tục (xem
-`reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md` và hội thoại
-2026-08-02 — KHÔNG được coi là DONE cho tới khi có audit + implementation riêng).
+-   Danh sách khách hàng — DONE (`adminListCustomers`, bảng + tìm kiếm theo tên/email/id)
+-   Danh sách Job — DONE (`adminListJobs`, bảng `visibleJobs` với status/tiến độ)
+-   Tiến độ — DONE (cột status trong bảng Job, cùng dữ liệu `stageProgress` đã verify ở Giai đoạn 3)
+-   Thanh toán — DONE (`GET /payments/devices`, `GET /payments/by-code/:paymentCode`, tra cứu Payment Code trên UI)
+-   Preview — DONE (`handleOpenPreview`/`adminGetJobPreview`, modal hiển thị ảnh watermark)
+-   File cuối — DONE (link `adminGetDownloadUrl` trong bảng Job, qua route đã audit ở Giai đoạn 6)
+-   Tìm kiếm theo Customer / Storage Code / Payment Code — DONE (3 ô tìm kiếm riêng, đều hoạt động qua route thật)
+
+**Authentication + Authorization + MFA (2026-08-02, DONE ở mức code/unit test, xem `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`):**
+- Bỏ hoàn toàn nhánh `x-admin-key` làm bypass trong `RoleGuard` (route Admin Portal chính) — theo đúng yêu cầu "Không tạo bypass".
+- Bắt buộc Supabase session thật (email/password, tài khoản provision qua migration 013 `staff_roles`) + MFA (TOTP) CHÍNH THỨC của Supabase Auth (`supabase.auth.mfa.*`, bật mặc định miễn phí trên mọi project — không tự lưu/quản lý TOTP secret).
+- Backend enforce lại bằng cách đọc claim `aal` (Authenticator Assurance Level) từ chính access token đã được `client.auth.getUser()` xác thực — `aal !== 'aal2'` → từ chối, không tin tưởng Frontend.
+- 6 kịch bản bảo mật bắt buộc đều có unit test PASS (`role.guard.spec.ts`): anonymous → DENY, customer authenticated → DENY, admin chưa MFA → DENY, admin + MFA (aal2) → PASS, gọi API trực tiếp thiếu MFA assurance → DENY, cross-role/privilege escalation → DENY.
+- Frontend: `StaffMfaLogin.jsx` — đăng nhập email/password → tự động enroll (hiện QR do Supabase sinh) nếu tài khoản chưa có factor, hoặc challenge (nhập mã 6 số) nếu đã có — không có đường tắt bỏ qua bước này.
+
+**HUMAN_VERIFICATION_PENDING**: chưa có tài khoản Admin/Host thật nào
+được Owner tạo qua Supabase Dashboard (`staff_roles`) để tự chạy thử
+enroll QR that bằng Authenticator app thật — logic đã đúng theo tài
+liệu chính thức Supabase + unit test, nhưng **chưa được Owner xác nhận
+bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner, mọi phần
+độc lập khác đã hoàn tất.
 
 ------------------------------------------------------------------------
 

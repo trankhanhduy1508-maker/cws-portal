@@ -1,20 +1,26 @@
 // ============================================================
 // adminApi — Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7).
 // Gọi thẳng Backend NestJS, KHÔNG qua mockBackend.js (Admin không có
-// khái niệm demo — chỉ dùng được khi đã cấu hình Backend thật). Mọi
-// request đính kèm header x-admin-key (xem backend/src/common/guards/admin-key.guard.ts).
+// khái niệm demo — chỉ dùng được khi đã cấu hình Backend thật).
+//
+// 2026-08-02 (Owner yêu cầu MFA bắt buộc, "Không tạo bypass"): mọi
+// request giờ đính kèm `Authorization: Bearer <access token Supabase>`
+// (thay cho x-admin-key cũ) — token này lấy được CHỈ SAU KHI hoàn tất
+// đăng nhập + MFA (TOTP) thật, xem services/staffAuth.js +
+// components/StaffMfaLogin.jsx. Backend (RoleGuard) tự kiểm tra lại
+// claim `aal` từ chính token, không tin tưởng Frontend.
 // ============================================================
 
 import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
 
-async function adminFetch(path, adminKey) {
+async function adminFetch(path, staffToken) {
   if (!IS_BACKEND_CONFIGURED) {
     throw new Error('Chưa cấu hình Backend thật — Admin Dashboard không dùng được ở chế độ demo.');
   }
   const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
-    headers: { 'x-admin-key': adminKey },
+    headers: { Authorization: `Bearer ${staffToken}` },
   });
-  if (res.status === 401) throw new Error('Sai admin key');
+  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
   if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
   return res.json();
 }
@@ -22,16 +28,16 @@ async function adminFetch(path, adminKey) {
 /** Hành động Admin THẬT lên Worker Fleet (retry/requeue/quarantine/drain,
  * ngoài CWS_WORKER_ROADMAP.md — đóng lỗ hổng Phase 6), khác `adminFetch`
  * ở trên vì là POST + có body tuỳ chọn. */
-async function adminPost(path, adminKey, body) {
+async function adminPost(path, staffToken, body) {
   if (!IS_BACKEND_CONFIGURED) {
     throw new Error('Chưa cấu hình Backend thật — Admin Dashboard không dùng được ở chế độ demo.');
   }
   const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
     method: 'POST',
-    headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${staffToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
   });
-  if (res.status === 401) throw new Error('Sai admin key');
+  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
   if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
   return res.json();
 }
@@ -103,38 +109,38 @@ export function adminListPaymentDevices(adminKey) {
  * xem JobsService.assertOwnership() trong Backend (trước đây route này
  * mở công khai theo jobId, không kiểm tra chủ sở hữu — đã sửa lỗ hổng
  * IDOR, xem docs/MVP_GAP_REPORT.md). */
-export async function adminGetJobPreview(jobId, adminKey) {
+export async function adminGetJobPreview(jobId, staffToken) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`, {
-    headers: { 'x-admin-key': adminKey },
+    headers: { Authorization: `Bearer ${staffToken}` },
   });
   if (!res.ok) throw new Error(`Không lấy được ảnh preview (${res.status})`);
   return res.json();
 }
 
 /** Tra cứu 1 job theo Storage Code. */
-export function adminGetJobByStorageCode(storageCode, adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_JOB_BY_STORAGE_CODE(storageCode), adminKey);
+export function adminGetJobByStorageCode(storageCode, staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_JOB_BY_STORAGE_CODE(storageCode), staffToken);
 }
 
 /** Tra cứu payment theo Payment Code. */
-export function adminGetPaymentByCode(paymentCode, adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_PAYMENT_BY_CODE(paymentCode), adminKey);
+export function adminGetPaymentByCode(paymentCode, staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_PAYMENT_BY_CODE(paymentCode), staffToken);
 }
 
-/** Log Worker (báo lỗi render) của 1 job — cần x-admin-key nếu job đã
- * có chủ (cùng lý do với adminGetJobPreview ở trên). */
-export async function adminGetJobLogs(jobId, adminKey) {
+/** Log Worker (báo lỗi render) của 1 job. */
+export async function adminGetJobLogs(jobId, staffToken) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ADMIN_JOB_LOGS(jobId)}`, {
-    headers: { 'x-admin-key': adminKey },
+    headers: { Authorization: `Bearer ${staffToken}` },
   });
   if (!res.ok) throw new Error(`Không lấy được log (${res.status})`);
   return res.json();
 }
 
 /** URL tải file kết quả cho link `<a href>` trong bảng Job — dùng thẳng
- * làm href (không phải fetch()) nên phải đính `adminKey` qua query string
- * thay vì header `x-admin-key` (điều hướng trình duyệt thường không set
- * được custom header, xem admin-key.guard.ts#isValidAdminKey). */
-export function adminGetDownloadUrl(jobId, adminKey) {
-  return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?adminKey=${encodeURIComponent(adminKey)}`;
+ * làm href (không phải fetch()) nên phải đính token qua query string
+ * `?staffToken=` thay vì header Authorization (điều hướng trình duyệt
+ * thường không set được custom header, xem staff-auth.util.ts —
+ * Backend đọc cả header lẫn query cho đúng use-case này). */
+export function adminGetDownloadUrl(jobId, staffToken) {
+  return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?staffToken=${encodeURIComponent(staffToken)}`;
 }

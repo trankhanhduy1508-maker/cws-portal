@@ -6,11 +6,34 @@ Authentication
 
 **[SUPERSEDED — thay thế bởi Google OAuth 2026-08-01]** Facebook Login (quyết định gốc trước 2026-08-01) — đã gỡ khỏi MVP, KHÔNG implement lại.
 
-**[ACTIVE]** No email/password.
+**[ACTIVE]** No email/password — áp dụng cho đăng nhập KHÁCH HÀNG
+(Google OAuth only). KHÔNG áp dụng cho Admin/Host (staff), xem quyết
+định "Admin Authentication" riêng ngay dưới — 2 nhóm người dùng khác
+nhau, không mâu thuẫn nhau.
 
 **[ACTIVE]** No OTP.
 
 **[ACTIVE]** No Zalo Login.
+
+---
+
+Admin Authentication (thêm 2026-08-02)
+
+**[ACTIVE]** Admin/Host (staff, KHÔNG phải khách hàng) đăng nhập bằng
+Supabase Auth email/password (tài khoản provision thủ công qua Supabase
+Dashboard + 1 dòng `staff_roles`, migration 013 — không có màn hình tự
+đăng ký) + BẮT BUỘC MFA (TOTP) chính thức của Supabase Auth
+(`supabase.auth.mfa.*`, không tự lưu/quản lý TOTP secret riêng, không
+dùng thư viện TOTP bên thứ 3). Backend enforce lại bằng cách đọc claim
+`aal` từ access token (`aal2` mới được coi là đã hoàn tất MFA) —
+`RoleGuard` áp dụng cho toàn bộ Admin Portal API. Xem
+`reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`.
+
+**[SUPERSEDED — thay thế bởi quyết định MFA 2026-08-02 ở trên]** Bảo vệ
+Admin Portal chỉ bằng 1 shared secret tĩnh (`x-admin-key`) không gắn
+với tài khoản/MFA cụ thể nào — nhánh này đã bị GỠ KHỎI `RoleGuard` (vẫn
+còn ở 3 route legacy ngoài phạm vi Admin Portal chính: preview/logs/
+download của `JobsController`, xem report trên mục lý do giữ lại).
 
 ---
 

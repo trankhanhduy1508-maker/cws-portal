@@ -19,6 +19,7 @@ import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { isValidAdminKey } from '../common/guards/admin-key.guard';
 import { RoleGuard } from '../common/guards/role.guard';
+import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 
@@ -30,11 +31,16 @@ export class JobsController {
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
-  /** x-admin-key hợp lệ -> bỏ qua kiểm tra chủ sở hữu job (Admin Dashboard
-   * cần xem/thao tác job của MỌI khách, xem JobsService.assertOwnership()). */
-  private isAdminRequest(req: Request): boolean {
+  /** x-admin-key HOẶC Bearer token Admin thật đã hoàn tất MFA hợp lệ ->
+   * bỏ qua kiểm tra chủ sở hữu job (Admin Dashboard cần xem/thao tác job
+   * của MỌI khách, xem JobsService.assertOwnership()). Giữ x-admin-key
+   * cho khả năng tương thích ngược (route này đã chấp nhận key từ
+   * trước khi có yêu cầu MFA, không phải bypass MỚI phát sinh — xem
+   * staff-auth.util.ts). */
+  private async isAdminRequest(req: Request): Promise<boolean> {
     const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    return isValidAdminKey(req, adminApiKey);
+    if (isValidAdminKey(req, adminApiKey)) return true;
+    return isAuthenticatedMfaAdmin(req, this.supabaseService);
   }
 
   @Post()
@@ -91,7 +97,7 @@ export class JobsController {
     const order = await this.jobsService.getByIdForCustomer(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return toPublicJson(order);
   }
@@ -105,7 +111,7 @@ export class JobsController {
     const order = await this.jobsService.getByIdForCustomer(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { status: order.status, stageProgress: order.stageProgress };
   }
@@ -116,7 +122,7 @@ export class JobsController {
   @HttpCode(200)
   async cancelViaPost(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(id, customerId, this.isAdminRequest(req));
+    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
     return { ok: true };
   }
 
@@ -128,7 +134,7 @@ export class JobsController {
     const images = await this.jobsService.getReviewImages(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { images };
   }
@@ -142,7 +148,7 @@ export class JobsController {
     const { order, payment } = await this.jobsService.approve(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { ...toPublicJson(order), payment };
   }
@@ -161,7 +167,7 @@ export class JobsController {
       id,
       body?.note ?? null,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { ok: true };
   }
@@ -185,7 +191,7 @@ export class JobsController {
       id,
       ip,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     res.redirect(302, url);
   }
@@ -197,7 +203,7 @@ export class JobsController {
     const logs = await this.jobsService.getWorkerLogs(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { logs };
   }
@@ -209,7 +215,7 @@ export class JobsController {
     const notifications = await this.jobsService.getNotifications(
       id,
       customerId,
-      this.isAdminRequest(req),
+      await this.isAdminRequest(req),
     );
     return { notifications };
   }
@@ -220,7 +226,7 @@ export class JobsController {
   @HttpCode(200)
   async cancelViaDelete(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(id, customerId, this.isAdminRequest(req));
+    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
     return { ok: true };
   }
 }
