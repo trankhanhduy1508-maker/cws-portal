@@ -137,6 +137,105 @@ Một task chỉ được xem là hoàn thành khi:
 
 ---
 
+# SOURCE-OF-TRUTH SYNC (bắt buộc, thêm 2026-08-02)
+
+Một task chỉ được coi là **DONE** khi đủ CẢ 5 điều kiện:
+
+```
+Implementation + Tests + Evidence + Source-of-Truth Sync + Commit
+```
+
+- **Implementation** — code thật đã viết/sửa đúng phạm vi.
+- **Tests** — test pass (unit/integration tùy phạm vi).
+- **Evidence** — bằng chứng thật (log/DB/HTTP response thật), không suy
+  đoán, không tự nhận PASS mà không có gì kiểm chứng được.
+- **Source-of-Truth Sync** — Roadmap (`CWS_ROADMAP_MVP_V1.md`) +
+  `CURRENT_STATUS.md` + `DECISIONS.md` (nếu liên quan) đã được cập nhật
+  đúng trạng thái mới **TRƯỚC KHI** LOOP chuyển sang task tiếp theo —
+  không được để lại task đã xong nhưng docs còn ghi trạng thái cũ.
+- **Commit** — đã commit (và push nếu có quyền) đúng phạm vi thay đổi.
+
+Nếu tài liệu (Roadmap/CURRENT_STATUS/DECISIONS) mâu thuẫn với
+code/tests/evidence mới hơn → phải **reconcile tài liệu trước**, không
+được để mâu thuẫn tồn đọng sang LOOP sau.
+
+## Roadmap status — nhãn chuẩn hoá
+
+Mỗi hạng mục trong `CWS_ROADMAP_MVP_V1.md` mang đúng 1 trong các nhãn
+sau (không tự đặt nhãn khác):
+
+| Nhãn | Ý nghĩa |
+|---|---|
+| `TODO` | Chưa bắt đầu |
+| `IN_PROGRESS` | Đang làm dở, chưa đủ evidence để DONE |
+| `NEEDS_VERIFICATION` | Code/implementation tồn tại nhưng chưa có evidence runtime thật (vd unit test mock PASS nhưng chưa chạy thật với dữ liệu/thiết bị thật) |
+| `DONE` | Đủ cả 5 điều kiện Source-of-Truth Sync ở trên |
+| `BLOCKED` | Không tự làm tiếp được — thiếu quyền/secret/API/tài khoản/thiết bị/xác nhận Owner (xem BLOCKER POLICY) |
+| `SUPERSEDED` | Task/thiết kế cũ đã bị 1 quyết định/thiết kế mới thay thế — không implement lại thiết kế cũ, ghi rõ cái gì thay thế nó |
+
+Roadmap chỉ ghi **trạng thái hiện tại** của từng hạng mục, KHÔNG biến
+thành changelog dài (không liệt kê lịch sử từng lần sửa — lịch sử đó
+thuộc về `reports/` và git log).
+
+## CURRENT_STATUS.md — entry point đầu tiên của LOOP
+
+`CURRENT_STATUS.md` phải NGẮN, chỉ gồm:
+
+```
+Current Phase
+Last Verified
+Current Task
+Next
+Last Updated (ngày + link tới report/evidence chi tiết nếu có)
+```
+
+Chi tiết bằng chứng (log, HTTP response, DB query, phân tích code) thuộc
+về `reports/`, không nhét vào `CURRENT_STATUS.md` — file này chỉ trỏ tới
+report liên quan, không lặp lại nội dung report.
+
+## DECISIONS.md — ACTIVE / SUPERSEDED
+
+Mỗi quyết định trong `DECISIONS.md` mang nhãn `ACTIVE` hoặc
+`SUPERSEDED`. Khi 1 quyết định mới thay thế quyết định cũ:
+
+- Quyết định mới → `ACTIVE`.
+- Quyết định cũ → `SUPERSEDED`, ghi rõ **bị thay thế bởi quyết định
+  nào** (ngày + tên ngắn gọn).
+- KHÔNG BAO GIỜ để 2 quyết định mâu thuẫn cùng ở trạng thái `ACTIVE`.
+
+## Thứ tự bắt buộc khi bắt đầu mỗi LOOP
+
+```
+CURRENT_STATUS.md
+  -> Roadmap (CWS_ROADMAP_MVP_V1.md)
+  -> DECISIONS.md
+  -> code/tests/evidence liên quan tới Current Task
+  -> xác định NEXT TASK
+```
+
+Next Task luôn phải dựa vào Roadmap (không tự bịa task ngoài Roadmap
+trừ khi Owner yêu cầu rõ ràng).
+
+## Reconciliation (chạy định kỳ hoặc khi Owner yêu cầu)
+
+Đối chiếu Roadmap ↔ CURRENT_STATUS ↔ DECISIONS ↔ code ↔ tests/evidence
+thật, tìm:
+
+- `TODO` nhưng thực tế đã làm.
+- `DONE` nhưng không còn/chưa có evidence đủ.
+- Blocker đã được giải quyết nhưng docs chưa cập nhật.
+- Task/thiết kế cũ đã bị thay thế nhưng chưa đánh dấu `SUPERSEDED`.
+- Docs mâu thuẫn nhau (vd 2 quyết định cùng ACTIVE nhưng xung đột).
+- Task trùng lặp giữa các file.
+
+**Trong reconciliation CHỈ đồng bộ trạng thái/docs — không tự mở
+feature mới, không code lại phần đã có evidence DONE.** Nếu Roadmap ghi
+`DONE` nhưng không còn evidence đủ → đổi về `NEEDS_VERIFICATION`, không
+tự động code lại. Nếu thiết kế cũ đã bị thay thế → `SUPERSEDED`, không
+implement lại thiết kế cũ.
+
+---
+
 # BLOCKER POLICY
 
 Chỉ được phép dừng khi gặp:
