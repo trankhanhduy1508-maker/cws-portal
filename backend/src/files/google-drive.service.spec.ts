@@ -59,4 +59,51 @@ describe('GoogleDriveService', () => {
       );
     });
   });
+
+  describe('kiểm tra quyền truy cập (CWS_ROADMAP_MVP_V1.md Giai đoạn 2 — "Kiểm tra quyền truy cập"/"Hướng dẫn sửa quyền")', () => {
+    let serviceWithApiKey: GoogleDriveService;
+    let fetchSpy: jest.SpyInstance;
+
+    beforeEach(async () => {
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          GoogleDriveService,
+          { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('fake-api-key') } },
+        ],
+      }).compile();
+      serviceWithApiKey = module.get(GoogleDriveService);
+      fetchSpy = jest.spyOn(global, 'fetch');
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it('file KHÔNG chia sẻ "Bất kỳ ai có link" (Google Drive API trả 404 cho file private khi dùng API key) -> lỗi rõ ràng, hướng dẫn cách sửa', async () => {
+      fetchSpy.mockResolvedValue({ ok: false, status: 404 } as Response);
+      const link = 'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view';
+
+      await expect(serviceWithApiKey.resolve(link)).rejects.toThrow(BadRequestException);
+      await expect(serviceWithApiKey.resolve(link)).rejects.toThrow(/quyền chia sẻ/);
+    });
+
+    it('file CÓ quyền truy cập -> trả về đúng tên/dung lượng thật từ API', async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ name: 'Titan Station.blend', size: '104857600' }),
+      } as Response);
+      const link = 'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view';
+
+      const result = await serviceWithApiKey.resolve(link);
+      expect(result).toEqual({ fileName: 'Titan Station.blend', fileSizeBytes: 104857600 });
+    });
+
+    it('Google Drive API lỗi khác 404 (vd 500/quota) -> KHÔNG chặn cứng, trả null thay vì bịa dữ liệu (không phải lỗi quyền, không nên hiện nhầm thông báo "kiểm tra quyền")', async () => {
+      fetchSpy.mockResolvedValue({ ok: false, status: 500 } as Response);
+      const link = 'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view';
+
+      const result = await serviceWithApiKey.resolve(link);
+      expect(result).toEqual({ fileName: null, fileSizeBytes: null });
+    });
+  });
 });

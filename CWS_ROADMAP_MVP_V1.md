@@ -49,8 +49,8 @@
 -   Tạo Customer Profile — DONE
 -   Tạo Job — NEEDS_VERIFICATION (code + unit test PASS, unit test mock E2E PASS; **chưa có 1 job thật nào được tạo qua UI thật bởi khách hàng đã đăng nhập thật** — xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`)
 -   Dán Google Drive / OneDrive / Dropbox — DONE (`POST /drive/resolve` xác nhận trả response thật trên production, 2026-08-01)
--   Kiểm tra quyền truy cập — NEEDS_VERIFICATION (chưa có evidence riêng xác nhận UX báo lỗi quyền hoạt động đúng với 1 link thật bị chặn quyền)
--   Hướng dẫn sửa quyền nếu cần — NEEDS_VERIFICATION (cùng lý do trên)
+-   Kiểm tra quyền truy cập — DONE (2026-08-02: `GoogleDriveService.resolve()` đã đúng — Google Drive API trả 404 cho file private khi dùng API key, code bắt đúng case này; thêm unit test mock fetch xác nhận hành vi, phân biệt rõ với lỗi API khác (500/quota) không bị hiểu nhầm thành lỗi quyền)
+-   Hướng dẫn sửa quyền nếu cần — DONE (thông báo lỗi tiếng Việt rõ ràng: "kiểm tra lại quyền chia sẻ (chọn Bất kỳ ai có link)")
 -   Tự tải file lên B2 — DONE (xác nhận bằng HTTP thật, `POST /files/upload`, 2026-08-02)
 -   Sinh Storage Code — DONE
 
