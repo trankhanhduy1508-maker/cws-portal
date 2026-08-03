@@ -126,6 +126,9 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
             rows={3}
             style={{ padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5, resize: 'vertical' }}
           />
+          <p style={{ textAlign: 'center', fontSize: 12, color: '#9a9aa0' }}>
+            Yêu cầu chỉnh sửa miễn phí, không giới hạn số lần — bạn chỉ trả tiền sau khi duyệt kết quả cuối cùng.
+          </p>
           {requestError && <p style={{ textAlign: 'center', fontSize: 13.5, color: '#D64545' }}>{requestError}</p>}
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="secondary" disabled={isRequesting} onClick={() => setShowRequestForm(false)}>
