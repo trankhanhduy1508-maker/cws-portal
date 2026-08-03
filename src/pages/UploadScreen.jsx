@@ -28,7 +28,7 @@ export default function UploadScreen({
           Gửi file của bạn
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
-          Hỗ trợ file Blender (.blend)
+          Hỗ trợ file Blender (.blend), tối đa 2GB. File sẽ được render trước khi bạn duyệt và thanh toán.
         </p>
       </div>
 

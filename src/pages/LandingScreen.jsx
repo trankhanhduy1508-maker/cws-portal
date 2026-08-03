@@ -6,7 +6,7 @@ import './LandingScreen.css';
 const REASONS = [
   { icon: Clock, text: 'Máy bạn rảnh, việc vẫn xong — không cần treo máy qua đêm' },
   { icon: Cpu, text: 'Xử lý được cả file nặng hàng triệu polygon' },
-  { icon: ShieldCheck, text: 'File của bạn được xoá sau khi tải xuống' },
+  { icon: ShieldCheck, text: 'File chỉ được mở tải sau khi bạn duyệt và thanh toán' },
 ];
 
 /** Hero + trạng thái đăng nhập Google — không còn là 1 bước riêng phải

@@ -183,7 +183,10 @@ giữ nguyên.
 
 ## Last Updated
 
-2026-08-03 — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
+2026-08-03 — customer transparency copy fix đã hoàn tất an toàn, xem
+`reports/customer/CWS_MVP_TRANSPARENCY_COPY_FIX_2026-08-03.md`.
+Không thay đổi production data/credential/payment. Xem thêm
+`reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen
 UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
 (ưu tiên hoá task theo insight khách hàng),
