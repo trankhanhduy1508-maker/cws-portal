@@ -1,0 +1,78 @@
+$wshell = New-Object -ComObject WScript.Shell
+
+# Cấu hình thời gian
+$WORK_MINUTES   = 90    # 1h30 làm việc
+$BREAK_MINUTES  = 60    # 60 phút nghỉ
+$ENTER_INTERVAL = 3     # Enter mỗi 3 giây
+$CONTINUE_SEC   = 600   # Continue mỗi 10 phút (600 giây)
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  AUTO ENTER + CONTINUE (90m ON / 60m OFF)" -ForegroundColor Cyan
+Write-Host "  Nhan Ctrl+C de dung script" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+try {
+    $cycle = 1
+    while ($true) {
+        
+        # ═══════════════════════════════════════
+        # PHASE 1: LAM VIEC (90 phut)
+        # ═══════════════════════════════════════
+        Write-Host "`n[$cycle] $(Get-Date -Format 'HH:mm:ss') >>> BAT DAU LAM VIEC ($WORK_MINUTES phut) <<<" -ForegroundColor Green
+        
+        $phaseStart   = Get-Date
+        $lastContinue = Get-Date
+        
+        # Gửi continue ngay khi bắt đầu ca làm việc
+        $wshell.SendKeys("continue")
+        Start-Sleep -Milliseconds 800
+        $wshell.SendKeys("{ENTER}")
+        Write-Host "$(Get-Date -Format 'HH:mm:ss') -> Da gui 'continue' khoi dong" -ForegroundColor DarkGray
+        
+        while ((New-TimeSpan -Start $phaseStart).TotalMinutes -lt $WORK_MINUTES) {
+            
+            # Gửi Enter mỗi 3 giây
+            $wshell.SendKeys("{ENTER}")
+            
+            # Gửi continue + Enter mỗi 10 phút
+            if ((New-TimeSpan -Start $lastContinue).TotalSeconds -ge $CONTINUE_SEC) {
+                Write-Host "$(Get-Date -Format 'HH:mm:ss') -> Sending continue..." -ForegroundColor Yellow
+                $wshell.SendKeys("continue")
+                Start-Sleep -Milliseconds 800
+                $wshell.SendKeys("{ENTER}")
+                $lastContinue = Get-Date
+            }
+            
+            Start-Sleep -Seconds $ENTER_INTERVAL
+        }
+        
+        Write-Host "$(Get-Date -Format 'HH:mm:ss') >>> HET GIO LAM VIEC, CHUYEN SANG NGHI <<<" -ForegroundColor Green
+        
+        # ═══════════════════════════════════════
+        # PHASE 2: NGHI (60 phut) - KHONG gui phim
+        # ═══════════════════════════════════════
+        Write-Host "`n[$cycle] $(Get-Date -Format 'HH:mm:ss') >>> BAT DAU NGHI ($BREAK_MINUTES phut) <<<" -ForegroundColor Magenta
+        
+        $breakStart = Get-Date
+        while ((New-TimeSpan -Start $breakStart).TotalMinutes -lt $BREAK_MINUTES) {
+            $elapsed   = (New-TimeSpan -Start $breakStart).TotalMinutes
+            $remaining = [math]::Ceiling($BREAK_MINUTES - $elapsed)
+            Write-Host "`r    Nghi con $remaining phut...   " -NoNewline -ForegroundColor Cyan
+            Start-Sleep -Seconds 30  # Cập nhật màn hình mỗi 30 giây
+        }
+        
+        Write-Host "`n$(Get-Date -Format 'HH:mm:ss') >>> HET GIO NGHI <<<" -ForegroundColor Magenta
+        
+        $cycle++
+    }
+    
+} catch {
+    Write-Host "`n[!] Script bi dung hoac loi: $_" -ForegroundColor Red
+    
+} finally {
+    # Giải phóng COM object sạch sẽ
+    if ($wshell -ne $null) {
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wshell) | Out-Null
+    }
+    Write-Host "[*] Da don dep va thoat." -ForegroundColor Gray
+}
