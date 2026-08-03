@@ -24,7 +24,11 @@ import { StorageService } from '../storage/storage.service';
 import { B2StorageService } from '../files/b2-storage.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentMethod, PaymentStatus } from '../payments/payment.types';
-import { PricingService } from './services/pricing.service';
+import {
+  FINAL_PRICE_MULTIPLIER,
+  PricingService,
+  VND_PER_WORKER_HOUR,
+} from './services/pricing.service';
 
 /** Thời hạn presigned URL cho ảnh preview — đủ dài để xem trong 1 phiên
  * (modal Admin, màn Review), tự động ký lại mỗi lần gọi GET .../preview
@@ -317,6 +321,10 @@ export class JobsService {
       transferContent: string | null;
       qrImageUrl: string | null;
       amountVnd: number;
+      workerCount: number;
+      workerRuntimeSeconds: number;
+      hourlyRateVnd: number;
+      billingMultiplier: number;
     };
   }> {
     const order = await this.getById(id);
@@ -332,7 +340,7 @@ export class JobsService {
       );
     }
 
-    const { finalPriceVnd, workerRuntimeSeconds } =
+    const { finalPriceVnd, workerRuntimeSeconds, workerCount } =
       await this.pricingService.computeFinalPriceVnd(order.internalJobId);
 
     const { paymentId, paymentCode, transferContent, qrImageUrl } =
@@ -357,6 +365,10 @@ export class JobsService {
         transferContent,
         qrImageUrl,
         amountVnd: finalPriceVnd,
+        workerCount,
+        workerRuntimeSeconds,
+        hourlyRateVnd: VND_PER_WORKER_HOUR,
+        billingMultiplier: FINAL_PRICE_MULTIPLIER,
       },
     };
   }

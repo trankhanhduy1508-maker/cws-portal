@@ -16,6 +16,13 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 
 ## Last Verified
 
+2026-08-03 (final-price transparency):
+- Payment UI hiển thị breakdown từ dữ liệu backend: số Worker, tổng runtime
+  Worker cộng dồn, đơn giá 6.000đ/Worker-hour và hệ số 2. Không tự đặt price
+  cap hay suy ra dữ liệu thiếu. Evidence: `reports/payments/CWS_FINAL_PRICE_BREAKDOWN_UI_2026-08-03.md`.
+- Backend 117/117 tests + build, frontend build + oxlint PASS; chưa phải Full
+  E2E payment thật.
+
 2026-08-03 (bổ sung sau, runtime Worker):
 - **Worker runtime (Python 3.12.7 + Blender 5.2.0) verify THẬT lần đầu
   tiên** trên một máy Windows thật (không phải Fleet vật lý đối tác) -

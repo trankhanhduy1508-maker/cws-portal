@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WorkerFleetGateway } from '../worker-fleet.gateway';
 
-const VND_PER_WORKER_HOUR = 6000;
-const FINAL_PRICE_MULTIPLIER = 2;
+export const VND_PER_WORKER_HOUR = 6000;
+export const FINAL_PRICE_MULTIPLIER = 2;
 const WORKER_STARTUP_SECONDS = 10 * 60;
 
 /**
@@ -25,7 +25,11 @@ export class PricingService {
 
   async computeFinalPriceVnd(
     internalJobId: string,
-  ): Promise<{ finalPriceVnd: number; workerRuntimeSeconds: number }> {
+  ): Promise<{
+    finalPriceVnd: number;
+    workerRuntimeSeconds: number;
+    workerCount: number;
+  }> {
     const executions =
       await this.workerFleetGateway.getTaskExecutionDetails(internalJobId);
 
@@ -38,6 +42,7 @@ export class PricingService {
       return {
         finalPriceVnd: this.priceFromSeconds(seconds),
         workerRuntimeSeconds: seconds,
+        workerCount: 1,
       };
     }
 
@@ -76,6 +81,7 @@ export class PricingService {
     return {
       finalPriceVnd: this.priceFromSeconds(totalSeconds),
       workerRuntimeSeconds: Math.round(totalSeconds),
+      workerCount: workerIdsSeen.size,
     };
   }
 

@@ -17,7 +17,15 @@ import { formatPriceVnd } from '../utils/timeUtils';
  * này, không phải lỗi thỉnh thoảng. Thay bằng dòng chữ giải thích tĩnh,
  * đúng bản chất thật thay vì hiện 1 nút hành động không bao giờ thành
  * công. */
-export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl }) {
+export default function PaymentScreen({
+  amountVnd,
+  transferContent,
+  qrImageUrl,
+  workerCount,
+  workerRuntimeSeconds,
+  hourlyRateVnd,
+  billingMultiplier,
+}) {
   // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây App.jsx
   // truyền `job.paymentInfo?.amountVnd ?? estimates[...].costVnd` - nếu
   // WebSocket báo status=AWAITING_PAYMENT TRƯỚC KHI approve() (REST) kịp
@@ -58,6 +66,16 @@ export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl }
           {formatPriceVnd(amountVnd)}
         </p>
       </div>
+
+      {workerCount != null && workerRuntimeSeconds != null && hourlyRateVnd != null && billingMultiplier != null && (
+        <div style={{ padding: '12px 14px', borderRadius: 14, background: '#F7F7F8', fontSize: 12.5, color: '#6B6B70' }}>
+          <p style={{ fontWeight: 600, color: '#1C1C1E', marginBottom: 5 }}>Chi tiết giá cuối</p>
+          <p>
+            {workerCount} Worker · {(workerRuntimeSeconds / 3600).toFixed(2)} giờ Worker cộng dồn × {hourlyRateVnd.toLocaleString('vi-VN')}đ/giờ × hệ số {billingMultiplier}
+          </p>
+          <p style={{ marginTop: 4 }}>Đây là runtime thực tế dùng để tính số tiền trong QR, không phải giá ước tính ban đầu.</p>
+        </div>
+      )}
 
       <div style={{ padding: '14px 16px', borderRadius: 14, background: '#F7F7F8', textAlign: 'center' }}>
         {qrImageUrl ? (
