@@ -40,6 +40,7 @@ export const API_CONFIG = {
     ADMIN_PAYMENT_BY_CODE: (code) => `/payments/by-code/${encodeURIComponent(code)}`,
     ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
     ADMIN_LIST_PAYMENT_DEVICES: '/payments/devices',
+    ADMIN_LIST_PAYMENT_ANOMALIES: '/payments/reconciliation-anomalies',
     // Staff (Admin/Host thật, Phần 6) — cần Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',

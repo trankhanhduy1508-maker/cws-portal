@@ -67,6 +67,17 @@ build (Node/npm không có trong môi trường agent lúc fix). Khi có môi
 trường build, nên wire thẳng view này vào Admin Dashboard thay vì viết
 lại logic. Xem `reports/payments/CWS_PAID_ORPHAN_ORDER_FINDING_2026-08-03.md`.
 
+**[ACTIVE]** Payment reconciliation — wire vào Admin Dashboard (thêm
+2026-08-03, sau khi có môi trường Node/npm portable): `GET
+/payments/reconciliation-anomalies` (`RoleGuard`, admin-only) đọc
+THẲNG view `payment_reconciliation_anomalies` qua
+`PaymentsRepository.listReconciliationAnomalies()` — KHÔNG viết lại
+logic phát hiện bất thường ở Backend/Frontend, view vẫn là nguồn sự
+thật duy nhất, đúng quyết định ở trên. `AdminScreen.jsx` hiển thị 1
+bảng mới ngay sau bảng Job (ưu tiên hiển thị cao hơn Worker Fleet vì
+là rủi ro tiền/khách trực tiếp). Xem
+`reports/payments/CWS_PAYMENT_RECONCILIATION_DASHBOARD_WIRING_2026-08-03.md`.
+
 ---
 
 Storage

@@ -1,9 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { PaymentMethod, PaymentRecord, PaymentStatus } from './payment.types';
+import {
+  PaymentMethod,
+  PaymentRecord,
+  PaymentReconciliationAnomaly,
+  PaymentStatus,
+} from './payment.types';
 
 const TABLE = 'payments';
 const NOTIFICATIONS_TABLE = 'payment_notifications';
+const RECONCILIATION_VIEW = 'payment_reconciliation_anomalies';
+
+interface ReconciliationAnomalyRow {
+  anomaly_type: string;
+  order_id: string;
+  storage_code: string | null;
+  order_status: string | null;
+  payment_status: string | null;
+  reference_time: string;
+  amount_vnd: number | null;
+}
+
+function anomalyRowToDomain(row: ReconciliationAnomalyRow): PaymentReconciliationAnomaly {
+  return {
+    anomalyType: row.anomaly_type as PaymentReconciliationAnomaly['anomalyType'],
+    orderId: row.order_id,
+    storageCode: row.storage_code,
+    orderStatus: row.order_status,
+    paymentStatus: row.payment_status,
+    referenceTime: new Date(row.reference_time).getTime(),
+    amountVnd: row.amount_vnd,
+  };
+}
 
 export interface PaymentNotificationRow {
   id: number;
@@ -225,5 +253,25 @@ export class PaymentsRepository {
       this.logger.error(`markNotificationOutcome(${id}) thất bại: ${error.message}`);
       throw new Error(`Không cập nhật được payment_notifications: ${error.message}`);
     }
+  }
+
+  /** Payment/refund safety net (2026-08-03, xem
+   * worker_migrations/015_payment_reconciliation_view.sql +
+   * DECISIONS.md "Payment reconciliation") — đọc view CHỈ ĐỌC
+   * `payment_reconciliation_anomalies`, KHÔNG viết lại logic phát hiện
+   * bất thường ở đây (view là nguồn sự thật duy nhất). Sắp mới nhất lên
+   * đầu (`reference_time desc`) để Admin thấy bất thường gần đây trước. */
+  async listReconciliationAnomalies(): Promise<PaymentReconciliationAnomaly[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(RECONCILIATION_VIEW)
+      .select('*')
+      .order('reference_time', { ascending: false });
+
+    if (error) {
+      this.logger.error(`listReconciliationAnomalies() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được payment_reconciliation_anomalies: ${error.message}`);
+    }
+    return (data as ReconciliationAnomalyRow[]).map(anomalyRowToDomain);
   }
 }

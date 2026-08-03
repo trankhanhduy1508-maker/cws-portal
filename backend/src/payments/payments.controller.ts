@@ -33,6 +33,17 @@ export class PaymentsController {
     return this.paymentDevicesRepository.listAll();
   }
 
+  /** Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
+   * reconciliation") — wire view CHỈ ĐỌC `payment_reconciliation_anomalies`
+   * (worker_migrations/015_...) vào Admin Dashboard thay vì Admin phải tự
+   * query qua Supabase SQL Editor. Khai báo TRƯỚC `:id` cùng lý do với
+   * `devices` ở trên. */
+  @Get('reconciliation-anomalies')
+  @UseGuards(RoleGuard)
+  async listReconciliationAnomalies() {
+    return this.paymentsService.listReconciliationAnomalies();
+  }
+
   @Post()
   async create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.createIntent(dto);

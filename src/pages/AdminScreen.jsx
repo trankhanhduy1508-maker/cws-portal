@@ -5,7 +5,7 @@ import {
   adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
   adminConfirmHostUsageFinalAmount,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
-  adminListPaymentDevices,
+  adminListPaymentDevices, adminListPaymentAnomalies,
 } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
 import StaffMfaLogin from '../components/StaffMfaLogin';
@@ -16,6 +16,15 @@ const STAFF_TOKEN_STORAGE = 'cws_staff_token';
 
 // Phase 8 CWS_WORKER_ROADMAP.md — hiển thị giây dạng "Xp Ys" ngắn gọn cho
 // bảng thống kê host usage (số giây thô từ Backend khó đọc trực tiếp).
+// Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
+// reconciliation") — nhãn tiếng Việt cho 3 loại bất thường của view
+// payment_reconciliation_anomalies (xem worker_migrations/015_...).
+const ANOMALY_TYPE_LABEL = {
+  PAID_WITHOUT_PAYMENT_RECORD: 'Order "paid" nhưng thiếu dòng payments',
+  NOTIFICATION_STUCK_PROCESSING: 'Webhook kẹt "processing" >10 phút',
+  PAID_NOT_DELIVERED: 'Đã thanh toán >2 tiếng nhưng chưa nhận file',
+};
+
 function formatDurationSeconds(totalSeconds) {
   const s = Math.round(totalSeconds ?? 0);
   const minutes = Math.floor(s / 60);
@@ -48,6 +57,7 @@ export default function AdminScreen() {
   const [incidentShowResolved, setIncidentShowResolved] = useState(false);
   const [hostUsageSessions, setHostUsageSessions] = useState([]);
   const [paymentDevices, setPaymentDevices] = useState([]);
+  const [paymentAnomalies, setPaymentAnomalies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -62,14 +72,16 @@ export default function AdminScreen() {
     Promise.all([
       adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
       adminListIncidents(key), adminListHostUsageSessions(key), adminListPaymentDevices(key),
+      adminListPaymentAnomalies(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
         setIncidents(incidentsRes);
         setHostUsageSessions(hostUsageRes);
         setPaymentDevices(paymentDevicesRes);
+        setPaymentAnomalies(paymentAnomaliesRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -385,6 +397,47 @@ export default function AdminScreen() {
 
       {!isLoading && (
         <>
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Bất thường thanh toán / refund
+          </h3>
+          {/* Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
+              reconciliation") — CHỈ đọc, view payment_reconciliation_anomalies
+              (worker_migrations/015_...) là nguồn sự thật duy nhất, Frontend
+              KHÔNG tự tính lại logic phát hiện. Đặt NGAY SAU bảng Job (trước
+              Worker Fleet) vì đây là rủi ro trực tiếp tới khách/tiền — ưu
+              tiên hiển thị cao hơn tình trạng hạ tầng Worker. */}
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Loại</th>
+                  <th style={{ padding: 8 }}>Order / Storage Code</th>
+                  <th style={{ padding: 8 }}>Order status</th>
+                  <th style={{ padding: 8 }}>Payment status</th>
+                  <th style={{ padding: 8 }}>Số tiền</th>
+                  <th style={{ padding: 8 }}>Thời điểm mốc</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentAnomalies.map((a, i) => (
+                  <tr key={`${a.orderId}-${a.anomalyType}-${i}`} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, color: '#E5484D', fontWeight: 500 }}>
+                      {ANOMALY_TYPE_LABEL[a.anomalyType] ?? a.anomalyType}
+                    </td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{a.storageCode ?? a.orderId}</td>
+                    <td style={{ padding: 8 }}>{a.orderStatus ? (JOB_STATUS_LABEL[a.orderStatus] ?? a.orderStatus) : '—'}</td>
+                    <td style={{ padding: 8 }}>{a.paymentStatus ? (PAYMENT_STATUS_LABEL[a.paymentStatus] ?? a.paymentStatus) : '—'}</td>
+                    <td style={{ padding: 8 }}>{a.amountVnd != null ? a.amountVnd.toLocaleString('vi-VN') : '—'}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(a.referenceTime)}</td>
+                  </tr>
+                ))}
+                {paymentAnomalies.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có bất thường nào — dữ liệu thanh toán khớp bình thường</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
           <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
             Worker Fleet
           </h3>

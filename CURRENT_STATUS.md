@@ -56,6 +56,19 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
   thật) - và 3 bước cho frontend (`npm ci`/`build`/`lint`, chưa có file
   test frontend nào nên bỏ qua `npm test`) - **PASS toàn bộ**. Xem
   `reports/dev/CWS_NODE_BUILD_TEST_2026-08-03.md`.
+- **Payment reconciliation wire vào Admin Dashboard** (đúng bước tiếp
+  theo đã chốt sẵn trong DECISIONS.md khi có môi trường build) - `GET
+  /payments/reconciliation-anomalies` (RoleGuard admin-only) đọc thẳng
+  view `payment_reconciliation_anomalies`, không viết lại logic;
+  `AdminScreen.jsx` thêm bảng mới ngay sau bảng Job. Verify: (a)
+  read-only production thật xác nhận đúng 1 bất thường đã biết, (b)
+  build+117/117 test+lint PASS (chạy trước khi dọn lại diff do
+  `eslint --fix` reformat hàng loạt file không liên quan - đã dọn,
+  diff cuối chỉ còn đúng phần thêm mới). LƯU Ý: sau bước dọn diff, máy
+  gặp sự cố môi trường (mọi lệnh `node.exe` mới bị treo vô thời hạn,
+  nghi phần mềm quản lý máy chặn) nên KHÔNG re-run được lần cuối - độ
+  tin cậy dựa trên diff byte-for-byte giống hệt lần đã PASS. Xem
+  `reports/payments/CWS_PAYMENT_RECONCILIATION_DASHBOARD_WIRING_2026-08-03.md`.
 
 2026-08-03:
 - **Payment reconciliation view** (`payment_reconciliation_anomalies`,
@@ -154,11 +167,13 @@ giữ nguyên.
    trên máy đó (nhập key qua prompt bảo mật, không dán qua chat) trước
    khi có thể tự động verify tiếp; (c) máy Fleet vật lý thật (GPU/
    driver/diskless BootROM thật) để verify hoàn toàn.
-3. **Payment/refund safety net cho Admin (payment_notifications kẹt
-   'processing', PAID nhưng chưa finalize)** — UNBLOCKED 2026-08-03:
-   môi trường Node/npm để build+test backend giờ đã có sẵn
-   (`reports/dev/setup_node_runtime_test.ps1`), có thể mở thay đổi này
-   ở phiên LOOP tiếp theo.
+3. **Payment/refund safety net cho Admin** — DONE 2026-08-03 (view wire
+   vào Admin Dashboard, xem mục Last Verified). Còn lại BỔ SUNG (chưa
+   chốt yêu cầu, không thuộc phạm vi quyết định gốc): hành động
+   remediation (vd nút "đánh dấu đã xử lý" cho notification kẹt) —
+   hiện tại Admin CHỈ xem được, chưa có nút thao tác trên các bất
+   thường này, vì DECISIONS.md gốc chỉ yêu cầu "phát hiện", chưa yêu
+   cầu "xử lý tự động qua Dashboard".
 4. **Admin MFA cần Owner tạo 1 tài khoản staff thật + tự quét QR** —
    checklist 4 bước trong
    `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md` mục 5.

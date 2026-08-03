@@ -104,6 +104,15 @@ export function adminListPaymentDevices(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_DEVICES, adminKey);
 }
 
+/** Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
+ * reconciliation") — 3 loại bất thường thanh toán (payment_status lệch
+ * khỏi bảng payments thật, webhook kẹt 'processing', đã thanh toán thật
+ * nhưng chưa nhận file) — chỉ đọc, xem
+ * worker_migrations/015_payment_reconciliation_view.sql. */
+export function adminListPaymentAnomalies(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_ANOMALIES, adminKey);
+}
+
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
  * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
  * xem JobsService.assertOwnership() trong Backend (trước đây route này

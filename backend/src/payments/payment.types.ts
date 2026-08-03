@@ -36,3 +36,18 @@ export interface PaymentRecord {
    * khi khách tải lại trang, không cần tính lại. */
   qrImageUrl: string | null;
 }
+
+/** 1 dòng bất thường thanh toán/refund (payment/refund safety net,
+ * xem worker_migrations/015_payment_reconciliation_view.sql). Đọc từ
+ * view CHỈ ĐỌC `payment_reconciliation_anomalies` — 3 loại:
+ * PAID_WITHOUT_PAYMENT_RECORD, NOTIFICATION_STUCK_PROCESSING,
+ * PAID_NOT_DELIVERED (chi tiết từng loại xem comment trong migration). */
+export interface PaymentReconciliationAnomaly {
+  anomalyType: 'PAID_WITHOUT_PAYMENT_RECORD' | 'NOTIFICATION_STUCK_PROCESSING' | 'PAID_NOT_DELIVERED';
+  orderId: string;
+  storageCode: string | null;
+  orderStatus: string | null;
+  paymentStatus: string | null;
+  referenceTime: number;
+  amountVnd: number | null;
+}

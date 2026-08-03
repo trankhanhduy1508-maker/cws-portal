@@ -115,6 +115,11 @@ export class PaymentsService {
     return record;
   }
 
+  /** Payment/refund safety net (2026-08-03) — xem PaymentsRepository.listReconciliationAnomalies(). */
+  async listReconciliationAnomalies() {
+    return this.paymentsRepository.listReconciliationAnomalies();
+  }
+
   async confirm(paymentId: string): Promise<{ paymentId: string; status: PaymentStatus }> {
     const record = await this.paymentsRepository.findById(paymentId);
     if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
