@@ -1,0 +1,17 @@
+﻿{
+    "timestamp_utc":  "2026-08-03T06:06:47.6168677Z",
+    "test_dir":  "C:\\CWS_Node_Test",
+    "node_major_pin":  "22",
+    "node_version_used":  "22.23.2",
+    "node_version_actual":  "v22.23.2",
+    "npm_version_actual":  "10.9.8",
+    "backend_npm_ci":  "PASS",
+    "backend_build":  "PASS",
+    "backend_test":  "PASS",
+    "backend_lint":  "PASS",
+    "frontend_npm_ci":  "PASS",
+    "frontend_build":  "PASS",
+    "frontend_lint":  "PASS",
+    "frontend_test":  "SKIPPED (chua co file test frontend nao trong repo)",
+    "overall":  "PASS"
+}

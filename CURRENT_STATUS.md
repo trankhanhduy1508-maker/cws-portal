@@ -46,6 +46,16 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
   nhận 6 job MVP thật (task 773-778) và tổng số dòng `jobs`/`tasks`
   hoàn toàn không đổi - không claim job production/Fleet thật nào. Xem
   `reports/worker/CWS_CLAIM_TASK_RPC_ISOLATED_TEST_2026-08-03.md`.
+- **Gỡ blocker "không có Node.js/npm"** (đã chặn build/test TypeScript
+  nhiều phiên trước) - tự động hoá bằng
+  `reports/dev/setup_node_runtime_test.ps1` (idempotent, version Node
+  22.23.2 lấy từ `.github/workflows/ci.yml` + nodejs.org index thật,
+  không đoán). Chạy đúng 4 bước CI cho backend
+  (`npm ci`/`build`/`test`/`lint`) - **117/117 Jest test PASS** (đã
+  xác nhận trước toàn bộ test mock hoàn toàn, không đụng Supabase/B2
+  thật) - và 3 bước cho frontend (`npm ci`/`build`/`lint`, chưa có file
+  test frontend nào nên bỏ qua `npm test`) - **PASS toàn bộ**. Xem
+  `reports/dev/CWS_NODE_BUILD_TEST_2026-08-03.md`.
 
 2026-08-03:
 - **Payment reconciliation view** (`payment_reconciliation_anomalies`,
@@ -100,20 +110,23 @@ trước upload, kiểm tra sớm file — `MAX_FILE_SIZE_BYTES`/`validateFile`)
 
 ## Current Task
 
-Autonomous LOOP (Owner uỷ quyền 2026-08-03) vừa hoàn tất thêm 1 nhánh
-việc độc lập: tự động hoá chuẩn bị + verify runtime Worker (Python
-3.12.7 + Blender 5.2.0, xem mục Last Verified phía trên) trên một máy
-Windows có PowerShell + mạng — môi trường này CÓ THỂ tự tải/cài
-Python+Blender portable (không cần Admin/installer tay), nhưng **vẫn
-KHÔNG có Node.js/npm** (đã xác nhận lại 2026-08-03) — vẫn không thể
-`build`/`test`/`lint` bất kỳ thay đổi backend (NestJS)/frontend (Vite)
-nào, nên vẫn không tự mở thêm thay đổi TypeScript mới (vd surfacing
-payment_notifications kẹt cho Admin) mà không có công cụ xác minh
-"không lỗi build" theo đúng Definition of Done (AGENTS.md). Trước đó
-dừng ở điểm B sau 2 fix: (1) P0 Worker generic job claim +
-`--enable-autoexec` gating, (2) gỡ nút "Hủy job" gây hiểu lầm ở
-PaymentScreen (Customer Research 300, mục C2.7) — vẫn giữ nguyên,
-chưa có thay đổi TypeScript mới nào trong phiên này.
+Autonomous LOOP (Owner uỷ quyền 2026-08-03) vừa hoàn tất một chuỗi
+việc độc lập trên một máy Windows có PowerShell + mạng: (1) tự động
+hoá chuẩn bị + verify runtime Worker (Python 3.12.7 + Blender 5.2.0),
+(2) verify RPC `claim_task()`/`claim_next_generic_task()` thật trên
+Postgres production theo cách cô lập an toàn tuyệt đối, (3) **gỡ hẳn
+blocker "không có Node.js/npm"** đã chặn nhiều phiên trước - môi
+trường này giờ CÓ THỂ tự tải/cài Python+Blender+Node.js portable
+(không cần Admin/installer tay) và tự `build`/`test`/`lint` cả backend
+(NestJS)/frontend (Vite) — xem mục Last Verified phía trên. Do đó
+Definition of Done (AGENTS.md, "không lỗi build") giờ CÓ THỂ tự xác
+minh cho thay đổi TypeScript mới, nhưng phiên này CHƯA mở thay đổi
+TypeScript mới nào (chỉ verify blocker đã gỡ) - các mục Next bên dưới
+(payment/refund safety net...) vẫn còn nguyên, giờ không còn bị chặn
+bởi thiếu công cụ. Trước đó dừng ở điểm B sau 2 fix: (1) P0 Worker
+generic job claim + `--enable-autoexec` gating, (2) gỡ nút "Hủy job"
+gây hiểu lầm ở PaymentScreen (Customer Research 300, mục C2.7) — vẫn
+giữ nguyên.
 
 ## Next
 
@@ -142,9 +155,10 @@ chưa có thay đổi TypeScript mới nào trong phiên này.
    khi có thể tự động verify tiếp; (c) máy Fleet vật lý thật (GPU/
    driver/diskless BootROM thật) để verify hoàn toàn.
 3. **Payment/refund safety net cho Admin (payment_notifications kẹt
-   'processing', PAID nhưng chưa finalize)** — cần môi trường có
-   Node/npm để build+test backend an toàn trước khi push (không có
-   trong lần chạy này).
+   'processing', PAID nhưng chưa finalize)** — UNBLOCKED 2026-08-03:
+   môi trường Node/npm để build+test backend giờ đã có sẵn
+   (`reports/dev/setup_node_runtime_test.ps1`), có thể mở thay đổi này
+   ở phiên LOOP tiếp theo.
 4. **Admin MFA cần Owner tạo 1 tài khoản staff thật + tự quét QR** —
    checklist 4 bước trong
    `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md` mục 5.
