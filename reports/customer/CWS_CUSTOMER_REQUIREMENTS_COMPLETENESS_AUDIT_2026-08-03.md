@@ -25,9 +25,9 @@ C4.1 video preview đã bị official workflow loại khỏi MVP):
 
 | PASS | PARTIAL | CODED_NOT_VERIFIED | MISSING | HUMAN_BLOCKER | POST_MVP |
 |---:|---:|---:|---:|---:|---:|
-| 5 | 3 | 4 | 14 | 3 | 0 |
+| 6 | 2 | 4 | 14 | 3 | 0 |
 
-Kết luận: **CWS chưa Customer MVP Requirements Complete — 5/29 MUST HAVE PASS**.
+Kết luận: **CWS chưa Customer MVP Requirements Complete — 6/29 MUST HAVE PASS**.
 
 ## Official workflow matrix
 
@@ -61,8 +61,8 @@ Kết luận: **CWS chưa Customer MVP Requirements Complete — 5/29 MUST HAVE 
 | C1.5 Chính sách xoá file sau X ngày | C1.5, A2.2/B5.9 | Không có retention/delete policy | B2/storage audit | MISSING | Cần Owner chốt policy rồi code/schedule | P1 |
 | C1.6 Cam kết encryption/auto-delete | C1.6 | Chưa có public commitment | grep/docs | POST_MVP | Phụ thuộc policy/legal | P2 |
 | C1.7 Không dùng số liệu giả | C1.7 | Không tạo số liệu giả | code audit | POST_MVP | BAD IDEA, không implement | — |
-| C1.8 Giải thích Worker là máy đối tác | C1.8 | Không có public copy | Landing | MISSING | Có thể thêm khi Owner chốt wording | P2 |
-| C1.9 Minh bạch giới hạn `.blend`/2GB/có thể chờ | C1.9 | Upload copy nêu `.blend`, 2GB, Worker online | Landing/Upload copy fix + build | PARTIAL | Chưa hiển thị queue threshold cụ thể | P1 |
+| C1.8 Giải thích Worker là máy đối tác | C1.8 | FAQ Landing nêu Worker là máy thật do đối tác vận hành | Landing + build/test | PASS | Không có SLA/metric giả | P2 |
+| C1.9 Minh bạch giới hạn `.blend`/2GB/có thể chờ | C1.9 | FAQ/Upload copy nêu `.blend`, 2GB, Worker online và thời gian chờ | Landing/Upload + build/test | PASS | Không có queue threshold cụ thể, nhưng giới hạn thật đã rõ | P1 |
 | C1.10 Chứng chỉ/audit bên thứ ba | C1.10 | Không có | docs | POST_MVP | Không cần MVP | — |
 
 ### C2 — Giá và thanh toán
@@ -132,7 +132,7 @@ Kết luận: **CWS chưa Customer MVP Requirements Complete — 5/29 MUST HAVE 
 | C6.1 Fast human support | C6.1/B6 | Không có channel | grep frontend + research | HUMAN_BLOCKER | Owner phải chọn/vận hành channel | P1 |
 | C6.2 Contact channel for edits | C6.2/B6.2 | Text says contact Admin, no channel | ReviewScreen | HUMAN_BLOCKER | Cần URL/email/Zalo/hotline thật | P1 |
 | C6.3 Zalo/hotline | C6.3 | Không có | code audit | HUMAN_BLOCKER | Cần Owner cung cấp channel | P2 |
-| C6.4 Public FAQ | C6.4/A8.5 | Không có FAQ page/section | frontend audit | MISSING | Có thể code bằng source-of-truth copy | P2 |
+| C6.4 Public FAQ | C6.4/A8.5 | Landing `<details>` trả lời mô hình Worker, preview/payment và giới hạn MVP | Landing + build/test | PASS | Cần mở rộng chỉ khi có câu hỏi thật | P2 |
 | C6.5 No unsupported 24/7 promise | C6.5 | Không thấy promise | grep | POST_MVP | Không cần build feature | — |
 | C6.6 Ticket tracking | C6.6/B6.10 | Không có ticket model/UI | code audit | MISSING | Feature/support operation chưa định nghĩa | P2 |
 | C6.7 AI chatbot | C6.7 | Không có | research | POST_MVP | DELIGHTER | — |
@@ -225,6 +225,8 @@ not implementable without an Owner decision/real operations:
   authentication and no Google Drive scope is requested.
 - Added explicit `.blend`/2GB and Worker-availability wait disclosure.
 - Added why login is required: ownership and job history.
+- Added a source-of-truth FAQ disclosure for the partner-Worker model,
+  preview-before-payment order, and supported MVP inputs.
 
 Verification: frontend `npm run build` PASS, `npm run lint` PASS, `npm test`
 PASS (5/5). The intentionally invalid `npm test -- --runInBand` invocation

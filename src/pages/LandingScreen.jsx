@@ -64,6 +64,17 @@ export default function LandingScreen({ isAuthenticated, customerName, isAuthLoa
           </li>
         ))}
       </ul>
+
+      <details style={{ width: '100%', maxWidth: 460, marginTop: 18, textAlign: 'left' }}>
+        <summary style={{ cursor: 'pointer', fontSize: 13.5, color: '#3B5BFF', fontWeight: 600 }}>
+          CWS hoạt động như thế nào?
+        </summary>
+        <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 12, background: '#F7F7F8', color: '#6B6B70', fontSize: 13, lineHeight: 1.55 }}>
+          <p>Worker là máy tính thật do đối tác vận hành. Thời gian chờ phụ thuộc số máy đang online.</p>
+          <p style={{ marginTop: 6 }}>Bạn xem preview có watermark trước; chỉ thanh toán sau khi duyệt để mở tải thành phẩm.</p>
+          <p style={{ marginTop: 6 }}>MVP hiện hỗ trợ file Blender (.blend) tối đa 2GB và link Google Drive/OneDrive/Dropbox/Direct Link.</p>
+        </div>
+      </details>
     </motion.div>
   );
 }
