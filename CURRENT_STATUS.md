@@ -183,13 +183,17 @@ giữ nguyên.
 
 ## Last Updated
 
-2026-08-03 — customer transparency copy fix đã hoàn tất an toàn, xem
+2026-08-04 — customer transparency copy fix đã hoàn tất an toàn, xem
 `reports/customer/CWS_MVP_TRANSPARENCY_COPY_FIX_2026-08-03.md`.
 Worker cleanup file tạm local cũng đã được code + guard an toàn, xem
 `reports/worker/CWS_WORKER_TEMP_CLEANUP_FIX_2026-08-03.md`.
 Customer requirements completeness audit đã lập matrix 100 mục C và official
-workflow; kết luận hiện tại là **6/29 MUST HAVE MVP PASS**, xem
+workflow; sau vòng implementation mới, thống kê toàn bộ 100 requirement là
+**13 PASS / 7 PARTIAL / 6 CODED_NOT_VERIFIED / 13 MISSING / 5 HUMAN_BLOCKER / 56 POST_MVP**,
+xem
 `reports/customer/CWS_CUSTOMER_REQUIREMENTS_COMPLETENESS_AUDIT_2026-08-03.md`.
+Evidence implementation mới nằm tại
+`reports/customer/CUSTOMER_REQUIREMENTS_IMPLEMENTATION_REPORT_2026-08-04.md`.
 Không thay đổi production data/credential/payment. Xem thêm
 `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen

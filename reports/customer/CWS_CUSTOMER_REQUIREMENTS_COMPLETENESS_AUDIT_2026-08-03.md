@@ -2,7 +2,7 @@
 
 ## Phạm vi và source of truth
 
-Đã đọc toàn bộ `reports/customer/`, trong đó report chính là
+Đã đọc trực tiếp toàn bộ `reports/customer/`, trong đó report chính là
 `CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md` (300 insight: A/B pain points,
 C requirements, Kano labels), cùng `CURRENT_STATUS.md`, `DECISIONS.md`,
 `PROJECT_CONTEXT.md`, `LOOP.md`, `CWS_ROADMAP_MVP_V1.md`,
@@ -21,13 +21,17 @@ hardware/live operation.
 ## Customer MVP completion
 
 Có **29 MUST HAVE còn hiệu lực trong MVP** (30 MUST HAVE trong research trừ
-C4.1 video preview đã bị official workflow loại khỏi MVP):
+C4.1 video preview đã bị official workflow loại khỏi MVP). Bảng tổng hợp
+toàn bộ 100 requirement C1–C10 sau vòng implementation được ghi trong report
+implementation ngày 2026-08-04; các dòng dưới đây vẫn giữ phân loại chi tiết
+theo từng requirement và evidence.
 
 | PASS | PARTIAL | CODED_NOT_VERIFIED | MISSING | HUMAN_BLOCKER | POST_MVP |
 |---:|---:|---:|---:|---:|---:|
 | 6 | 2 | 4 | 14 | 3 | 0 |
 
-Kết luận: **CWS chưa Customer MVP Requirements Complete — 6/29 MUST HAVE PASS**.
+Kết luận: **CWS chưa Customer MVP Requirements Complete**; còn gap cần policy,
+support channel, resumable upload/link verification và runtime Fleet thật.
 
 ## Official workflow matrix
 
@@ -54,7 +58,7 @@ Kết luận: **CWS chưa Customer MVP Requirements Complete — 6/29 MUST HAVE 
 
 | Customer requirement | Source | Current implementation | Evidence | Status | Gap | Priority |
 |---|---|---|---|---|---|---|
-| C1.1 Bảng giá/công thức công khai | Research C1.1 | Chỉ có estimate heuristic và amount cuối | `pricing.service.ts`, PaymentScreen | MISSING | Chưa công khai formula/breakdown | P1 |
+| C1.1 Bảng giá/công thức công khai | Research C1.1 | PaymentScreen công khai công thức runtime Worker × 6.000đ/giờ × hệ số 2 | `PaymentScreen.jsx`; frontend build/lint/test | PARTIAL | Chưa có bảng giá public trước khi tạo job | P1 |
 | C1.2 About/pháp nhân/ToS/privacy | C1.2, A1/A10 | Không có page/policy tương ứng | grep `src/`, official docs | MISSING | Thiếu trust/legal surface | P1 |
 | C1.3 Số Worker/uptime thật | C1.3 | Có Admin/Worker data, không public landing | `worker-fleet.gateway.ts`, Landing | MISSING | Chưa public metric | P2 |
 | C1.4 Case study/review thật | C1.4 | Chưa có customer hoàn tất | core-flow report | POST_MVP | Cần khách thật trước | P2 |
@@ -70,7 +74,7 @@ Kết luận: **CWS chưa Customer MVP Requirements Complete — 6/29 MUST HAVE 
 | Customer requirement | Source | Current implementation | Evidence | Status | Gap | Priority |
 |---|---|---|---|---|---|---|
 | C2.1 Price cap | C2.1/B2.8 | Không có cap | pricing tests/code | MISSING | Cần Owner chốt X% trước khi code | P1 |
-| C2.2 Breakdown Worker/giờ/đơn giá | C2.2/B2.5 | Chỉ hiển thị tổng amount | PaymentScreen + pricing service | MISSING | Response/UI chưa có breakdown | P1 |
+| C2.2 Breakdown Worker/giờ/đơn giá | C2.2/B2.5 | UI nêu rate, multiplier và runtime đã chốt; amount backend vẫn là tổng | `pricing.service.ts`, `PaymentScreen.jsx`; targeted tests | PARTIAL | Chưa trả từng dòng breakdown/worker từ API | P1 |
 | C2.3 Countdown thanh toán | C2.3/B3.2 | Không có countdown | PaymentScreen | MISSING | Chưa có expiry contract cho payment | P2 |
 | C2.4 Payment tolerance | C2.4 | Exact match theo decision | SePay research/decision | POST_MVP | Decision active yêu cầu khớp tuyệt đối | — |
 | C2.5 MoMo/ZaloPay | C2.5 | QR bank only | DECISIONS.md | POST_MVP | Explicitly out of MVP | — |
@@ -162,25 +166,25 @@ Kết luận: **CWS chưa Customer MVP Requirements Complete — 6/29 MUST HAVE 
 | C8.1 Longer TTL or clear reissue | C8.1/B5.1 | Backend TTL 300s; route generates fresh signed URL | jobs.service + signed URL evidence; copy fixed | PARTIAL | TTL remains short, reissue UX not separately tested | P1 |
 | C8.2 Email ready notification | C8.2/B5.6 | Không có | code audit | POST_MVP | Not official MVP | — |
 | C8.3 Direct Google Drive delivery | C8.3 | Không có | research | POST_MVP | DELIGHTER | — |
-| C8.4 Show reissue count/expiry | C8.4 | UI now shows 5-minute validity and reissue instruction; count not tracked | PreviewDownloadScreen + build/test | PARTIAL | Count not tracked/displayed | P1 |
+| C8.4 Show reissue count/expiry | C8.4 | UI hiển thị TTL 5 phút, mỗi click gọi lại route cấp signed URL và đếm request trong phiên | `PreviewDownloadScreen.jsx`; build/lint/test | PASS | Count là session UI, chưa phải audit count server | P1 |
 | C8.5 Browser final preview | C8.5 | Static placeholder/metadata, no final preview | PreviewDownloadScreen | POST_MVP | Not required MVP | — |
 | C8.6 Unlimited public share | C8.6 | Not implemented | research marks BAD IDEA | POST_MVP | Do not implement | — |
 | C8.7 Output format/compression choice | C8.7 | Backend chooses MP4/ZIP | packaging service | POST_MVP | Want, not MVP | — |
 | C8.8 Sync watermark final | C8.8 | Preview watermark only | storage/packaging audit | POST_MVP | DELIGHTER | — |
-| C8.9 Explicit successful download confirmation | C8.9 | Backend logs download; UI has finished state but no post-download confirmation | downloads repository/PreviewDownloadScreen | MISSING | Need browser/download completion signal | P1 |
+| C8.9 Explicit successful download confirmation | C8.9 | UI xác nhận trạng thái đã thanh toán và ghi nhận số lần yêu cầu cấp link; backend log mỗi route download | `PreviewDownloadScreen.jsx`, downloads repository; build/lint/test | PARTIAL | Chưa thể xác nhận browser đã ghi file thành công | P1 |
 | C8.10 Public retention policy | C8.10 | No policy | storage audit | MISSING | Owner policy + implementation needed | P1 |
 
 ### C9 — Tốc độ và độ tin cậy render
 
 | Customer requirement | Source | Current implementation | Evidence | Status | Gap | Priority |
 |---|---|---|---|---|---|---|
-| C9.1 Per-frame timeout | C9.1/B4.2 | `render_single_frame` intentionally has no timeout | Worker audit/decision-by-behavior | MISSING | Worker can hang indefinitely | P1 |
+| C9.1 Per-frame timeout | C9.1/B4.2 | `render_single_frame` có timeout 3600s và trả persistent để vòng ngoài xử lý | `cws_worker_full.py`; code inspection (Python runtime unavailable) | CODED_NOT_VERIFIED | Chưa chạy trên Fleet thật | P1 |
 | C9.2 Detailed render progress | C9.2/B4.7 | State/stage progress + UI | roadmap + code/tests | PASS | Full customer runtime pending | P1 |
 | C9.3 Generic MVP claim | C9.3 | Migration 014/RPC + code path | production DB isolated claim/revert | CODED_NOT_VERIFIED | Worker HTTP claim/customer render pending | P0 |
 | C9.4 SLA by profile | C9.4 | Không có | research | POST_MVP | No SLA promise without operations evidence | — |
 | C9.5 Stage notifications | C9.5 | Internal state only | scheduler/realtime code | POST_MVP | Not official MVP | — |
 | C9.6 Hardware selection | C9.6 | Không có | research marks BAD IDEA | POST_MVP | Do not implement | — |
-| C9.7 Queue threshold warning/free cancel | C9.7 | Estimate shown, no >30-minute warning | jobs estimate/UI audit | MISSING | Need product rule + safe cancel semantics | P1 |
+| C9.7 Queue threshold warning/free cancel | C9.7 | Profile screen cảnh báo khi queue ≥30 phút và cho quay lại đổi profile/hủy trước render | `RenderProfileScreen.jsx`; frontend build/lint/test | PARTIAL | Chưa có runtime customer và policy cancel end-to-end | P1 |
 | C9.8 Cross-worker consistency | C9.8 | No formal guarantee | research | POST_MVP | Needs operations/benchmark | — |
 | C9.9 Scheduled render window | C9.9 | Không có | research | POST_MVP | DELIGHTER | — |
 | C9.10 Automatic transient retry | C9.10 | `fail_task`/requeue path exists | worker code/RPC tests; no full runtime | CODED_NOT_VERIFIED | Runtime Fleet retry pending | P1 |

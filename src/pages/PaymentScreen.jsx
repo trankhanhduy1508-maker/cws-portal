@@ -17,7 +17,7 @@ import { formatPriceVnd } from '../utils/timeUtils';
  * này, không phải lỗi thỉnh thoảng. Thay bằng dòng chữ giải thích tĩnh,
  * đúng bản chất thật thay vì hiện 1 nút hành động không bao giờ thành
  * công. */
-export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl }) {
+export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl, workerRuntimeSeconds }) {
   // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây App.jsx
   // truyền `job.paymentInfo?.amountVnd ?? estimates[...].costVnd` - nếu
   // WebSocket báo status=AWAITING_PAYMENT TRƯỚC KHI approve() (REST) kịp
@@ -57,6 +57,15 @@ export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl }
         <p style={{ fontFamily: 'JetBrains Mono', fontSize: 24, fontWeight: 500, color: '#1C1C1E' }}>
           {formatPriceVnd(amountVnd)}
         </p>
+      </div>
+
+      <div style={{ padding: '12px 14px', borderRadius: 12, background: '#F7F7F8', fontSize: 12.5, color: '#6B6B70', lineHeight: 1.5 }}>
+        <strong style={{ color: '#1C1C1E' }}>Cách tính giá:</strong>{' '}
+        runtime Worker thực tế (đã gồm thời gian khởi động máy) × 6.000đ/giờ × hệ số dịch vụ 2.
+        {workerRuntimeSeconds != null && (
+          <> Runtime đã chốt: <strong style={{ color: '#1C1C1E' }}>{Math.round(workerRuntimeSeconds / 60)} phút</strong>.</>
+        )}
+        {' '}Số tiền trên là số tiền cuối cùng do Backend chốt, không phải estimate lúc chọn profile.
       </div>
 
       <div style={{ padding: '14px 16px', borderRadius: 14, background: '#F7F7F8', textAlign: 'center' }}>

@@ -17,6 +17,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // string, xem RenderService.js) nên phải load qua state thay vì gọi
   // thẳng trong render.
   const [realHref, setRealHref] = useState(null);
+  const [downloadRequestCount, setDownloadRequestCount] = useState(0);
   useEffect(() => {
     if (!IS_BACKEND_CONFIGURED) return;
     let cancelled = false;
@@ -24,6 +25,20 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
     return () => { cancelled = true; };
   }, [jobId]);
   const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
+
+  async function handleDownloadClick(event) {
+    if (!IS_BACKEND_CONFIGURED) {
+      if (!href) event.preventDefault();
+      if (href) setDownloadRequestCount((count) => count + 1);
+      return;
+    }
+    event.preventDefault();
+    const freshUrl = await getDownloadUrl(jobId);
+    if (!freshUrl) return;
+    setRealHref(freshUrl);
+    setDownloadRequestCount((count) => count + 1);
+    window.location.assign(freshUrl);
+  }
 
   // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
   // có ffmpeg, xem PackagingService) — KHÔNG cố định phần mở rộng theo
@@ -90,7 +105,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
         className="btn btn--primary btn--full"
         style={{ textDecoration: 'none' }}
         aria-disabled={!href}
-        onClick={(e) => { if (!href) e.preventDefault(); }}
+        onClick={handleDownloadClick}
       >
         <Download size={18} strokeWidth={2} />
         Tải thành phẩm
@@ -99,7 +114,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
       <p className="download-expiry-note">
         {isPlaceholder
           ? 'Bản demo: đang tải lại chính file bạn đã gửi (chưa có kết quả render thật từ Backend)'
-          : 'Link tải có hiệu lực 5 phút mỗi lần cấp. Nếu hết hạn, bấm lại “Tải thành phẩm” để cấp link mới.'}
+          : `Link tải có hiệu lực 5 phút mỗi lần cấp. Bấm nút bất cứ lúc nào để cấp link mới; hệ thống ghi nhận lượt yêu cầu${downloadRequestCount ? ` (đã yêu cầu ${downloadRequestCount} lần trong phiên này)` : ''}.`}
       </p>
     </StepCard>
   );

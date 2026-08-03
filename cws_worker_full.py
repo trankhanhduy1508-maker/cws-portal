@@ -421,7 +421,12 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     render_start_time = time.time()
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Một frame treo không được giữ Worker vô hạn. Timeout theo từng
+        # frame để task có thể phân loại/requeue an toàn ở vòng ngoài.
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    except subprocess.TimeoutExpired:
+        print(f"    [render] LOI: frame {frame_num} qua timeout 3600s.")
+        return None, "persistent", None
     except Exception as e:
         print(f"    [render] LOI: khong the khoi dong Blender: {e}")
         return None, "persistent", None
