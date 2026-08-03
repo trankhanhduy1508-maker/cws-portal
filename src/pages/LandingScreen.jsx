@@ -44,6 +44,11 @@ export default function LandingScreen({ isAuthenticated, customerName, isAuthLoa
             {isAuthLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Google'}
           </Button>
         )}
+        {!isAuthenticated && (
+          <p style={{ fontSize: 12.5, color: '#6B6B70', textAlign: 'center', lineHeight: 1.45, marginTop: 8 }}>
+            Google chỉ dùng để xác thực tài khoản CWS; CWS không yêu cầu quyền đọc Google Drive của bạn.
+          </p>
+        )}
         {authError && (
           <p role="alert" style={{ fontSize: 13, color: '#E5484D', textAlign: 'center', marginTop: 8 }}>
             {authError}

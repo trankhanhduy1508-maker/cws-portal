@@ -28,7 +28,9 @@ export default function UploadScreen({
           Gửi file của bạn
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
-          Hỗ trợ file Blender (.blend), tối đa 2GB. File sẽ được render trước khi bạn duyệt và thanh toán.
+          Hỗ trợ file Blender (.blend), tối đa 2GB. File sẽ được render trước khi bạn duyệt và thanh toán;
+          thời gian chờ phụ thuộc Worker đang online. CWS chỉ yêu cầu đăng nhập Google khi bạn
+          bắt đầu render để gắn job vào tài khoản và cho phép bạn theo dõi lịch sử.
         </p>
       </div>
 

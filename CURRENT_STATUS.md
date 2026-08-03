@@ -187,6 +187,9 @@ giữ nguyên.
 `reports/customer/CWS_MVP_TRANSPARENCY_COPY_FIX_2026-08-03.md`.
 Worker cleanup file tạm local cũng đã được code + guard an toàn, xem
 `reports/worker/CWS_WORKER_TEMP_CLEANUP_FIX_2026-08-03.md`.
+Customer requirements completeness audit đã lập matrix 100 mục C và official
+workflow; kết luận hiện tại là **5/29 MUST HAVE MVP PASS**, xem
+`reports/customer/CWS_CUSTOMER_REQUIREMENTS_COMPLETENESS_AUDIT_2026-08-03.md`.
 Không thay đổi production data/credential/payment. Xem thêm
 `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen
