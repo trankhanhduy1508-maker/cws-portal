@@ -9,7 +9,7 @@
     {
       "name": "render_frame_range() 2 frame, enable_autoexec=True",
       "status": "PASS",
-      "detail": "valid=2 err=None sec/frame=1.1092216968536377"
+      "detail": "valid=2 err=None sec/frame=1.0936024188995361"
     },
     {
       "name": "render_frame_range() enable_autoexec=False (duong dan khach upload)",
@@ -19,7 +19,7 @@
     {
       "name": "render_single_frame()",
       "status": "PASS",
-      "detail": "file=C:\\CWS_Worker_Test\\offline_out_single\\frame_0001.png err=None sec=1.7341358661651611"
+      "detail": "file=C:\\CWS_Worker_Test\\offline_out_single\\frame_0001.png err=None sec=1.7185182571411133"
     },
     {
       "name": "render_single_frame() voi get_gpu_texture_reload_fix_code()",
@@ -50,6 +50,11 @@
       "name": "extract_drive_file_id() ca 2 dang link",
       "status": "PASS",
       "detail": "id1=1AbCdEfGhIjKlMnOp id2=1AbCdEfGhIjKlMnOp"
+    },
+    {
+      "name": "get_b2_client() khoi tao khong loi (khong goi API that)",
+      "status": "PASS",
+      "detail": "type=S3"
     }
   ]
 }

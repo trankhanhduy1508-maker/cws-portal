@@ -36,7 +36,8 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
   `enable_autoexec=False` (đường dẫn job khách upload), `render_single_frame()`,
   mã GPU fix chạy thật trong Blender, đường lỗi `.blend` không tồn tại,
   `validate_rendered_image()` trên ảnh corrupt/quá nhỏ,
-  `extract_drive_file_id()` - **10/10 PASS**, xem
+  `extract_drive_file_id()`, `get_b2_client()` (khởi tạo client, không
+  gọi API thật) - **11/11 PASS**, xem
   `reports/worker/WORKER_OFFLINE_FUNCTION_TESTS_2026-08-03.json`.
 
 2026-08-03:

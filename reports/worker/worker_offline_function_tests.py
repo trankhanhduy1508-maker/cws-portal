@@ -148,6 +148,19 @@ except Exception as e:
     check("extract_drive_file_id() ca 2 dang link", False, str(e))
 
 # ---------------------------------------------------------------------
+# 8) get_b2_client() - CHI kiem tra dung boto3 client (khong goi mang o
+#    buoc khoi tao, boto3 la lazy client) - xac nhan wiring Config
+#    (signature_version/timeout) khong loi cu phap/kieu du lieu, KHONG
+#    goi bat ky API S3/B2 that nao (khong upload/download/list).
+# ---------------------------------------------------------------------
+try:
+    b2_client = w.get_b2_client()
+    check("get_b2_client() khoi tao khong loi (khong goi API that)",
+          b2_client is not None, f"type={type(b2_client).__name__}")
+except Exception as e:
+    check("get_b2_client() khoi tao khong loi (khong goi API that)", False, str(e))
+
+# ---------------------------------------------------------------------
 # Tong ket
 # ---------------------------------------------------------------------
 overall = "PASS" if all(r["status"] == "PASS" for r in results) else "FAIL"

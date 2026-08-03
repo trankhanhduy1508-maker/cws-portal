@@ -101,6 +101,12 @@ Kết quả: `reports/worker/WORKER_OFFLINE_FUNCTION_TESTS_2026-08-03.json`
    đúng `False` - PASS.
 9. `extract_drive_file_id()` (hàm thuần regex) trên 2 dạng link Google
    Drive thực tế (`/file/d/...`, `?id=...`) - PASS.
+10. `get_b2_client()` - khởi tạo boto3 S3 client trỏ vào endpoint B2
+    (lazy client, không gọi API lúc khởi tạo) với `Config` thật của
+    worker (signature_version/timeout) - xác nhận wiring không lỗi cú
+    pháp/kiểu dữ liệu, KHÔNG gọi bất kỳ API B2 thật nào - PASS.
+
+Tổng: **11/11 PASS**.
 
 Kết luận mở rộng: không chỉ đường "vui" (happy path, 1 frame, autoexec
 bật) mà cả đường lỗi (file thiếu, ảnh corrupt) và đường an toàn cho
