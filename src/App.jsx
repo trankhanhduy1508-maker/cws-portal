@@ -356,7 +356,6 @@ function CustomerPortalApp() {
             amountVnd={job.paymentInfo?.amountVnd}
             transferContent={job.paymentInfo?.transferContent}
             qrImageUrl={job.paymentInfo?.qrImageUrl}
-            onCancel={handleCancelJob}
           />
         )}
 

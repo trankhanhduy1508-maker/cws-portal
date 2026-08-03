@@ -7,8 +7,17 @@ import { formatPriceVnd } from '../utils/timeUtils';
  * "Khách duyệt → Sinh QR → Webhook xác nhận → PAID → Mở tải") — thuần
  * hiển thị, không có nút "xác nhận đã thanh toán" nào: xác nhận CHỈ đến
  * từ webhook ngân hàng, khách chỉ quét mã rồi chờ. Job tự chuyển sang
- * màn tải file khi Backend phát hiện webhook PAID (qua job.status). */
-export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl, onCancel }) {
+ * màn tải file khi Backend phát hiện webhook PAID (qua job.status).
+ *
+ * KHÔNG có nút "Hủy job" (sửa 2026-08-03, Customer Research 300 mục
+ * C2.7 — UX gây hiểu lầm): màn này CHỈ render khi
+ * job.status===AWAITING_PAYMENT (xem App.jsx), mà backend
+ * (JobsService.CANCELLABLE_STATUSES) luôn từ chối huỷ từ trạng thái
+ * này trở đi — nút Hủy trước đây LUÔN LUÔN báo lỗi 100% nếu bấm ở màn
+ * này, không phải lỗi thỉnh thoảng. Thay bằng dòng chữ giải thích tĩnh,
+ * đúng bản chất thật thay vì hiện 1 nút hành động không bao giờ thành
+ * công. */
+export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl }) {
   // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây App.jsx
   // truyền `job.paymentInfo?.amountVnd ?? estimates[...].costVnd` - nếu
   // WebSocket báo status=AWAITING_PAYMENT TRƯỚC KHI approve() (REST) kịp
@@ -26,13 +35,6 @@ export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl, 
           <Loader2 size={20} strokeWidth={2} style={{ marginBottom: 10 }} />
           <p style={{ fontSize: 14, color: '#6B6B70' }}>Đang tải thông tin thanh toán...</p>
         </div>
-        <button
-          onClick={onCancel}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, color: '#6B6B70', fontWeight: 600, padding: 8 }}
-          type="button"
-        >
-          Hủy job
-        </button>
       </StepCard>
     );
   }
@@ -81,13 +83,10 @@ export default function PaymentScreen({ amountVnd, transferContent, qrImageUrl, 
         </p>
       </div>
 
-      <button
-        onClick={onCancel}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, color: '#6B6B70', fontWeight: 600, padding: 8 }}
-        type="button"
-      >
-        Hủy job
-      </button>
+      <p style={{ textAlign: 'center', fontSize: 12, color: '#9a9aa0', padding: 8 }}>
+        Đã tạo yêu cầu thanh toán — không thể tự huỷ ở bước này. Cần hỗ
+        trợ, vui lòng liên hệ Admin.
+      </p>
     </StepCard>
   );
 }
