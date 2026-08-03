@@ -17,6 +17,16 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 ## Last Verified
 
 2026-08-03:
+- **Payment reconciliation view** (`payment_reconciliation_anomalies`,
+  migration 015, áp dụng thật lên production, đã query xác nhận) — CHỈ
+  ĐỌC, phát hiện 3 loại bất thường thanh toán chưa từng có cảnh báo tự
+  động: payment_status lệch khỏi bảng payments thật, webhook kẹt
+  'processing' >10 phút, đã thanh toán thật >2 tiếng nhưng chưa nhận
+  file. Query xác nhận đúng 1 bất thường đã biết (order `00189232-...`,
+  xem `reports/payments/CWS_PAID_ORPHAN_ORDER_FINDING_2026-08-03.md`),
+  không phát sinh thêm — Admin dùng ngay qua Supabase SQL Editor
+  (`select * from payment_reconciliation_anomalies;`) cho tới khi có
+  môi trường build để wire vào Admin Dashboard.
 - **B2 credential hết hardcode hoàn toàn** trong `cws_worker_full.py`
   (không còn fallback nào, kể cả key chết) — bắt buộc đọc
   `CWS_B2_KEY_ID`/`CWS_B2_APP_KEY` từ env, set cục bộ qua `cws_worker.bat`
