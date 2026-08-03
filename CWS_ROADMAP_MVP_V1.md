@@ -58,18 +58,22 @@
 
 # Giai đoạn 3 -- Render [NEEDS_VERIFICATION]
 
--   Worker nhận Job — NEEDS_VERIFICATION (audit code đầy đủ 2026-08-02, xem `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`: cơ chế claim/fencing token/RPC đều xác nhận đúng và tồn tại thật trên database, nhưng **`cws_worker_full.py` hiện hardcode 1 danh sách `job_id` cố định (`JOB_IDS_MULTI`) cho công việc riêng của Owner — CHƯA claim job MVP bất kỳ do khách tạo qua Portal**. Đây là gap thiết kế thật, không chỉ "chưa có máy vật lý")
--   Chuẩn bị môi trường — NEEDS_VERIFICATION (cùng lý do trên)
--   Render — NEEDS_VERIFICATION (chưa từng chạy với Worker vật lý thật trong môi trường agent; `--enable-autoexec` đang bật, chỉ an toàn khi nguồn file vẫn do Owner tự chọn — xem report audit mục 2.3, cần quyết định trước khi dùng cho MVP tự-phục-vụ)
+-   Worker nhận Job — NEEDS_VERIFICATION (sửa 2026-08-03, Owner uỷ quyền trực tiếp: **P0 "Worker không claim job MVP chung" đã fix ở mức code + DB evidence thật** — migration 014 thêm RPC `claim_next_generic_task` (áp dụng thật lên production, test claim+revert thành công trên 1 trong 6 job MVP thật đang chờ từ 2026-07-27), `cws_worker_full.py` nay thử claim job MVP thật SAU KHI hết `JOB_IDS_MULTI`. Vẫn NEEDS_VERIFICATION vì chưa chạy runtime thật trên máy Windows+Blender — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`)
+-   Chuẩn bị môi trường — NEEDS_VERIFICATION (cùng lý do trên: code xong, chưa có máy thật để chạy)
+-   Render — NEEDS_VERIFICATION (chưa từng chạy với Worker vật lý thật trong môi trường agent; **`--enable-autoexec` đã fix 2026-08-03**: chỉ bật cho job Owner tự chọn (JOB_IDS_MULTI, không đổi hành vi), **tắt hẳn cho job MVP khách tự upload** (claim qua đường mới) — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`)
 -   Cập nhật % tiến độ thật — NEEDS_VERIFICATION (cơ chế code tồn tại, chưa verify runtime)
 -   Báo lỗi nếu có — NEEDS_VERIFICATION (cơ chế code tồn tại, chưa verify runtime)
 
-BLOCKED (2 lý do khách quan, không phải chưa làm): (1) không có máy
-Worker vật lý trong môi trường agent, (2) Worker hiện tại không claim
-được job MVP chung — cần Owner quyết định hướng (sửa sang claim theo
-queue chung, hoặc giữ nguyên cho business riêng và làm 1 worker MVP
-khác). Xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md` +
-`reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`.
+BLOCKED (1 lý do khách quan còn lại, đã giảm từ 2 xuống 1 sau fix
+2026-08-03): không có máy Worker Windows+Python+Blender vật lý trong
+môi trường agent để chạy runtime thật — code đã sẵn sàng claim job MVP
+chung (không còn cần Owner quyết định kiến trúc, đã fix theo hướng
+"thêm RPC mới, không đổi hành vi Fleet cũ"). B2 credential hardcode
+(`cws_worker_full.py`) vẫn BLOCKED — key hiện tại test thật trả về 401
+Unauthorized từ Backblaze, cần Owner xác nhận key đang chạy thật + tạo
+key mới giới hạn quyền. Xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`,
+`reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` +
+`reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`.
 
 ------------------------------------------------------------------------
 

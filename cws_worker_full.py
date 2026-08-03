@@ -72,8 +72,21 @@ HEADERS = {
 }
 
 # ===== BACKBLAZE B2 =====
-B2_KEY_ID = "00483fb516ab3b10000000001"
-B2_APP_KEY = "K004my930oX1OkA4WyDWy1o4vhWCPcw"
+# SUA 2026-08-03 (P0 bao mat, xem reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md):
+# doc tu bien moi truong TRUOC, fallback ve gia tri cu neu chua set -
+# GIONG HET pattern da dung cho CWS_DIR o duoi. KHONG doi hanh vi Fleet
+# dang chay (chua ai set CWS_B2_KEY_ID/CWS_B2_APP_KEY se dung y het key
+# cu) - nhung mo duong cho Owner tu rotate sang key gioi han quyen hon
+# (chi rieng prefix renders/) ma KHONG can sua code/phan phoi lai file
+# nay lan nua, chi can set 2 bien moi truong nay truoc khi chay .bat.
+# GHI CHU QUAN TRONG: key hardcode duoi day da duoc TEST THAT 2026-08-03
+# (b2_authorize_account qua HTTPS that) va tra ve 401 Unauthorized - co
+# the da bi Owner tu rotate o noi khac (Fleet dang chay co the dang tai
+# ban khac cua file nay truc tiep tu B2 worker-releases/, khong qua git
+# repo nay). KHONG tu doan/tu thay key that - can Owner xac nhan gia tri
+# dung hien tai dang chay that tren Fleet truoc khi rotate.
+B2_KEY_ID = os.environ.get("CWS_B2_KEY_ID", "00483fb516ab3b10000000001")
+B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY", "K004my930oX1OkA4WyDWy1o4vhWCPcw")
 B2_ENDPOINT = "https://s3.us-west-004.backblazeb2.com"
 B2_BUCKET = "MTEB90"
 
@@ -353,8 +366,16 @@ def ensure_blend_file(blend_link, blend_file_name):
 # truoc/sau xac nhan khong lam hong du lieu truoc khi ap dung lai cho Fleet.
 
 
-def render_single_frame(blend_path, frame_num, output_dir, optimization_code="", task_id=None):
+def render_single_frame(blend_path, frame_num, output_dir, optimization_code="", task_id=None, enable_autoexec=True):
     """Render DUNG 1 FRAME DUY NHAT.
+
+    enable_autoexec (them 2026-08-03, P0 bao mat - xem reports/worker/
+    CWS_P0_SECURITY_FIX_2026-08-03.md): mac dinh True de KHONG doi hanh
+    vi cho job Owner tu chon (JOB_IDS_MULTI, van can Driver Python trong
+    scene). worker_loop() PHAI truyen False cho job claim qua
+    claim_next_generic_task() (file .blend khach tu upload qua Portal -
+    untrusted input, --enable-autoexec cho phep thuc thi code tuy y tu
+    file .blend, xem CWS_WORKER_READINESS_AUDIT_2026-08-02.md muc 2.3).
 
     DON GIAN HOA (25/07/2026, theo yeu cau ro rang cua Dy): bo watchdog
     thread rieng, bo co che STALL_TIMEOUT_SEC/HARD_TIMEOUT_SEC (tu kill
@@ -373,8 +394,9 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     cmd = [
         str(BLENDER_EXE),
         "-b", str(blend_path),
-        "--enable-autoexec",
     ]
+    if enable_autoexec:
+        cmd.append("--enable-autoexec")
     if optimization_code:
         cmd += ["--python-expr", optimization_code]
     cmd += [
@@ -436,7 +458,7 @@ def upload_single_frame(file_path, job_id, task_id):
         return False
 
 
-def render_frame_range(blend_path, frame_start, frame_end, output_dir):
+def render_frame_range(blend_path, frame_start, frame_end, output_dir, enable_autoexec=True):
     """Goi Blender headless render dai frame_start-frame_end.
     Kiem tra KET QUA THAT (file PNG ton tai), khong tin dong log 'Saved:'.
 
@@ -450,14 +472,18 @@ def render_frame_range(blend_path, frame_start, frame_end, output_dir):
     cmd = [
         str(BLENDER_EXE),
         "-b", str(blend_path),
-        "--enable-autoexec",  # Cho phep chay Driver/script Python trong file
-                              # scene. CAN THIET vi mac dinh Blender chan cac
-                              # Driver dung ham "khong an toan" (vd noise.cell)
-                              # - da gap that trong qua trinh test 2 may
-                              # (21/07/2026, file Titan Station). Chap nhan
-                              # duoc vi worker CHI render file .blend do Dy
-                              # xac dinh qua link Google Drive cu the, khong
-                              # phai file bat ky ai tu do upload chay.
+    ]
+    if enable_autoexec:
+        # Cho phep chay Driver/script Python trong file scene. CAN THIET
+        # vi mac dinh Blender chan cac Driver dung ham "khong an toan"
+        # (vd noise.cell) - da gap that trong qua trinh test 2 may
+        # (21/07/2026, file Titan Station). CHI an toan khi worker render
+        # file .blend do Dy tu xac dinh (JOB_IDS_MULTI) - job claim qua
+        # claim_next_generic_task() (khach tu upload) PHAI truyen
+        # enable_autoexec=False, xem CWS_WORKER_READINESS_AUDIT_2026-08-02.md
+        # muc 2.3.
+        cmd.append("--enable-autoexec")
+    cmd += [
         "-o", output_pattern,
         "-F", "PNG",
         "-s", str(frame_start),
@@ -946,6 +972,44 @@ def claim_task(job_id, worker_id, worker_vram_mb):
     if row.get("task_id") is None:
         return None
     return row
+
+
+def claim_next_generic_task(worker_id, worker_vram_mb):
+    """P0 fix (2026-08-03, Owner uy quyen truc tiep, xem reports/worker/
+    CWS_P0_SECURITY_FIX_2026-08-03.md): claim_task() (ham tren) CHI claim
+    duoc task cua 1 job_id CU THE truyen vao - vong lap worker_loop() tu
+    truoc gio CHI thu qua JOB_IDS_MULTI (danh sach cung, job Owner tu tay
+    cau hinh), nen KHONG BAO GIO thay/claim duoc job MVP THAT do khach
+    tao qua Portal (WorkerFleetGateway.createInternalJobWithProbeTask(),
+    id = randomUUID()). Xac nhan bang evidence that (2026-08-03): 6 job
+    MVP that nam cho tu 2026-07-27 khong Worker nao claim.
+
+    Ham nay goi RPC moi `claim_next_generic_task` (migration 014,
+    CHI THEM, khong sua claim_task() hien co) - claim BAT KY task
+    'queued' nao thuoc job co id dang UUID (dac diem CAU TRUC phan biet
+    job Portal vs job Owner tu go tay ten nguoi doc duoc nhu CWS-JOB3 -
+    xac nhan THAT qua truy van production, khong co ngoai le). Worker
+    CHI goi ham nay SAU KHI da thu het JOB_IDS_MULTI khong con task nao -
+    job Owner luon uu tien claim truoc, KHONG doi hanh vi Fleet hien co.
+
+    Tra ve dict co them key "job_id" (job MOI claim duoc, co the KHAC
+    JOB_IDS_MULTI) neu thanh cong, None neu khong con task nao."""
+    result = rpc_call("claim_next_generic_task", {
+        "p_worker_id": worker_id,
+        "p_worker_vram_mb": worker_vram_mb,
+    })
+    if not result:
+        return None
+    row = result[0]
+    if row.get("task_id") is None:
+        return None
+    return {
+        "task_id": row["task_id"],
+        "job_id": row["out_job_id"],
+        "out_frame_start": row["out_frame_start"],
+        "out_frame_end": row["out_frame_end"],
+        "out_generation": row["out_generation"],
+    }
 
 
 def report_heartbeat(task_id, generation, worker_id):
@@ -2696,12 +2760,28 @@ def worker_loop():
 
         task = None
         current_job_id = None
+        is_generic_job = False
         for candidate_job_id in job_order:
             task = claim_task(candidate_job_id, worker_id, worker_vram_mb)
             if task is not None:
                 current_job_id = candidate_job_id
                 break
 
+        # P0 fix (2026-08-03, Owner uy quyen truc tiep, xem reports/worker/
+        # CWS_P0_SECURITY_FIX_2026-08-03.md): JOB_IDS_MULTI (tren) LUON
+        # duoc uu tien thu TRUOC, KHONG doi hanh vi Fleet hien co cua
+        # Owner. CHI KHI khong con task nao trong JOB_IDS_MULTI, worker
+        # moi thu claim_next_generic_task() - job MVP THAT do khach tao
+        # qua Portal (id dang UUID, xem claim_next_generic_task() de biet
+        # cach phan biet). Job claim qua duong nay la untrusted input
+        # (khach tu upload) - PHAI render KHONG --enable-autoexec (xem
+        # is_generic_job duoc dung o duoi khi goi render_single_frame()).
+        if task is None:
+            generic_task = claim_next_generic_task(worker_id, worker_vram_mb)
+            if generic_task is not None:
+                task = generic_task
+                current_job_id = generic_task["job_id"]
+                is_generic_job = True
 
         if task is None:
             print(f"\nKhong con task nao. Doi {POLL_INTERVAL_SEC}s roi hoi lai...")
@@ -2819,7 +2899,8 @@ def worker_loop():
 
             frame_file, frame_error, frame_seconds = render_single_frame(
                 blend_path, frame_num, output_dir,
-                optimization_code=optimization_code, task_id=task_id
+                optimization_code=optimization_code, task_id=task_id,
+                enable_autoexec=not is_generic_job,
             )
 
             if frame_file is None:
