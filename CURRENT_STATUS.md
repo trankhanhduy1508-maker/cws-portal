@@ -16,6 +16,22 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 
 ## Last Verified
 
+2026-08-03 (bổ sung sau, runtime Worker):
+- **Worker runtime (Python 3.12.7 + Blender 5.2.0) verify THẬT lần đầu
+  tiên** trên một máy Windows thật (không phải Fleet vật lý đối tác) -
+  tự động hoá toàn bộ bằng `reports/worker/setup_worker_runtime_test.ps1`
+  (idempotent, tự đọc version từ Source of Truth trong code, không
+  đoán). Gọi thẳng hàm sản xuất thật `render_frame_range()` (đúng cách
+  Blender được gọi trong production: `--enable-autoexec`, `-s/-e/-a`)
+  trên 1 scene Blender mặc định - render + `validate_rendered_image()`
+  PASS thật (1.8s/frame). Có chủ đích KHÔNG gọi `claim_task()`/
+  `claim_next_generic_task()`/upload B2 thật để không ảnh hưởng Fleet
+  production đang hoạt động. Đổi trạng thái Worker từ "CODE
+  VERIFIED/RUNTIME NOT VERIFIED" sang "CODE + RENDER PIPELINE RUNTIME
+  VERIFIED, CLAIM+UPLOAD THẬT VẪN CHƯA VERIFY" - xem
+  `reports/worker/CWS_WORKER_RUNTIME_TEST_2026-08-03.md` và
+  `reports/worker/WORKER_RUNTIME_TEST_EVIDENCE_2026-08-03.json`.
+
 2026-08-03:
 - **Payment reconciliation view** (`payment_reconciliation_anomalies`,
   migration 015, áp dụng thật lên production, đã query xác nhận) — CHỈ
@@ -69,15 +85,20 @@ trước upload, kiểm tra sớm file — `MAX_FILE_SIZE_BYTES`/`validateFile`)
 
 ## Current Task
 
-Autonomous LOOP (Owner uỷ quyền 2026-08-03) dừng ở điểm B sau khi hoàn
-tất 2 fix độc lập: (1) P0 Worker generic job claim + `--enable-autoexec`
-gating, (2) gỡ nút "Hủy job" gây hiểu lầm ở PaymentScreen (Customer
-Research 300, mục C2.7). Dừng vì: môi trường agent này **không có
-Node.js/npm/Python** (đã xác nhận qua nhiều cách tìm) — không thể
+Autonomous LOOP (Owner uỷ quyền 2026-08-03) vừa hoàn tất thêm 1 nhánh
+việc độc lập: tự động hoá chuẩn bị + verify runtime Worker (Python
+3.12.7 + Blender 5.2.0, xem mục Last Verified phía trên) trên một máy
+Windows có PowerShell + mạng — môi trường này CÓ THỂ tự tải/cài
+Python+Blender portable (không cần Admin/installer tay), nhưng **vẫn
+KHÔNG có Node.js/npm** (đã xác nhận lại 2026-08-03) — vẫn không thể
 `build`/`test`/`lint` bất kỳ thay đổi backend (NestJS)/frontend (Vite)
-nào, nên không dám tự mở thêm thay đổi TypeScript mới (vd surfacing
+nào, nên vẫn không tự mở thêm thay đổi TypeScript mới (vd surfacing
 payment_notifications kẹt cho Admin) mà không có công cụ xác minh
-"không lỗi build" theo đúng Definition of Done (AGENTS.md).
+"không lỗi build" theo đúng Definition of Done (AGENTS.md). Trước đó
+dừng ở điểm B sau 2 fix: (1) P0 Worker generic job claim +
+`--enable-autoexec` gating, (2) gỡ nút "Hủy job" gây hiểu lầm ở
+PaymentScreen (Customer Research 300, mục C2.7) — vẫn giữ nguyên,
+chưa có thay đổi TypeScript mới nào trong phiên này.
 
 ## Next
 
@@ -85,8 +106,14 @@ payment_notifications kẹt cho Admin) mà không có công cụ xác minh
    `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md` mục 3): key
    hardcode hiện tại trong git repo test thật trả 401 Unauthorized từ
    Backblaze, cần Owner xác nhận key thật đang chạy trên Fleet.
-2. **Runtime verify Worker generic claim** — BLOCKED, cần máy
-   Windows+Python+Blender vật lý (không có trong môi trường agent).
+2. **Runtime verify Worker generic claim** — MỘT PHẦN UNBLOCKED
+   2026-08-03: pipeline render (Blender headless + validate ảnh) đã
+   verify thật trên máy Windows có Python+Blender (xem mục Last
+   Verified). Còn lại BLOCKED, cần Owner: (a) test `claim_task()`/
+   `claim_next_generic_task()` thật trên Supabase — sẽ claim job thật,
+   cần quyết định thời điểm/job test riêng; (b) B2 upload thật — cần
+   key mới hợp lệ (key cũ trả 401, xem mục 1); (c) máy Fleet vật lý
+   thật (GPU/driver/diskless BootROM thật) để verify hoàn toàn.
 3. **Payment/refund safety net cho Admin (payment_notifications kẹt
    'processing', PAID nhưng chưa finalize)** — cần môi trường có
    Node/npm để build+test backend an toàn trước khi push (không có

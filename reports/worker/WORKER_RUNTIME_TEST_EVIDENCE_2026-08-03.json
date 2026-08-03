@@ -1,0 +1,13 @@
+﻿{
+    "timestamp_utc":  "2026-08-03T05:34:05.3313110Z",
+    "test_dir":  "C:\\CWS_Worker_Test",
+    "python_version_pin":  "3.12.7",
+    "blender_version_pin":  "5.2.0",
+    "pip_packages":  "requests, boto3, Pillow",
+    "python_version_actual":  "Python 3.12.7",
+    "blender_version_actual":  "Blender 5.2.0 LTS (hash fbe6228777e7 built 2026-07-14 01:35:40)",
+    "blender_headless_render":  "PASS: smoke_render_0001.png, 1174909 bytes",
+    "worker_import_and_safe_calls":  "PASS",
+    "render_frame_range_e2e":  "PASS",
+    "overall":  "PASS"
+}

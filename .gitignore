@@ -31,3 +31,9 @@ dist-ssr
 # Local env (chứa API key/URL thật khi có Backend)
 .env
 .env.local
+
+# Python bytecode cache (sinh ra khi import cws_worker_full.py để test,
+# vd reports/worker/setup_worker_runtime_test.ps1 - build artifact thuần,
+# khong can commit)
+__pycache__/
+*.pyc
