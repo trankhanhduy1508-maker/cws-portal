@@ -1,11 +1,14 @@
-// Cấu hình kết nối Backend — hiện tại CHƯA có Backend thật nên để trống.
-// Khi Backend CWS hoàn thành, chỉ cần điền BASE_URL/WS_BASE_URL vào đây
-// (hoặc đọc từ biến môi trường .env), KHÔNG cần sửa bất kỳ Component
-// hay Service nào khác.
+// Cấu hình kết nối Backend. WS_BASE_URL có thể được đặt riêng khi hạ tầng
+// dùng hostname khác; nếu bỏ trống, suy ra từ API URL để production không
+// vô tình mở WebSocket bằng URL tương đối.
+
+const BASE_URL = import.meta.env.VITE_CWS_API_BASE_URL || '';
+const WS_BASE_URL = import.meta.env.VITE_CWS_WS_BASE_URL
+  || BASE_URL.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
 
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_CWS_API_BASE_URL || '',
-  WS_BASE_URL: import.meta.env.VITE_CWS_WS_BASE_URL || '',
+  BASE_URL,
+  WS_BASE_URL,
 
   // Endpoint dự kiến khi Backend hoàn thành (đặt tên trước để dễ đối
   // chiếu, KHÔNG có nghĩa là các endpoint này đã tồn tại thật).
