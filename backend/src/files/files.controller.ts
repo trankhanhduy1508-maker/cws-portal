@@ -4,12 +4,14 @@ import {
   Controller,
   Post,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { B2StorageService } from './b2-storage.service';
 import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -36,6 +38,7 @@ export class FilesController {
    * Render.com free/starter tier.
    */
   @Post('files/upload')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
   )
