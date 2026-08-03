@@ -70,6 +70,43 @@ Bằng chứng máy: `reports/worker/WORKER_RUNTIME_TEST_EVIDENCE_2026-08-03.jso
   phần, không corrupt) → `RENDER_FRAME_RANGE_RESULT valid_count=1
   error=None` ✅
 
+## Mở rộng (cùng ngày, sau khi "continue"): bộ test offline function-level
+
+Sau lần verify đầu, đã bổ sung `reports/worker/worker_offline_function_tests.py`
+(được gọi tự động bởi `setup_worker_runtime_test.ps1`) để phủ thêm các
+nhánh code quan trọng của pipeline render mà lần test đầu (1 frame,
+enable_autoexec=True) chưa chạm tới. Vẫn giữ đúng ranh giới an toàn -
+chỉ gọi hàm local/thuần tuý, không claim task/không upload B2 thật.
+Kết quả: `reports/worker/WORKER_OFFLINE_FUNCTION_TESTS_2026-08-03.json`
+- **10/10 PASS**:
+
+1. `render_frame_range()` 2 frame liên tiếp, `enable_autoexec=True` -
+   PASS (2/2 PNG hợp lệ, 1.1s/frame).
+2. `render_frame_range()` với `enable_autoexec=False` (đúng đường dẫn
+   `claim_next_generic_task()` dùng cho job khách upload qua Portal,
+   P0 fix 2026-08-03) - PASS, render vẫn thành công dù tắt autoexec.
+3. `render_single_frame()` (hàm checkpoint riêng, khác
+   `render_frame_range()`) - PASS.
+4. `render_single_frame()` với `optimization_code =
+   get_gpu_texture_reload_fix_code()` - mã fix bug GPU texture (thử
+   nghiệm, `ENABLE_GPU_TEXTURE_RELOAD_FIX`) chạy THẬT bên trong Blender
+   thật qua `--python-expr`, không lỗi - PASS.
+5. `render_frame_range()` với file `.blend` KHÔNG tồn tại - xác nhận
+   trả về lỗi có kiểm soát (`error_category="persistent"`, danh sách
+   rỗng), không crash, không "thành công giả" - PASS.
+6. `validate_rendered_image()` trên PNG thật hợp lệ → `True` - PASS.
+7. `validate_rendered_image()` trên file PNG cố tình corrupt → phát
+   hiện đúng `False` - PASS.
+8. `validate_rendered_image()` trên file quá nhỏ (8 bytes) → phát hiện
+   đúng `False` - PASS.
+9. `extract_drive_file_id()` (hàm thuần regex) trên 2 dạng link Google
+   Drive thực tế (`/file/d/...`, `?id=...`) - PASS.
+
+Kết luận mở rộng: không chỉ đường "vui" (happy path, 1 frame, autoexec
+bật) mà cả đường lỗi (file thiếu, ảnh corrupt) và đường an toàn cho
+khách (autoexec tắt) của pipeline render đều hoạt động đúng như code
+mô tả, xác nhận bằng máy thật thay vì chỉ đọc code.
+
 ## Vẫn CHƯA verify (nằm ngoài phạm vi an toàn của lần test này)
 
 1. **`claim_task()`/`claim_next_generic_task()` (RPC Supabase thật)** -

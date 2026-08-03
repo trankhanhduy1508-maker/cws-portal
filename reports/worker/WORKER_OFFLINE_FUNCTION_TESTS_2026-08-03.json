@@ -1,0 +1,55 @@
+{
+  "overall": "PASS",
+  "results": [
+    {
+      "name": "tao scene .blend probe",
+      "status": "PASS",
+      "detail": "returncode=0"
+    },
+    {
+      "name": "render_frame_range() 2 frame, enable_autoexec=True",
+      "status": "PASS",
+      "detail": "valid=2 err=None sec/frame=1.1092216968536377"
+    },
+    {
+      "name": "render_frame_range() enable_autoexec=False (duong dan khach upload)",
+      "status": "PASS",
+      "detail": "valid=1 err=None"
+    },
+    {
+      "name": "render_single_frame()",
+      "status": "PASS",
+      "detail": "file=C:\\CWS_Worker_Test\\offline_out_single\\frame_0001.png err=None sec=1.7341358661651611"
+    },
+    {
+      "name": "render_single_frame() voi get_gpu_texture_reload_fix_code()",
+      "status": "PASS",
+      "detail": "file=C:\\CWS_Worker_Test\\offline_out_gpufix\\frame_0001.png err=None"
+    },
+    {
+      "name": "render_frame_range() voi .blend khong ton tai -> loi co kiem soat",
+      "status": "PASS",
+      "detail": "valid=0 err=persistent"
+    },
+    {
+      "name": "validate_rendered_image() tren PNG that hop le",
+      "status": "PASS",
+      "detail": "hop le"
+    },
+    {
+      "name": "validate_rendered_image() phat hien file PNG corrupt",
+      "status": "PASS",
+      "detail": "file PNG bi loi/corrupt: cannot identify image file 'C:\\\\CWS_Worker_Test\\\\offline_corrupt.png'"
+    },
+    {
+      "name": "validate_rendered_image() phat hien file qua nho",
+      "status": "PASS",
+      "detail": "file qua nho (8 bytes) - render that bai am tham"
+    },
+    {
+      "name": "extract_drive_file_id() ca 2 dang link",
+      "status": "PASS",
+      "detail": "id1=1AbCdEfGhIjKlMnOp id2=1AbCdEfGhIjKlMnOp"
+    }
+  ]
+}

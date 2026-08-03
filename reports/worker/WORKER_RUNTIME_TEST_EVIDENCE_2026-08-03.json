@@ -1,5 +1,5 @@
 ﻿{
-    "timestamp_utc":  "2026-08-03T05:34:05.3313110Z",
+    "timestamp_utc":  "2026-08-03T05:40:13.5183900Z",
     "test_dir":  "C:\\CWS_Worker_Test",
     "python_version_pin":  "3.12.7",
     "blender_version_pin":  "5.2.0",
@@ -9,5 +9,6 @@
     "blender_headless_render":  "PASS: smoke_render_0001.png, 1174909 bytes",
     "worker_import_and_safe_calls":  "PASS",
     "render_frame_range_e2e":  "PASS",
+    "offline_function_tests":  "PASS",
     "overall":  "PASS"
 }

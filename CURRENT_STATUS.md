@@ -31,6 +31,13 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
   VERIFIED, CLAIM+UPLOAD THẬT VẪN CHƯA VERIFY" - xem
   `reports/worker/CWS_WORKER_RUNTIME_TEST_2026-08-03.md` và
   `reports/worker/WORKER_RUNTIME_TEST_EVIDENCE_2026-08-03.json`.
+  Mở rộng thêm cùng ngày: bộ 10 test function-level offline
+  (`reports/worker/worker_offline_function_tests.py`) - multi-frame,
+  `enable_autoexec=False` (đường dẫn job khách upload), `render_single_frame()`,
+  mã GPU fix chạy thật trong Blender, đường lỗi `.blend` không tồn tại,
+  `validate_rendered_image()` trên ảnh corrupt/quá nhỏ,
+  `extract_drive_file_id()` - **10/10 PASS**, xem
+  `reports/worker/WORKER_OFFLINE_FUNCTION_TESTS_2026-08-03.json`.
 
 2026-08-03:
 - **Payment reconciliation view** (`payment_reconciliation_anomalies`,

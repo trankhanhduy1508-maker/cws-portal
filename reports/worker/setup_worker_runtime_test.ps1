@@ -248,6 +248,25 @@ if ($e2eOut -match "E2E_OK") {
     $allPass = $false
 }
 
+# Bo test OFFLINE mo rong (worker_offline_function_tests.py) - da tach
+# rieng file cho de doc: multi-frame, enable_autoexec=False (duong dan
+# job khach upload), render_single_frame(), ma GPU fix that chay trong
+# Blender that, duong dan LOI (.blend khong ton tai), validate_rendered_image()
+# tren anh corrupt/qua nho, extract_drive_file_id(). Van CHI dung ham
+# local/thuan tuy, khong dung Supabase/B2 that.
+Write-Host "`n[setup] Chay bo test offline mo rong (worker_offline_function_tests.py)..." -ForegroundColor Yellow
+$offlineTestsPath = Join-Path $PSScriptRoot "worker_offline_function_tests.py"
+$offlineOut = (& $pythonExe $offlineTestsPath $RepoRoot $TestDir) 2>&1 | Out-String
+Write-Host $offlineOut
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[OK] Bo test offline mo rong: TAT CA PASS." -ForegroundColor Green
+    $evidence.offline_function_tests = "PASS"
+} else {
+    Write-Host "[FAIL] Bo test offline mo rong: co truong hop FAIL, xem chi tiet o tren." -ForegroundColor Red
+    $evidence.offline_function_tests = "FAIL"
+    $allPass = $false
+}
+
 # ---------------------------------------------------------------------
 # Buoc 6: Ghi evidence
 # ---------------------------------------------------------------------
