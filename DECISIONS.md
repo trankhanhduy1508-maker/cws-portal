@@ -59,6 +59,14 @@ Payment
 
 **[ACTIVE]** SePay Test Mode/Sandbox is a fully separate SePay account (`my.dev.sepay.vn`) from Live (`my.sepay.vn`), confirmed 2026-08-02 from official docs — CWS isolates them via a separate route (`POST /payments/webhook/sepay/test`) + separate guard + separate secret (`SEPAY_WEBHOOK_HMAC_SECRET_TEST`/`SEPAY_WEBHOOK_API_KEY_TEST`), reusing the exact same matching/idempotency logic as Live (single Supabase project, no parallel data model). See `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`.
 
+**[ACTIVE]** Payment reconciliation (thêm 2026-08-03, payment/refund
+safety net): dùng 1 SQL view chỉ-đọc (`payment_reconciliation_anomalies`,
+migration 015) thay vì cron job/backend feature mới — đủ để Admin phát
+hiện bất thường ngay qua Supabase SQL Editor, không cần môi trường
+build (Node/npm không có trong môi trường agent lúc fix). Khi có môi
+trường build, nên wire thẳng view này vào Admin Dashboard thay vì viết
+lại logic. Xem `reports/payments/CWS_PAID_ORPHAN_ORDER_FINDING_2026-08-03.md`.
+
 ---
 
 Storage
@@ -70,6 +78,29 @@ Storage
 Worker
 
 **[ACTIVE]** Python.
+
+**[ACTIVE]** Generic MVP job claim (thêm 2026-08-03, Owner uỷ quyền
+trực tiếp): Worker (`cws_worker_full.py`) claim job MVP thật do khách
+tạo qua Portal bằng RPC additive `claim_next_generic_task()` (migration
+014) — phân biệt job Portal vs job Owner tự cấu hình bằng đặc điểm CẤU
+TRÚC id (UUID vs tên tay), KHÔNG dùng danh sách loại trừ. `JOB_IDS_MULTI`
+(Owner tự chọn) luôn được thử claim TRƯỚC, không đổi hành vi Fleet cũ.
+Xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`.
+
+**[ACTIVE]** `--enable-autoexec` chỉ bật cho job Owner tự chọn
+(JOB_IDS_MULTI); TẮT hẳn cho job MVP khách tự upload (claim qua
+`claim_next_generic_task()`) — input không tin cậy không được phép
+thực thi Python script tuỳ ý từ file `.blend`. Xem
+`reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` mục 2.3 +
+`reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`.
+
+**[ACTIVE]** B2 credential Worker (thêm 2026-08-03): không hardcode
+trong `cws_worker_full.py` (file bị auto-update, phân phối rộng) —
+bắt buộc đọc `CWS_B2_KEY_ID`/`CWS_B2_APP_KEY` từ biến môi trường, set
+cục bộ qua `cws_worker.bat` trên từng máy (file không bị auto-update).
+Scope tối thiểu xác nhận qua audit thật: bucket `MTEB90`, prefix
+`renders/`, Read+Write, không cần delete/quản lý bucket. Xem
+`reports/worker/CWS_B2_LEAST_PRIVILEGE_AUDIT_2026-08-03.md`.
 
 ---
 
