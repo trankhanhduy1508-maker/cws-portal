@@ -194,6 +194,8 @@ xem
 `reports/customer/CWS_CUSTOMER_REQUIREMENTS_COMPLETENESS_AUDIT_2026-08-03.md`.
 Evidence implementation mới nằm tại
 `reports/customer/CUSTOMER_REQUIREMENTS_IMPLEMENTATION_REPORT_2026-08-04.md`.
+Vòng rà soát tiếp theo đã thêm preflight header `.blend` ngay khi chọn file
+(`validateBlendHeader`), nhưng chưa coi đó là mở scene đầy đủ bằng Blender.
 Không thay đổi production data/credential/payment. Xem thêm
 `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen

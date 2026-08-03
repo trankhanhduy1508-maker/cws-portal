@@ -43,6 +43,21 @@ export function validateFile(file) {
   return { valid: true, error: null };
 }
 
+/** Kiểm tra nhanh header Blender trước khi upload. Không thay thế việc
+ * mở scene bằng Blender ở Worker; chỉ loại sớm file đổi đuôi/hỏng header. */
+export async function validateBlendHeader(file) {
+  const basic = validateFile(file);
+  if (!basic.valid) return basic;
+  try {
+    const header = new TextDecoder().decode(await file.slice(0, 7).arrayBuffer());
+    return header === 'BLENDER'
+      ? { valid: true, error: null }
+      : { valid: false, error: 'File không có header Blender hợp lệ; vui lòng chọn đúng file .blend.' };
+  } catch {
+    return { valid: false, error: 'Không thể đọc phần đầu file để kiểm tra .blend.' };
+  }
+}
+
 /**
  * Validate CÚ PHÁP của link chia sẻ (Google Drive / OneDrive / Dropbox
  * — CWS_ROADMAP_MVP_V1.md). Đây chỉ kiểm tra định dạng URL, KHÔNG xác

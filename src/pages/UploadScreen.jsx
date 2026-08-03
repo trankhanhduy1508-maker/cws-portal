@@ -12,12 +12,13 @@ import { FILE_SOURCE } from '../constants/renderConstants';
 export default function UploadScreen({
   source, setSource,
   file, fileError, onFileSelected,
+  isValidatingFile,
   driveLink, linkError, resolvedInfo, isResolving, onDriveLinkSubmit,
   onContinue, isContinuing,
 }) {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
 
-  const hasValidInput = source === FILE_SOURCE.UPLOAD ? !!file && !fileError : !!driveLink && !linkError;
+  const hasValidInput = source === FILE_SOURCE.UPLOAD ? !!file && !fileError && !isValidatingFile : !!driveLink && !linkError;
 
   return (
     <StepCard>
@@ -65,8 +66,8 @@ export default function UploadScreen({
         )
       )}
 
-      <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
-        {isContinuing ? 'Đang xử lý...' : 'Bắt đầu render'}
+      <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing || isValidatingFile} onClick={onContinue}>
+        {isValidatingFile ? 'Đang kiểm tra file...' : (isContinuing ? 'Đang xử lý...' : 'Bắt đầu render')}
       </Button>
 
       {isDriveModalOpen && (

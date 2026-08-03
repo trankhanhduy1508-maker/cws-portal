@@ -109,7 +109,7 @@ function CustomerPortalApp() {
   const [activeProjectName, setActiveProjectName] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
 
-  const { file, fileError, setFile, clearFile } = useFileSelection();
+  const { file, fileError, setFile, clearFile, isValidating: isValidatingFile } = useFileSelection();
   const { driveLink, linkError, resolvedInfo, isResolving, submitLink, clearLink } = useDriveLink();
   const fileUploadResolver = useFileUploadResolver();
   const { estimates, isLoading: isLoadingEstimates } = useProfileEstimates(
@@ -306,6 +306,7 @@ function CustomerPortalApp() {
               file={file}
               fileError={fileError || fileUploadResolver.uploadError}
               onFileSelected={setFile}
+              isValidatingFile={isValidatingFile}
               driveLink={driveLink}
               linkError={linkError}
               resolvedInfo={resolvedInfo}
