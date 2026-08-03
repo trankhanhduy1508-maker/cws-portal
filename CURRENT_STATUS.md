@@ -39,6 +39,13 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
   `extract_drive_file_id()`, `get_b2_client()` (khởi tạo client, không
   gọi API thật) - **11/11 PASS**, xem
   `reports/worker/WORKER_OFFLINE_FUNCTION_TESTS_2026-08-03.json`.
+- **RPC `claim_task()`/`claim_next_generic_task()` verify THẬT trên
+  Postgres production** (không phải chỉ đọc code) - test cô lập trong
+  transaction luôn `ROLLBACK` (đã tự kiểm chứng cơ chế rollback trước),
+  claim đúng task test, reject double-claim đúng, sau rollback xác
+  nhận 6 job MVP thật (task 773-778) và tổng số dòng `jobs`/`tasks`
+  hoàn toàn không đổi - không claim job production/Fleet thật nào. Xem
+  `reports/worker/CWS_CLAIM_TASK_RPC_ISOLATED_TEST_2026-08-03.md`.
 
 2026-08-03:
 - **Payment reconciliation view** (`payment_reconciliation_anomalies`,
@@ -114,14 +121,26 @@ chưa có thay đổi TypeScript mới nào trong phiên này.
    `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md` mục 3): key
    hardcode hiện tại trong git repo test thật trả 401 Unauthorized từ
    Backblaze, cần Owner xác nhận key thật đang chạy trên Fleet.
-2. **Runtime verify Worker generic claim** — MỘT PHẦN UNBLOCKED
-   2026-08-03: pipeline render (Blender headless + validate ảnh) đã
-   verify thật trên máy Windows có Python+Blender (xem mục Last
-   Verified). Còn lại BLOCKED, cần Owner: (a) test `claim_task()`/
-   `claim_next_generic_task()` thật trên Supabase — sẽ claim job thật,
-   cần quyết định thời điểm/job test riêng; (b) B2 upload thật — cần
-   key mới hợp lệ (key cũ trả 401, xem mục 1); (c) máy Fleet vật lý
-   thật (GPU/driver/diskless BootROM thật) để verify hoàn toàn.
+2. **Runtime verify Worker generic claim** — THÊM UNBLOCKED 2026-08-03:
+   ngoài pipeline render (mục Last Verified), RPC `claim_task()`/
+   `claim_next_generic_task()` (migration 014, P0 fix) đã verify THẬT
+   trên chính Postgres production - test trong transaction luôn
+   ROLLBACK (đã tự kiểm chứng cơ chế rollback trước khi test), claim
+   đúng task test cô lập, reject double-claim đúng, và xác nhận SAU
+   ROLLBACK 6 job MVP thật (task 773-778) hoàn toàn nguyên trạng
+   (queued/chưa ai claim), tổng số dòng `jobs`/`tasks` không đổi (17/717)
+   - **tuyệt đối không claim job production/Fleet thật**. Xem
+   `reports/worker/CWS_CLAIM_TASK_RPC_ISOLATED_TEST_2026-08-03.md`.
+   Còn lại BLOCKED, cần Owner: (a) end-to-end thật từ chính
+   `cws_worker_full.py` (gọi RPC qua HTTP, không phải SQL trực tiếp)
+   claim 1 job Portal thật — cần quyết định thời điểm/job cụ thể vì
+   bắt buộc claim thật; (b) B2 upload thật — key mới Owner vừa tạo
+   **CHƯA có trong environment của máy test này** (đã kiểm tra
+   `CWS_B2_KEY_ID`/`CWS_B2_APP_KEY` cả User-scope lẫn process, không
+   thấy) — cần Owner tự chạy `reports/worker/setup_b2_worker_credential.ps1`
+   trên máy đó (nhập key qua prompt bảo mật, không dán qua chat) trước
+   khi có thể tự động verify tiếp; (c) máy Fleet vật lý thật (GPU/
+   driver/diskless BootROM thật) để verify hoàn toàn.
 3. **Payment/refund safety net cho Admin (payment_notifications kẹt
    'processing', PAID nhưng chưa finalize)** — cần môi trường có
    Node/npm để build+test backend an toàn trước khi push (không có
