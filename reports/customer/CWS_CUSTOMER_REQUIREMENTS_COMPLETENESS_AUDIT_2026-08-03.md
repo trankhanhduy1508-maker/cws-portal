@@ -94,7 +94,7 @@ support channel, resumable upload/link verification và runtime Fleet thật.
 | C3.4 Client compression | C3.4 | Không có | official scope | POST_MVP | Không cần MVP | — |
 | C3.5 Multi-software | C3.5 | Chỉ Blender | roadmap/UploadScreen | POST_MVP | MVP chỉ `.blend` | — |
 | C3.6 Unlimited upload | C3.6 | Hard limit 2GB | files controller | POST_MVP | BAD IDEA | — |
-| C3.7 Detailed upload progress | C3.7 | Không thấy byte/speed/ETA upload | frontend audit | MISSING | UX thiếu với file lớn | P2 |
+| C3.7 Detailed upload progress | C3.7 | Backend upload dùng XHR progress, UI hiển thị phần trăm và trạng thái kết nối | `RenderService.uploadFile`, `useFileUploadResolver`, `UploadScreen`; build/lint/test | CODED_NOT_VERIFIED | Chưa browser/Fleet runtime với file lớn | P2 |
 | C3.8 Early `.blend` open check | C3.8 | Kiểm tra header `BLENDER` ngay khi chọn file, trước upload; Worker vẫn phải mở scene đầy đủ | `validateBlendHeader`, `useFileSelection`, build/lint/test | PARTIAL | Chưa thể mở scene đầy đủ trong browser; cần Worker/Fleet runtime | P1 |
 | C3.9 Desktop uploader | C3.9 | Không có | research | POST_MVP | Không cần MVP | — |
 | C3.10 Linked asset inspection | C3.10 | Không có | research | POST_MVP | Không cần MVP | — |

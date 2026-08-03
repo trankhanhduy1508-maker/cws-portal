@@ -15,6 +15,7 @@ export default function UploadScreen({
   isValidatingFile,
   driveLink, linkError, resolvedInfo, isResolving, onDriveLinkSubmit,
   onContinue, isContinuing,
+  uploadProgress,
 }) {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
 
@@ -69,6 +70,19 @@ export default function UploadScreen({
       <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing || isValidatingFile} onClick={onContinue}>
         {isValidatingFile ? 'Đang kiểm tra file...' : (isContinuing ? 'Đang xử lý...' : 'Bắt đầu render')}
       </Button>
+
+      {isContinuing && source === FILE_SOURCE.UPLOAD && (
+        <div role="status" style={{ fontSize: 12.5, color: '#6B6B70' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span>Đang tải file lên Backend...</span>
+            <span>{uploadProgress > 0 ? `${uploadProgress}%` : 'Đang kết nối...'}</span>
+          </div>
+          <div style={{ height: 6, borderRadius: 999, background: '#E5E7EB', overflow: 'hidden' }}>
+            <div style={{ width: `${uploadProgress}%`, height: '100%', background: '#3B5BFF', transition: 'width 160ms ease' }} />
+          </div>
+          <p style={{ marginTop: 5 }}>Nếu mạng bị ngắt, phiên upload hiện tại sẽ báo lỗi để bạn thử lại; resumable upload vẫn là gap backend riêng.</p>
+        </div>
+      )}
 
       {isDriveModalOpen && (
         <GoogleDriveModal

@@ -11,6 +11,7 @@
 - Download UI chủ động gọi lại route signed-download mỗi lần bấm, hiển thị TTL 5 phút và đếm số lần yêu cầu link trong phiên; backend tiếp tục log từng request.
 - Worker `render_single_frame()` có timeout 3.600 giây/frame và trả lỗi `persistent` để vòng xử lý phân loại/retry/requeue.
 - File upload được preflight header `BLENDER` ngay khi chọn, chặn submit trong lúc kiểm tra và báo lỗi đổi đuôi/hỏng header trước khi upload.
+- Upload Backend dùng `XMLHttpRequest.upload.onprogress`, truyền phần trăm qua hook và hiển thị progress bar; mock mode không bịa phần trăm.
 
 ## Verification evidence
 

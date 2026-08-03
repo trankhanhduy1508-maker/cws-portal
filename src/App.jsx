@@ -314,6 +314,7 @@ function CustomerPortalApp() {
               onDriveLinkSubmit={submitLink}
               onContinue={handleContinueFromUpload}
               isContinuing={fileUploadResolver.isUploading}
+              uploadProgress={fileUploadResolver.progress}
             />
           </div>
         )}

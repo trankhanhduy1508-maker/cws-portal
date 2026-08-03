@@ -9,12 +9,14 @@ import { uploadFile } from '../services/RenderService';
 export function useFileUploadResolver() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [progress, setProgress] = useState(0);
 
   const resolve = useCallback(async (file) => {
     setIsUploading(true);
     setUploadError(null);
+    setProgress(0);
     try {
-      return await uploadFile(file); // { fileRef, fileName, fileSizeBytes }
+      return await uploadFile(file, { onProgress: setProgress }); // { fileRef, fileName, fileSizeBytes }
     } catch (err) {
       setUploadError(err.message || 'Tải file thất bại');
       throw err;
@@ -23,5 +25,5 @@ export function useFileUploadResolver() {
     }
   }, []);
 
-  return { resolve, isUploading, uploadError };
+  return { resolve, isUploading, uploadError, progress };
 }

@@ -38,18 +38,31 @@ const mockFileRefRegistry = new Map();
  *
  * @returns {Promise<{ fileRef: string, fileName: string, fileSizeBytes: number }>}
  */
-export async function uploadFile(file) {
+export async function uploadFile(file, { onProgress } = {}) {
   const { valid, error } = validateFile(file);
   if (!valid) throw new Error(error);
 
   if (IS_BACKEND_CONFIGURED) {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-      method: 'POST', body: formData,
+    const token = await getAccessToken();
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress?.(100);
+          try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Backend trả về dữ liệu upload không hợp lệ')); }
+        } else reject(new Error(`Tải file thất bại (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error('Mất kết nối trong lúc tải file'));
+      xhr.onabort = () => reject(new Error('Tải file đã bị hủy'));
+      xhr.send(formData);
     });
-    if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
-    return res.json();
   }
 
   // Mock: chưa có server thật để tải lên, chỉ giữ tham chiếu cục bộ.
