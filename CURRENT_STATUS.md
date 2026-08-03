@@ -185,6 +185,8 @@ giữ nguyên.
 
 2026-08-03 — customer transparency copy fix đã hoàn tất an toàn, xem
 `reports/customer/CWS_MVP_TRANSPARENCY_COPY_FIX_2026-08-03.md`.
+Worker cleanup file tạm local cũng đã được code + guard an toàn, xem
+`reports/worker/CWS_WORKER_TEMP_CLEANUP_FIX_2026-08-03.md`.
 Không thay đổi production data/credential/payment. Xem thêm
 `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen

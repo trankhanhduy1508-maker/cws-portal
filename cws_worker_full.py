@@ -2677,6 +2677,29 @@ def worker_ping(worker_id):
         pass  # ping that bai khong quan trong bang viec worker tiep tuc chay
 
 
+def cleanup_task_output_dir(output_dir):
+    """Xoa frame PNG tam sau khi task da checkpoint len B2.
+
+    Chi cho phep xoa truc tiep mot thu muc co ten output_task_<id> nam
+    ngay duoi WORK_DIR. Guard nay tranh moi loi goi nham co the xoa nham
+    cache .blend hoac thu muc goc cua worker.
+    """
+    output_path = Path(output_dir).resolve()
+    work_root = WORK_DIR.resolve()
+    if output_path.parent != work_root or not output_path.name.startswith("output_task_"):
+        print(f"[CLEANUP] Bo qua path khong an toan: {output_path}")
+        return False
+    if not output_path.exists():
+        return True
+    try:
+        shutil.rmtree(output_path)
+        print(f"[CLEANUP] Da xoa thu muc tam: {output_path.name}")
+        return True
+    except OSError as exc:
+        print(f"[CLEANUP] Khong xoa duoc {output_path.name}: {exc}")
+        return False
+
+
 # ---------------------------------------------------------------------
 # VONG LAP CHINH
 # ---------------------------------------------------------------------
@@ -2994,6 +3017,7 @@ def worker_loop():
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            cleanup_task_output_dir(output_dir)
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -3022,6 +3046,7 @@ def worker_loop():
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            cleanup_task_output_dir(output_dir)
             continue
 
         # Phase 8 (CWS_WORKER_ROADMAP.md): den day chac chan DU frame da
@@ -3063,6 +3088,7 @@ def worker_loop():
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
         report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
+        cleanup_task_output_dir(output_dir)
 
         # ----- TU KIEM TRA BAN MOI, DIEM THU 2 (bo sung 22/07/2026 toi):
         # kiem tra o nhanh "task is None" (dang ranh) o tren KHONG DU - neu

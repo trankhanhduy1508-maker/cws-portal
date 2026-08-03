@@ -161,6 +161,21 @@ except Exception as e:
     check("get_b2_client() khoi tao khong loi (khong goi API that)", False, str(e))
 
 # ---------------------------------------------------------------------
+# 9) Cleanup file tam cua task - chi duoc xoa output_task_<id> nam ngay
+# duoi WORK_DIR, khong xoa nham thu muc cache/blend hay thu muc goc.
+# ---------------------------------------------------------------------
+cleanup_dir = w.WORK_DIR / "output_task_offline_cleanup"
+cleanup_dir.mkdir(parents=True, exist_ok=True)
+(cleanup_dir / "frame_0001.png").write_bytes(b"temporary")
+cleanup_ok = w.cleanup_task_output_dir(cleanup_dir)
+check("cleanup_task_output_dir() xoa output task tam", cleanup_ok and not cleanup_dir.exists())
+
+unsafe_dir = w.WORK_DIR / "blend-cache-should-stay"
+unsafe_dir.mkdir(parents=True, exist_ok=True)
+unsafe_ok = w.cleanup_task_output_dir(unsafe_dir)
+check("cleanup_task_output_dir() chan path khong an toan", unsafe_ok is False and unsafe_dir.exists())
+
+# ---------------------------------------------------------------------
 # Tong ket
 # ---------------------------------------------------------------------
 overall = "PASS" if all(r["status"] == "PASS" for r in results) else "FAIL"
