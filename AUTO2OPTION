@@ -1,0 +1,53 @@
+$wshell = New-Object -ComObject WScript.Shell
+
+# === CAU HINH ===
+$MAX_HOURS = 4
+$SEND_INTERVAL = 3
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  AUTO CODEX - KHONG DUNG AppActivate" -ForegroundColor Cyan
+Write-Host "  HAY CLICK CHUOT VAO CUA SO CODEX TRUOC!" -ForegroundColor Yellow
+Write-Host "  Sau do dung tay - dung cham vao may" -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Cyan
+
+$startTime = Get-Date
+$endTime = $startTime.AddHours($MAX_HOURS)
+
+Write-Host "`nBat dau: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green
+Write-Host "Tu dong dung: $(Get-Date -Date $endTime -Format 'HH:mm:ss')" -ForegroundColor Yellow
+
+try {
+    while ((Get-Date) -lt $endTime) {
+        
+        $elapsed = (New-TimeSpan -Start $startTime).ToString('hh\:mm\:ss')
+        $remaining = (New-TimeSpan -Start (Get-Date) -End $endTime).ToString('hh\:mm\:ss')
+        
+        if ((Get-Date).Second -eq 0) {
+            Write-Host "`r[$elapsed] Con: $remaining    " -NoNewline -ForegroundColor DarkGray
+        }
+        
+        # KHONG goi AppActivate - chi gui phim thoi
+        # Gia su cua so Codex dang focus san
+        
+        Start-Sleep -Milliseconds 200
+        
+        # Nhan DOWN de chon option 2
+        $wshell.SendKeys("{DOWN}")
+        Start-Sleep -Milliseconds 300
+        
+        # Nhan Enter
+        $wshell.SendKeys("{ENTER}")
+        
+        Start-Sleep -Seconds $SEND_INTERVAL
+    }
+    
+    Write-Host "`n`n[!] HET GIO - TU DONG DUNG!" -ForegroundColor Green
+    
+} catch {
+    Write-Host "`n`n[!] LOI: $_" -ForegroundColor Red
+} finally {
+    if ($wshell -ne $null) {
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wshell) | Out-Null
+    }
+    Write-Host "[*] Xong. Ngu ngon!" -ForegroundColor Cyan
+}
