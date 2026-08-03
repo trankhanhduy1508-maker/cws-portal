@@ -99,7 +99,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
       <p className="download-expiry-note">
         {isPlaceholder
           ? 'Bản demo: đang tải lại chính file bạn đã gửi (chưa có kết quả render thật từ Backend)'
-          : 'Link tải có hiệu lực trong 3 ngày'}
+          : 'Link tải có hiệu lực trong 5 phút. Nếu hết hạn, bấm Tải thành phẩm lại để cấp link mới.'}
       </p>
     </StepCard>
   );
