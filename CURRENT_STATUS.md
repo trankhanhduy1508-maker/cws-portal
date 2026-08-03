@@ -42,12 +42,15 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 
 ## Current Task
 
-Autonomous LOOP (Owner uỷ quyền 2026-08-03, tiếp tục không dừng giữa
-chừng): đã fix P0 Worker generic job claim + `--enable-autoexec`. Đang
-tiếp tục rà soát Customer Objection & Desire Research 300
-(`reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`) để
-ưu tiên: payment/refund safety net, output delivery, các MUST HAVE còn
-lại có thể tự làm không cần Owner.
+Autonomous LOOP (Owner uỷ quyền 2026-08-03) dừng ở điểm B sau khi hoàn
+tất 2 fix độc lập: (1) P0 Worker generic job claim + `--enable-autoexec`
+gating, (2) gỡ nút "Hủy job" gây hiểu lầm ở PaymentScreen (Customer
+Research 300, mục C2.7). Dừng vì: môi trường agent này **không có
+Node.js/npm/Python** (đã xác nhận qua nhiều cách tìm) — không thể
+`build`/`test`/`lint` bất kỳ thay đổi backend (NestJS)/frontend (Vite)
+nào, nên không dám tự mở thêm thay đổi TypeScript mới (vd surfacing
+payment_notifications kẹt cho Admin) mà không có công cụ xác minh
+"không lỗi build" theo đúng Definition of Done (AGENTS.md).
 
 ## Next
 
@@ -57,17 +60,22 @@ lại có thể tự làm không cần Owner.
    Backblaze, cần Owner xác nhận key thật đang chạy trên Fleet.
 2. **Runtime verify Worker generic claim** — BLOCKED, cần máy
    Windows+Python+Blender vật lý (không có trong môi trường agent).
-3. **Admin MFA cần Owner tạo 1 tài khoản staff thật + tự quét QR** —
+3. **Payment/refund safety net cho Admin (payment_notifications kẹt
+   'processing', PAID nhưng chưa finalize)** — cần môi trường có
+   Node/npm để build+test backend an toàn trước khi push (không có
+   trong lần chạy này).
+4. **Admin MFA cần Owner tạo 1 tài khoản staff thật + tự quét QR** —
    checklist 4 bước trong
    `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md` mục 5.
-4. **Full MVP Core Flow chưa đạt điểm dừng A** — cần Owner tự chạy 1
+5. **Full MVP Core Flow chưa đạt điểm dừng A** — cần Owner tự chạy 1
    job thật qua UI HOẶC cung cấp máy Worker vật lý. Chi tiết:
    `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`.
 
 ## Last Updated
 
 2026-08-03 — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
-(P0 fix mới nhất), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
+(P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen
+UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
 (ưu tiên hoá task theo insight khách hàng),
 `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md` (Admin MFA),
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` (Worker
