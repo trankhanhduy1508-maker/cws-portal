@@ -1,0 +1,34 @@
+$wshell = New-Object -ComObject WScript.Shell
+
+Write-Host "Auto Enter (3s) + Continue (10m) started..."
+Write-Host "Press Ctrl+C to stop."
+
+# Gửi continue ngay khi bắt đầu
+$wshell.SendKeys("continue")
+Start-Sleep -Milliseconds 500
+$wshell.SendKeys("{ENTER}")
+
+$lastContinue = Get-Date
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+try {
+    while ($true) {
+        # Enter mỗi 3 giây
+        $wshell.SendKeys("{ENTER}")
+        
+        # Continue + Enter mỗi 10 phút
+        if ($stopwatch.Elapsed.TotalSeconds -ge 600) {
+            Write-Host "$(Get-Date -Format 'HH:mm:ss') -> Sending continue..."
+            $wshell.SendKeys("continue")
+            Start-Sleep -Milliseconds 500
+            $wshell.SendKeys("{ENTER}")
+            $stopwatch.Restart()
+        }
+        
+        Start-Sleep -Seconds 3
+    }
+} finally {
+    Write-Host "Cleaning up..."
+    $stopwatch.Stop()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wshell) | Out-Null
+}
