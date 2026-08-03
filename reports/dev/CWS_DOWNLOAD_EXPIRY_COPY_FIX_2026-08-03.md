@@ -18,6 +18,11 @@ The existing backend download route signs a fresh B2 URL on every request,
 so retrying the download action is the supported re-issue path. No TTL or
 storage behavior was changed.
 
+The landing page also no longer claims that files are automatically deleted
+after download. No B2 cleanup/retention workflow is present in the repository,
+so that deletion promise had no implementation evidence. It now describes
+the verified short-lived download-link behavior instead.
+
 ## Verification
 
 - Frontend production build: PASS (`npm run build`).
