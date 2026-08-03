@@ -17,6 +17,13 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 ## Last Verified
 
 2026-08-03:
+- **B2 credential hết hardcode hoàn toàn** trong `cws_worker_full.py`
+  (không còn fallback nào, kể cả key chết) — bắt buộc đọc
+  `CWS_B2_KEY_ID`/`CWS_B2_APP_KEY` từ env, set cục bộ qua `cws_worker.bat`
+  trên từng máy. Audit least-privilege xác nhận scope tối thiểu cần
+  thiết thật (bucket `MTEB90`, prefix `renders/`, Read+Write, không cần
+  delete/quản lý bucket) — Owner đã tạo key mới đúng scope này. Xem
+  `reports/worker/CWS_B2_LEAST_PRIVILEGE_AUDIT_2026-08-03.md`.
 - **P0 fix: Worker generic job claim + `--enable-autoexec` gating**
   (migration 014 áp dụng thật lên production, claim+revert thành công
   trên 1 trong 6 job MVP thật đang chờ từ 2026-07-27; code Worker sửa,

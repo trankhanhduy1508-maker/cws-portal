@@ -73,22 +73,32 @@ HEADERS = {
 
 # ===== BACKBLAZE B2 =====
 # SUA 2026-08-03 (P0 bao mat, xem reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md):
-# doc tu bien moi truong TRUOC, fallback ve gia tri cu neu chua set -
-# GIONG HET pattern da dung cho CWS_DIR o duoi. KHONG doi hanh vi Fleet
-# dang chay (chua ai set CWS_B2_KEY_ID/CWS_B2_APP_KEY se dung y het key
-# cu) - nhung mo duong cho Owner tu rotate sang key gioi han quyen hon
-# (chi rieng prefix renders/) ma KHONG can sua code/phan phoi lai file
-# nay lan nua, chi can set 2 bien moi truong nay truoc khi chay .bat.
-# GHI CHU QUAN TRONG: key hardcode duoi day da duoc TEST THAT 2026-08-03
-# (b2_authorize_account qua HTTPS that) va tra ve 401 Unauthorized - co
-# the da bi Owner tu rotate o noi khac (Fleet dang chay co the dang tai
-# ban khac cua file nay truc tiep tu B2 worker-releases/, khong qua git
-# repo nay). KHONG tu doan/tu thay key that - can Owner xac nhan gia tri
-# dung hien tai dang chay that tren Fleet truoc khi rotate.
-B2_KEY_ID = os.environ.get("CWS_B2_KEY_ID", "00483fb516ab3b10000000001")
-B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY", "K004my930oX1OkA4WyDWy1o4vhWCPcw")
+# KHONG con hardcode secret nao trong file nay - doc BAT BUOC tu bien
+# moi truong CWS_B2_KEY_ID/CWS_B2_APP_KEY (set qua "set" trong
+# cws_worker.bat CUC BO tren tung may, GIONG CACH CWS_DIR duoc set -
+# .bat KHONG bi auto-update nen an toan hon .py nay rat nhieu, xem
+# cws_worker.bat dong ~60-70). File .py nay LUON bi auto-update/tai lai
+# tu B2 worker-releases/ (xem cws_worker.bat) - bat ky ai co the doc
+# duoc file nay deu doc duoc MOI thu hardcode trong day, nen KHONG duoc
+# de secret nao o day nua, ke ca lam fallback.
+#
+# Neu thieu 1 trong 2 bien: KHONG crash worker_loop() ngay (giu dung
+# triet ly "warn, khong crash mu quang" da dung cho CWS_DIR ben duoi) -
+# in canh bao THAT TO, roi de cac loi goi B2 that bai tu nhien qua
+# try/except da co san (vd upload_single_frame, report_worker_crash) -
+# Owner se thay ro trong log thay vi Worker lang le dung 1 key sai/chet.
+B2_KEY_ID = os.environ.get("CWS_B2_KEY_ID", "")
+B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY", "")
 B2_ENDPOINT = "https://s3.us-west-004.backblazeb2.com"
 B2_BUCKET = "MTEB90"
+if not B2_KEY_ID or not B2_APP_KEY:
+    print("=" * 60)
+    print("[CANH BAO NGHIEM TRONG] Thieu bien moi truong CWS_B2_KEY_ID/"
+          "CWS_B2_APP_KEY - MOI thao tac B2 (upload frame, incremental "
+          "recovery, merge video) SE THAT BAI. Set 2 bien nay trong "
+          "cws_worker.bat (dong 'set CWS_B2_KEY_ID=...' truoc khi goi "
+          "python.exe, giong cach CWS_DIR da lam) TRUOC khi chay lai.")
+    print("=" * 60)
 
 # ===== BLENDER =====
 BLENDER_VERSION = "5.2.0"
