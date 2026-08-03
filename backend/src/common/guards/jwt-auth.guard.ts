@@ -8,20 +8,16 @@ import { Request } from 'express';
 import { SupabaseService } from '../../supabase/supabase.service';
 
 /**
- * QUYẾT ĐỊNH CÓ CHỦ Ý: Guard này CHƯA được áp dụng cho bất kỳ route
- * công khai nào (jobs/payments/files). Portal ĐÃ có màn hình đăng nhập
- * Google qua Supabase Auth (LoginScreen.jsx) và các route như GET
- * /jobs, POST /jobs đã đọc token NẾU có (xem optional-auth.util.ts,
- * KHÔNG throw nếu thiếu) để lọc theo customer — nhưng KHÔNG bắt buộc,
- * vì chưa cấu hình Google Provider thật trong Supabase Dashboard nên
- * chưa thể ép mọi khách đăng nhập được. Ép đăng nhập bắt buộc ở các
- * route này lúc này sẽ chặn hoàn toàn khách hàng.
+ * Portal có màn hình đăng nhập Google qua Supabase Auth (LoginScreen.jsx).
+ * Customer submit/render đã được frontend gate bằng Google OAuth và
+ * POST /jobs áp dụng guard này; các route estimate vẫn public để khách
+ * xem giá trước khi submit.
  *
  * Guard này được chuẩn bị sẵn (production-ready) để dùng cho các route
  * QUẢN TRỊ nội bộ (vd GET /jobs/by-storage-code/:code, GET /jobs/:id/logs,
  * GET /jobs/:id/notifications — các route Giai đoạn 7 hiện KHÔNG có
  * xác thực) hoặc để BẮT BUỘC đăng nhập trên route công khai một khi có
- * Google Provider thật — chỉ cần thêm @UseGuards(JwtAuthGuard).
+ * Google Provider thật — route nào cần identity chỉ cần thêm guard này.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {

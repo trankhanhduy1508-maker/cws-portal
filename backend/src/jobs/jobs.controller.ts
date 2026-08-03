@@ -19,6 +19,7 @@ import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { isValidAdminKey } from '../common/guards/admin-key.guard';
 import { RoleGuard } from '../common/guards/role.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
@@ -44,10 +45,10 @@ export class JobsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
-    // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
-    // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
-    // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
+    // Frontend bắt buộc Google OAuth trước bước này. Guard bảo đảm job thật
+    // không thể được tạo anonymous rồi bị chiếm quyền qua UUID.
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     return this.jobsService.createOrder(dto, customerId);
   }
@@ -87,10 +88,8 @@ export class JobsController {
     return toPublicJson(order);
   }
 
-  /** Job có customer_id -> chỉ đúng chủ (hoặc khách chưa đăng nhập) mới
-   * xem/thao tác được — xem JobsService.assertOwnership(). Job không có
-   * chủ (tạo lúc chưa đăng nhập) vẫn mở cho ai biết id, giữ nguyên hành
-   * vi cũ cho khách vãng lai. */
+  /** Chỉ đúng chủ hoặc Admin mới xem/thao tác được. Anonymous job không còn
+   * là trạng thái hợp lệ của customer flow. */
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
