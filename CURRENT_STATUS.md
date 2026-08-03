@@ -57,6 +57,16 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`,
 `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`.
 
+## Last Verified (bổ sung)
+
+2026-08-03 (tiếp tục LOOP sau khi Owner tạo B2 key mới): ReviewScreen
+làm rõ "Yêu cầu chỉnh sửa miễn phí, không giới hạn" — xác nhận đúng
+hành vi backend thật (`JobsService.requestChanges` không có logic
+phí/giới hạn nào), không phải chính sách bịa ra. Đã rà soát thêm các
+MUST HAVE khác trong Customer Research 300 (cảnh báo file quá lớn
+trước upload, kiểm tra sớm file — `MAX_FILE_SIZE_BYTES`/`validateFile`)
+— **đã có sẵn trong code từ trước**, không cần sửa.
+
 ## Current Task
 
 Autonomous LOOP (Owner uỷ quyền 2026-08-03) dừng ở điểm B sau khi hoàn
