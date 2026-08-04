@@ -80,6 +80,12 @@ là rủi ro tiền/khách trực tiếp). Xem
 
 ---
 
+Input Sources
+
+**[ACTIVE]** MVP nhận upload trực tiếp file `.blend` hoặc link Google Drive. OneDrive, Dropbox và Direct Link chỉ được bổ sung sau khi có integration resolver/upload thật và evidence tương ứng; không quảng cáo hoặc tạo Job từ các nguồn này trong thời gian chờ.
+
+---
+
 Storage
 
 **[ACTIVE]** Backblaze B2.
