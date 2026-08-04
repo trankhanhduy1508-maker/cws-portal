@@ -256,3 +256,8 @@ Latest CI recheck: GitHub Actions run #204 (head 750916c) PASS sau khi chỉnh c
 ## Resumable Upload — 2026-08-04
 
 Đã thay upload một lần bằng B2 multipart: chunk 8MiB, session/ETag lưu Supabase, customer ownership + RLS, resume qua sessionStorage, kiểm tra BLENDER header ở chunk đầu, và cleanup session ACTIVE quá 24 giờ. CI #215 PASS (backend build/tests, frontend build/lint). Runtime mất mạng/resume trên B2 thật và browser quota chưa xác minh. Evidence: reports/customer/CWS_RESUMABLE_UPLOAD_2026-08-04.md.
+
+
+## Worker Cleanup — 2026-08-04
+
+Đã sửa Worker để reset output local trước attempt và cleanup sau success/fail/partial/retry; chỉ local task output bị xóa, không đụng B2/production. Python static contract + CI #219 PASS; disk-before/after trên Worker Windows thật chưa xác minh. Evidence: reports/worker/CWS_WORKER_LOCAL_CLEANUP_2026-08-04.md.
