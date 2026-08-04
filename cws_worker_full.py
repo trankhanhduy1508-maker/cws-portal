@@ -62,6 +62,11 @@ import random
 import shutil
 from pathlib import Path
 
+# Per-frame safety bound for customer jobs. Override on a Worker via
+# CWS_FRAME_TIMEOUT_SEC; default is one hour so a slow frame cannot hang
+# the worker forever. This is an operational guard, not a Blender script.
+FRAME_TIMEOUT_SEC = max(60, int(os.environ.get("CWS_FRAME_TIMEOUT_SEC", "3600")))
+
 # ===== SUPABASE =====
 SUPABASE_URL = "https://ynhxlxetwuiyejcjypsi.supabase.co"
 SUPABASE_KEY = "sb_publishable_OyV65PRDgzukM36BNZnCdg_6T3-OeG1"
@@ -421,7 +426,20 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     render_start_time = time.time()
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=FRAME_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired as e:
+        print(f"    [render] TIMEOUT frame {frame_num} sau {FRAME_TIMEOUT_SEC}s")
+        for partial in output_dir.glob("frame_*"):
+            try:
+                partial.unlink()
+            except OSError:
+                pass
+        return None, "transient", FRAME_TIMEOUT_SEC
     except Exception as e:
         print(f"    [render] LOI: khong the khoi dong Blender: {e}")
         return None, "persistent", None
