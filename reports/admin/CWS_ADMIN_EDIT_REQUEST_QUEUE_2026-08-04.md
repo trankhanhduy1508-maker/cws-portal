@@ -17,6 +17,6 @@ The frontend does not grant access. Both backend routes remain protected by Role
 ## Verification
 
 - The implementation was committed to PR #14.
-- GitHub Actions must pass on the latest head before this is counted as code/test evidence.
+- GitHub Actions run #228 on head 5c90d7d PASS: backend build/test and frontend build/lint. This is code/test evidence; runtime MFA remains unverified.
 - Real staff MFA login, two-account ownership/RLS, and an end-to-end update against production remain unverified.
 - No production data, credential, secret, reboot, shutdown, or logoff was used.
