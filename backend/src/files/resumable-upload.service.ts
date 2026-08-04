@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { B2StorageService } from './b2-storage.service';
@@ -40,8 +41,26 @@ function normalizeSession(row: UploadSessionRow): UploadSessionRow & { file_size
 
 @Injectable()
 export class ResumableUploadService {
+  private readonly logger = new Logger(ResumableUploadService.name);
+
   constructor(private readonly supabaseService: SupabaseService, private readonly b2StorageService: B2StorageService) {}
 
+  @Cron('0 * * * *')
+  async cleanupExpiredSessions(): Promise<void> {
+    const now = new Date().toISOString();
+    const { data, error } = await this.supabaseService.getClient().from(TABLE).select('id, object_key, multipart_upload_id').eq('status', 'ACTIVE').lt('expires_at', now);
+    if (error) {
+      this.logger.error('Không đọc được upload session hết hạn: ' + error.message);
+      return;
+    }
+    for (const row of (data || []) as { id: string; object_key: string; multipart_upload_id: string }[]) {
+      await this.b2StorageService.abortMultipartUpload(row.object_key, row.multipart_upload_id).catch((err: unknown) => {
+        this.logger.warn('Abort multipart session ' + row.id + ' thất bại: ' + (err instanceof Error ? err.message : String(err)));
+      });
+      const { error: updateError } = await this.supabaseService.getClient().from(TABLE).update({ status: 'ABORTED', updated_at: now }).eq('id', row.id).eq('status', 'ACTIVE');
+      if (updateError) this.logger.error('Không đánh dấu được session hết hạn ' + row.id + ': ' + updateError.message);
+    }
+  }
   async init(input: { customerId: string; fileName: string; fileSizeBytes: number; contentType?: string | null; resumeSessionId?: string | null }) {
     this.validateFileMetadata(input.fileName, input.fileSizeBytes);
     if (input.resumeSessionId) {
