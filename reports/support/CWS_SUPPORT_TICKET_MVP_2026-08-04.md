@@ -20,3 +20,5 @@ Branch: agent/roadmap-mvp-v2
 - No production data, credentials, secrets, reboot, shutdown, or logoff was used.
 
 Unit tests also cover owned ticket creation, denial when linking another customer's Job, and invalid Admin status.
+
+Admin UI now allows setting expected response time per ticket without introducing a default SLA. GitHub Actions #253 PASS on code head 1023268: backend build/tests and frontend build/lint.
