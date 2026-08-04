@@ -20,15 +20,12 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { RoleGuard, Roles } from '../common/guards/role.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
-import { ConfigService } from '@nestjs/config';
-import { AppConfig } from '../config/configuration';
 
 @Controller('jobs')
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   /** x-admin-key HOẶC Bearer token Admin thật đã hoàn tất MFA hợp lệ ->
