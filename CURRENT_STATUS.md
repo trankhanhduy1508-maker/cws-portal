@@ -293,3 +293,8 @@ CI #234 (code head 40a40dc) PASS sau staff-auth query-token rejection: backend b
 Đã rà soát lại các boundary Customer/Host/Admin, payment confirmation, B2/signed URL, RLS, staff token handling và Admin UI. Các GAP an toàn phát hiện trong vòng này đã được code/test/evidence: bỏ direct POST /payments/:id/confirm, từ chối query-string staffToken ở backend, Admin edit-request queue, và download bằng Authorization header/blob URL. Không còn GAP MVP an toàn rõ ràng có thể hoàn thiện mà không cần quyết định/credential/máy runtime thật.
 
 Còn lại và được giữ BLOCKED/OWNER hoặc runtime: Worker claim/B2/Windows-Blender E2E, browser resume thực tế, live MB Bank/SePay, pricing/cap/SLA/refund, retention/legal/privacy/terms, support channel/ticket, staff MFA enrollment, Full E2E và pilot khách thật. Không gọi MVP hoàn thành.
+
+
+## Support Ticket MVP — 2026-08-04
+
+Đã thêm support_tickets (migration 019), Customer ticket form/status list, Admin MFA/RBAC queue và contract test ownership/RLS. CI #249 PASS (backend build/test, frontend build/lint). Ticket workflow đã code/test nhưng kênh liên hệ thật, người phụ trách, giờ làm việc và SLA vẫn là OWNER TODO; không quảng cáo 24/7. Evidence: reports/support/CWS_SUPPORT_TICKET_MVP_2026-08-04.md.
