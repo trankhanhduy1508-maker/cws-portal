@@ -12,6 +12,7 @@ import { FilesModule } from './files/files.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { SupportModule } from './support/support.module';
+import { AffiliateModule } from './affiliates/affiliate.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SupportModule } from './support/support.module';
     RealtimeModule,
     SchedulerModule,
     SupportModule,
+    AffiliateModule,
   ],
   controllers: [AppController],
 })
