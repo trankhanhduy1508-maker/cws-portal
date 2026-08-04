@@ -376,7 +376,7 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     });
   });
 
-  it('getByIdForCustomer() cho phép Admin (x-admin-key) xem job của bất kỳ ai', async () => {
+  it('getByIdForCustomer() cho phép Admin đã qua MFA xem job của bất kỳ ai', async () => {
     mockRepository.findById.mockResolvedValue(baseOrder());
 
     await expect(
@@ -384,14 +384,12 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     ).resolves.toMatchObject({ id: 'job-1' });
   });
 
-  it('getByIdForCustomer() KHÔNG chặn job chưa có chủ (customerId=null) — luồng khách vãng lai', async () => {
+  it('getByIdForCustomer() từ chối job không có owner — không cho anonymous IDOR', async () => {
     mockRepository.findById.mockResolvedValue(baseOrder({ customerId: null }));
 
     await expect(
       service.getByIdForCustomer('job-1', 'bat-ky-ai'),
-    ).resolves.toMatchObject({
-      id: 'job-1',
-    });
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('cancel() từ chối khách không phải chủ job — không cho huỷ job của người khác', async () => {
