@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS public.upload_sessions (
   status text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED', 'ABORTED')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  completed_at timestamptz
+  completed_at timestamptz,
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours')
 );
 
 CREATE TABLE IF NOT EXISTS public.upload_session_parts (
@@ -35,3 +36,7 @@ CREATE POLICY upload_sessions_customer_select_own ON public.upload_sessions FOR 
 
 DROP POLICY IF EXISTS upload_session_parts_customer_select_own ON public.upload_session_parts;
 CREATE POLICY upload_session_parts_customer_select_own ON public.upload_session_parts FOR SELECT USING (EXISTS (SELECT 1 FROM public.upload_sessions s WHERE s.id = upload_session_parts.session_id AND auth.uid() = s.customer_id));
+
+-- Keep this additive for environments that applied an earlier draft of migration 018.
+ALTER TABLE public.upload_sessions ADD COLUMN IF NOT EXISTS expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours');
+CREATE INDEX IF NOT EXISTS upload_sessions_expiry_idx ON public.upload_sessions(status, expires_at);
