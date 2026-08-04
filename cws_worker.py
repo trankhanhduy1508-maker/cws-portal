@@ -1,1 +1,58 @@
-"""CWS Worker entrypoint for the Render -> Supabase task workflow.\n\nRender is the CWS control plane. It creates internal jobs/tasks in Supabase;\nthis process claims those tasks, renders them, and uploads results to B2.\nThe implementation remains in ``cws_worker_runtime.py`` so the entrypoint is\nsmall, testable, and safe to replace without changing the task contract.\n"""\n\nfrom __future__ import annotations\n\nimport argparse\nimport importlib.util\nimport os\nfrom pathlib import Path\nimport runpy\nimport sys\n\nRUNTIME_NAME = "cws_worker_runtime.py"\nREQUIRED_ENV = ("CWS_SUPABASE_KEY", "CWS_B2_KEY_ID", "CWS_B2_APP_KEY")\nREQUIRED_MODULES = ("requests", "boto3", "PIL")\n\ndef preflight() -> int:\n    errors: list[str] = []\n    runtime = Path(__file__).with_name(RUNTIME_NAME)\n    if not runtime.is_file() or runtime.stat().st_size < 10_000:\n        errors.append(f"missing or invalid runtime: {runtime}")\n    for name in REQUIRED_ENV:\n        if not os.environ.get(name):\n            errors.append(f"missing environment variable: {name}")\n    for module in REQUIRED_MODULES:\n        if importlib.util.find_spec(module) is None:\n            errors.append(f"missing Python dependency: {module}")\n    if errors:\n        for error in errors:\n            print(f"[preflight] ERROR: {error}")\n        return 1\n    print("[preflight] OK: Render/Supabase task workflow package is ready")\n    print(f"[preflight] runtime: {runtime.name} ({runtime.stat().st_size} bytes)")\n    print("[preflight] credentials: present (values intentionally not displayed)")\n    return 0\n\ndef main() -> int:\n    parser = argparse.ArgumentParser(description="CWS Render workflow worker")\n    parser.add_argument("--preflight", action="store_true", help="validate package without contacting production")\n    args = parser.parse_args()\n    if args.preflight:\n        return preflight()\n    result = preflight()\n    if result:\n        return result\n    runpy.run_path(str(Path(__file__).with_name(RUNTIME_NAME)), run_name="__main__")\n    return 0\n\nif __name__ == "__main__":\n    sys.exit(main())\n
+"""CWS Worker entrypoint for the Render -> Supabase task workflow.
+
+Render is the CWS control plane. It creates internal jobs/tasks in Supabase;
+this process claims those tasks, renders them, and uploads results to B2.
+The implementation remains in cws_worker_runtime.py so the entrypoint is
+small, testable, and safe to replace without changing the task contract.
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import os
+from pathlib import Path
+import runpy
+import sys
+
+RUNTIME_NAME = "cws_worker_runtime.py"
+REQUIRED_ENV = ("CWS_SUPABASE_KEY", "CWS_B2_KEY_ID", "CWS_B2_APP_KEY")
+REQUIRED_MODULES = ("requests", "boto3", "PIL")
+
+
+def preflight() -> int:
+    errors: list[str] = []
+    runtime = Path(__file__).with_name(RUNTIME_NAME)
+    if not runtime.is_file() or runtime.stat().st_size < 10_000:
+        errors.append(f"missing or invalid runtime: {runtime}")
+    for name in REQUIRED_ENV:
+        if not os.environ.get(name):
+            errors.append(f"missing environment variable: {name}")
+    for module in REQUIRED_MODULES:
+        if importlib.util.find_spec(module) is None:
+            errors.append(f"missing Python dependency: {module}")
+    if errors:
+        for error in errors:
+            print(f"[preflight] ERROR: {error}")
+        return 1
+    print("[preflight] OK: Render/Supabase task workflow package is ready")
+    print(f"[preflight] runtime: {runtime.name} ({runtime.stat().st_size} bytes)")
+    print("[preflight] credentials: present (values intentionally not displayed)")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="CWS Render workflow worker")
+    parser.add_argument("--preflight", action="store_true")
+    args = parser.parse_args()
+    if args.preflight:
+        return preflight()
+    result = preflight()
+    if result:
+        return result
+    runpy.run_path(str(Path(__file__).with_name(RUNTIME_NAME)), run_name="__main__")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
