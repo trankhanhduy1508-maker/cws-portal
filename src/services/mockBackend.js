@@ -300,6 +300,10 @@ export async function mockApproveJob(jobId) {
     paymentCode,
     transferContent,
     amountVnd,
+    workerCount: 1,
+    workerRuntimeSeconds,
+    hourlyRateVnd: 6000,
+    billingMultiplier: 2,
     qrImageUrl: null, // mock không có tài khoản MB Bank thật để dựng QR — honest, không bịa
   };
   paymentsStore.set(paymentId, payment);

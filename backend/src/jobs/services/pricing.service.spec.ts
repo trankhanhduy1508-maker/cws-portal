@@ -36,6 +36,7 @@ describe('PricingService.computeFinalPriceVnd()', () => {
 
     expect(result.workerRuntimeSeconds).toBe(WORKER_STARTUP_SECONDS);
     expect(result.finalPriceVnd).toBe(priceFromSeconds(WORKER_STARTUP_SECONDS));
+    expect(result.workerCount).toBe(1);
   });
 
   it('1 worker, 1 task -> runtime task + 1 lần khởi động', async () => {
@@ -50,6 +51,7 @@ describe('PricingService.computeFinalPriceVnd()', () => {
     const result = await service.computeFinalPriceVnd('job-1');
 
     expect(result.workerRuntimeSeconds).toBe(300 + WORKER_STARTUP_SECONDS);
+    expect(result.workerCount).toBe(1);
   });
 
   it('CÙNG 1 worker nhận 2 task KHÔNG LIÊN TỤC của cùng job -> KHÔNG được tính thời gian rảnh giữa 2 lần là runtime (bug đã sửa)', async () => {
@@ -76,6 +78,7 @@ describe('PricingService.computeFinalPriceVnd()', () => {
 
     // 300s + 120s = 420s task runtime, CHI 1 lan khoi dong (cung 1 worker).
     expect(result.workerRuntimeSeconds).toBe(420 + WORKER_STARTUP_SECONDS);
+    expect(result.workerCount).toBe(1);
   });
 
   it('2 worker khac nhau -> cong dong runtime tung worker + khoi dong RIENG cho MOI worker', async () => {
@@ -97,6 +100,7 @@ describe('PricingService.computeFinalPriceVnd()', () => {
     expect(result.workerRuntimeSeconds).toBe(
       300 + 600 + 2 * WORKER_STARTUP_SECONDS,
     );
+    expect(result.workerCount).toBe(2);
   });
 
   it('task chưa kịp có heartbeat nào (lastHeartbeat null) -> runtime = 0 cho task đó, không bịa số', async () => {
@@ -111,5 +115,6 @@ describe('PricingService.computeFinalPriceVnd()', () => {
     const result = await service.computeFinalPriceVnd('job-1');
 
     expect(result.workerRuntimeSeconds).toBe(0 + WORKER_STARTUP_SECONDS);
+    expect(result.workerCount).toBe(1);
   });
 });
