@@ -1,3 +1,21 @@
+## MVP V2 Roadmap Sync (2026-08-04)
+
+Đã tạo `CWS_ROADMAP_MVP_V2.md` và source reconciliation report từ V1, DECISIONS, PROJECT_CONTEXT, CWS_MVP_WORKFLOW_FINAL, CWS_WORKER_ROADMAP, toàn bộ `reports/customer/` và evidence/PR mới nhất trên GitHub.
+
+V2 giữ nguyên V1 và không tính PR chưa merge vào trạng thái PASS. Các gap ưu tiên còn lại:
+
+- Worker production path claim + B2 upload + Blender/Fleet E2E thật.
+- Resume upload, early `.blend` validation, draft preservation và ẩn nguồn upload chưa hoạt động.
+- Price estimate/breakdown/cap, live payment/recovery/refund policy.
+- Retention/privacy/terms và support channel/ticket.
+- Preview runtime/edit-request state.
+- Admin MFA thật và xử lý job/payment/support bị kẹt.
+- Full E2E và pilot khách thật.
+
+**MVP V2 hiện chưa hoàn thành.** Các mục cần Owner được ghi rõ trong roadmap; không tự bịa giá, SLA, retention, refund, support hoặc customer metrics.
+
+Evidence: `reports/CWS_MVP_V2_SOURCE_RECONCILIATION_2026-08-04.md`.
+
 # Current Status
 
 > Entry point đầu tiên của LOOP (AGENTS.md — Source-of-Truth Sync).
