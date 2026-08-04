@@ -153,3 +153,21 @@ export async function adminGetJobLogs(jobId, staffToken) {
 export function adminGetDownloadUrl(jobId, staffToken) {
   return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?staffToken=${encodeURIComponent(staffToken)}`;
 }
+
+/** Danh sách yêu cầu chỉnh sửa của khách — chỉ Admin MFA, backend RoleGuard enforce. */
+export function adminListEditRequests(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.STAFF_EDIT_REQUESTS, adminKey);
+}
+
+/** Cập nhật trạng thái yêu cầu chỉnh sửa — chỉ Admin MFA. */
+export function adminUpdateEditRequest(id, status, adminKey, expectedResponseAt = null) {
+  return fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STAFF_UPDATE_EDIT_REQUEST(id)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${adminKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, expectedResponseAt }),
+  }).then(async (res) => {
+    if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
+    if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
+    return res.json();
+  });
+}
