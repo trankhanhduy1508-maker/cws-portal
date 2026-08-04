@@ -342,25 +342,22 @@ export async function getJobEditRequests(jobId) {
 }
 
 /**
- * URL tải file kết quả theo jobId — dùng thẳng làm `href`/`window.open()`
- * (điều hướng trình duyệt thật, KHÔNG qua `fetch()`), nên phải đính token
- * qua query string `?token=` giống `subscribeToJobUpdatesReal()` — trình
- * duyệt không set được Authorization header cho điều hướng thường.
- * Thiếu bước này thì Backend sẽ coi khách đã đăng nhập là ẩn danh, tự
- * chặn nhầm (403) chính chủ job của họ (xem optional-auth.util.ts).
- *
- * Async vì cần `await getAccessToken()` trước khi ghép URL — nơi gọi
- * phải `await` trước khi dùng làm `href`/`window.open()`.
- * @returns {Promise<string|null>}
+ * Tải file cuối bằng Authorization header và trả về object URL tạm.
+ * Bearer token không đi vào URL, browser history, referrer hay access log.
  */
 export async function getDownloadUrl(jobId) {
   if (IS_BACKEND_CONFIGURED) {
     const token = await getAccessToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-    return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}${tokenParam}`;
+    if (!token) return null;
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Không tải được file (${res.status})`);
+    return URL.createObjectURL(await res.blob());
   }
   return mock.mockGetJob(jobId)?.downloadUrl ?? null;
 }
+
 
 // ============================================================
 // IMPLEMENTATION THẬT (chưa dùng vì chưa có Backend — giữ khung sườn
