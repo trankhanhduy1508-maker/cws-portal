@@ -30,6 +30,7 @@ export const API_CONFIG = {
     REQUEST_CHANGES_JOB: (jobId) => `/jobs/${jobId}/request-changes`,
     JOB_EDIT_REQUESTS: (jobId) => `/jobs/${jobId}/edit-requests`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
+    JOB_DOWNLOAD_URL: (jobId) => `/jobs/${jobId}/download-url`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
     JOB_REALTIME_TICKET: (jobId) => `/jobs/${jobId}/realtime-ticket`,
     // Admin (Giai đoạn 7) — cần Bearer token Supabase của staff đã qua MFA/RBAC, xem services/adminApi.js.
