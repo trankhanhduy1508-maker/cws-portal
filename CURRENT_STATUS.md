@@ -147,9 +147,17 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 - Host dashboard tiếp tục lọc theo staff_worker_access; Fleet/Admin routes dùng RoleGuard backend.
 - Existing RLS, signed URL TTL và WebSocket owner checks được giữ và ghi nhận trong evidence.
 
-Payment detail ownership cũng đã được khóa: direct unauthenticated payment creation bị gỡ khỏi controller; GET payment yêu cầu customer Bearer và đối chiếu owner qua render_orders.customer_id.\n\nTrạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build và kiểm thử bằng hai tài khoản thật để chuyển P0 sang runtime PASS.
+Payment detail ownership cũng đã được khóa: direct unauthenticated payment creation bị gỡ khỏi controller; GET payment yêu cầu customer Bearer và đối chiếu owner qua render_orders.customer_id.
 
-RLS P0 fix: added backend/migrations/016_enable_customer_rls_boundaries.sql to explicitly enable RLS on customer and internal tables without deleting data/policies.\n\nUpload safety fix: direct .blend intake now rejects renamed/non-native files missing the BLENDER signature before B2 upload; focused unit tests were added. Upload UI cũng hiển thị công khai giới hạn `.blend` only, 2GB và Google Drive-only link source trước khi khách tiếp tục.\n\nEvidence: reports/customer/CWS_BLEND_EARLY_VALIDATION_2026-08-04.md.\n\nEvidence: reports/security/CWS_P0_BOUNDARY_AUDIT_2026-08-04.md.
+Trạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build và kiểm thử bằng hai tài khoản thật để chuyển P0 sang runtime PASS.
+
+RLS P0 fix: added backend/migrations/016_enable_customer_rls_boundaries.sql to explicitly enable RLS on customer and internal tables without deleting data/policies.
+
+Upload safety fix: direct .blend intake now rejects renamed/non-native files missing the BLENDER signature before B2 upload; focused unit tests were added. Upload UI cũng hiển thị công khai giới hạn `.blend` only, 2GB và Google Drive-only link source trước khi khách tiếp tục. Progress UI hiển thị queue delay từ `queueSeconds` khi Backend trả về.
+
+Evidence: reports/customer/CWS_BLEND_EARLY_VALIDATION_2026-08-04.md.
+
+Evidence: reports/security/CWS_P0_BOUNDARY_AUDIT_2026-08-04.md.
 
 ## Last Verified (bổ sung)
 
