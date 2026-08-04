@@ -147,7 +147,7 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 - Host dashboard tiếp tục lọc theo staff_worker_access; Fleet/Admin routes dùng RoleGuard backend.
 - Existing RLS, signed URL TTL và WebSocket owner checks được giữ và ghi nhận trong evidence.
 
-Trạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build và kiểm thử bằng hai tài khoản thật để chuyển P0 sang runtime PASS.
+Payment detail ownership cũng đã được khóa: direct unauthenticated payment creation bị gỡ khỏi controller; GET payment yêu cầu customer Bearer và đối chiếu owner qua render_orders.customer_id.\n\nTrạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build và kiểm thử bằng hai tài khoản thật để chuyển P0 sang runtime PASS.
 
 Evidence: reports/security/CWS_P0_BOUNDARY_AUDIT_2026-08-04.md.
 
