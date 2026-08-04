@@ -17,7 +17,7 @@ Audit code trên branch agent/roadmap-mvp-v2 đối với Customer, Host/Fleet/W
 | B2/file | Preview/download use signed URLs with TTL; raw public URL is not returned for download. File intake is now authenticated. |
 | Supabase/RLS | RLS migration contains own-customer policies and no direct policies for internal worker/payment tables; runtime RLS still needs real project verification. |
 | WebSocket | Job owner token is checked before snapshot/Realtime subscription; mismatch closes without sending data. |
-| Secrets/logs | Worker B2 key is env-based per existing evidence; runtime secret/log scan still requires deployed environment review. |
+| Payment | Removed unauthenticated direct payment creation; payment detail lookup now requires customer Bearer and checks the linked render_orders.customer_id. Webhooks remain secret/HMAC guarded and idempotent. |\n| Secrets/logs | Worker B2 key is env-based per existing evidence; runtime secret/log scan still requires deployed environment review. |
 
 ## Security test matrix
 
