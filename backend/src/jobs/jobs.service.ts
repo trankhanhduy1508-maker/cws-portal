@@ -205,7 +205,7 @@ export class JobsService {
     isAdmin = false,
   ): void {
     if (isAdmin) return;
-    if (order.customerId && order.customerId !== customerId) {
+    if (!customerId || !order.customerId || order.customerId !== customerId) {
       throw new ForbiddenException(`Không có quyền truy cập job ${order.id}`);
     }
   }
@@ -232,9 +232,8 @@ export class JobsService {
   }
 
   /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Google).
-   * customerId null -> TRẢ TOÀN BỘ job của mọi khách (giới hạn đã biết:
-   * Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts và
-   * API_DOCUMENTATION.md). */
+   * customerId null chỉ được dùng bởi Admin route đã xác thực; customer
+   * route luôn phải có identity. */
   async listAll(customerId: string | null = null): Promise<RenderOrder[]> {
     if (customerId) return this.ordersRepository.findByCustomerId(customerId);
     return this.ordersRepository.findAll();
