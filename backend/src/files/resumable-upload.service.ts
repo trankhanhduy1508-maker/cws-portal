@@ -122,7 +122,7 @@ export class ResumableUploadService {
   }
 
   private validateFileMetadata(fileName: string, fileSizeBytes: number): void {
-    if (!safeFileName(fileName).toLowerCase().endsWith(ACCEPTED_EXTENSION)) throw new BadRequestException('Chỉ chấp nhận file .blend');
+    if (!fileName.trim().toLowerCase().endsWith(ACCEPTED_EXTENSION)) throw new BadRequestException('Chỉ chấp nhận file .blend');
     if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0 || fileSizeBytes > RESUMABLE_MAX_FILE_SIZE_BYTES) throw new BadRequestException('Kích thước file không hợp lệ hoặc vượt quá 2GB');
   }
 }
