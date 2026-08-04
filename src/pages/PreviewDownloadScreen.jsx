@@ -17,14 +17,22 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // nên phải load qua state thay vì gọi thẳng trong render.
   const [realHref, setRealHref] = useState(null);
   useEffect(() => {
-    if (!IS_BACKEND_CONFIGURED) return;
+    if (!IS_BACKEND_CONFIGURED) return undefined;
     let cancelled = false;
-    getDownloadUrl(jobId).then((url) => { if (!cancelled) setRealHref(url); });
+    let objectUrl = null;
+    getDownloadUrl(jobId).then((url) => {
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url);
+        return;
+      }
+      objectUrl = url;
+      setRealHref(url);
+    }).catch(() => {});
     return () => {
       cancelled = true;
-      if (realHref) URL.revokeObjectURL(realHref);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [jobId, realHref]);
+  }, [jobId]);
   const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
 
   // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
