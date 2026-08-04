@@ -1,4 +1,4 @@
-import { ACCEPTED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, SHARED_LINK_PATTERNS } from '../constants/renderConstants';
+import { ACCEPTED_FILE_EXTENSIONS, MAX_FILE_SIZE_BYTES, GOOGLE_DRIVE_LINK_PATTERN } from '../constants/renderConstants';
 
 export function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
