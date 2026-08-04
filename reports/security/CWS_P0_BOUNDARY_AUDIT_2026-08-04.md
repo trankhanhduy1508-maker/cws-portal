@@ -1,0 +1,38 @@
+# CWS P0 Boundary Security Audit — 2026-08-04
+
+## Scope
+
+Audit code trên branch agent/roadmap-mvp-v2 đối với Customer, Host/Fleet/Worker, Admin/Staff, B2, Supabase/RLS, REST/WebSocket, Payment và logs/secrets.
+
+## Findings and fixes
+
+| Boundary | Evidence / result |
+|---|---|
+| Customer A → A | JobsService.assertOwnership cho phép đúng customer_id; existing IDOR test covers allow. |
+| Customer A → B | Service throws ForbiddenException; existing test covers deny. |
+| Anonymous/unowned Job | Fixed: create/file intake require Bearer; unowned Job is denied instead of open by ID. |
+| Customer → Host/Worker private data | /host is behind RoleGuard + @Roles('host'); worker logs route now requires Admin RoleGuard/MFA. |
+| Host A → Host B | RoleGuard loads staff_worker_access; Host dashboard filters workers/incidents/usage by assigned IDs. |
+| Customer/Host → Admin | RoleGuard requires staff role and aal2; host is denied on admin-only routes. |
+| B2/file | Preview/download use signed URLs with TTL; raw public URL is not returned for download. File intake is now authenticated. |
+| Supabase/RLS | RLS migration contains own-customer policies and no direct policies for internal worker/payment tables; runtime RLS still needs real project verification. |
+| WebSocket | Job owner token is checked before snapshot/Realtime subscription; mismatch closes without sending data. |
+| Secrets/logs | Worker B2 key is env-based per existing evidence; runtime secret/log scan still requires deployed environment review. |
+
+## Security test matrix
+
+- A → A: covered by backend/src/jobs/jobs.service.spec.ts.
+- A → B: covered by backend/src/jobs/jobs.service.spec.ts.
+- Customer → Admin: covered by backend/src/common/guards/role.guard.spec.ts.
+- Host → Admin: covered by role mismatch test in role.guard.spec.ts.
+- Customer/anonymous → private Worker logs: enforced by @UseGuards(RoleGuard) @Roles('admin') on GET /jobs/:id/logs.
+- Host A → Host B: enforced by staff_worker_access filtering; existing RoleGuard test covers assigned worker IDs.
+- WebSocket A → B: covered by backend/src/realtime/jobs-realtime.server.spec.ts.
+
+## Verification status
+
+Static source consistency: **PASS** after branch updates.
+
+Jest/build/runtime production: **NOT RUN IN THIS AGENT SESSION** because the environment has no local Git checkout/toolchain execution path. GitHub Actions should be checked for the branch head before merging.
+
+Production two-account/RLS/MFA/B2 verification: **OWNER/HUMAN REQUIRED**. No production data, credentials, or secrets were changed.
