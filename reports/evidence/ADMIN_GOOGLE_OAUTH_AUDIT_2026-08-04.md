@@ -35,12 +35,13 @@
 - Audited the authenticated upload, resumable upload, B2 key generation, Drive resolver, job ownership routes, worker/host route guards, realtime ticket RPC grants, and repository credential-hygiene contracts.
 - Hardened the legacy single-request upload endpoint so it resolves the customer from the authenticated Supabase token before writing to B2.
 - Sanitized the legacy upload filename before constructing the B2 object key; client path separators and unsafe/control characters are no longer copied into the key.
+- Bounded the legacy in-memory upload endpoint to 64 MiB; the portal's resumable path retains the 2 GiB product limit without buffering the whole file in one request.
 - Resumable uploads continue to require customer ownership of the session, enforce 8 MiB chunks/2 GiB total, validate the first chunk's Blender signature, and use generated object IDs.
 - The worker's generic customer-job path continues to render without `--enable-autoexec`; trusted Owner jobs remain a separate operational path and require explicit isolation/least-privilege validation on a real Windows worker.
 
 Validation after hardening:
 
-- Backend Jest: 25 suites / 141 tests PASS.
+- Backend Jest: 25 suites / 141 tests PASS; Nest build PASS after the upload memory bound.
 - Nest build PASS.
 - Full production/runtime malware scanning, Windows worker sandboxing, Defender state, B2 bucket ACL, and live OAuth/MFA remain OWNER/host-runtime verification items; no claim of PASS was made for those.
 
