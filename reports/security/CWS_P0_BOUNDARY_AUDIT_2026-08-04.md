@@ -31,7 +31,7 @@ Audit code trên branch agent/roadmap-mvp-v2 đối với Customer, Host/Fleet/W
 
 ## Verification status
 
-Static source consistency: **PASS** after branch updates.
+Static source consistency: **PASS** after branch updates. Frontend RenderService now sends the Supabase Bearer token for protected upload, Drive resolve, and payment-detail requests.
 
 Jest/build/runtime production: **NOT RUN IN THIS AGENT SESSION** because the environment has no local Git checkout/toolchain execution path. GitHub Actions should be checked for the branch head before merging.
 
