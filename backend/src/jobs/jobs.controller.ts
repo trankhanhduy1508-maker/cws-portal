@@ -17,8 +17,8 @@ import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
-import { isValidAdminKey } from '../common/guards/admin-key.guard';
-import { RoleGuard } from '../common/guards/role.guard';
+import { RoleGuard, Roles } from '../common/guards/role.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
@@ -38,12 +38,11 @@ export class JobsController {
    * trước khi có yêu cầu MFA, không phải bypass MỚI phát sinh — xem
    * staff-auth.util.ts). */
   private async isAdminRequest(req: Request): Promise<boolean> {
-    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    if (isValidAdminKey(req, adminApiKey)) return true;
     return isAuthenticatedMfaAdmin(req, this.supabaseService);
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
     // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
     // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
@@ -69,11 +68,8 @@ export class JobsController {
       return orders.map(toPublicJson);
     }
 
-    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    if (!isValidAdminKey(req, adminApiKey)) {
-      throw new UnauthorizedException(
-        'Cần đăng nhập hoặc x-admin-key để xem danh sách job',
-      );
+    if (!(await isAuthenticatedMfaAdmin(req, this.supabaseService))) {
+      throw new UnauthorizedException('Danh sách toàn bộ job chỉ dành cho Admin đã hoàn tất MFA');
     }
     const orders = await this.jobsService.listAll(null);
     return orders.map(toPublicJson);
@@ -196,14 +192,16 @@ export class JobsController {
     res.redirect(302, url);
   }
 
-  /** Admin xem log Worker (báo lỗi render) — cần x-admin-key nếu job có chủ. */
+  /** Chỉ Admin đã qua RoleGuard mới được xem worker logs; customer không cần dữ liệu nội bộ này. */
   @Get(':id/logs')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
   async getLogs(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     const logs = await this.jobsService.getWorkerLogs(
       id,
       customerId,
-      await this.isAdminRequest(req),
+      true,
     );
     return { logs };
   }
