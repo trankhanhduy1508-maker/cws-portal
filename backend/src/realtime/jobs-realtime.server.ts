@@ -94,7 +94,13 @@ export class JobsRealtimeServer {
       current = null;
     }
 
-    if (!current?.customerId) {
+    // Đóng kết nối ngay nếu job không tồn tại, trước khi consume ticket.
+    if (!current) {
+      client.close(4004, 'Không tìm thấy job này');
+      return;
+    }
+
+    if (!current.customerId) {
       client.close(4003, 'Job chưa có owner hợp lệ');
       return;
     }
@@ -104,18 +110,6 @@ export class JobsRealtimeServer {
         `Từ chối kết nối realtime cho job ${jobId} — ticket không hợp lệ/hết hạn/đã dùng`,
       );
       client.close(4003, 'Không có quyền truy cập job này');
-      return;
-    }
-
-    // SỬA (phát hiện qua tự rà soát 31/07/2026): job KHÔNG tồn tại (id
-    // sai/không có thật, vd ai đó dò URL ngẫu nhiên) trước đây vẫn mở 1
-    // kênh Supabase Realtime SỐNG mãi tới khi client tự đóng — không rò
-    // rỉ dữ liệu gì (không job nào để gửi), nhưng lãng phí tài nguyên
-    // không cần thiết. Đóng kết nối ngay, không mở kênh, nếu job không
-    // tồn tại (client thật luôn có job thật vì `createJob()` await xong
-    // mới gọi subscribe, xem `useRenderJob.js#start()`).
-    if (!current) {
-      client.close(4004, 'Không tìm thấy job này');
       return;
     }
 
