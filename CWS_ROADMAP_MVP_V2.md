@@ -212,12 +212,11 @@ Bắt buộc trước khách thật:
 
 MVP tối thiểu:
 
-- Một kênh thật có người phụ trách.
-- Ticket/request code.
-- Trạng thái `OPEN → ACKNOWLEDGED → IN_PROGRESS → RESOLVED`.
-- Admin xem được ticket gắn với customer/job/payment.
-- UI ghi thời gian phản hồi thực tế, không quảng cáo 24/7 nếu chưa vận hành.
-- Request changes và payment issue phải trỏ tới cùng kênh support.
+- **Ticket/request code + state — CODE/TEST PASS, runtime chưa xác minh.** Migration 019, customer ownership/RLS, Customer form/status list và Admin MFA queue đã triển khai. Evidence: `reports/support/CWS_SUPPORT_TICKET_MVP_2026-08-04.md`.
+- Admin xem ticket gắn với customer/job và cập nhật `OPEN → ACKNOWLEDGED → IN_PROGRESS → RESOLVED/DECLINED`.
+- UI ghi expected response time khi Admin đặt; không quảng cáo 24/7 hoặc SLA chưa có.
+- Request changes và payment issue vẫn cần trỏ tới cùng kênh support sau khi Owner vận hành kênh thật.
+- **Một kênh thật có người phụ trách — BLOCKED/OWNER.**
 
 **OWNER CẦN QUYẾT ĐỊNH:** email/Zalo/chat/hotline nào, giờ làm việc, SLA phản hồi, ai trực.
 
