@@ -58,6 +58,7 @@ export const API_CONFIG = {
     // Staff (Admin/Host tháº­t, Pháº§n 6) â€” cáº§n Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
+    STAFF_ACCESS: '/staff/access',
     STAFF_EDIT_REQUESTS: '/staff/edit-requests',
     STAFF_UPDATE_EDIT_REQUEST: (id) => `/staff/edit-requests/${id}`,
     SUPPORT_TICKETS: '/support/tickets',
