@@ -198,7 +198,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       baseOrder({ status: JobStatus.RENDERING }),
     );
 
-    await expect(service.approve('job-1')).rejects.toThrow(BadRequestException);
+    await expect(service.approve('job-1', 'customer-owner')).rejects.toThrow(BadRequestException);
     expect(mockPricingService.computeFinalPriceVnd).not.toHaveBeenCalled();
     expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
   });
@@ -210,7 +210,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-1' }),
     );
 
-    const result = await service.approve('job-1');
+    const result = await service.approve('job-1', 'customer-owner');
 
     expect(mockPricingService.computeFinalPriceVnd).toHaveBeenCalledWith(
       'internal-1',
