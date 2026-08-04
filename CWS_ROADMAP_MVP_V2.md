@@ -28,7 +28,7 @@ Mọi MVP flow phải enforce ở Backend/DB, không chỉ ở frontend:
 - Customer/Host → Admin API phải DENY. Admin authorization phải enforce tại Backend bằng Supabase Bearer + staff_roles + MFA (aal2), không chấp nhận frontend-only guard hoặc shared-key bypass cho Admin routes.
 - B2 object phải đi qua ownership check và signed URL có TTL; không trả public/raw URL cho Customer. Worker credential phải scope tối thiểu bucket/prefix và không xuất hiện trong source/log.
 - Supabase RLS phải giữ customer ownership và deny trực tiếp các bảng nội bộ Host/Worker/Admin; service role chỉ dùng server-side.
-- REST/WebSocket đều phải xác thực owner/role trước snapshot, mutation hoặc stream; webhook/payment phải idempotent và không cho client tự đổi PAID.
+- REST/WebSocket đều phải xác thực owner/role trước snapshot, mutation hoặc stream; download chỉ nhận Bearer header; WebSocket dùng one-time hashed realtime ticket thay vì bearer query token. Webhook/payment phải idempotent và không cho client tự đổi PAID. Evidence: reports/security/CWS_HTTP_WS_TOKEN_BOUNDARY_2026-08-04.md.
 
 ### Security test matrix bắt buộc
 
