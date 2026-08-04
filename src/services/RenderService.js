@@ -43,6 +43,7 @@ export async function uploadFile(file) {
   if (!valid) throw new Error(error);
 
   if (IS_BACKEND_CONFIGURED) {
+    const token = await getAccessToken();
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
