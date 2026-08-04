@@ -342,18 +342,20 @@ export async function getJobEditRequests(jobId) {
 }
 
 /**
- * Tải file cuối bằng Authorization header và trả về object URL tạm.
- * Bearer token không đi vào URL, browser history, referrer hay access log.
+ * Đổi Authorization Bearer lấy signed URL TTL 5 phút.
+ * Bearer token không đi vào URL; file navigation đi thẳng tới B2
+ * sau khi Backend đã kiểm tra ownership và ghi audit event.
  */
 export async function getDownloadUrl(jobId) {
   if (IS_BACKEND_CONFIGURED) {
     const token = await getAccessToken();
     if (!token) return null;
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD_URL(jobId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(`Không tải được file (${res.status})`);
-    return URL.createObjectURL(await res.blob());
+    if (!res.ok) throw new Error(`Không lấy được signed URL (${res.status})`);
+    const data = await res.json();
+    return data.url ?? null;
   }
   return mock.mockGetJob(jobId)?.downloadUrl ?? null;
 }
