@@ -23,6 +23,7 @@ export const API_CONFIG = {
     JOB_PREVIEW: (jobId) => `/jobs/${jobId}/preview`,
     APPROVE_JOB: (jobId) => `/jobs/${jobId}/approve`,
     REQUEST_CHANGES_JOB: (jobId) => `/jobs/${jobId}/request-changes`,
+    JOB_EDIT_REQUESTS: (jobId) => `/jobs/${jobId}/edit-requests`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
     // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.
@@ -44,6 +45,7 @@ export const API_CONFIG = {
     // Staff (Admin/Host thật, Phần 6) — cần Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
+    STAFF_EDIT_REQUESTS: '/staff/edit-requests',
     HOST_DASHBOARD: '/host/dashboard',
   },
 };
