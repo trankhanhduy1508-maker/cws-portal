@@ -121,7 +121,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       softwareVersion: null,
       notes: null,
       storageCode: 'CWS-AAAAAAAA',
-      customerId: null,
+      customerId: 'customer-owner',
       profileId: RenderProfileId.STANDARD,
       status: JobStatus.REVIEW_READY,
       stageProgress: 1,
