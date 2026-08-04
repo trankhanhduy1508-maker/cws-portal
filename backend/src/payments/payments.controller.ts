@@ -63,12 +63,6 @@ export class PaymentsController {
     return this.paymentsService.getPublicDetailsForCustomer(id, customerId);
   }
 
-  @Post(':id/confirm')
-  @HttpCode(200)
-  async confirm(@Param('id') id: string) {
-    return this.paymentsService.confirm(id);
-  }
-
   /** Ngân hàng (hoặc cổng trung gian) gọi vào đây khi có giao dịch
    * chuyển khoản mới — endpoint DUY NHẤT được phép set payment = PAID.
    * Bảo vệ bằng WebhookSecretGuard (header x-webhook-secret) vì nội
