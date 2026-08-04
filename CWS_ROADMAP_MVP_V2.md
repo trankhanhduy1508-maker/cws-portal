@@ -126,7 +126,7 @@ Không viết lại frontend/backend/database/storage/admin đã có evidence PA
 ### Bắt buộc còn lại
 
 1. **Preview runtime — PARTIAL.** Verify bằng một render thật; khách chỉ thấy preview, không thấy file gốc trước payment.
-2. **Edit request state — P1.** Có trạng thái `REQUESTED → ACKNOWLEDGED → IN_PROGRESS → READY/RESOLVED`, người xử lý và thời gian phản hồi dự kiến.
+2. **Edit request state — CODE/TEST PASS, runtime chưa xác minh.** Migration 017 lưu REQUESTED → ACKNOWLEDGED → IN_PROGRESS → RESOLVED/DECLINED, người xử lý và thời gian phản hồi dự kiến; Customer đọc theo ownership, Admin cập nhật qua RoleGuard + MFA. Evidence: `reports/security/CWS_EDIT_REQUEST_STATE_2026-08-04.md`.
 3. **Kênh liên hệ — BLOCKED/OWNER.** Không để “yêu cầu chỉnh sửa” chỉ là toast; phải có kênh thật hoặc ghi rõ chưa vận hành.
 4. **Chính sách sửa — BLOCKED/OWNER.** Hành vi hiện tại là free/unlimited; Owner phải quyết định có giữ nguyên hay chuyển sang số lần/SLA/tính phí.
 5. **Video preview — DEFERRED theo DECISIONS.** Nghiên cứu 300 đánh giá video ngắn là MUST HAVE, nhưng workflow/DECISIONS hiện loại video preview đầy đủ khỏi MVP. Không tự mở rộng phạm vi; chỉ làm khi Owner cập nhật DECISIONS.
