@@ -12,6 +12,7 @@ import { B2StorageService } from './b2-storage.service';
 import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { hasBlenderHeader } from './blend-validation';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -53,6 +54,10 @@ export class FilesController {
       throw new BadRequestException(
         `Định dạng không được hỗ trợ. Chỉ chấp nhận: ${ACCEPTED_EXTENSIONS.join(', ')}`,
       );
+    }
+
+    if (!hasBlenderHeader(file.buffer)) {
+      throw new BadRequestException('File .blend không có header Blender hợp lệ');
     }
 
     const { key } = await this.b2StorageService.uploadFile(file);
