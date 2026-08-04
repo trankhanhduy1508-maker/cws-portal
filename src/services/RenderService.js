@@ -391,3 +391,30 @@ async function subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError 
 
   return () => socket.close();
 }
+
+
+/** Support ticket thật — không giả lập ticket trong mock, vì ticket phải được Admin xử lý. */
+async function supportFetch(path, options = {}) {
+  if (!IS_BACKEND_CONFIGURED) throw new Error('Support chưa được cấu hình Backend thật.');
+  const token = await getAccessToken();
+  if (!token) throw new Error('Cần đăng nhập để gửi yêu cầu hỗ trợ.');
+  const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc không có quyền.');
+  if (!res.ok) throw new Error(`Yêu cầu hỗ trợ thất bại (${res.status})`);
+  return res.json();
+}
+
+export function createSupportTicket({ subject, message, jobId = null }) {
+  return supportFetch(API_CONFIG.ENDPOINTS.SUPPORT_TICKETS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, message, jobId }),
+  });
+}
+
+export function listSupportTickets() {
+  return supportFetch(API_CONFIG.ENDPOINTS.SUPPORT_TICKETS);
+}
