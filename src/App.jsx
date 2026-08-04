@@ -379,6 +379,7 @@ function CustomerPortalApp() {
             overallProgress={job.overallProgress}
             fileName={activeProjectName}
             etaSeconds={estimates[selectedProfileId]?.etaSeconds}
+            queueSeconds={estimates[selectedProfileId]?.queueSeconds}
             onCancel={handleCancelJob}
           />
         )}
