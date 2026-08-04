@@ -165,6 +165,23 @@ export class JobsController {
     return { requests };
   }
 
+  /** Cấp signed URL cho client đã xác thực; không đưa bearer token vào URL. */
+  @Get(':id/download-url')
+  async downloadUrl(@Param('id') id: string, @Req() req: Request) {
+    const ip =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      null;
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const url = await this.jobsService.getDownloadRedirectUrl(
+      id,
+      ip,
+      customerId,
+      await this.isAdminRequest(req),
+    );
+    return { url, expiresInSeconds: 300 };
+  }
+
   /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi
    * redirect sang link B2 thật — Portal KHÔNG được dùng thẳng downloadUrl
    * raw (xem getDownloadUrl() trong RenderService.js), phải qua route
