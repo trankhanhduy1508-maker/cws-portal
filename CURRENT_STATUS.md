@@ -271,3 +271,6 @@ Admin Dashboard đã được nối với queue yêu cầu chỉnh sửa: tải 
 ## Admin Security Hardening — 2026-08-04
 
 Admin edit-request queue đã được hiển thị/cập nhật trong Dashboard qua route MFA/RBAC backend. Đồng thời sửa Admin download để không đặt Bearer token trong query string: request dùng Authorization header và blob URL tạm, tự revoke. Evidence: reports/admin/CWS_ADMIN_EDIT_REQUEST_QUEUE_2026-08-04.md và reports/security/CWS_ADMIN_DOWNLOAD_TOKEN_HANDLING_2026-08-04.md. Trạng thái: CODE PASS, runtime browser/MFA chưa xác minh.
+
+
+CI #228 (head 5c90d7d) PASS: backend build/test và frontend build/lint sau Admin edit-request queue + token handling fixes. Đây vẫn là code/test evidence; chưa thay thế staff MFA/browser runtime, hai tài khoản RLS, Worker/B2 vật lý hoặc Full E2E.
