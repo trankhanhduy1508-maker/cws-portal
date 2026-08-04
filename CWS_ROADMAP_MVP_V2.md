@@ -184,7 +184,7 @@ Acceptance: Sandbox duplicate/late tests PASS; Live chỉ PASS sau giao dịch O
 
 ### Bắt buộc còn lại
 
-1. Hiển thị chính xác TTL và cách cấp lại link.
+1. **TTL/link exchange — CODE PASS, runtime chưa xác minh.** Signed URL exchange trả TTL 5 phút và UI hiển thị đúng; Backend ownership/audit vẫn giữ. Evidence: reports/security/CWS_HTTP_WS_TOKEN_BOUNDARY_2026-08-04.md.
 2. Download success/failure phải audit được; không coi “click” là download thành công nếu chưa có evidence phù hợp.
 3. Lưu số lần download và thời điểm.
 4. **OWNER CẦN QUYẾT ĐỊNH:** thời gian giữ final/source/preview, số lần cấp lại, xử lý link hết hạn và policy xoá.
