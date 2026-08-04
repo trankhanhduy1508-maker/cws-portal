@@ -24,7 +24,7 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="https://drive.google.com/file/d/... hoặc OneDrive/Dropbox/Direct Link"
+            placeholder="https://drive.google.com/file/d/..."
             style={{
               width: '100%',
               padding: '14px 14px 14px 40px',
