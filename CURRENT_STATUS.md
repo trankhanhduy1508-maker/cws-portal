@@ -135,6 +135,22 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 
 Đây là PASS ở mức code/static consistency, chưa phải Full E2E production. Upload resume, `.blend` inspection sâu, OAuth draft persistence, Worker/B2 runtime và Full E2E vẫn còn.
 
+## P0 Security Audit Loop — 2026-08-04
+
+Đã audit RoleGuard/RBAC, customer ownership, WebSocket owner check, Host worker filtering, B2 signed URL, RLS, file intake, logs và legacy admin-key paths.
+
+Đã code trên branch hiện tại:
+
+- POST /jobs, POST /files/upload, POST /drive/resolve yêu cầu Supabase Bearer customer hợp lệ.
+- Job không có customer_id hoặc không khớp customer token bị từ chối ở JobsService.assertOwnership.
+- GET /jobs/:id/logs yêu cầu Admin RoleGuard + MFA; customer không còn đọc worker logs.
+- Host dashboard tiếp tục lọc theo staff_worker_access; Fleet/Admin routes dùng RoleGuard backend.
+- Existing RLS, signed URL TTL và WebSocket owner checks được giữ và ghi nhận trong evidence.
+
+Trạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build và kiểm thử bằng hai tài khoản thật để chuyển P0 sang runtime PASS.
+
+Evidence: reports/security/CWS_P0_BOUNDARY_AUDIT_2026-08-04.md.
+
 ## Last Verified (bổ sung)
 
 2026-08-03 (tiếp tục LOOP sau khi Owner tạo B2 key mới): ReviewScreen
