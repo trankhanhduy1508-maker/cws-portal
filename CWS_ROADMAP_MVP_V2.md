@@ -84,7 +84,7 @@ Không viết lại frontend/backend/database/storage/admin đã có evidence PA
 
 ### Bắt buộc còn lại
 
-1. **Upload resume — MISSING/P1.** Thiết kế upload theo chunk/session hoặc cơ chế tương đương; mất mạng không phải upload lại từ đầu. Acceptance: ngắt mạng giữa upload, nối lại và file B2 hash/size đúng.
+1. **Upload resume — CODE/TEST PASS, runtime chưa xác minh.** B2 multipart + Supabase session/part state, owner check, browser resume và cleanup session hết hạn đã triển khai. Acceptance runtime còn lại: ngắt mạng giữa upload, nối lại và xác nhận B2 hash/size đúng. Evidence: `reports/customer/CWS_RESUMABLE_UPLOAD_2026-08-04.md`.
 2. **Cảnh báo giới hạn ngay khi chọn file — VERIFY.** Giữ validation hiện có; test bằng UI rằng file >2GB bị chặn trước network request.
 3. **Kiểm tra `.blend` sớm — CODE/TEST PASS, runtime chưa xác minh.** Backend kiểm tra extension, size/multer limit và native `BLENDER` header trước khi upload B2; không mở hoặc thực thi scene. Deeper sandbox/plugin inspection vẫn là Worker/runtime requirement.
 4. **Nguồn file trung thực — PASS (code-level, 2026-08-04).** UI và validation hiện chỉ nhận upload trực tiếp `.blend` hoặc Google Drive; Backend Google Drive resolver là nguồn link duy nhất có integration thật. OneDrive/Dropbox/Direct Link được giữ ngoài MVP cho tới khi có resolver/upload integration và evidence thật.
