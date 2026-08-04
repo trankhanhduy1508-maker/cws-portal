@@ -27,6 +27,13 @@ const ANOMALY_TYPE_LABEL = {
   PAID_NOT_DELIVERED: 'Đã thanh toán >2 tiếng nhưng chưa nhận file',
 };
 
+function formatDateTimeLocal(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, '0');
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
+
 function formatDurationSeconds(totalSeconds) {
   const s = Math.round(totalSeconds ?? 0);
   const minutes = Math.floor(s / 60);
@@ -137,6 +144,18 @@ export default function AdminScreen() {
       adminSetWorkerDrain(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
+
+  const handleSupportTicketExpectedResponse = useCallback((ticket, value) => {
+    const expectedResponseAt = value ? new Date(value).getTime() : null;
+    if (value && !Number.isFinite(expectedResponseAt)) {
+      setError('Thời gian phản hồi không hợp lệ');
+      return;
+    }
+    setError(null);
+    adminUpdateSupportTicket(ticket.id, ticket.status, adminKey, expectedResponseAt)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
 
   const handleSupportTicketStatus = useCallback((ticketId, status) => {
     setError(null);
@@ -640,6 +659,7 @@ export default function AdminScreen() {
                   <th style={{ padding: 8 }}>Job</th>
                   <th style={{ padding: 8 }}>Chủ đề/nội dung</th>
                   <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Phản hồi dự kiến</th>
                   <th style={{ padding: 8 }}>Tạo lúc</th>
                   <th style={{ padding: 8 }}>Thao tác</th>
                 </tr>
@@ -655,6 +675,15 @@ export default function AdminScreen() {
                       <div style={{ whiteSpace: 'pre-wrap' }}>{ticket.message}</div>
                     </td>
                     <td style={{ padding: 8 }}>{ticket.status}</td>
+                    <td style={{ padding: 8 }}>
+                      <input
+                        type="datetime-local"
+                        value={formatDateTimeLocal(ticket.expectedResponseAt)}
+                        onChange={(e) => handleSupportTicketExpectedResponse(ticket, e.target.value)}
+                        aria-label={'Thời gian phản hồi dự kiến cho ' + ticket.ticketCode}
+                        style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      />
+                    </td>
                     <td style={{ padding: 8 }}>{formatRelativeTime(ticket.createdAt)}</td>
                     <td style={{ padding: 8 }}>
                       <select
@@ -672,7 +701,7 @@ export default function AdminScreen() {
                   </tr>
                 ))}
                 {supportTickets.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có support ticket</td></tr>
+                  <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có support ticket</td></tr>
                 )}
               </tbody>
             </table>
