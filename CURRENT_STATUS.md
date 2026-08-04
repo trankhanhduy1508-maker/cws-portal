@@ -279,3 +279,5 @@ CI #228 (head 5c90d7d) PASS: backend build/test và frontend build/lint sau Admi
 ## Payment Confirmation Boundary — 2026-08-04
 
 Đã loại bỏ POST /payments/:id/confirm không có guard. Provider QR từng từ chối direct confirm, nhưng route vẫn là attack surface không cần thiết. Contract test mới khóa rằng chỉ webhook có guard được dùng để xác nhận thanh toán. Evidence: reports/security/CWS_PAYMENT_CONFIRMATION_BOUNDARY_2026-08-04.md. Chờ CI mới nhất để xác nhận build/test.
+
+CI #230 (code head 46e5c1c) PASS sau payment confirmation boundary fix: backend build/test và frontend build/lint. Docs-only status commits sau đó không thay đổi code. Live payment vẫn cần Owner xác minh.
