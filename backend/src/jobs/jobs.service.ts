@@ -429,6 +429,18 @@ export class JobsService {
       );
     }
 
+    if (!customerId && !isAdmin) {
+      throw new ForbiddenException('Yêu cầu chỉnh sửa cần tài khoản khách hàng đã đăng nhập');
+    }
+
+    if (customerId) {
+      await this.storageService.createEditRequest({
+        jobId: id,
+        requestedBy: customerId,
+        note: note?.trim() || null,
+      });
+    }
+
     await this.storageService.notify(
       id,
       'Khách yêu cầu chỉnh sửa',
@@ -442,6 +454,16 @@ export class JobsService {
       note?.trim() || 'Khách yêu cầu chỉnh sửa, chưa có ghi chú',
       'info',
     );
+  }
+
+  /** Customer chỉ đọc các yêu cầu chỉnh sửa thuộc job đã qua assertOwnership. */
+  async getEditRequests(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ) {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
+    return this.storageService.getEditRequests(id);
   }
 
   /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */
