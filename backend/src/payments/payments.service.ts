@@ -108,6 +108,21 @@ export class PaymentsService {
     };
   }
 
+  /** Customer chỉ được xem payment gắn với job của chính mình. */
+  async getPublicDetailsForCustomer(paymentId: string, customerId: string | null) {
+    if (!customerId) throw new BadRequestException('Cần đăng nhập để xem payment');
+    const record = await this.paymentsRepository.findByIdForCustomer(paymentId, customerId);
+    if (!record) throw new NotFoundException('Không tìm thấy payment hoặc không có quyền truy cập');
+    return {
+      paymentId: record.paymentId,
+      status: record.status,
+      paymentCode: record.paymentCode,
+      transferContent: record.transferContent,
+      amountVnd: record.amountVnd,
+      qrImageUrl: record.qrImageUrl,
+    };
+  }
+
   /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   async getByPaymentCode(paymentCode: string): Promise<PaymentRecord> {
     const record = await this.paymentsRepository.findByPaymentCode(paymentCode.toUpperCase());
