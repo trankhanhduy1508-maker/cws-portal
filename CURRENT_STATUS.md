@@ -274,3 +274,8 @@ Admin edit-request queue đã được hiển thị/cập nhật trong Dashboard
 
 
 CI #228 (head 5c90d7d) PASS: backend build/test và frontend build/lint sau Admin edit-request queue + token handling fixes. Đây vẫn là code/test evidence; chưa thay thế staff MFA/browser runtime, hai tài khoản RLS, Worker/B2 vật lý hoặc Full E2E.
+
+
+## Payment Confirmation Boundary — 2026-08-04
+
+Đã loại bỏ POST /payments/:id/confirm không có guard. Provider QR từng từ chối direct confirm, nhưng route vẫn là attack surface không cần thiết. Contract test mới khóa rằng chỉ webhook có guard được dùng để xác nhận thanh toán. Evidence: reports/security/CWS_PAYMENT_CONFIRMATION_BOUNDARY_2026-08-04.md. Chờ CI mới nhất để xác nhận build/test.
