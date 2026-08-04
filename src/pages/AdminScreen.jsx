@@ -179,6 +179,22 @@ export default function AdminScreen() {
     })
   ), [incidents, incidentSeverityFilter, incidentShowResolved]);
 
+  const handleDownloadJob = useCallback(async (jobId) => {
+    setError(null);
+    try {
+      const objectUrl = await adminGetDownloadUrl(jobId, adminKey);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [adminKey]);
+
   const handleOpenPreview = useCallback((job) => {
     setPreviewJob({ id: job.id, projectName: job.projectName, images: [], isLoading: true, error: null });
     adminGetJobPreview(job.id, adminKey)
@@ -339,7 +355,7 @@ export default function AdminScreen() {
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
                   <td style={{ padding: 8 }}>
                     {job.downloadUrl ? (
-                      <a href={adminGetDownloadUrl(job.id, adminKey)} target="_blank" rel="noopener noreferrer">Tải</a>
+                      <button type="button" onClick={() => handleDownloadJob(job.id)} style={{ border: 0, background: 'none', color: '#2563EB', cursor: 'pointer', padding: 0 }}>Tải</button>
                     ) : '—'}
                   </td>
                   <td style={{ padding: 8 }}>
