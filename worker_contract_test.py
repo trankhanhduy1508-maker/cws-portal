@@ -1,1 +1,19 @@
-"""Offline contract tests for the replaceable CWS Worker package."""\nfrom pathlib import Path\nimport ast\nROOT = Path(__file__).resolve().parent\nENTRYPOINT = ROOT / "cws_worker.py"\nRUNTIME = ROOT / "cws_worker_runtime.py"\ndef test_entrypoint_is_valid_python():\n    ast.parse(ENTRYPOINT.read_text(encoding="utf-8"))\ndef test_runtime_is_present_and_nontrivial():\n    assert RUNTIME.is_file()\n    assert RUNTIME.stat().st_size > 10_000\ndef test_entrypoint_does_not_contain_credentials():\n    source = ENTRYPOINT.read_text(encoding="utf-8")\n    assert "applicationKey" not in source\n    assert "K004" not in source\n
+"""Offline contract tests for the replaceable CWS Worker package."""
+from pathlib import Path
+import ast
+
+ROOT = Path(__file__).resolve().parent
+ENTRYPOINT = ROOT / "cws_worker.py"
+RUNTIME = ROOT / "cws_worker_runtime.py"
+
+def test_entrypoint_is_valid_python():
+    ast.parse(ENTRYPOINT.read_text(encoding="utf-8"))
+
+def test_runtime_is_present_and_nontrivial():
+    assert RUNTIME.is_file()
+    assert RUNTIME.stat().st_size > 10_000
+
+def test_entrypoint_does_not_contain_credentials():
+    source = ENTRYPOINT.read_text(encoding="utf-8")
+    assert "applicationKey" not in source
+    assert "K004" not in source
