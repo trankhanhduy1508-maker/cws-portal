@@ -300,6 +300,19 @@ export async function requestJobChanges(jobId, note) {
   return mock.mockRequestChanges(jobId, note);
 }
 
+/** Trạng thái yêu cầu chỉnh sửa của đúng job — Backend kiểm tra ownership. */
+export async function getJobEditRequests(jobId) {
+  if (IS_BACKEND_CONFIGURED) {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_EDIT_REQUESTS(jobId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error('Không lấy được trạng thái yêu cầu chỉnh sửa');
+    return res.json();
+  }
+  return { requests: [] };
+}
+
 /**
  * URL tải file kết quả theo jobId — dùng thẳng làm `href`/`window.open()`
  * (điều hướng trình duyệt thật, KHÔNG qua `fetch()`), nên phải đính token
