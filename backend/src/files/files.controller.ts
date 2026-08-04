@@ -32,7 +32,10 @@ import type { Request } from 'express';
 // TypeScript/JavaScript tÃ¡ch biá»‡t (khÃ´ng dÃ¹ng chung 1 package), nÃªn
 // khÃ´ng thá»ƒ import tháº³ng â€” náº¿u Ä‘á»•i 1 bÃªn, PHáº¢I Ä‘á»•i bÃªn kia theo.
 const ACCEPTED_EXTENSIONS = ['.blend'];
-const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+// The legacy endpoint uses Multer memory storage. Keep it bounded well below
+// the resumable 2 GiB product limit to prevent a single request from causing
+// excessive backend memory pressure. The portal uses resumable uploads.
+const LEGACY_DIRECT_UPLOAD_MAX_BYTES = 64 * 1024 * 1024;
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -55,7 +58,7 @@ export class FilesController {
    */
   @Post('files/upload')
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+    FileInterceptor('file', { limits: { fileSize: LEGACY_DIRECT_UPLOAD_MAX_BYTES } }),
   )
   async upload(@Req() req: Request, @UploadedFile() file?: Express.Multer.File) {
     if (!file)
