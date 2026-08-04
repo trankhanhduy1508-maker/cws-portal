@@ -183,6 +183,9 @@ giữ nguyên.
 
 ## Last Updated
 
+2026-08-03 — production WebSocket URL fallback fixed and verified; xem
+`reports/dev/CWS_WEBSOCKET_BASE_URL_FIX_2026-08-03.md`.
+
 2026-08-03 — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
 (P0 fix mới nhất, commit `109d258`), commit `27a10f4` (PaymentScreen
 UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
