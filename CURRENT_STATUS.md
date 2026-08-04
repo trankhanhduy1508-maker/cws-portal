@@ -266,3 +266,8 @@ Latest CI recheck: GitHub Actions run #204 (head 750916c) PASS sau khi chỉnh c
 ## Admin Edit Request Queue — 2026-08-04
 
 Admin Dashboard đã được nối với queue yêu cầu chỉnh sửa: tải danh sách qua GET /staff/edit-requests, hiển thị job/requester/note/status và cập nhật trạng thái qua PATCH /staff/edit-requests/:id. Backend vẫn enforce RoleGuard + MFA; Customer/Host không được cấp quyền từ UI. Evidence: reports/admin/CWS_ADMIN_EDIT_REQUEST_QUEUE_2026-08-04.md. Trạng thái: CODE PASS, cần CI mới nhất và tài khoản staff MFA thật để runtime verify.
+
+
+## Admin Security Hardening — 2026-08-04
+
+Admin edit-request queue đã được hiển thị/cập nhật trong Dashboard qua route MFA/RBAC backend. Đồng thời sửa Admin download để không đặt Bearer token trong query string: request dùng Authorization header và blob URL tạm, tự revoke. Evidence: reports/admin/CWS_ADMIN_EDIT_REQUEST_QUEUE_2026-08-04.md và reports/security/CWS_ADMIN_DOWNLOAD_TOKEN_HANDLING_2026-08-04.md. Trạng thái: CODE PASS, runtime browser/MFA chưa xác minh.
