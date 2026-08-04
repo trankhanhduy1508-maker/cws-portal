@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import {
   signInStaff,
+  signInStaffWithGoogle,
   listVerifiedTotpFactors,
   enrollTotp,
   createChallenge,
   verifyChallenge,
   getStaffAccessToken,
+  signOutStaff,
 } from '../services/staffAuth';
+import { getStaffAccess } from '../services/staffApi';
+import { supabase } from '../services/supabaseClient';
 
 const inputStyle = {
   padding: 12,
@@ -17,16 +21,16 @@ const inputStyle = {
 };
 
 /**
- * Đăng nhập Admin/Host: email/password (Supabase Auth) -> BẮT BUỘC MFA
- * (TOTP chính thức của Supabase, xem services/staffAuth.js) trước khi
- * gọi `onAuthenticated(accessToken)`. KHÔNG có đường tắt nào bỏ qua
- * bước MFA — nếu tài khoản chưa enroll factor nào, màn hình này ép
- * enroll ngay (quét QR bằng Google/Microsoft Authenticator) trước khi
- * cho vào Dashboard, đúng yêu cầu "admin chưa MFA -> DENIED".
+ * ÄÄƒng nháº­p Admin/Host: email/password (Supabase Auth) -> Báº®T BUá»˜C MFA
+ * (TOTP chÃ­nh thá»©c cá»§a Supabase, xem services/staffAuth.js) trÆ°á»›c khi
+ * gá»i `onAuthenticated(accessToken)`. KHÃ”NG cÃ³ Ä‘Æ°á»ng táº¯t nÃ o bá» qua
+ * bÆ°á»›c MFA â€” náº¿u tÃ i khoáº£n chÆ°a enroll factor nÃ o, mÃ n hÃ¬nh nÃ y Ã©p
+ * enroll ngay (quÃ©t QR báº±ng Google/Microsoft Authenticator) trÆ°á»›c khi
+ * cho vÃ o Dashboard, Ä‘Ãºng yÃªu cáº§u "admin chÆ°a MFA -> DENIED".
  */
-export default function StaffMfaLogin({ onAuthenticated }) {
-  // step: 'credentials' -> 'challenge' (đã có factor, nhập mã) ->
-  // 'enroll' (chưa có factor, hiện QR + nhập mã lần đầu)
+export default function StaffMfaLogin({ onAuthenticated, allowedRole = 'admin' }) {
+  // step: 'credentials' -> 'challenge' (Ä‘Ã£ cÃ³ factor, nháº­p mÃ£) ->
+  // 'enroll' (chÆ°a cÃ³ factor, hiá»‡n QR + nháº­p mÃ£ láº§n Ä‘áº§u)
   const [step, setStep] = useState('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,29 +41,55 @@ export default function StaffMfaLogin({ onAuthenticated }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  async function continueWithMfa() {
+    const verifiedFactors = await listVerifiedTotpFactors();
+    if (verifiedFactors.length > 0) {
+      const fId = verifiedFactors[0].id;
+      const challenge = await createChallenge(fId);
+      setFactorId(fId);
+      setChallengeId(challenge.id);
+      setStep('challenge');
+      return;
+    }
+    const enrolled = await enrollTotp();
+    setFactorId(enrolled.id);
+    setEnrollData(enrolled.totp);
+    const challenge = await createChallenge(enrolled.id);
+    setChallengeId(challenge.id);
+    setStep('enroll');
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session || cancelled) return;
+      try {
+        const access = await getStaffAccess();
+        if (access.role !== allowedRole) throw new Error('TÃ i khoáº£n khÃ´ng cÃ³ quyá»n Admin');
+        await continueWithMfa();
+      } catch (err) {
+        if (!cancelled) {
+          await signOutStaff().catch(() => {});
+          setError(err.message);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [allowedRole]);
+
   async function handleCredentials(e) {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
     try {
       await signInStaff(email, password);
-      const verifiedFactors = await listVerifiedTotpFactors();
-
-      if (verifiedFactors.length > 0) {
-        const fId = verifiedFactors[0].id;
-        const challenge = await createChallenge(fId);
-        setFactorId(fId);
-        setChallengeId(challenge.id);
-        setStep('challenge');
-      } else {
-        const enrolled = await enrollTotp();
-        setFactorId(enrolled.id);
-        setEnrollData(enrolled.totp);
-        const challenge = await createChallenge(enrolled.id);
-        setChallengeId(challenge.id);
-        setStep('enroll');
-      }
+      const access = await getStaffAccess();
+      if (access.role !== allowedRole) throw new Error('TÃ i khoáº£n khÃ´ng cÃ³ quyá»n Admin');
+      await continueWithMfa();
     } catch (err) {
+      await signOutStaff().catch(() => {});
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -85,7 +115,7 @@ export default function StaffMfaLogin({ onAuthenticated }) {
     return (
       <div style={{ maxWidth: 360, margin: '80px auto', padding: 20 }}>
         <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-          CWS Admin — Đăng nhập
+          CWS Admin â€” ÄÄƒng nháº­p
         </h2>
         <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input
@@ -101,14 +131,17 @@ export default function StaffMfaLogin({ onAuthenticated }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mật khẩu"
+            placeholder="Máº­t kháº©u"
             style={inputStyle}
             required
           />
           {error && <div style={{ color: '#E5484D', fontSize: 13 }}>{error}</div>}
           <button type="submit" className="btn btn--primary btn--full" disabled={isLoading}>
             <KeyRound size={16} strokeWidth={2} style={{ marginRight: 6 }} />
-            {isLoading ? 'Đang đăng nhập...' : 'Tiếp tục'}
+            {isLoading ? 'Äang Ä‘Äƒng nháº­p...' : 'Tiáº¿p tá»¥c'}
+          </button>
+          <button type="button" className="btn btn--full" disabled={isLoading} onClick={() => signInStaffWithGoogle().catch((err) => setError(err.message))}>
+            ÄÄƒng nháº­p báº±ng Google
           </button>
         </form>
       </div>
@@ -119,12 +152,12 @@ export default function StaffMfaLogin({ onAuthenticated }) {
     return (
       <div style={{ maxWidth: 380, margin: '60px auto', padding: 20 }}>
         <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-          Thiết lập MFA (lần đầu)
+          Thiáº¿t láº­p MFA (láº§n Ä‘áº§u)
         </h2>
         <p style={{ fontSize: 13.5, color: '#666', marginBottom: 12 }}>
-          Tài khoản này CHƯA có MFA — bắt buộc thiết lập trước khi vào
-          Dashboard. Quét mã QR bằng Google Authenticator/Microsoft
-          Authenticator, hoặc nhập thủ công mã bên dưới.
+          TÃ i khoáº£n nÃ y CHÆ¯A cÃ³ MFA â€” báº¯t buá»™c thiáº¿t láº­p trÆ°á»›c khi vÃ o
+          Dashboard. QuÃ©t mÃ£ QR báº±ng Google Authenticator/Microsoft
+          Authenticator, hoáº·c nháº­p thá»§ cÃ´ng mÃ£ bÃªn dÆ°á»›i.
         </p>
         {enrollData?.qr_code && (
           <img
@@ -135,14 +168,14 @@ export default function StaffMfaLogin({ onAuthenticated }) {
         )}
         {enrollData?.secret && (
           <div style={{ fontFamily: 'monospace', fontSize: 13, textAlign: 'center', marginBottom: 12, wordBreak: 'break-all' }}>
-            Mã nhập thủ công: {enrollData.secret}
+            MÃ£ nháº­p thá»§ cÃ´ng: {enrollData.secret}
           </div>
         )}
         <form onSubmit={handleVerifyCode} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Mã 6 số từ Authenticator"
+            placeholder="MÃ£ 6 sá»‘ tá»« Authenticator"
             style={inputStyle}
             inputMode="numeric"
             autoFocus
@@ -151,7 +184,7 @@ export default function StaffMfaLogin({ onAuthenticated }) {
           {error && <div style={{ color: '#E5484D', fontSize: 13 }}>{error}</div>}
           <button type="submit" className="btn btn--primary btn--full" disabled={isLoading}>
             <ShieldCheck size={16} strokeWidth={2} style={{ marginRight: 6 }} />
-            {isLoading ? 'Đang xác thực...' : 'Xác nhận + Vào Dashboard'}
+            {isLoading ? 'Äang xÃ¡c thá»±c...' : 'XÃ¡c nháº­n + VÃ o Dashboard'}
           </button>
         </form>
       </div>
@@ -162,13 +195,13 @@ export default function StaffMfaLogin({ onAuthenticated }) {
   return (
     <div style={{ maxWidth: 360, margin: '80px auto', padding: 20 }}>
       <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-        Xác thực MFA
+        XÃ¡c thá»±c MFA
       </h2>
       <form onSubmit={handleVerifyCode} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <input
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="Mã 6 số từ Authenticator"
+          placeholder="MÃ£ 6 sá»‘ tá»« Authenticator"
           style={inputStyle}
           inputMode="numeric"
           autoFocus
@@ -177,7 +210,7 @@ export default function StaffMfaLogin({ onAuthenticated }) {
         {error && <div style={{ color: '#E5484D', fontSize: 13 }}>{error}</div>}
         <button type="submit" className="btn btn--primary btn--full" disabled={isLoading}>
           <ShieldCheck size={16} strokeWidth={2} style={{ marginRight: 6 }} />
-          {isLoading ? 'Đang xác thực...' : 'Xác nhận'}
+          {isLoading ? 'Äang xÃ¡c thá»±c...' : 'XÃ¡c nháº­n'}
         </button>
       </form>
     </div>
