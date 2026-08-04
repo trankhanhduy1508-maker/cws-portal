@@ -136,6 +136,14 @@ def reset_task_output_dir(output_dir):
         shutil.rmtree(output_dir, ignore_errors=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+def cleanup_task_output_dir(output_dir):
+    """Remove disposable local PNGs after the task outcome is recorded."""
+    try:
+        if output_dir.exists():
+            shutil.rmtree(output_dir, ignore_errors=True)
+    except OSError as error:
+        print(f"[cleanup] Khong xoa duoc output tam {output_dir}: {error}")
+
 # ===== WORKER CONFIG =====
 # CAP NHAT 25/07/2026: chuyen tu CWS-JOB2 (Goros Lair) sang CWS-JOB3 (Rui
 # Huang - Titan Station.blend, 500 frame) - job MOI HOAN TOAN tren
@@ -2909,6 +2917,7 @@ def worker_loop():
                   f"tra lai task {task_id}, thu job khac.")
             fail_task(task_id, generation, worker_id, "transient")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            cleanup_task_output_dir(output_dir)
             continue
         blend_path = job_ctx["blend_path"]
         optimization_code = job_ctx["optimization_code"]
@@ -3063,6 +3072,7 @@ def worker_loop():
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            cleanup_task_output_dir(output_dir)
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -3091,6 +3101,7 @@ def worker_loop():
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            cleanup_task_output_dir(output_dir)
             continue
 
         # Phase 8 (CWS_WORKER_ROADMAP.md): den day chac chan DU frame da
@@ -3131,6 +3142,7 @@ def worker_loop():
             report_task_attempt_finalize(task_id, worker_id, generation, "rejected")
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
+        cleanup_task_output_dir(output_dir)
         report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
 
         # ----- TU KIEM TRA BAN MOI, DIEM THU 2 (bo sung 22/07/2026 toi):
