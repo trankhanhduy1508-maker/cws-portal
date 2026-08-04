@@ -15,7 +15,7 @@ export default function AffiliatePage() {
 
   useEffect(() => { if (auth.isAuthenticated) load(); }, [auth.isAuthenticated]);
 
-  if (!auth.isAuthenticated) return <main style={{ maxWidth: 760, margin: '40px auto', padding: 24 }}><h1>ChÆ°Æ¡ng trÃ¬nh cá»™ng tÃ¡c viÃªn CWS</h1><p>ÄÄƒng nháº­p Google Ä‘á»ƒ Ä‘Äƒng kÃ½ Affiliate vÃ  xem dashboard.</p><button onClick={auth.login}>ÄÄƒng nháº­p Google</button></main>;
+  if (!auth.isAuthenticated) return <main style={{ maxWidth: 760, margin: '40px auto', padding: 24 }}><h1>ChÆ°Æ¡ng trÃ¬nh cá»™ng tÃ¡c viÃªn CWS</h1><p>Giá»›i thiá»‡u CWS cho khÃ¡ch hÃ ng Blender báº±ng referral link cá»§a báº¡n.</p><ul><li>Hoa há»“ng máº·c Ä‘á»‹nh: 10% doanh thu há»£p lá»‡ Ä‘Ã£ thu.</li><li>Hoa há»“ng chá» Ä‘á»‘i soÃ¡t rá»“i má»›i Available; payment hoÃ n/há»§y hoáº·c gian láº­n cÃ³ thá»ƒ bá»‹ reverse.</li><li>Láº§n rÃºt Ä‘áº§u tá»‘i thiá»ƒu 50.000Ä‘; tá»« láº§n PAID thá»© hai tá»‘i thiá»ƒu 200.000Ä‘.</li><li>KhÃ´ng tá»± giá»›i thiá»‡u chÃ­nh mÃ¬nh vÃ  khÃ´ng cÃ³ thu nháº­p Ä‘Æ°á»£c báº£o Ä‘áº£m.</li></ul><p>ÄÄƒng nháº­p Google Ä‘á»ƒ Ä‘Äƒng kÃ½ Affiliate vÃ  xem dashboard.</p><button onClick={auth.login}>ÄÄƒng nháº­p Google</button></main>;
   if (!dashboard) return <main style={{ maxWidth: 760, margin: '40px auto', padding: 24 }}><h1>ChÆ°Æ¡ng trÃ¬nh cá»™ng tÃ¡c viÃªn CWS</h1><button onClick={() => registerAffiliate().then(load).catch((e) => setError(e.message))}>ÄÄƒng kÃ½ Affiliate</button>{error && <p role="alert">{error}</p>}</main>;
 
   const account = dashboard.account;
