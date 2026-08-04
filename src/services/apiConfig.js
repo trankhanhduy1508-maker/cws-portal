@@ -52,6 +52,10 @@ export const API_CONFIG = {
     STAFF_ME: '/staff/me',
     STAFF_EDIT_REQUESTS: '/staff/edit-requests',
     STAFF_UPDATE_EDIT_REQUEST: (id) => `/staff/edit-requests/${id}`,
+    SUPPORT_TICKETS: '/support/tickets',
+    SUPPORT_TICKET: (id) => `/support/tickets/${id}`,
+    ADMIN_SUPPORT_TICKETS: '/support/admin/tickets',
+    ADMIN_SUPPORT_TICKET: (id) => `/support/admin/tickets/${id}`,
     HOST_DASHBOARD: '/host/dashboard',
   },
 };
