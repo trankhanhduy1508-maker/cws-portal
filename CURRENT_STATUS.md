@@ -307,3 +307,5 @@ Admin Support queue bổ sung trường đặt expected response time theo từn
 ## HTTP/WebSocket Token Boundary — 2026-08-04
 
 Đã đóng bearer-token query path: Customer/Admin download dùng Authorization header + blob URL; HTTP helper từ chối query bearer; WebSocket dùng one-time opaque ticket hash trong DB, TTL 60 giây, consume-once. TTL download UI sửa thành 5 phút đúng Backend. CI #266 PASS; production migration/browser/two-account runtime chưa xác minh. Evidence: reports/security/CWS_HTTP_WS_TOKEN_BOUNDARY_2026-08-04.md.
+
+Download flow tiếp tục được harden: thêm GET /jobs/:id/download-url, xác thực Bearer header, trả signed URL TTL 5 phút để điều hướng trực tiếp B2, tránh fetch redirect/CORS. CI #272 PASS; migration 020 và browser/two-account runtime vẫn cần xác minh.
