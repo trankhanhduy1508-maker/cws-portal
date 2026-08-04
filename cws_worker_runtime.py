@@ -21,6 +21,10 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
 import subprocess
 import sys
 
+# Per-frame safety bound for customer jobs. This prevents one Blender process
+# from holding a leased task forever.
+FRAME_TIMEOUT_SEC = max(60, int(os.environ.get("CWS_FRAME_TIMEOUT_SEC", "3600")))
+
 
 def ensure_package_installed(import_name, pip_name=None):
     """Tu dong kiem tra + cai 1 thu vien Python neu chua co. Dung cho ca
@@ -123,6 +127,13 @@ BLENDER_DIR = BASE_DIR / "Blender"
 BLENDER_EXE = BLENDER_DIR / f"blender-{BLENDER_VERSION}-windows-x64" / "blender.exe"
 WORK_DIR = BASE_DIR / "work"
 MAX_BLEND_FILENAME_LENGTH = 180
+
+
+def reset_task_output_dir(output_dir):
+    """Remove stale local output before an attempt; B2 is the recovery source."""
+    if output_dir.exists():
+        shutil.rmtree(output_dir, ignore_errors=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
 # ===== WORKER CONFIG =====
 # CAP NHAT 25/07/2026: chuyen tu CWS-JOB2 (Goros Lair) sang CWS-JOB3 (Rui
@@ -450,7 +461,20 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     render_start_time = time.time()
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=FRAME_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"    [render] TIMEOUT frame {frame_num} sau {FRAME_TIMEOUT_SEC}s")
+        for partial in output_dir.glob("frame_*"):
+            try:
+                partial.unlink()
+            except OSError:
+                pass
+        return None, "transient", FRAME_TIMEOUT_SEC
     except Exception as e:
         print(f"    [render] LOI: khong the khoi dong Blender: {e}")
         return None, "persistent", None
@@ -2911,6 +2935,7 @@ def worker_loop():
         hb_thread.start()
 
         output_dir = WORK_DIR / f"output_task_{task_id}"
+        reset_task_output_dir(output_dir)
 
         # ----- INCREMENTAL RECOVERY (them 22/07/2026 dem, thiet ke chot
         # trong CWS_ThietKe_GC_va_IncrementalRecovery_v2.md) - goi DUNG 1
