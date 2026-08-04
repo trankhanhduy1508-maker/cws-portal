@@ -365,12 +365,22 @@ export async function getDownloadUrl(jobId) {
 // chữ ký hàm subscribeToJobUpdates() ở trên).
 // ============================================================
 async function subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError }) {
-  // Token qua query string vì WebSocket() của trình duyệt không set được
-  // custom header — Backend đọc lại qua resolveCustomerId() để kiểm tra
-  // chủ sở hữu job trước khi gửi bất kỳ dữ liệu nào (xem jobs-realtime.server.ts).
   const token = await getAccessToken();
-  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-  const wsUrl = `${API_CONFIG.WS_BASE_URL}${API_CONFIG.ENDPOINTS.JOB_REALTIME_WS(jobId)}${tokenParam}`;
+  if (!token) {
+    onError?.({ message: 'Cần đăng nhập để theo dõi Job', code: 'AUTH_REQUIRED' });
+    return () => {};
+  }
+
+  const ticketResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_REALTIME_TICKET(jobId)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!ticketResponse.ok) {
+    onError?.({ message: 'Không mở được realtime cho Job', code: 'REALTIME_AUTH_FAILED' });
+    return () => {};
+  }
+  const { ticket } = await ticketResponse.json();
+  const wsUrl = `${API_CONFIG.WS_BASE_URL}${API_CONFIG.ENDPOINTS.JOB_REALTIME_WS(jobId)}?ticket=${encodeURIComponent(ticket)}`;
   const socket = new WebSocket(wsUrl);
 
   socket.onmessage = (event) => {
