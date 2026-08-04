@@ -20,6 +20,11 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
 
 import subprocess
 import sys
+import os
+
+# Per-frame safety bound for customer jobs. This prevents one Blender process
+# from holding a leased task forever.
+FRAME_TIMEOUT_SEC = max(60, int(os.environ.get("CWS_FRAME_TIMEOUT_SEC", "3600")))
 
 
 def ensure_package_installed(import_name, pip_name=None):
@@ -63,8 +68,10 @@ import shutil
 from pathlib import Path
 
 # ===== SUPABASE =====
-SUPABASE_URL = "https://ynhxlxetwuiyejcjypsi.supabase.co"
-SUPABASE_KEY = "sb_publishable_OyV65PRDgzukM36BNZnCdg_6T3-OeG1"
+SUPABASE_URL = os.environ.get(
+    "CWS_SUPABASE_URL", "https://ynhxlxetwuiyejcjypsi.supabase.co"
+)
+SUPABASE_KEY = os.environ.get("CWS_SUPABASE_KEY", "")
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -120,6 +127,14 @@ BASE_DIR = Path(os.environ.get("CWS_DIR", "G:/CWS_Render"))
 BLENDER_DIR = BASE_DIR / "Blender"
 BLENDER_EXE = BLENDER_DIR / f"blender-{BLENDER_VERSION}-windows-x64" / "blender.exe"
 WORK_DIR = BASE_DIR / "work"
+MAX_BLEND_FILENAME_LENGTH = 180
+
+
+def reset_task_output_dir(output_dir):
+    """Remove stale local output before an attempt; B2 is the recovery source."""
+    if output_dir.exists():
+        shutil.rmtree(output_dir, ignore_errors=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
 # ===== WORKER CONFIG =====
 # CAP NHAT 25/07/2026: chuyen tu CWS-JOB2 (Goros Lair) sang CWS-JOB3 (Rui
@@ -220,7 +235,7 @@ MERGE_MAX_RETRIES = 2  # thu lai them 2 lan (tong 3 lan) neu ffmpeg loi
 # nhat cot latest_version trong bang worker_config (Supabase) tuong ung,
 # de cws_worker.bat (lop vo ngoai) biet khi nao can tu tai ban moi ve.
 # Xem 10_setup_worker_selfheal.sql.
-WORKER_VERSION = "1.17.0"
+WORKER_VERSION = "1.18.0"
 
 # Phase 8 (CWS_WORKER_ROADMAP.md, "Thong ke thoi gian thue host"): thoi
 # diem CHINH process Python nay bat dau chay - KHONG doi trong suot vong
@@ -346,9 +361,34 @@ def download_from_drive(drive_link, dest_path):
                 f.write(chunk)
 
 
-def ensure_blend_file(blend_link, blend_file_name):
+def _safe_blend_filename(blend_file_name):
+    """Validate a customer filename before using it on the local filesystem."""
+    raw_name = str(blend_file_name or "").strip()
+    candidate = Path(raw_name)
+    if not raw_name or candidate.name != raw_name or candidate.is_absolute():
+        raise ValueError("Ten file .blend khong hop le: chi cho phep ten file don")
+    if len(raw_name) > MAX_BLEND_FILENAME_LENGTH:
+        raise ValueError("Ten file .blend qua dai")
+    if candidate.suffix.lower() != ".blend":
+        raise ValueError("Chi ho tro file .blend")
+    if any(char in raw_name for char in ('\x00', '\r', '\n')):
+        raise ValueError("Ten file .blend chua ky tu khong hop le")
+    return raw_name
+
+
+def _safe_job_cache_key(job_id):
+    value = str(job_id or "").strip()
+    if not value or not re.fullmatch(r"[A-Za-z0-9_-]{1,160}", value):
+        raise ValueError("Job ID khong hop le cho cache local")
+    return value
+
+
+def ensure_blend_file(blend_link, blend_file_name, job_id=None):
+    safe_name = _safe_blend_filename(blend_file_name)
+    cache_key = _safe_job_cache_key(job_id) if job_id is not None else "legacy"
     WORK_DIR.mkdir(parents=True, exist_ok=True)
-    dest_path = WORK_DIR / blend_file_name
+    dest_path = WORK_DIR / "inputs" / cache_key / safe_name
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
 
     if dest_path.exists():
         print(f"[drive] File .blend da co san (cache): {dest_path}")
@@ -405,8 +445,9 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
         str(BLENDER_EXE),
         "-b", str(blend_path),
     ]
-    if enable_autoexec:
-        cmd.append("--enable-autoexec")
+    # Make the policy explicit. Customer jobs must not inherit Blender
+    # preferences that could enable embedded Python from an untrusted .blend.
+    cmd.append("--enable-autoexec" if enable_autoexec else "--disable-autoexec")
     if optimization_code:
         cmd += ["--python-expr", optimization_code]
     cmd += [
@@ -421,7 +462,20 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     render_start_time = time.time()
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=FRAME_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"    [render] TIMEOUT frame {frame_num} sau {FRAME_TIMEOUT_SEC}s")
+        for partial in output_dir.glob("frame_*"):
+            try:
+                partial.unlink()
+            except OSError:
+                pass
+        return None, "transient", FRAME_TIMEOUT_SEC
     except Exception as e:
         print(f"    [render] LOI: khong the khoi dong Blender: {e}")
         return None, "persistent", None
@@ -493,6 +547,9 @@ def render_frame_range(blend_path, frame_start, frame_end, output_dir, enable_au
         # enable_autoexec=False, xem CWS_WORKER_READINESS_AUDIT_2026-08-02.md
         # muc 2.3.
         cmd.append("--enable-autoexec")
+    else:
+        # Never inherit machine/user Blender preferences for customer files.
+        cmd.append("--disable-autoexec")
     cmd += [
         "-o", output_pattern,
         "-F", "PNG",
@@ -1936,7 +1993,12 @@ print("CWS_ANALYZER_JSON_START")
 print(json.dumps(report))
 print("CWS_ANALYZER_JSON_END")
 '''
-    cmd = [str(BLENDER_EXE), "-b", str(blend_path), "--python-expr", analyzer_code]
+    # The analyzer is controlled by CWS, but the scene may contain embedded
+    # scripts. Disable those before opening the untrusted file.
+    cmd = [
+        str(BLENDER_EXE), "-b", str(blend_path),
+        "--disable-autoexec", "--python-expr", analyzer_code,
+    ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
@@ -2706,7 +2768,9 @@ def _load_job_context(job_id, worker_id, _cache={}):
         print(f"[CANH BAO] Khong tim thay job {job_id} tren Supabase - bo qua.")
         return None
 
-    blend_path = ensure_blend_file(job_info["blend_link"], job_info["blend_file"])
+    blend_path = ensure_blend_file(
+        job_info["blend_link"], job_info["blend_file"], job_id=job_id
+    )
     optimization_plan = get_or_create_optimization_plan(blend_path, job_id)
     print_scene_analysis_report(optimization_plan, job_id)
     report_total_frames_if_known(job_id, worker_id, optimization_plan)
@@ -2848,6 +2912,10 @@ def worker_loop():
             continue
         blend_path = job_ctx["blend_path"]
         optimization_code = job_ctx["optimization_code"]
+        # Never pass Python expressions to a generic/portal job. The plan is
+        # generated by this worker for Owner-controlled jobs only; customer
+        # metadata is untrusted even when the field exists in the database.
+        render_optimization_code = "" if is_generic_job else optimization_code
 
         print(f"\n[NHAN VIEC] Job {current_job_id} - Task {task_id}: frame "
               f"{frame_start}-{frame_end} (generation={generation})")
@@ -2868,6 +2936,7 @@ def worker_loop():
         hb_thread.start()
 
         output_dir = WORK_DIR / f"output_task_{task_id}"
+        reset_task_output_dir(output_dir)
 
         # ----- INCREMENTAL RECOVERY (them 22/07/2026 dem, thiet ke chot
         # trong CWS_ThietKe_GC_va_IncrementalRecovery_v2.md) - goi DUNG 1
@@ -2909,7 +2978,7 @@ def worker_loop():
 
             frame_file, frame_error, frame_seconds = render_single_frame(
                 blend_path, frame_num, output_dir,
-                optimization_code=optimization_code, task_id=task_id,
+                optimization_code=render_optimization_code, task_id=task_id,
                 enable_autoexec=not is_generic_job,
             )
 
