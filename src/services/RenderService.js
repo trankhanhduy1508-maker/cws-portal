@@ -46,7 +46,9 @@ export async function uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-      method: 'POST', body: formData,
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
     });
     if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
     return res.json();
@@ -69,9 +71,13 @@ export async function submitGoogleDrive(rawLink) {
   const driveLink = rawLink.trim();
 
   if (IS_BACKEND_CONFIGURED) {
+    const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ driveLink }),
     });
     if (!res.ok) throw new Error('Không đọc được thông tin file từ Google Drive');
@@ -122,7 +128,10 @@ export async function estimateJob(input, profileId) {
  */
 export async function getPaymentDetails(paymentId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`);
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Không lấy được thông tin thanh toán');
     return res.json();
   }
