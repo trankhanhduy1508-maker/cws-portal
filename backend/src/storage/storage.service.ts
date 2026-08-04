@@ -83,8 +83,6 @@ export class StorageService {
   async getNotifications(jobId: string): Promise<Notification[]> {
     return this.notificationsRepository.findByJobId(jobId);
   }
-}
-
   /** Lưu yêu cầu chỉnh sửa với customerId đã được JobsService xác thực ownership. */
   async createEditRequest(input: { jobId: string; requestedBy: string; note: string | null }): Promise<EditRequest> {
     return this.editRequestsRepository.create(input);
@@ -112,3 +110,5 @@ export class StorageService {
       input.expectedResponseAt,
     );
   }
+
+}
