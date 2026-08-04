@@ -16,6 +16,13 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 
 ## Last Verified
 
+2026-08-03 (payment/upload auth boundary):
+- Standalone payment create/read/confirm và direct B2 upload đã bắt buộc
+  Supabase Bearer auth; webhook/SePay/device guard riêng vẫn giữ nguyên.
+  Payment owner-scoping chưa hoàn tất vì schema payment chưa có customer owner.
+  Evidence: `reports/security/CWS_PAYMENT_UPLOAD_AUTH_GUARDS_2026-08-03.md`.
+- Backend 117/117 tests + build PASS; chưa phải Full E2E.
+
 2026-08-03 (bổ sung sau, runtime Worker):
 - **Worker runtime (Python 3.12.7 + Blender 5.2.0) verify THẬT lần đầu
   tiên** trên một máy Windows thật (không phải Fleet vật lý đối tác) -

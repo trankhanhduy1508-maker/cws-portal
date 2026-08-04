@@ -16,6 +16,7 @@ import { RoleGuard } from '../common/guards/role.guard';
 import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
 import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 import { SepayWebhookTestGuard } from '../common/guards/sepay-webhook-test.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @Controller('payments')
 export class PaymentsController {
@@ -45,6 +46,7 @@ export class PaymentsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.createIntent(dto);
   }
@@ -57,12 +59,14 @@ export class PaymentsController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async getById(@Param('id') id: string) {
     return this.paymentsService.getPublicDetails(id);
   }
 
   @Post(':id/confirm')
   @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
   async confirm(@Param('id') id: string) {
     return this.paymentsService.confirm(id);
   }
