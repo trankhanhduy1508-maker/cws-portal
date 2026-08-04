@@ -23,6 +23,7 @@ import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
     DeviceSignatureGuard,
     DeviceHeartbeatGuard,
     SepayWebhookGuard,
+    JwtAuthGuard,
   ],
   exports: [PaymentsService, PaymentDevicesRepository],
 })
