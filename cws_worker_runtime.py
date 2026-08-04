@@ -20,6 +20,7 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
 
 import subprocess
 import sys
+import os
 
 # Per-frame safety bound for customer jobs. This prevents one Blender process
 # from holding a leased task forever.
