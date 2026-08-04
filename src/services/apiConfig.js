@@ -11,6 +11,11 @@ export const API_CONFIG = {
   // chiếu, KHÔNG có nghĩa là các endpoint này đã tồn tại thật).
   ENDPOINTS: {
     UPLOAD_FILE: '/files/upload',
+    UPLOAD_RESUMABLE_INIT: '/files/upload-resumable/init',
+    UPLOAD_RESUMABLE_STATUS: (sessionId) => `/files/upload-resumable/${sessionId}`,
+    UPLOAD_RESUMABLE_PART: (sessionId, partNumber) => `/files/upload-resumable/${sessionId}/parts/${partNumber}`,
+    UPLOAD_RESUMABLE_COMPLETE: (sessionId) => `/files/upload-resumable/${sessionId}/complete`,
+    UPLOAD_RESUMABLE_ABORT: (sessionId) => `/files/upload-resumable/${sessionId}`,
     DRIVE_RESOLVE: '/drive/resolve',
     ESTIMATE_JOB: '/jobs/estimate',
     // Payment (QR MB Bank) chỉ tra cứu lại qua đây — Portal không tự
