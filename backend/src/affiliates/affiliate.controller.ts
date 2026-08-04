@@ -38,9 +38,10 @@ export class AffiliateController {
 export class AffiliateAdminController {
   constructor(private readonly service: AffiliateService, private readonly supabase: SupabaseService) {}
   @Get() list() { return this.service.adminList(); }
+  @Post(':id/status') async affiliateStatus(@Req() req: Request, @Param('id') id: string, @Body() body: { status: 'ACTIVE' | 'SUSPENDED' }) { return this.service.adminSetAffiliateStatus(await userId(req, this.supabase), id, body.status); }
   @Get('withdrawals') withdrawals() { return this.service.adminWithdrawals(); }
   @Get('commissions') commissions() { return this.service.adminCommissions(); }
   @Get('bank-accounts') bankAccounts() { return this.service.adminBankAccounts(); }
-  @Post('withdrawals/:id/status') async withdrawalStatus(@Req() req: Request, @Param('id') id: string, @Body() body: { status: 'APPROVED' | 'AWAITING_TRANSFER' | 'PAID' | 'REJECTED'; providerTransactionId?: string; reason?: string }) { return this.service.adminSetWithdrawalStatus(await userId(req, this.supabase), id, body.status, body.providerTransactionId, body.reason); }
+  @Post('withdrawals/:id/status') async withdrawalStatus(@Req() req: Request, @Param('id') id: string, @Body() body: { status: 'APPROVED' | 'AWAITING_TRANSFER' | 'PROCESSING' | 'UNKNOWN' | 'PAID' | 'REJECTED'; providerTransactionId?: string; reason?: string }) { return this.service.adminSetWithdrawalStatus(await userId(req, this.supabase), id, body.status, body.providerTransactionId, body.reason); }
   @Post('commissions/:id/available') async available(@Req() req: Request, @Param('id') id: string) { return this.service.adminSetCommissionAvailable(await userId(req, this.supabase), id); }
 }
