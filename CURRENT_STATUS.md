@@ -129,6 +129,12 @@ Chi tiết: `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`,
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md`,
 `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`.
 
+## Latest Audit Loop — 2026-08-04
+
+Đã sửa GAP nguồn file không trung thực: `UploadScreen`, `GoogleDriveModal`, `fileUtils` và `renderConstants` hiện chỉ quảng bá/validate Google Drive cho nguồn link; upload trực tiếp `.blend` vẫn được giữ. OneDrive/Dropbox/Direct Link chưa có Backend resolver thật nên không còn được nhận ở UI. Evidence: `reports/CWS_UPLOAD_SOURCE_TRUTH_EVIDENCE_2026-08-04.md`.
+
+Đây là PASS ở mức code/static consistency, chưa phải Full E2E production. Upload resume, `.blend` inspection sâu, OAuth draft persistence, Worker/B2 runtime và Full E2E vẫn còn.
+
 ## Last Verified (bổ sung)
 
 2026-08-03 (tiếp tục LOOP sau khi Owner tạo B2 key mới): ReviewScreen
