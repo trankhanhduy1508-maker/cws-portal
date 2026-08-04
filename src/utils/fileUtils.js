@@ -44,10 +44,9 @@ export function validateFile(file) {
 }
 
 /**
- * Validate CÚ PHÁP của link chia sẻ (Google Drive / OneDrive / Dropbox
- * — CWS_ROADMAP_MVP_V1.md). Đây chỉ kiểm tra định dạng URL, KHÔNG xác
- * nhận file có thật/có quyền truy cập — việc đó cần Backend thật gọi
- * API tương ứng để kiểm tra (hiện chỉ Google Drive có kiểm tra thật).
+ * Validate cú pháp Google Drive trước khi gửi Backend resolve thật.
+ * Backend tiếp tục kiểm tra file tồn tại/quyền truy cập/tên/dung lượng.
+ * Các nguồn khác chưa có integration thật nên không được nhận ở UI.
  *
  * @returns {{ valid: boolean, error: string|null }}
  */
@@ -55,10 +54,10 @@ export function validateDriveLink(link) {
   const trimmed = (link || '').trim();
 
   if (!trimmed) {
-    return { valid: false, error: 'Vui lòng dán link chia sẻ (Google Drive/OneDrive/Dropbox/Direct Link)' };
+    return { valid: false, error: 'Vui lòng dán link Google Drive' };
   }
 
-  if (!SHARED_LINK_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+  if (!GOOGLE_DRIVE_LINK_PATTERN.test(trimmed)) {
     return {
       valid: false,
       error: 'Link phải bắt đầu bằng https://. Vui lòng kiểm tra lại link chia sẻ.',
