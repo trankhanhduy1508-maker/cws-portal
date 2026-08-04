@@ -251,3 +251,8 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 GitHub Actions run #202 (head a1dbffe) PASS: Backend build + 18 Jest suites/123 tests, Frontend build + lint. Đây là evidence code/build/test; chưa thay thế runtime hai tài khoản, RLS/MFA thật, Worker/B2 vật lý hoặc Full E2E. Chi tiết: reports/CWS_CI_VERIFICATION_2026-08-04.md.
 
 Latest CI recheck: GitHub Actions run #204 (head 750916c) PASS sau khi chỉnh comment auth controller; backend build/test và frontend build/lint đều PASS.
+
+
+## Resumable Upload — 2026-08-04
+
+Đã thay upload một lần bằng B2 multipart: chunk 8MiB, session/ETag lưu Supabase, customer ownership + RLS, resume qua sessionStorage, kiểm tra BLENDER header ở chunk đầu, và cleanup session ACTIVE quá 24 giờ. CI #215 PASS (backend build/tests, frontend build/lint). Runtime mất mạng/resume trên B2 thật và browser quota chưa xác minh. Evidence: reports/customer/CWS_RESUMABLE_UPLOAD_2026-08-04.md.
