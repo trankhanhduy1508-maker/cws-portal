@@ -7,7 +7,8 @@ import UploadZone from '../components/UploadZone';
 import DriveLinkCard from '../components/DriveLinkCard';
 import GoogleDriveModal from '../components/GoogleDriveModal';
 import Button from '../components/Button';
-import { FILE_SOURCE } from '../constants/renderConstants';
+import { FILE_SOURCE, MAX_FILE_SIZE_BYTES } from '../constants/renderConstants';
+import { formatBytes } from '../utils/fileUtils';
 
 export default function UploadScreen({
   source, setSource,
@@ -29,6 +30,9 @@ export default function UploadScreen({
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
           Hỗ trợ file Blender (.blend)
+        </p>
+        <p style={{ fontSize: 12.5, color: '#8A8A90', lineHeight: 1.45, marginTop: 8 }}>
+          MVP: chỉ nhận .blend, tối đa {formatBytes(MAX_FILE_SIZE_BYTES)}. Link ngoài chỉ hỗ trợ Google Drive.
         </p>
       </div>
 
