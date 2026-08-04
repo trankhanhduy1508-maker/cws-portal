@@ -6,6 +6,7 @@ import {
   adminConfirmHostUsageFinalAmount,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
   adminListPaymentDevices, adminListPaymentAnomalies,
+  adminListEditRequests, adminUpdateEditRequest,
 } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
 import StaffMfaLogin from '../components/StaffMfaLogin';
@@ -58,6 +59,7 @@ export default function AdminScreen() {
   const [hostUsageSessions, setHostUsageSessions] = useState([]);
   const [paymentDevices, setPaymentDevices] = useState([]);
   const [paymentAnomalies, setPaymentAnomalies] = useState([]);
+  const [editRequests, setEditRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -72,9 +74,9 @@ export default function AdminScreen() {
     Promise.all([
       adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
       adminListIncidents(key), adminListHostUsageSessions(key), adminListPaymentDevices(key),
-      adminListPaymentAnomalies(key),
+      adminListPaymentAnomalies(key), adminListEditRequests(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes, editRequestsRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
@@ -82,6 +84,7 @@ export default function AdminScreen() {
         setHostUsageSessions(hostUsageRes);
         setPaymentDevices(paymentDevicesRes);
         setPaymentAnomalies(paymentAnomaliesRes);
+        setEditRequests(editRequestsRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -131,6 +134,13 @@ export default function AdminScreen() {
       adminSetWorkerDrain(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
+
+  const handleEditRequestStatus = useCallback((requestId, status) => {
+    setError(null);
+    adminUpdateEditRequest(requestId, status, adminKey)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
 
   const handleConfirmFinalAmount = useCallback((sessionId, estimatedAmount) => {
     const input = window.prompt(
@@ -587,6 +597,51 @@ export default function AdminScreen() {
                 ))}
                 {filteredIncidents.length === 0 && (
                   <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Yêu cầu chỉnh sửa của khách
+          </h3>
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Job</th>
+                  <th style={{ padding: 8 }}>Khách yêu cầu</th>
+                  <th style={{ padding: 8 }}>Ghi chú</th>
+                  <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Tạo lúc</th>
+                  <th style={{ padding: 8 }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editRequests.map((request) => (
+                  <tr key={request.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{request.jobId}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{request.requestedBy}</td>
+                    <td style={{ padding: 8, maxWidth: 320, whiteSpace: 'pre-wrap' }}>{request.note ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{request.status}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(request.createdAt)}</td>
+                    <td style={{ padding: 8 }}>
+                      <select
+                        value={request.status}
+                        onChange={(e) => handleEditRequestStatus(request.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      >
+                        <option value="REQUESTED">REQUESTED</option>
+                        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="DECLINED">DECLINED</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {editRequests.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có yêu cầu chỉnh sửa</td></tr>
                 )}
               </tbody>
             </table>
