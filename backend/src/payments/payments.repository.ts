@@ -162,6 +162,22 @@ export class PaymentsRepository {
     return data ? rowToDomain(data as PaymentRow) : null;
   }
 
+  async findByIdForCustomer(paymentId: string, customerId: string): Promise<PaymentRecord | null> {
+    const record = await this.findById(paymentId);
+    if (!record?.jobId) return null;
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('render_orders')
+      .select('customer_id')
+      .eq('id', record.jobId)
+      .maybeSingle();
+    if (error) {
+      this.logger.error(`findByIdForCustomer(${paymentId}) thất bại: ${error.message}`);
+      throw new Error(`Không kiểm tra được ownership payment: ${error.message}`);
+    }
+    return data?.customer_id === customerId ? record : null;
+  }
+
   /** Ghi 1 dòng payment_notifications với status='processing' NGAY LẬP
    * TỨC khi nhận request — transaction_id UNIQUE (migration 014) là cơ
    * chế chống trùng/replay THẬT SỰ (không phải chỉ check-rồi-insert, dễ
