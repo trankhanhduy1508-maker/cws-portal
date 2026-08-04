@@ -250,8 +250,9 @@ Không được tạo số khách, review, testimonial, uptime, job count hoặc
 
 1. Owner tạo staff account thật và enroll/challenge MFA thật.
 2. Admin nhìn thấy Job lỗi/treo/stuck queue.
-3. Admin nhìn thấy edit requests/support tickets.
-4. Payment stuck/orphan có runbook và audit action.
+3. **Admin edit request queue — CODE PASS, runtime MFA chưa xác minh.** Admin UI tải và cập nhật queue qua /staff/edit-requests; backend RoleGuard + MFA vẫn enforce. Evidence: reports/admin/CWS_ADMIN_EDIT_REQUEST_QUEUE_2026-08-04.md.
+4. Admin nhìn thấy support tickets.
+5. Payment stuck/orphan có runbook và audit action.
 5. Xem retention/deletion status nếu cleanup được triển khai.
 6. Retry/requeue/quarantine chỉ bật khi backend có fencing/authorization; không tạo nút chỉ có UI.
 
