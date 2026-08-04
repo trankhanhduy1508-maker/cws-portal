@@ -31,6 +31,46 @@ const mockFileRefRegistry = new Map();
 // 1. UPLOAD FILE / GOOGLE DRIVE
 // ============================================================
 
+const RESUMABLE_SESSION_PREFIX = 'cws-resumable-upload:';
+const RESUMABLE_FINGERPRINT = (file) => [file.name, file.size, file.lastModified].join(':');
+
+async function uploadFileResumable(file) {
+  const fingerprint = RESUMABLE_FINGERPRINT(file);
+  const storageKey = RESUMABLE_SESSION_PREFIX + fingerprint;
+  const token = await getAccessToken();
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const resumeSessionId = sessionStorage.getItem(storageKey);
+  const initResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_RESUMABLE_INIT}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    body: JSON.stringify({ fileName: file.name, fileSizeBytes: file.size, contentType: file.type || 'application/octet-stream', resumeSessionId }),
+  });
+  if (!initResponse.ok) {
+    if (resumeSessionId) {
+      sessionStorage.removeItem(storageKey);
+      return uploadFileResumable(file);
+    }
+    throw new Error(`Không khởi tạo được upload (${initResponse.status})`);
+  }
+  const session = await initResponse.json();
+  sessionStorage.setItem(storageKey, session.sessionId);
+  const uploadedParts = new Set(session.uploadedParts || []);
+  for (let partNumber = 1; partNumber <= session.totalParts; partNumber += 1) {
+    if (uploadedParts.has(partNumber)) continue;
+    const start = (partNumber - 1) * session.chunkSizeBytes;
+    const end = Math.min(start + session.chunkSizeBytes, file.size);
+    const formData = new FormData();
+    formData.append('chunk', file.slice(start, end), file.name);
+    const partResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_RESUMABLE_PART(session.sessionId, partNumber)}`, { method: 'PUT', headers: authHeaders, body: formData });
+    if (!partResponse.ok) throw new Error(`Upload chunk ${partNumber}/${session.totalParts} thất bại (${partResponse.status})`);
+  }
+  const completeResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_RESUMABLE_COMPLETE(session.sessionId)}`, { method: 'POST', headers: authHeaders });
+  if (!completeResponse.ok) throw new Error(`Hoàn tất upload thất bại (${completeResponse.status})`);
+  sessionStorage.removeItem(storageKey);
+  return completeResponse.json();
+}
+
+
 /**
  * "Tải lên" 1 file đã được validate cú pháp (xem utils/fileUtils).
  * Trả về 1 "fileRef" — tham chiếu để các bước sau (estimate, createJob)
@@ -42,19 +82,7 @@ export async function uploadFile(file) {
   const { valid, error } = validateFile(file);
   if (!valid) throw new Error(error);
 
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
-    return res.json();
-  }
-
+  if (IS_BACKEND_CONFIGURED) return uploadFileResumable(file);
   // Mock: chưa có server thật để tải lên, chỉ giữ tham chiếu cục bộ.
   await new Promise((r) => setTimeout(r, 400));
   const fileRef = `local-${Date.now()}`;
