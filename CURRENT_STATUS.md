@@ -286,3 +286,10 @@ CI #230 (code head 46e5c1c) PASS sau payment confirmation boundary fix: backend 
 Admin token hardening tiếp tục: staff-auth backend hiện chỉ nhận Authorization Bearer header và từ chối query-only staffToken; test đã cập nhật. Evidence: reports/security/CWS_ADMIN_DOWNLOAD_TOKEN_HANDLING_2026-08-04.md.
 
 CI #234 (code head 40a40dc) PASS sau staff-auth query-token rejection: backend build/test và frontend build/lint. P0 payment + token-boundary contract coverage hiện xanh ở mức code/test.
+
+
+## Final Safe-Code Audit Loop — 2026-08-04
+
+Đã rà soát lại các boundary Customer/Host/Admin, payment confirmation, B2/signed URL, RLS, staff token handling và Admin UI. Các GAP an toàn phát hiện trong vòng này đã được code/test/evidence: bỏ direct POST /payments/:id/confirm, từ chối query-string staffToken ở backend, Admin edit-request queue, và download bằng Authorization header/blob URL. Không còn GAP MVP an toàn rõ ràng có thể hoàn thiện mà không cần quyết định/credential/máy runtime thật.
+
+Còn lại và được giữ BLOCKED/OWNER hoặc runtime: Worker claim/B2/Windows-Blender E2E, browser resume thực tế, live MB Bank/SePay, pricing/cap/SLA/refund, retention/legal/privacy/terms, support channel/ticket, staff MFA enrollment, Full E2E và pilot khách thật. Không gọi MVP hoàn thành.
