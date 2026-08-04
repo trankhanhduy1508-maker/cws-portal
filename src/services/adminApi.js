@@ -146,10 +146,8 @@ export async function adminGetJobLogs(jobId, staffToken) {
 }
 
 /** URL tải file kết quả cho link `<a href>` trong bảng Job — dùng thẳng
- * làm href (không phải fetch()) nên phải đính token qua query string
- * `?staffToken=` thay vì header Authorization (điều hướng trình duyệt
- * thường không set được custom header, xem staff-auth.util.ts —
- * Backend đọc cả header lẫn query cho đúng use-case này). */
+ * làm href. Hàm này dùng Authorization header, nhận response thành blob
+ * và tạo object URL tạm; token không bao giờ đi vào URL/history/log. */
 export async function adminGetDownloadUrl(jobId, staffToken) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {
     headers: { Authorization: `Bearer ${staffToken}` },
