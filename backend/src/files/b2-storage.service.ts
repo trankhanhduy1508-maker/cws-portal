@@ -5,6 +5,10 @@ import {
   PutObjectCommand,
   ListObjectsV2Command,
   GetObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
@@ -92,6 +96,46 @@ export class B2StorageService {
     return { key, url };
   }
 
+
+  async createMultipartUpload(key: string, contentType: string): Promise<{ uploadId: string }> {
+    const result = await this.s3.send(new CreateMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    }));
+    if (!result.UploadId) throw new Error('B2 không trả về multipart upload id');
+    return { uploadId: result.UploadId };
+  }
+
+  async uploadMultipartPart(key: string, uploadId: string, partNumber: number, buffer: Buffer): Promise<string> {
+    const result = await this.s3.send(new UploadPartCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+      Body: buffer,
+      ContentLength: buffer.length,
+    }));
+    if (!result.ETag) throw new Error('B2 không trả về ETag cho chunk');
+    return result.ETag;
+  }
+
+  async completeMultipartUpload(key: string, uploadId: string, parts: { PartNumber: number; ETag: string }[]): Promise<void> {
+    await this.s3.send(new CompleteMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts },
+    }));
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    await this.s3.send(new AbortMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+    }));
+  }
   /** Liệt kê toàn bộ object theo prefix — dùng để tìm các frame PNG
    * mà Worker đã upload cho 1 job (đường dẫn dạng renders/JOB_ID/
    * task_ID/frame_N.png). */
