@@ -300,3 +300,5 @@ Còn lại và được giữ BLOCKED/OWNER hoặc runtime: Worker claim/B2/Wind
 Đã thêm support_tickets (migration 019), Customer ticket form/status list, Admin MFA/RBAC queue và contract test ownership/RLS. CI #249 PASS (backend build/test, frontend build/lint). Ticket workflow đã code/test nhưng kênh liên hệ thật, người phụ trách, giờ làm việc và SLA vẫn là OWNER TODO; không quảng cáo 24/7. Evidence: reports/support/CWS_SUPPORT_TICKET_MVP_2026-08-04.md.
 
 CI #251 (code head c455005) PASS sau SupportService ownership/status unit tests: backend build/test và frontend build/lint. Support ticket code path đã được test ở mức unit/contract; runtime hai tài khoản và kênh phản hồi thật vẫn chưa xác minh.
+
+Admin Support queue bổ sung trường đặt expected response time theo từng ticket; không tự đặt SLA mặc định. CI #253 PASS trên code head 1023268.
