@@ -17,6 +17,7 @@ import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
 import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 import { SepayWebhookTestGuard } from '../common/guards/sepay-webhook-test.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { SupabaseService } from '../supabase/supabase.service';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import type { Request } from 'express';
 
@@ -25,6 +26,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly paymentDevicesRepository: PaymentDevicesRepository,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   /** Admin Dashboard (Phần 2.5) — danh sách thiết bị Android gửi payment
@@ -57,7 +59,7 @@ export class PaymentsController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   async getById(@Param('id') id: string, @Req() req: Request) {
-    const customerId = await getOptionalCustomerId(req, this.paymentsService['supabaseService'] as never);
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
     return this.paymentsService.getPublicDetailsForCustomer(id, customerId);
   }
 
