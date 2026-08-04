@@ -23,6 +23,7 @@ import { useJobHistory } from './hooks/useJobHistory';
 import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 import { getDownloadUrl } from './services/RenderService';
+import { savePendingUploadFile, loadPendingUploadFile, clearPendingUploadFile } from './utils/pendingDraftStorage';
 
 // Screen điều hướng: LANDING giờ là 1 trang DUY NHẤT gộp cả hero +
 // Upload/Drive link + nút Google Login + CTA "Bắt đầu render" (yêu cầu
@@ -150,11 +151,37 @@ function CustomerPortalApp() {
     submitLink(pendingLink);
   }, [auth.isAuthenticated, screen, submitLink]);
 
-  // ---- Đăng nhập Google — dùng chung cho nút Google trên Landing lẫn
+    // File thật không sống trong React state qua OAuth redirect. Lưu trong
+  // IndexedDB trước redirect và khôi phục sau khi phiên Google quay lại;
+  // không lưu token/credential. Nếu quota/trình duyệt từ chối, chỉ bỏ qua
+  // an toàn và khách sẽ nhận lỗi cần chọn lại file.
+  useEffect(() => {
+    if (!auth.isAuthenticated || screen !== SCREEN.LANDING) return undefined;
+    let cancelled = false;
+    loadPendingUploadFile()
+      .then((pendingFile) => {
+        if (!cancelled && pendingFile) {
+          setSource(FILE_SOURCE.UPLOAD);
+          setFile(pendingFile);
+          void clearPendingUploadFile().catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, screen, setFile]);
+
+// ---- Đăng nhập Google — dùng chung cho nút Google trên Landing lẫn
   // bước bắt buộc đăng nhập khi bấm Render (handleContinueFromUpload).
   // Lưu tạm driveLink (nếu đang ở nhánh Drive và đã có link) TRƯỚC khi
   // gọi auth.login() vì Backend thật điều hướng rời trang gần như ngay lập tức. ----
   const triggerGoogleLogin = useCallback(async () => {
+    if (source === FILE_SOURCE.UPLOAD && file) {
+      try {
+        await savePendingUploadFile(file);
+      } catch {
+        // IndexedDB/quota failure is non-fatal; no credential is stored.
+      }
+    }
     if (source === FILE_SOURCE.GOOGLE_DRIVE && driveLink) {
       try {
         sessionStorage.setItem(PENDING_DRIVE_LINK_KEY, driveLink);
@@ -164,7 +191,7 @@ function CustomerPortalApp() {
       }
     }
     return auth.login();
-  }, [auth, source, driveLink]);
+  }, [auth, source, driveLink, file]);
 
   // ---- Bước 1: Upload/Drive -> Render Profile. Đăng nhập Google chỉ
   // thực sự BẮT BUỘC tại đây (khách được xem/chọn Upload hoặc dán link
@@ -184,6 +211,7 @@ function CustomerPortalApp() {
       // effect khôi phục đọc nhầm 1 link cũ ở lần đăng nhập/tải trang sau.
       try {
         sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
+        await clearPendingUploadFile();
       } catch {
         // bỏ qua an toàn, xem ghi chú tương tự ở trên
       }
