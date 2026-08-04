@@ -149,12 +149,13 @@ export async function adminGetJobLogs(jobId, staffToken) {
  * làm href. Hàm này dùng Authorization header, nhận response thành blob
  * và tạo object URL tạm; token không bao giờ đi vào URL/history/log. */
 export async function adminGetDownloadUrl(jobId, staffToken) {
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD_URL(jobId)}`, {
     headers: { Authorization: `Bearer ${staffToken}` },
   });
   if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
-  if (!res.ok) throw new Error(`Không tải được file (${res.status})`);
-  return URL.createObjectURL(await res.blob());
+  if (!res.ok) throw new Error(`Không lấy được signed URL (${res.status})`);
+  const data = await res.json();
+  return data.url ?? null;
 }
 
 /** Danh sách yêu cầu chỉnh sửa của khách — chỉ Admin MFA, backend RoleGuard enforce. */
