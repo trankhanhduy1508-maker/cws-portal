@@ -189,6 +189,17 @@ export class AffiliateService {
     return data ?? [];
   }
 
+  async adminSetAffiliateStatus(actorUserId: string, id: string, status: 'ACTIVE' | 'SUSPENDED') {
+    const { data: current, error: readError } = await this.db().from('affiliate_accounts').select('id, status').eq('id', id).maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y Affiliate');
+    if (current.status === status) return current;
+    const { data, error } = await this.db().from('affiliate_accounts').update({ status }).eq('id', id).select('id, status').single();
+    if (error) throw new Error(error.message);
+    await this.audit(actorUserId, id, `AFFILIATE_${status}`, 'affiliate_account', id, {});
+    return data;
+  }
+
   async adminWithdrawals() {
     const { data, error } = await this.db().from('affiliate_withdrawals').select('*').order('requested_at', { ascending: false });
     if (error) throw new Error(error.message);
@@ -207,7 +218,7 @@ export class AffiliateService {
     return data ?? [];
   }
 
-  async adminSetWithdrawalStatus(actorUserId: string, id: string, status: 'APPROVED' | 'AWAITING_TRANSFER' | 'PAID' | 'REJECTED', providerTransactionId?: string, reason?: string) {
+  async adminSetWithdrawalStatus(actorUserId: string, id: string, status: 'APPROVED' | 'AWAITING_TRANSFER' | 'PROCESSING' | 'UNKNOWN' | 'PAID' | 'REJECTED', providerTransactionId?: string, reason?: string) {
     const { data: current } = await this.db().from('affiliate_withdrawals').select('*').eq('id', id).maybeSingle();
     if (!current) throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y withdrawal');
     if (current.status === status) {
@@ -216,6 +227,16 @@ export class AffiliateService {
       return current;
     }
     if (current.status === 'PAID') throw new BadRequestException('Withdrawal Ä‘Ã£ PAID, khÃ´ng thá»ƒ Ä‘á»•i tráº¡ng thÃ¡i');
+    const allowed: Record<string, string[]> = {
+      REQUESTED: ['APPROVED', 'REJECTED'],
+      APPROVED: ['AWAITING_TRANSFER', 'PROCESSING', 'UNKNOWN', 'REJECTED'],
+      AWAITING_TRANSFER: ['PROCESSING', 'UNKNOWN', 'PAID', 'REJECTED'],
+      PROCESSING: ['UNKNOWN', 'PAID', 'REJECTED'],
+      UNKNOWN: ['PROCESSING', 'PAID', 'REJECTED'],
+    };
+    if (!allowed[current.status]?.includes(status)) {
+      throw new BadRequestException(`KhÃ´ng thá»ƒ chuyá»ƒn withdrawal tá»« ${current.status} sang ${status}`);
+    }
     if (status === 'PAID' && (!providerTransactionId || !providerTransactionId.trim())) throw new BadRequestException('PAID cáº§n provider transaction reference');
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString(), rejection_reason: reason ?? null };
     if (status === 'APPROVED') patch.approved_at = new Date().toISOString();
