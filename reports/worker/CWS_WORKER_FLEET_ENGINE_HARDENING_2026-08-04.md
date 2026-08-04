@@ -81,3 +81,11 @@ capability toàn fleet và full E2E nhiều máy.
 
 Chạy package 1.18.0 trên một Windows Worker staging với scene vô hại; xác nhận
 command line thực tế, B2 checkpoint và cleanup, sau đó mới rollout batch nhỏ.
+
+
+## Follow-up (2026-08-04)
+
+- Added SHA-256 artifact manifest and launcher verification, post-task cleanup, opt-in ACL isolation plan, pure power state machine, staging procedure and Fleet matrix.
+- Local evidence: compile PASS, manifest PASS, 13/13 offline contracts PASS, PowerShell isolation parse PASS; Desktop package manifest PASS.
+- Physical Windows/Blender/B2/ACL/Defender/two-worker failover/wake remain OWNER staging blockers and are not marked PASS.
+- Staging package path: C:\\Users\\Administrator\\Desktop\\CWS-Worker-1.18.0-Staging.
