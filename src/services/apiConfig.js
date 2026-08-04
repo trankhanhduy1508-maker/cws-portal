@@ -31,7 +31,7 @@ export const API_CONFIG = {
     JOB_EDIT_REQUESTS: (jobId) => `/jobs/${jobId}/edit-requests`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
-    // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.
+    // Admin (Giai đoạn 7) — cần Bearer token Supabase của staff đã qua MFA/RBAC, xem services/adminApi.js.
     ADMIN_LIST_CUSTOMERS: '/customers',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',
