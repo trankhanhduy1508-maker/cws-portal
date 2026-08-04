@@ -14,4 +14,4 @@ Removed the direct controller route. Payment confirmation remains through guarde
 
 Added a P0 contract test asserting that the direct route is absent and the generic webhook retains WebhookSecretGuard.
 
-CI/runtime status is recorded after the next GitHub Actions run. No production payment, data, credential, reboot, shutdown, or logoff was used.
+GitHub Actions #230 on the code head 46e5c1c PASS: backend build/tests and frontend build/lint. Runtime live payment remains Owner-blocked. No production payment, data, credential, reboot, shutdown, or logoff was used.
