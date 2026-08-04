@@ -13,16 +13,18 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // bảng downloads) — không dùng thẳng downloadUrl raw dù đã có sẵn
   // trong tay, để mọi lượt tải đều được backend biết. Mock: không có
   // route log thật, dùng thẳng Blob URL như cũ.
-  // getDownloadUrl() giờ là async (cần đính kèm access token qua query
-  // string, xem RenderService.js) nên phải load qua state thay vì gọi
-  // thẳng trong render.
+  // getDownloadUrl() dùng Authorization header và trả object URL tạm,
+  // nên phải load qua state thay vì gọi thẳng trong render.
   const [realHref, setRealHref] = useState(null);
   useEffect(() => {
     if (!IS_BACKEND_CONFIGURED) return;
     let cancelled = false;
     getDownloadUrl(jobId).then((url) => { if (!cancelled) setRealHref(url); });
-    return () => { cancelled = true; };
-  }, [jobId]);
+    return () => {
+      cancelled = true;
+      if (realHref) URL.revokeObjectURL(realHref);
+    };
+  }, [jobId, realHref]);
   const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
 
   // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
@@ -99,7 +101,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
       <p className="download-expiry-note">
         {isPlaceholder
           ? 'Bản demo: đang tải lại chính file bạn đã gửi (chưa có kết quả render thật từ Backend)'
-          : 'Link tải có hiệu lực trong 3 ngày'}
+          : 'Link tải có hiệu lực trong 5 phút'}
       </p>
     </StepCard>
   );
