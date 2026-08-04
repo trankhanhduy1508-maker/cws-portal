@@ -11,6 +11,7 @@ import { StorageModule } from './storage/storage.module';
 import { FilesModule } from './files/files.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     FilesModule,
     RealtimeModule,
     SchedulerModule,
+    SupportModule,
   ],
   controllers: [AppController],
 })
