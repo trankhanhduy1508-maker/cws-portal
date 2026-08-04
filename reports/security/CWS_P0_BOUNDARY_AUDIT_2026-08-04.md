@@ -36,3 +36,14 @@ Static source consistency: **PASS** after branch updates. Frontend RenderService
 Jest/build/runtime production: **NOT RUN IN THIS AGENT SESSION** because the environment has no local Git checkout/toolchain execution path. GitHub Actions should be checked for the branch head before merging.
 
 Production two-account/RLS/MFA/B2 verification: **OWNER/HUMAN REQUIRED**. No production data, credentials, or secrets were changed.
+
+
+## Edit request boundary update — 2026-08-04
+
+- Edit request state is now persisted in `edit_requests` with job/customer owner, status, assignee and expected response time.
+- Customer route `GET /jobs/:id/edit-requests` calls JobsService ownership enforcement before reading.
+- Admin queue/update routes are protected by RoleGuard, admin role and MFA `aal2`; no customer/host route can update the queue.
+- Migration 017 enables RLS and limits customer SELECT to `auth.uid() = requested_by`.
+- Contract coverage added in `backend/src/security/p0-boundary.contract.spec.ts`.
+
+Status remains CODE/TEST PASS, runtime two-account/RLS/MFA verification pending.
