@@ -1,3 +1,9 @@
+## Worker/Fleet Engine Hardening (2026-08-04)
+
+- Worker runtime 1.18.0 hardens untrusted Portal jobs with explicit Blender --disable-autoexec, no customer Python optimization expression, and job-scoped safe .blend cache paths.
+- Evidence: reports/worker/CWS_WORKER_FLEET_ENGINE_HARDENING_2026-08-04.md; compile PASS and 10/10 static contracts PASS.
+- Not claimed PASS: physical Windows/Blender staging, production sandbox/isolation, multi-node failover, distributed tile/simulation splitting, and wake-from-sleep.
+
 # Current Status
 
 > Entry point đầu tiên của LOOP (AGENTS.md — Source-of-Truth Sync).
