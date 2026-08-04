@@ -3,11 +3,9 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 /**
  * Xác thực 1 access token THÔ (không cần Request) qua Supabase Auth —
- * dùng chung cho cả `getOptionalCustomerId` (Bearer header, route HTTP
- * thường) lẫn `JobsRealtimeServer` (token qua query string, vì WebSocket
- * handshake của trình duyệt không set được custom header). Trả null
- * nếu token rỗng/sai/hết hạn, KHÔNG throw — gọi nơi nào cần bắt buộc
- * đăng nhập thì tự kiểm tra kết quả null đó.
+ * dùng cho các lớp cần kiểm tra owner sau khi đã lấy token an toàn.
+ * Trả null nếu token rỗng/sai/hết hạn, KHÔNG throw — nơi nào cần bắt
+ * buộc đăng nhập tự kiểm tra kết quả null đó.
  */
 export async function resolveCustomerId(
   token: string | null,
