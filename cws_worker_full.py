@@ -126,6 +126,14 @@ BLENDER_DIR = BASE_DIR / "Blender"
 BLENDER_EXE = BLENDER_DIR / f"blender-{BLENDER_VERSION}-windows-x64" / "blender.exe"
 WORK_DIR = BASE_DIR / "work"
 
+def reset_task_output_dir(output_dir):
+    """Remove stale local frame files before a task attempt.
+    B2 checkpoints remain the recovery source; local partial files are never trusted.
+    """
+    if output_dir.exists():
+        shutil.rmtree(output_dir, ignore_errors=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
 # ===== WORKER CONFIG =====
 # CAP NHAT 25/07/2026: chuyen tu CWS-JOB2 (Goros Lair) sang CWS-JOB3 (Rui
 # Huang - Titan Station.blend, 500 frame) - job MOI HOAN TOAN tren
@@ -2886,6 +2894,7 @@ def worker_loop():
         hb_thread.start()
 
         output_dir = WORK_DIR / f"output_task_{task_id}"
+        reset_task_output_dir(output_dir)
 
         # ----- INCREMENTAL RECOVERY (them 22/07/2026 dem, thiet ke chot
         # trong CWS_ThietKe_GC_va_IncrementalRecovery_v2.md) - goi DUNG 1
@@ -2981,6 +2990,7 @@ def worker_loop():
                 stop_event.set()  # dung heartbeat truoc khi thoat
                 fail_task(task_id, generation, worker_id, "transient")
                 report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+                reset_task_output_dir(output_dir)
                 apply_update_jitter_and_exit(f"dung giua task {task_id} de nhuong viec")
                 return
 
@@ -3012,6 +3022,7 @@ def worker_loop():
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            reset_task_output_dir(output_dir)
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -3040,6 +3051,7 @@ def worker_loop():
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
             report_task_attempt_finalize(task_id, worker_id, generation, "failed")
+            reset_task_output_dir(output_dir)
             continue
 
         # Phase 8 (CWS_WORKER_ROADMAP.md): den day chac chan DU frame da
@@ -3081,6 +3093,7 @@ def worker_loop():
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
         report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
+        reset_task_output_dir(output_dir)
 
         # ----- TU KIEM TRA BAN MOI, DIEM THU 2 (bo sung 22/07/2026 toi):
         # kiem tra o nhanh "task is None" (dang ranh) o tren KHONG DU - neu
