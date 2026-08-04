@@ -15,7 +15,7 @@ Audit code trên branch agent/roadmap-mvp-v2 đối với Customer, Host/Fleet/W
 | Host A → Host B | RoleGuard loads staff_worker_access; Host dashboard filters workers/incidents/usage by assigned IDs. |
 | Customer/Host → Admin | RoleGuard requires staff role and aal2; host is denied on admin-only routes. |
 | B2/file | Preview/download use signed URLs with TTL; raw public URL is not returned for download. File intake is now authenticated. |
-| Supabase/RLS | RLS migration contains own-customer policies and no direct policies for internal worker/payment tables; runtime RLS still needs real project verification. |
+| Supabase/RLS | Added migration 016 to explicitly enable RLS on customer_profiles, render_orders, review_images, downloads, notifications, payments, storage_objects and worker_logs. Existing ownership policies remain; runtime project verification is still required. |
 | WebSocket | Job owner token is checked before snapshot/Realtime subscription; mismatch closes without sending data. |
 | Payment | Removed unauthenticated direct payment creation; payment detail lookup now requires customer Bearer and checks the linked render_orders.customer_id. Webhooks remain secret/HMAC guarded and idempotent. |\n| Secrets/logs | Worker B2 key is env-based per existing evidence; runtime secret/log scan still requires deployed environment review. |
 
