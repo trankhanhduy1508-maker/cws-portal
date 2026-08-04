@@ -218,7 +218,7 @@ export default function AdminScreen() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+
     } catch (err) {
       setError(err.message);
     }
