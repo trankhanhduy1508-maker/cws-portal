@@ -300,8 +300,10 @@ function CustomerPortalApp() {
       // trực tiếp trong user gesture, không phải sau 1 await).
       const win = window.open('', '_blank', 'noopener');
       getDownloadUrl(historyJob.id).then((url) => {
-        if (url && win) win.location.href = url;
-        else if (win) win.close();
+        if (url && win) {
+          win.location.href = url;
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } else if (win) win.close();
       });
       return;
     }
