@@ -165,6 +165,18 @@ export class JobsController {
     return { ok: true };
   }
 
+  /** Trạng thái yêu cầu chỉnh sửa — customer chỉ đọc request của chính job mình. */
+  @Get(':id/edit-requests')
+  async getEditRequests(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    const requests = await this.jobsService.getEditRequests(
+      id,
+      customerId,
+      await this.isAdminRequest(req),
+    );
+    return { requests };
+  }
+
   /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi
    * redirect sang link B2 thật — Portal KHÔNG được dùng thẳng downloadUrl
    * raw (xem getDownloadUrl() trong RenderService.js), phải qua route
