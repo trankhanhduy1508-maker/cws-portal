@@ -17,6 +17,31 @@
 
 Nghiên cứu 300 chủ yếu là **INFERENCE/HYPOTHESIS**, không phải feedback từ khách CWS thật. Vì vậy mọi mục chỉ được chuyển thành PASS sau khi có evidence phù hợp.
 
+## P0 — Security Boundary Requirements
+
+Mọi MVP flow phải enforce ở Backend/DB, không chỉ ở frontend:
+
+- Customer A chỉ đọc/sửa Job, Preview, Payment, Download và Notification của A; Customer A → dữ liệu Customer B phải DENY.
+- Job không có owner không được mở anonymous; mọi Job customer phải gắn customer_id từ Supabase Auth.
+- Customer → Host/Fleet/Worker private data và Worker logs phải DENY. Host chỉ nhận dữ liệu tối thiểu của Job được giao, không nhận email, profile, payment credential, hoặc dữ liệu Host khác.
+- Host A chỉ đọc/sửa Worker/Job được cấp qua staff_worker_access; Host A → Worker/Job của Host B phải DENY.
+- Customer/Host → Admin API phải DENY. Admin authorization phải enforce tại Backend bằng Supabase Bearer + staff_roles + MFA (aal2), không chấp nhận frontend-only guard hoặc shared-key bypass cho Admin routes.
+- B2 object phải đi qua ownership check và signed URL có TTL; không trả public/raw URL cho Customer. Worker credential phải scope tối thiểu bucket/prefix và không xuất hiện trong source/log.
+- Supabase RLS phải giữ customer ownership và deny trực tiếp các bảng nội bộ Host/Worker/Admin; service role chỉ dùng server-side.
+- REST/WebSocket đều phải xác thực owner/role trước snapshot, mutation hoặc stream; webhook/payment phải idempotent và không cho client tự đổi PAID.
+
+### Security test matrix bắt buộc
+
+- Customer A → A: **ALLOW**.
+- Customer A → B: **DENY**.
+- Customer → Host private data: **DENY**.
+- Host A → dữ liệu Customer không cần thiết: **DENY**.
+- Host A → Worker/Job Host B: **DENY**.
+- Customer/Host → Admin API: **DENY**.
+- Admin MFA (aal2) → Admin-scoped data: **ALLOW**.
+
+Evidence phải phân biệt code/test với runtime production; không gọi P0 PASS chỉ vì build PASS.
+
 ## 1. Baseline đã giữ từ V1
 
 Không viết lại các mục dưới đây:
