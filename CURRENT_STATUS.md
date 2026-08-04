@@ -153,7 +153,7 @@ Trạng thái: **CODE PASS / RUNTIME CHƯA XÁC MINH**. Cần chạy Jest/build 
 
 RLS P0 fix: added backend/migrations/016_enable_customer_rls_boundaries.sql to explicitly enable RLS on customer and internal tables without deleting data/policies.
 
-Upload safety fix: direct .blend intake now rejects renamed/non-native files missing the BLENDER signature before B2 upload; focused unit tests were added. Upload UI cũng hiển thị công khai giới hạn `.blend` only, 2GB và Google Drive-only link source trước khi khách tiếp tục. Progress UI hiển thị queue delay từ `queueSeconds` khi Backend trả về. Worker frame timeout đã được thêm vào `cws_worker_full.py` qua `CWS_FRAME_TIMEOUT_SEC`, kèm cleanup output khi timeout.
+Upload safety fix: direct .blend intake now rejects renamed/non-native files missing the BLENDER signature before B2 upload; focused unit tests were added. Upload UI cũng hiển thị công khai giới hạn `.blend` only, 2GB và Google Drive-only link source trước khi khách tiếp tục. Progress UI hiển thị queue delay từ `queueSeconds` khi Backend trả về. Upload draft `.blend` được lưu tạm IndexedDB qua OAuth redirect và khôi phục sau login; không lưu credential/token. Worker frame timeout đã được thêm vào `cws_worker_full.py` qua `CWS_FRAME_TIMEOUT_SEC`, kèm cleanup output khi timeout.
 
 Evidence: reports/customer/CWS_BLEND_EARLY_VALIDATION_2026-08-04.md.
 
