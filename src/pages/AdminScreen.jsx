@@ -7,6 +7,7 @@ import {
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
   adminListPaymentDevices, adminListPaymentAnomalies,
   adminListEditRequests, adminUpdateEditRequest,
+  adminListSupportTickets, adminUpdateSupportTicket,
 } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
 import StaffMfaLogin from '../components/StaffMfaLogin';
@@ -60,6 +61,7 @@ export default function AdminScreen() {
   const [paymentDevices, setPaymentDevices] = useState([]);
   const [paymentAnomalies, setPaymentAnomalies] = useState([]);
   const [editRequests, setEditRequests] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -74,9 +76,9 @@ export default function AdminScreen() {
     Promise.all([
       adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
       adminListIncidents(key), adminListHostUsageSessions(key), adminListPaymentDevices(key),
-      adminListPaymentAnomalies(key), adminListEditRequests(key),
+      adminListPaymentAnomalies(key), adminListEditRequests(key), adminListSupportTickets(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes, editRequestsRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes, editRequestsRes, supportTicketsRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
@@ -84,7 +86,8 @@ export default function AdminScreen() {
         setHostUsageSessions(hostUsageRes);
         setPaymentDevices(paymentDevicesRes);
         setPaymentAnomalies(paymentAnomaliesRes);
-        setEditRequests(editRequestsRes);
+        setEditRequests(editRequestsRes.requests ?? []);
+        setSupportTickets(supportTicketsRes.tickets ?? []);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -134,6 +137,13 @@ export default function AdminScreen() {
       adminSetWorkerDrain(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
+
+  const handleSupportTicketStatus = useCallback((ticketId, status) => {
+    setError(null);
+    adminUpdateSupportTicket(ticketId, status, adminKey)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
 
   const handleEditRequestStatus = useCallback((requestId, status) => {
     setError(null);
@@ -613,6 +623,56 @@ export default function AdminScreen() {
                 ))}
                 {filteredIncidents.length === 0 && (
                   <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Yêu cầu hỗ trợ của khách
+          </h3>
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Mã</th>
+                  <th style={{ padding: 8 }}>Customer</th>
+                  <th style={{ padding: 8 }}>Job</th>
+                  <th style={{ padding: 8 }}>Chủ đề/nội dung</th>
+                  <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Tạo lúc</th>
+                  <th style={{ padding: 8 }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supportTickets.map((ticket) => (
+                  <tr key={ticket.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.ticketCode}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.customerId}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.jobId ?? '—'}</td>
+                    <td style={{ padding: 8, maxWidth: 320 }}>
+                      <strong>{ticket.subject}</strong>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{ticket.message}</div>
+                    </td>
+                    <td style={{ padding: 8 }}>{ticket.status}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(ticket.createdAt)}</td>
+                    <td style={{ padding: 8 }}>
+                      <select
+                        value={ticket.status}
+                        onChange={(e) => handleSupportTicketStatus(ticket.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      >
+                        <option value="OPEN">OPEN</option>
+                        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="DECLINED">DECLINED</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {supportTickets.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có support ticket</td></tr>
                 )}
               </tbody>
             </table>
