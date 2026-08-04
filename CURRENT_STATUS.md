@@ -284,3 +284,5 @@ CI #230 (code head 46e5c1c) PASS sau payment confirmation boundary fix: backend 
 
 
 Admin token hardening tiếp tục: staff-auth backend hiện chỉ nhận Authorization Bearer header và từ chối query-only staffToken; test đã cập nhật. Evidence: reports/security/CWS_ADMIN_DOWNLOAD_TOKEN_HANDLING_2026-08-04.md.
+
+CI #234 (code head 40a40dc) PASS sau staff-auth query-token rejection: backend build/test và frontend build/lint. P0 payment + token-boundary contract coverage hiện xanh ở mức code/test.
