@@ -197,3 +197,10 @@ UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` (Worker
 audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 đầy đủ trước khi file này được rút gọn).
+
+
+## Worker staging follow-up (2026-08-04)
+
+- Added SHA-256 manifest/launcher verification, separated CWS_DIR/CWS_PYTHON_DIR, post-task cleanup, opt-in ACL isolation setup, pure power state machine, staging procedure and Fleet matrix.
+- Offline verification: compile PASS, manifest PASS, 13/13 contracts PASS, PowerShell parse PASS.
+- NOT production PASS: physical Blender/B2 staging, ACL/service/Defender, timeout/retry runtime, two-worker failover and wake hardware.

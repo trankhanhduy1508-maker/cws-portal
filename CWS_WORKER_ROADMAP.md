@@ -1,3 +1,11 @@
+## Status update — 2026-08-04
+
+- 1.18.0 offline hardening/staging assets are implemented.
+- Windows staging runtime, ACL/service isolation, Defender/network policy, B2 sandbox, multi-node failover and physical wake remain NEEDS VERIFICATION.
+- Follow CWS_WORKER_STAGING_PROCEDURE_1_18_0.md; do not mark these items PASS from static tests.
+
+---
+
 # CWS WORKER ROADMAP
 
 **Tên tài liệu:** `CWS_WORKER_ROADMAP.md`  
