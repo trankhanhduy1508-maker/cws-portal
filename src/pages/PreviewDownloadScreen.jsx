@@ -13,7 +13,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   // bảng downloads) — không dùng thẳng downloadUrl raw dù đã có sẵn
   // trong tay, để mọi lượt tải đều được backend biết. Mock: không có
   // route log thật, dùng thẳng Blob URL như cũ.
-  // getDownloadUrl() dùng Authorization header và trả object URL tạm,
+  // getDownloadUrl() dùng Authorization header để đổi lấy signed URL,
   // nên phải load qua state thay vì gọi thẳng trong render.
   const [realHref, setRealHref] = useState(null);
   useEffect(() => {
