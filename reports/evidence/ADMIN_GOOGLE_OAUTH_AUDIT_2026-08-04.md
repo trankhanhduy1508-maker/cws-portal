@@ -18,8 +18,10 @@
 
 ## Validation
 
-- Backend targeted controller tests: server-side Admin allow and non-staff deny.
-- Backend Jest, Nest build, frontend Vitest, Vite build and oxlint are required before push.
+- Backend targeted controller tests: server-side Admin allow and non-staff deny â€” PASS.
+- Backend Jest: 25 suites / 140 tests â€” PASS.
+- Nest build â€” PASS; frontend Vitest 5/5 â€” PASS; Vite build â€” PASS; oxlint â€” PASS.
+- Vercel Git checks still fail with `build-rate-limit`; no current-head Preview was created.
 
 ## Runtime limitation / OWNER TODO
 
