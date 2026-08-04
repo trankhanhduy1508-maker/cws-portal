@@ -28,12 +28,7 @@ export class JobsController {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  /** x-admin-key HOẶC Bearer token Admin thật đã hoàn tất MFA hợp lệ ->
-   * bỏ qua kiểm tra chủ sở hữu job (Admin Dashboard cần xem/thao tác job
-   * của MỌI khách, xem JobsService.assertOwnership()). Giữ x-admin-key
-   * cho khả năng tương thích ngược (route này đã chấp nhận key từ
-   * trước khi có yêu cầu MFA, không phải bypass MỚI phát sinh — xem
-   * staff-auth.util.ts). */
+  /** Admin request chỉ được coi là hợp lệ khi có Supabase Bearer token thật đã hoàn tất MFA (aal2). */
   private async isAdminRequest(req: Request): Promise<boolean> {
     return isAuthenticatedMfaAdmin(req, this.supabaseService);
   }
@@ -41,9 +36,7 @@ export class JobsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
-    // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
-    // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
-    // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
+    // JwtAuthGuard đã xác thực Bearer token; customerId được lấy từ chính session đó.
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     return this.jobsService.createOrder(dto, customerId);
   }
@@ -54,9 +47,7 @@ export class JobsController {
     return this.jobsService.estimate(dto);
   }
 
-  /** Khách đã đăng nhập: chỉ thấy job của mình. Khách CHƯA đăng nhập:
-   * phải có x-admin-key mới xem được TOÀN BỘ job của mọi khách — trước
-   * đây route này công khai hoàn toàn, ai gọi cũng thấy hết. */
+  /** Khách chỉ thấy job của mình; toàn bộ danh sách chỉ dành cho Admin đã qua MFA. */
   @Get()
   async listAll(@Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -80,10 +71,7 @@ export class JobsController {
     return toPublicJson(order);
   }
 
-  /** Job có customer_id -> chỉ đúng chủ (hoặc khách chưa đăng nhập) mới
-   * xem/thao tác được — xem JobsService.assertOwnership(). Job không có
-   * chủ (tạo lúc chưa đăng nhập) vẫn mở cho ai biết id, giữ nguyên hành
-   * vi cũ cho khách vãng lai. */
+  /** Job có customer_id chỉ đúng chủ hoặc Admin MFA mới xem/thao tác được — xem JobsService.assertOwnership(). */
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -120,7 +108,7 @@ export class JobsController {
   }
 
   /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt (hoặc
-   * Admin Dashboard xem qua x-admin-key, xem adminApi.js). */
+   * Admin Dashboard xem qua RoleGuard + MFA). */
   @Get(':id/preview')
   async getPreview(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
