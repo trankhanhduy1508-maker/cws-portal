@@ -30,6 +30,18 @@ describe('P0 authorization boundary contracts', () => {
     expect(staff).toContain("@Patch('edit-requests/:id')");
   });
 
+  it('support tickets enforce customer ownership and Admin MFA/RBAC boundaries', () => {
+    const migration = source('../../migrations/019_create_support_tickets.sql');
+    const controller = source('../support/support.controller.ts');
+    expect(migration).toContain('ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;');
+    expect(migration).toContain('USING (auth.uid() = customer_id)');
+    expect(controller).toContain("@Post('tickets')");
+    expect(controller).toContain("@UseGuards(JwtAuthGuard)");
+    expect(controller).toContain("@Get('admin/tickets')");
+    expect(controller).toContain("@Roles('admin')");
+    expect(controller).toContain("@Patch('admin/tickets/:id')");
+  });
+
   it('payment confirmation has no unauthenticated direct route', () => {
     const controller = source('../payments/payments.controller.ts');
     expect(controller).not.toContain("@Post(':id/confirm')");
