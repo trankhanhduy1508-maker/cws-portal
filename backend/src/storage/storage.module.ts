@@ -13,6 +13,8 @@ import { WORKER_LOGS_REPOSITORY } from './repositories/worker-logs.repository.in
 import { SupabaseWorkerLogsRepository } from './repositories/worker-logs.repository.supabase';
 import { NOTIFICATIONS_REPOSITORY } from './repositories/notifications.repository.interface';
 import { SupabaseNotificationsRepository } from './repositories/notifications.repository.supabase';
+import { EDIT_REQUESTS_REPOSITORY } from './repositories/edit-requests.repository.interface';
+import { SupabaseEditRequestsRepository } from './repositories/edit-requests.repository.supabase';
 
 @Module({
   imports: [SupabaseModule, FilesModule],
@@ -24,6 +26,7 @@ import { SupabaseNotificationsRepository } from './repositories/notifications.re
     { provide: DOWNLOADS_REPOSITORY, useClass: SupabaseDownloadsRepository },
     { provide: WORKER_LOGS_REPOSITORY, useClass: SupabaseWorkerLogsRepository },
     { provide: NOTIFICATIONS_REPOSITORY, useClass: SupabaseNotificationsRepository },
+    { provide: EDIT_REQUESTS_REPOSITORY, useClass: SupabaseEditRequestsRepository },
   ],
   exports: [StorageService, PreviewService],
 })
