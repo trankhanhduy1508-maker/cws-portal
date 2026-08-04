@@ -2,6 +2,7 @@
 
 - Audited Admin OAuth/MFA/role enforcement, customer/host/admin route boundaries, Supabase privilege migrations, realtime ticket grants, upload/resumable ownership, B2 signed URLs/object keys, Drive URL validation, worker generic-job autoexec behavior, and repository credential hygiene.
 - Fixed the legacy upload endpoint to require an authenticated customer identity before B2 writes and sanitized client filenames used in B2 keys.
+- Bounded the legacy in-memory upload endpoint to 64 MiB; the resumable 2 GiB path remains chunked.
 - Evidence: `reports/evidence/ADMIN_GOOGLE_OAUTH_AUDIT_2026-08-04.md`.
 - Backend: 25 Jest suites / 141 tests PASS; Nest build PASS.
 - Remaining P0 verification requires real Google/Supabase MFA configuration, live B2 ACL inspection, antivirus/Defender validation, and least-privilege isolation on the physical Windows Worker.
