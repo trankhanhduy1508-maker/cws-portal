@@ -5,17 +5,20 @@ import {
   HttpCode,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PaymentDevicesRepository } from './payment-devices.repository';
-import { CreatePaymentDto } from './dto/create-payment.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
 import { SepayWebhookDto } from './dto/sepay-webhook.dto';
 import { RoleGuard } from '../common/guards/role.guard';
 import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
 import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 import { SepayWebhookTestGuard } from '../common/guards/sepay-webhook-test.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { getOptionalCustomerId } from '../common/optional-auth.util';
+import type { Request } from 'express';
 
 @Controller('payments')
 export class PaymentsController {
@@ -44,11 +47,6 @@ export class PaymentsController {
     return this.paymentsService.listReconciliationAnomalies();
   }
 
-  @Post()
-  async create(@Body() dto: CreatePaymentDto) {
-    return this.paymentsService.createIntent(dto);
-  }
-
   /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   @Get('by-code/:paymentCode')
   @UseGuards(RoleGuard)
@@ -57,8 +55,10 @@ export class PaymentsController {
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    return this.paymentsService.getPublicDetails(id);
+  @UseGuards(JwtAuthGuard)
+  async getById(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.paymentsService['supabaseService'] as never);
+    return this.paymentsService.getPublicDetailsForCustomer(id, customerId);
   }
 
   @Post(':id/confirm')
