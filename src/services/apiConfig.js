@@ -49,6 +49,12 @@ export const API_CONFIG = {
     ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
     ADMIN_LIST_PAYMENT_DEVICES: '/payments/devices',
     ADMIN_LIST_PAYMENT_ANOMALIES: '/payments/reconciliation-anomalies',
+    ADMIN_AFFILIATES: '/admin/affiliates',
+    ADMIN_AFFILIATE_STATUS: (id) => `/admin/affiliates/${encodeURIComponent(id)}/status`,
+    ADMIN_AFFILIATE_WITHDRAWALS: '/admin/affiliates/withdrawals',
+    ADMIN_AFFILIATE_WITHDRAWAL_STATUS: (id) => `/admin/affiliates/withdrawals/${encodeURIComponent(id)}/status`,
+    ADMIN_AFFILIATE_COMMISSIONS: '/admin/affiliates/commissions',
+    ADMIN_AFFILIATE_COMMISSION_AVAILABLE: (id) => `/admin/affiliates/commissions/${encodeURIComponent(id)}/available`,
     // Staff (Admin/Host tháº­t, Pháº§n 6) â€” cáº§n Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
