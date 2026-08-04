@@ -86,7 +86,7 @@ Không viết lại frontend/backend/database/storage/admin đã có evidence PA
 
 1. **Upload resume — MISSING/P1.** Thiết kế upload theo chunk/session hoặc cơ chế tương đương; mất mạng không phải upload lại từ đầu. Acceptance: ngắt mạng giữa upload, nối lại và file B2 hash/size đúng.
 2. **Cảnh báo giới hạn ngay khi chọn file — VERIFY.** Giữ validation hiện có; test bằng UI rằng file >2GB bị chặn trước network request.
-3. **Kiểm tra `.blend` sớm — PARTIAL.** Validate container/header/size và kiểm tra tối thiểu an toàn trước khi vào queue; không chạy arbitrary Blender script. Lỗi phải hiển thị trước khi khách chờ render.
+3. **Kiểm tra `.blend` sớm — CODE/TEST PASS, runtime chưa xác minh.** Backend kiểm tra extension, size/multer limit và native `BLENDER` header trước khi upload B2; không mở hoặc thực thi scene. Deeper sandbox/plugin inspection vẫn là Worker/runtime requirement.
 4. **Nguồn file trung thực — PASS (code-level, 2026-08-04).** UI và validation hiện chỉ nhận upload trực tiếp `.blend` hoặc Google Drive; Backend Google Drive resolver là nguồn link duy nhất có integration thật. OneDrive/Dropbox/Direct Link được giữ ngoài MVP cho tới khi có resolver/upload integration và evidence thật.
 5. **Không mất draft khi login — P1.** Giữ file/link/metadata qua OAuth redirect và khôi phục draft theo user sau login.
 6. **Job history — VERIFY.** Có danh sách Job, trạng thái, giá/payment/download history; kiểm tra ownership bằng tài khoản thật.
