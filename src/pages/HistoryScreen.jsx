@@ -3,6 +3,7 @@ import StepCard from '../components/StepCard';
 import { formatRelativeTime, formatDuration } from '../utils/timeUtils';
 import { JOB_STATUS, JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL, RENDER_PROFILES } from '../constants/renderConstants';
 import './HistoryScreen.css';
+import SupportPanel from '../components/SupportPanel';
 
 function getStatusStyle(status) {
   if (status === JOB_STATUS.FINISHED) return { bg: '#E3F7ED', color: '#2AB673', icon: FileBox };
@@ -59,6 +60,7 @@ export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
           })}
         </div>
       )}
+      <SupportPanel />
     </StepCard>
   );
 }
