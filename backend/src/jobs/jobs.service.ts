@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
@@ -205,7 +206,10 @@ export class JobsService {
     isAdmin = false,
   ): void {
     if (isAdmin) return;
-    if (order.customerId && order.customerId !== customerId) {
+    if (!customerId) {
+      throw new UnauthorizedException('Cần đăng nhập để truy cập job');
+    }
+    if (!order.customerId || order.customerId !== customerId) {
       throw new ForbiddenException(`Không có quyền truy cập job ${order.id}`);
     }
   }

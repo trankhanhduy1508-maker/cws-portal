@@ -16,6 +16,19 @@ Worker Windows+Blender vật lý để verify runtime (xem Next).
 
 ## Last Verified
 
+2026-08-03 (customer auth/ownership hardening):
+- Backend `POST /jobs` nay bat buoc Supabase Bearer auth, customer job actions
+  reject anonymous/ownerless access, va WebSocket realtime chi cho owner dung
+  token; Admin bypass van giu nguyen. Evidence: `reports/security/CWS_CUSTOMER_AUTH_OWNERSHIP_HARDENING_2026-08-03.md`.
+- Backend 117/117 tests va build PASS. Day la security evidence, chua phai
+  Full E2E voi Google OAuth/Worker/B2/payment that.
+
+2026-08-03 (customer download UX correction):
+- Sửa mismatch giữa runtime và giao diện: backend ký link tải 300 giây (5 phút),
+  UI không còn tuyên bố sai là 3 ngày; UI nói rõ có thể bấm lại để cấp link mới.
+  Xem `reports/dev/CWS_DOWNLOAD_EXPIRY_COPY_FIX_2026-08-03.md`. Đây là evidence
+  UI/build, chưa phải Full E2E download với job thật.
+
 2026-08-03 (bổ sung sau, runtime Worker):
 - **Worker runtime (Python 3.12.7 + Blender 5.2.0) verify THẬT lần đầu
   tiên** trên một máy Windows thật (không phải Fleet vật lý đối tác) -

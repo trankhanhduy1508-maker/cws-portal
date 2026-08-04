@@ -17,7 +17,7 @@ const PATH_PATTERN = /^\/ws\/jobs\/([^/?]+)/;
  * RenderService.js: `new WebSocket(url)`, `onmessage` nhận JSON thô,
  * kiểm tra `data.status === 'finished'`) sang Supabase Realtime.
  *
- * LÝ DO không dùng @nestjs/websockets Gateway chuẩn: Gateway của Nest
+   * LÝ DO không dùng @nestjs/websockets Gateway chuẩn: Gateway của Nest
  * không hỗ trợ tốt việc tách jobId ra từ PATH động dạng
  * `/ws/jobs/:jobId` (Portal đã hard-code path này, không được đổi).
  * Cách đơn giản, đúng chuẩn Node.js là tự lắng nghe sự kiện 'upgrade'
@@ -70,12 +70,9 @@ export class JobsRealtimeServer {
 
   /**
    * Cùng nguyên tắc kiểm tra chủ sở hữu với JobsService.assertOwnership()
-   * (xem jobs.service.ts) — trước đây route WebSocket này gửi TOÀN BỘ
-   * snapshot job (customerId/software/notes/finalPriceVnd...) cho BẤT KỲ
-   * ai kết nối biết job id, bỏ qua hoàn toàn việc kiểm tra ở tầng REST.
-   * Job có customerId -> bắt buộc token khớp đúng khách đó, đóng kết nối
-   * ngay (KHÔNG gửi dữ liệu nào) nếu không khớp. Job chưa có customerId
-   * (khách vãng lai) vẫn mở, giữ nguyên hành vi cũ.
+   * (xem jobs.service.ts). Mọi customer job đều bắt buộc token khớp đúng
+   * owner; job không có owner cũng bị từ chối vì anonymous job không còn
+   * thuộc customer flow hợp lệ.
    */
   private async handleConnection(
     client: WebSocket,
@@ -94,17 +91,6 @@ export class JobsRealtimeServer {
       current = null;
     }
 
-    if (current?.customerId) {
-      const customerId = await resolveCustomerId(token, this.supabaseService);
-      if (customerId !== current.customerId) {
-        this.logger.warn(
-          `Từ chối kết nối realtime cho job ${jobId} — token không khớp chủ sở hữu`,
-        );
-        client.close(4003, 'Không có quyền truy cập job này');
-        return;
-      }
-    }
-
     // SỬA (phát hiện qua tự rà soát 31/07/2026): job KHÔNG tồn tại (id
     // sai/không có thật, vd ai đó dò URL ngẫu nhiên) trước đây vẫn mở 1
     // kênh Supabase Realtime SỐNG mãi tới khi client tự đóng — không rò
@@ -114,6 +100,15 @@ export class JobsRealtimeServer {
     // mới gọi subscribe, xem `useRenderJob.js#start()`).
     if (!current) {
       client.close(4004, 'Không tìm thấy job này');
+      return;
+    }
+
+    const customerId = await resolveCustomerId(token, this.supabaseService);
+    if (!current.customerId || customerId !== current.customerId) {
+      this.logger.warn(
+        `Từ chối kết nối realtime cho job ${jobId} — token không khớp chủ sở hữu`,
+      );
+      client.close(4003, 'Không có quyền truy cập job này');
       return;
     }
 

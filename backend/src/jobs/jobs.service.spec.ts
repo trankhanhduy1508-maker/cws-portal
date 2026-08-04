@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repository.interface';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
@@ -121,7 +125,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       softwareVersion: null,
       notes: null,
       storageCode: 'CWS-AAAAAAAA',
-      customerId: null,
+      customerId: 'customer-owner',
       profileId: RenderProfileId.STANDARD,
       status: JobStatus.REVIEW_READY,
       stageProgress: 1,
@@ -198,7 +202,9 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       baseOrder({ status: JobStatus.RENDERING }),
     );
 
-    await expect(service.approve('job-1')).rejects.toThrow(BadRequestException);
+    await expect(
+      service.approve('job-1', 'customer-owner'),
+    ).rejects.toThrow(BadRequestException);
     expect(mockPricingService.computeFinalPriceVnd).not.toHaveBeenCalled();
     expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
   });
@@ -210,7 +216,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-1' }),
     );
 
-    const result = await service.approve('job-1');
+    const result = await service.approve('job-1', 'customer-owner');
 
     expect(mockPricingService.computeFinalPriceVnd).toHaveBeenCalledWith(
       'internal-1',
@@ -362,7 +368,7 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     mockRepository.findById.mockResolvedValue(baseOrder());
 
     await expect(service.getByIdForCustomer('job-1', null)).rejects.toThrow(
-      ForbiddenException,
+      UnauthorizedException,
     );
   });
 
@@ -384,14 +390,12 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
     ).resolves.toMatchObject({ id: 'job-1' });
   });
 
-  it('getByIdForCustomer() KHÔNG chặn job chưa có chủ (customerId=null) — luồng khách vãng lai', async () => {
+  it('getByIdForCustomer() chặn job chưa có chủ để không còn anonymous access', async () => {
     mockRepository.findById.mockResolvedValue(baseOrder({ customerId: null }));
 
     await expect(
       service.getByIdForCustomer('job-1', 'bat-ky-ai'),
-    ).resolves.toMatchObject({
-      id: 'job-1',
-    });
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('cancel() từ chối khách không phải chủ job — không cho huỷ job của người khác', async () => {

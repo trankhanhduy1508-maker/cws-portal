@@ -2,6 +2,12 @@
 
 Authentication
 
+**[ACTIVE]** Customer job creation and realtime access require a verified
+Supabase Bearer identity matching the job owner. The frontend already gates
+the submit/render step behind Google OAuth; the backend must fail closed for
+anonymous job creation or ownerless customer access. Admin/Host access remains
+the separate MFA/RBAC flow below. Evidence: `reports/security/CWS_CUSTOMER_AUTH_OWNERSHIP_HARDENING_2026-08-03.md`.
+
 **[ACTIVE]** Google OAuth through Supabase only for MVP (updated 2026-08-01).
 
 **[SUPERSEDED — thay thế bởi Google OAuth 2026-08-01]** Facebook Login (quyết định gốc trước 2026-08-01) — đã gỡ khỏi MVP, KHÔNG implement lại.

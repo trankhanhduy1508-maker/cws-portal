@@ -156,7 +156,7 @@ describe('JobsRealtimeServer — kiểm tra quyền sở hữu qua WebSocket (ID
     expect(client.send).not.toHaveBeenCalled();
   });
 
-  it('gửi snapshot cho bất kỳ ai (kể cả không có token) nếu job CHƯA có chủ — luồng khách vãng lai', async () => {
+  it('từ chối job chưa có chủ để không còn anonymous realtime access', async () => {
     const { server } = makeServer(baseOrder({ customerId: null }), {
       data: { user: null },
       error: { message: 'no token' },
@@ -173,7 +173,7 @@ describe('JobsRealtimeServer — kiểm tra quyền sở hữu qua WebSocket (ID
       }
     ).handleConnection(client, 'job-1', null);
 
-    expect(client.close).not.toHaveBeenCalled();
-    expect(client.send).toHaveBeenCalledTimes(1);
+    expect(client.close).toHaveBeenCalledWith(4003, expect.any(String));
+    expect(client.send).not.toHaveBeenCalled();
   });
 });
