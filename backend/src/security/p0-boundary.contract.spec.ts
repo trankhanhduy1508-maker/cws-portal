@@ -30,6 +30,13 @@ describe('P0 authorization boundary contracts', () => {
     expect(staff).toContain("@Patch('edit-requests/:id')");
   });
 
+  it('payment confirmation has no unauthenticated direct route', () => {
+    const controller = source('../payments/payments.controller.ts');
+    expect(controller).not.toContain("@Post(':id/confirm')");
+    expect(controller).toContain("@Post('webhook')");
+    expect(controller).toContain('@UseGuards(WebhookSecretGuard)');
+  });
+
   it('worker logs remain admin-only and are not exposed to customer route', () => {
     const controller = source('../jobs/jobs.controller.ts');
     const start = controller.indexOf("@Get(':id/logs')");
