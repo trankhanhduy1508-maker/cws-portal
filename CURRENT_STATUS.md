@@ -239,3 +239,8 @@ UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` (Worker
 audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 đầy đủ trước khi file này được rút gọn).
+
+
+## Edit Request State — 2026-08-04
+
+Đã hoàn thiện gap P1 về yêu cầu chỉnh sửa: migration 017 + repository/service lưu trạng thái REQUESTED, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, DECLINED, người xử lý và thời gian phản hồi dự kiến. Customer đọc qua GET /jobs/:id/edit-requests sau ownership check; Admin xem/cập nhật qua /staff/edit-requests với RoleGuard + MFA backend. RLS chỉ cho customer đọc request của chính mình. Evidence: reports/security/CWS_EDIT_REQUEST_STATE_2026-08-04.md; contract test: backend/src/security/p0-boundary.contract.spec.ts. Trạng thái: CODE/TEST PASS, runtime hai tài khoản/MFA chưa xác minh.
