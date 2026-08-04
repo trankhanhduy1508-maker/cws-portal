@@ -46,6 +46,7 @@ export const API_CONFIG = {
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
     STAFF_EDIT_REQUESTS: '/staff/edit-requests',
+    STAFF_UPDATE_EDIT_REQUEST: (id) => `/staff/edit-requests/${id}`,
     HOST_DASHBOARD: '/host/dashboard',
   },
 };
