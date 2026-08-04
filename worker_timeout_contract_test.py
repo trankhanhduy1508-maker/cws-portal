@@ -27,3 +27,16 @@ def test_frame_timeout_contract():
         any(keyword.arg == "timeout" for keyword in call.keywords)
         for call in subprocess_calls
     )
+
+
+def test_local_output_cleanup_contract():
+    source = SOURCE.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    assert "def reset_task_output_dir" in source
+    assert "shutil.rmtree(output_dir, ignore_errors=True)" in source
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "reset_task_output_dir"
+        for node in ast.walk(tree)
+    )
