@@ -5,11 +5,13 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { B2StorageService } from './b2-storage.service';
 import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -20,6 +22,7 @@ const ACCEPTED_EXTENSIONS = ['.blend'];
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class FilesController {
   constructor(
     private readonly b2StorageService: B2StorageService,
