@@ -2,7 +2,14 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
   Post,
+  Put,
+  Req,
+  UnauthorizedException,
   UploadedFile,
   UseInterceptors,
   UseGuards,
@@ -13,6 +20,11 @@ import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { hasBlenderHeader } from './blend-validation';
+import { ResumableUploadService } from './resumable-upload.service';
+import { RESUMABLE_CHUNK_SIZE_BYTES } from './resumable-upload.constants';
+import { SupabaseService } from '../supabase/supabase.service';
+import { getOptionalCustomerId } from '../common/optional-auth.util';
+import type { Request } from 'express';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -28,6 +40,8 @@ export class FilesController {
   constructor(
     private readonly b2StorageService: B2StorageService,
     private readonly googleDriveService: GoogleDriveService,
+    private readonly resumableUploadService: ResumableUploadService,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   /**
@@ -68,6 +82,46 @@ export class FilesController {
     };
   }
 
+
+  private async requiredCustomerId(req: Request): Promise<string> {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    if (!customerId) throw new UnauthorizedException('Upload cần đăng nhập Google');
+    return customerId;
+  }
+
+  @Post('files/upload-resumable/init')
+  async initResumableUpload(@Body() body: { fileName?: string; fileSizeBytes?: number; contentType?: string | null; resumeSessionId?: string | null }, @Req() req: Request) {
+    const customerId = await this.requiredCustomerId(req);
+    return this.resumableUploadService.init({
+      customerId,
+      fileName: body?.fileName || '',
+      fileSizeBytes: Number(body?.fileSizeBytes),
+      contentType: body?.contentType,
+      resumeSessionId: body?.resumeSessionId,
+    });
+  }
+
+  @Get('files/upload-resumable/:sessionId')
+  async resumableUploadStatus(@Param('sessionId') sessionId: string, @Req() req: Request) {
+    return this.resumableUploadService.status(sessionId, await this.requiredCustomerId(req));
+  }
+
+  @Put('files/upload-resumable/:sessionId/parts/:partNumber')
+  @UseInterceptors(FileInterceptor('chunk', { limits: { fileSize: RESUMABLE_CHUNK_SIZE_BYTES } }))
+  async uploadResumablePart(@Param('sessionId') sessionId: string, @Param('partNumber', ParseIntPipe) partNumber: number, @UploadedFile() chunk: Express.Multer.File | undefined, @Req() req: Request) {
+    if (!chunk) throw new BadRequestException('Thiếu chunk trong request (field "chunk")');
+    return this.resumableUploadService.uploadPart(sessionId, await this.requiredCustomerId(req), partNumber, chunk.buffer);
+  }
+
+  @Post('files/upload-resumable/:sessionId/complete')
+  async completeResumableUpload(@Param('sessionId') sessionId: string, @Req() req: Request) {
+    return this.resumableUploadService.complete(sessionId, await this.requiredCustomerId(req));
+  }
+
+  @Delete('files/upload-resumable/:sessionId')
+  async abortResumableUpload(@Param('sessionId') sessionId: string, @Req() req: Request) {
+    return this.resumableUploadService.abort(sessionId, await this.requiredCustomerId(req));
+  }
   @Post('drive/resolve')
   async resolveDrive(@Body() dto: ResolveDriveDto) {
     const result = await this.googleDriveService.resolve(dto.driveLink);
