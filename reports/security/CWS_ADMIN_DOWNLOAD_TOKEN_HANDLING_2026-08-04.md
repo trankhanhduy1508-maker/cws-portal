@@ -16,3 +16,6 @@ This is code-level security evidence. Browser network inspection and production 
 
 
 Additional contract coverage: staff-auth.util.spec.ts asserts a query-only staff token is denied.
+
+
+GitHub Actions #234 on code head 40a40dc PASS: backend build/tests and frontend build/lint.
