@@ -11,7 +11,7 @@ import { DOWNLOADS_REPOSITORY, IDownloadsRepository } from './repositories/downl
 import { WORKER_LOGS_REPOSITORY, IWorkerLogsRepository } from './repositories/worker-logs.repository.interface';
 import { NOTIFICATIONS_REPOSITORY, INotificationsRepository } from './repositories/notifications.repository.interface';
 import { StorageObject, ReviewImage, DownloadLog, WorkerLog, Notification } from './domain/storage-object';
-import { EditRequest } from './domain/edit-request';
+import { EditRequest, EditRequestStatus } from './domain/edit-request';
 import { EDIT_REQUESTS_REPOSITORY, IEditRequestsRepository } from './repositories/edit-requests.repository.interface';
 
 @Injectable()
@@ -97,4 +97,18 @@ export class StorageService {
   /** Chỉ Staff Admin đã qua MFA được gọi method này từ controller. */
   async listAllEditRequests(): Promise<EditRequest[]> {
     return this.editRequestsRepository.findAll();
+  }
+
+  async updateEditRequestStatus(input: {
+    id: string;
+    status: EditRequestStatus;
+    assignedTo?: string | null;
+    expectedResponseAt?: number | null;
+  }): Promise<EditRequest | null> {
+    return this.editRequestsRepository.updateStatus(
+      input.id,
+      input.status,
+      input.assignedTo,
+      input.expectedResponseAt,
+    );
   }
