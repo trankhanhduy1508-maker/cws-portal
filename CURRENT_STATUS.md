@@ -261,3 +261,8 @@ Latest CI recheck: GitHub Actions run #204 (head 750916c) PASS sau khi chỉnh c
 ## Worker Cleanup — 2026-08-04
 
 Đã sửa Worker để reset output local trước attempt và cleanup sau success/fail/partial/retry; chỉ local task output bị xóa, không đụng B2/production. Python static contract + CI #219 PASS; disk-before/after trên Worker Windows thật chưa xác minh. Evidence: reports/worker/CWS_WORKER_LOCAL_CLEANUP_2026-08-04.md.
+
+
+## Admin Edit Request Queue — 2026-08-04
+
+Admin Dashboard đã được nối với queue yêu cầu chỉnh sửa: tải danh sách qua GET /staff/edit-requests, hiển thị job/requester/note/status và cập nhật trạng thái qua PATCH /staff/edit-requests/:id. Backend vẫn enforce RoleGuard + MFA; Customer/Host không được cấp quyền từ UI. Evidence: reports/admin/CWS_ADMIN_EDIT_REQUEST_QUEUE_2026-08-04.md. Trạng thái: CODE PASS, cần CI mới nhất và tài khoản staff MFA thật để runtime verify.
