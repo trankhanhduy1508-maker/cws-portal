@@ -61,7 +61,7 @@ export default function App() {
   // thÃ nh nhÃ¡nh riÃªng á»Ÿ NGOÃ€I CustomerPortalApp (khÃ´ng pháº£i early
   // return bÃªn trong nÃ³) Ä‘á»ƒ khÃ´ng vi pháº¡m Rules of Hooks â€” App() á»Ÿ
   // Ä‘Ã¢y khÃ´ng gá»i hook nÃ o, chá»‰ CustomerPortalApp() má»›i gá»i.
-  if (window.location.hash === '#admin') {
+  if (window.location.hash === '#admin' || new URLSearchParams(window.location.search).get('staff') === 'admin') {
     return <AdminScreen />;
   }
   // ÄÄƒng nháº­p nhÃ¢n sá»± tháº­t (Pháº§n 6) â€” tÃ¡ch biá»‡t Google Login cá»§a
