@@ -36,7 +36,7 @@ function makeSupabase(role: 'admin' | 'host' | null, userExists = true): Supabas
 }
 
 describe('isAuthenticatedMfaAdmin (dùng chung cho JobsController#isAdminRequest legacy routes)', () => {
-  it('false khi không có Bearer header lẫn query staffToken', async () => {
+  it('false khi không có Bearer header', async () => {
     await expect(isAuthenticatedMfaAdmin(makeRequest({}), makeSupabase('admin'))).resolves.toBe(false);
   });
 
@@ -60,8 +60,8 @@ describe('isAuthenticatedMfaAdmin (dùng chung cho JobsController#isAdminRequest
     await expect(isAuthenticatedMfaAdmin(req, makeSupabase('admin'))).resolves.toBe(true);
   });
 
-  it('true khi dùng query ?staffToken= (cho link tải trực tiếp, không set được header)', async () => {
+  it('false khi token chỉ xuất hiện trong query string', async () => {
     const req = makeRequest({ staffToken: makeToken('aal2') });
-    await expect(isAuthenticatedMfaAdmin(req, makeSupabase('admin'))).resolves.toBe(true);
+    await expect(isAuthenticatedMfaAdmin(req, makeSupabase('admin'))).resolves.toBe(false);
   });
 });

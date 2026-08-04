@@ -7,7 +7,7 @@ import {
   RENDER_ORDERS_REPOSITORY,
 } from '../jobs/repositories/render-orders.repository.interface';
 import { toPublicJson } from '../jobs/render-order.presenter';
-import { resolveCustomerId } from '../common/optional-auth.util';
+import { RealtimeAccessTicketService } from './realtime-access-ticket.service';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 const PATH_PATTERN = /^\/ws\/jobs\/([^/?]+)/;
@@ -39,6 +39,7 @@ export class JobsRealtimeServer {
     private readonly supabaseService: SupabaseService,
     @Inject(RENDER_ORDERS_REPOSITORY)
     private readonly ordersRepository: IRenderOrdersRepository,
+    private readonly ticketService: RealtimeAccessTicketService,
   ) {}
 
   attach(httpServer: HttpServer): void {
@@ -54,12 +55,11 @@ export class JobsRealtimeServer {
         return;
       }
       const jobId = match[1];
-      // Token qua query string (?token=...) — trình duyệt KHÔNG set được
-      // custom header khi mở WebSocket, nên không thể dùng Authorization
-      // header như route HTTP thường (xem getOptionalCustomerId()).
-      const token = new URL(url, 'http://localhost').searchParams.get('token');
+      // Chỉ nhận opaque one-time ticket; Supabase bearer token không
+      // bao giờ đi vào URL/WebSocket handshake.
+      const ticket = new URL(url, 'http://localhost').searchParams.get('ticket');
       this.wss!.handleUpgrade(request, socket, head, (client) => {
-        this.handleConnection(client, jobId, token);
+        this.handleConnection(client, jobId, ticket);
       });
     });
 
@@ -80,7 +80,7 @@ export class JobsRealtimeServer {
   private async handleConnection(
     client: WebSocket,
     jobId: string,
-    token: string | null,
+    ticket: string | null,
   ): Promise<void> {
     this.logger.log(`Client kết nối realtime cho job ${jobId}`);
 
@@ -94,26 +94,22 @@ export class JobsRealtimeServer {
       current = null;
     }
 
-    if (current?.customerId) {
-      const customerId = await resolveCustomerId(token, this.supabaseService);
-      if (customerId !== current.customerId) {
-        this.logger.warn(
-          `Từ chối kết nối realtime cho job ${jobId} — token không khớp chủ sở hữu`,
-        );
-        client.close(4003, 'Không có quyền truy cập job này');
-        return;
-      }
-    }
-
-    // SỬA (phát hiện qua tự rà soát 31/07/2026): job KHÔNG tồn tại (id
-    // sai/không có thật, vd ai đó dò URL ngẫu nhiên) trước đây vẫn mở 1
-    // kênh Supabase Realtime SỐNG mãi tới khi client tự đóng — không rò
-    // rỉ dữ liệu gì (không job nào để gửi), nhưng lãng phí tài nguyên
-    // không cần thiết. Đóng kết nối ngay, không mở kênh, nếu job không
-    // tồn tại (client thật luôn có job thật vì `createJob()` await xong
-    // mới gọi subscribe, xem `useRenderJob.js#start()`).
+    // Đóng kết nối ngay nếu job không tồn tại, trước khi consume ticket.
     if (!current) {
       client.close(4004, 'Không tìm thấy job này');
+      return;
+    }
+
+    if (!current.customerId) {
+      client.close(4003, 'Job chưa có owner hợp lệ');
+      return;
+    }
+    const customerId = await this.ticketService.consume(ticket, jobId);
+    if (customerId !== current.customerId) {
+      this.logger.warn(
+        `Từ chối kết nối realtime cho job ${jobId} — ticket không hợp lệ/hết hạn/đã dùng`,
+      );
+      client.close(4003, 'Không có quyền truy cập job này');
       return;
     }
 

@@ -6,7 +6,7 @@ import RenderProgress from '../components/RenderProgress';
 import CancelConfirmModal from '../components/CancelConfirmModal';
 import { formatEtaDuration, formatEtaClockTime } from '../utils/timeUtils';
 
-export default function ProgressScreen({ stageIndex, overallProgress, fileName, etaSeconds, onCancel }) {
+export default function ProgressScreen({ stageIndex, overallProgress, fileName, etaSeconds, queueSeconds, onCancel }) {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   // Ước tính thời gian còn lại dựa trên % đã hoàn thành so với ETA ban đầu.
@@ -31,6 +31,12 @@ export default function ProgressScreen({ stageIndex, overallProgress, fileName, 
       </div>
 
       <RenderProgress stageIndex={stageIndex} overallProgress={overallProgress} />
+
+      {queueSeconds > 0 && (
+        <div style={{ padding: '10px 12px', borderRadius: 10, background: '#FFF7E6', color: '#8A5A00', fontSize: 13, textAlign: 'center' }}>
+          Hàng đợi hiện tại có thể thêm khoảng {formatEtaDuration(queueSeconds)} trước khi máy bắt đầu xử lý.
+        </div>
+      )}
 
       {remainingSeconds != null && (
         <div style={{ textAlign: 'center' }}>

@@ -17,7 +17,11 @@ REM khong dung chung gi voi worker chinh, khong ghi/sua du lieu nao.
 REM ============================================================
 
 set SUPABASE_URL=https://ynhxlxetwuiyejcjypsi.supabase.co
-set SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaHhseGV0d3VpeWVqY2p5cHNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MDAxNjAsImV4cCI6MjEwMDE3NjE2MH0.9xFRvMGQpx0kYzHZCtqRlTuYx8bp3jI3P5-L6cVRXDE
+set "SUPABASE_KEY=%CWS_SUPABASE_KEY%"
+if not defined CWS_SUPABASE_KEY (
+    echo LOI: Thieu CWS_SUPABASE_KEY. Khong tiep tuc.
+    exit /b 1
+)
 set B2_BUCKET=MTEB90
 set B2_ENDPOINT=https://s3.us-west-004.backblazeb2.com
 set FFMPEG_PATH=C:\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe

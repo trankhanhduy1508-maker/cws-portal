@@ -25,7 +25,7 @@ Customer Profile
     ↓
 Tạo Job
     ↓
-Dán Google Drive / OneDrive / Dropbox Link
+Upload trực tiếp `.blend` hoặc dán Google Drive link
     ↓
 Kiểm tra quyền truy cập
     ↓
@@ -86,12 +86,12 @@ Khách nhập:
 -   Link chia sẻ.
 -   Ghi chú.
 
-Nguồn hỗ trợ:
+Nguồn hỗ trợ trong MVP:
 
+-   Upload trực tiếp file `.blend`
 -   Google Drive
--   OneDrive
--   Dropbox
--   Direct Link
+
+OneDrive, Dropbox và Direct Link chưa có integration thật nên chưa được nhận trong MVP.
 
 Backend kiểm tra quyền truy cập trước khi tạo Job.
 

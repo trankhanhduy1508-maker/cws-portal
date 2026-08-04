@@ -119,27 +119,9 @@ export const FILE_SOURCE = {
   GOOGLE_DRIVE: 'google_drive',
 };
 
-// Regex nhận diện link chia sẻ hợp lệ — CWS_MVP_WORKFLOW_FINAL.md, mục
-// "Tạo Job" chấp nhận Google Drive / OneDrive / Dropbox / Direct Link.
-// Đây chỉ validate CÚ PHÁP — không xác nhận file có tồn tại/có quyền
-// truy cập hay không, việc đó cần Backend thật kiểm tra (hiện chỉ
-// Google Drive có kiểm tra quyền thật qua API key, xem
-// backend/src/files/google-drive.service.ts — OneDrive/Dropbox/Direct
-// Link chấp nhận cú pháp nhưng CHƯA gọi API thật để xác minh quyền,
-// giống hành vi "không bịa dữ liệu" khi thiếu GOOGLE_DRIVE_API_KEY).
+// Chỉ nhận Google Drive vì đây là nguồn duy nhất có Backend resolve thật
+// (tồn tại, quyền truy cập, tên và dung lượng). Không hiển thị/nhận
+// OneDrive, Dropbox hoặc Direct Link cho tới khi có integration/evidence
+// thật tương ứng; tránh tạo Job từ nguồn mà Worker không tải được.
 export const GOOGLE_DRIVE_LINK_PATTERN =
   /^https:\/\/drive\.google\.com\/(file\/d\/[\w-]+|open\?id=[\w-]+|uc\?id=[\w-]+)/;
-export const ONEDRIVE_LINK_PATTERN =
-  /^https:\/\/(1drv\.ms\/|[\w-]+\.sharepoint\.com\/|onedrive\.live\.com\/)/;
-export const DROPBOX_LINK_PATTERN = /^https:\/\/(www\.)?dropbox\.com\//;
-/** Direct Link — bất kỳ URL https nào khác (vd link tải trực tiếp 1
- * file .blend từ server riêng). Đặt SAU CÙNG trong SHARED_LINK_PATTERNS
- * vì đây là catch-all rộng nhất — 3 pattern trên vẫn hữu ích để phân
- * biệt UI/hiển thị, không phải để validate chặt hơn Direct Link. */
-export const DIRECT_LINK_PATTERN = /^https:\/\/.+/;
-export const SHARED_LINK_PATTERNS = [
-  GOOGLE_DRIVE_LINK_PATTERN,
-  ONEDRIVE_LINK_PATTERN,
-  DROPBOX_LINK_PATTERN,
-  DIRECT_LINK_PATTERN,
-];

@@ -5,6 +5,10 @@ import {
   PutObjectCommand,
   ListObjectsV2Command,
   GetObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
@@ -31,47 +35,55 @@ export class B2StorageService {
     });
   }
 
-  /** Ghép URL "công khai" (không ký, không hết hạn) từ object key — CHỈ
-   * dùng làm giá trị lưu nội bộ (DB), KHÔNG trả trực tiếp cho khách xem/
-   * tải nữa (xem getSignedUrl bên dưới). Nếu bucket B2 thật đang để
-   * public-read, URL dạng này ai đoán được key cũng tải được, bỏ qua
-   * hoàn toàn kiểm tra chủ sở hữu ở tầng Backend — đây chính là lỗ hổng
-   * đã phát hiện qua self-review (xem docs/MVP_GAP_REPORT.md). */
+  /** GhÃ©p URL "cÃ´ng khai" (khÃ´ng kÃ½, khÃ´ng háº¿t háº¡n) tá»« object key â€” CHá»ˆ
+   * dÃ¹ng lÃ m giÃ¡ trá»‹ lÆ°u ná»™i bá»™ (DB), KHÃ”NG tráº£ trá»±c tiáº¿p cho khÃ¡ch xem/
+   * táº£i ná»¯a (xem getSignedUrl bÃªn dÆ°á»›i). Náº¿u bucket B2 tháº­t Ä‘ang Ä‘á»ƒ
+   * public-read, URL dáº¡ng nÃ y ai Ä‘oÃ¡n Ä‘Æ°á»£c key cÅ©ng táº£i Ä‘Æ°á»£c, bá» qua
+   * hoÃ n toÃ n kiá»ƒm tra chá»§ sá»Ÿ há»¯u á»Ÿ táº§ng Backend â€” Ä‘Ã¢y chÃ­nh lÃ  lá»— há»•ng
+   * Ä‘Ã£ phÃ¡t hiá»‡n qua self-review (xem docs/MVP_GAP_REPORT.md). */
   getPublicUrl(key: string): string {
     return `https://${this.endpoint}/${this.bucketName}/${key}`;
   }
 
-  /** Trích object key từ URL đã lưu bằng getPublicUrl()/uploadBuffer() ở
-   * trên — dùng để ký lại thành presigned URL ngay trước khi trả cho
-   * khách, KHÔNG cần đổi schema DB (vẫn lưu chuỗi URL tĩnh như cũ, chỉ
-   * không dùng thẳng nó nữa). */
+  /** TrÃ­ch object key tá»« URL Ä‘Ã£ lÆ°u báº±ng getPublicUrl()/uploadBuffer() á»Ÿ
+   * trÃªn â€” dÃ¹ng Ä‘á»ƒ kÃ½ láº¡i thÃ nh presigned URL ngay trÆ°á»›c khi tráº£ cho
+   * khÃ¡ch, KHÃ”NG cáº§n Ä‘á»•i schema DB (váº«n lÆ°u chuá»—i URL tÄ©nh nhÆ° cÅ©, chá»‰
+   * khÃ´ng dÃ¹ng tháº³ng nÃ³ ná»¯a). */
   extractKeyFromPublicUrl(url: string): string {
     const prefix = `https://${this.endpoint}/${this.bucketName}/`;
     if (!url.startsWith(prefix)) {
       throw new Error(
-        `URL không thuộc bucket B2 hiện tại, không trích được key: ${url}`,
+        `URL khÃ´ng thuá»™c bucket B2 hiá»‡n táº¡i, khÃ´ng trÃ­ch Ä‘Æ°á»£c key: ${url}`,
       );
     }
     return url.slice(prefix.length);
   }
 
   /**
-   * URL có CHỮ KÝ + THỜI HẠN cho 1 object — đây mới là URL thật sự nên
-   * đưa cho khách (ảnh preview/file tải cuối), thay cho getPublicUrl()
-   * tĩnh ở trên. An toàn dù bucket B2 đang public-read hay private:
-   * presigned URL vẫn hoạt động đúng với bucket public (không hại gì
-   * thêm), và bắt buộc phải có nếu bucket được chuyển sang private.
+   * URL cÃ³ CHá»® KÃ + THá»œI Háº N cho 1 object â€” Ä‘Ã¢y má»›i lÃ  URL tháº­t sá»± nÃªn
+   * Ä‘Æ°a cho khÃ¡ch (áº£nh preview/file táº£i cuá»‘i), thay cho getPublicUrl()
+   * tÄ©nh á»Ÿ trÃªn. An toÃ n dÃ¹ bucket B2 Ä‘ang public-read hay private:
+   * presigned URL váº«n hoáº¡t Ä‘á»™ng Ä‘Ãºng vá»›i bucket public (khÃ´ng háº¡i gÃ¬
+   * thÃªm), vÃ  báº¯t buá»™c pháº£i cÃ³ náº¿u bucket Ä‘Æ°á»£c chuyá»ƒn sang private.
    */
   async getSignedUrl(key: string, expiresInSeconds: number): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucketName, Key: key });
     return getSignedUrl(this.s3, command, { expiresIn: expiresInSeconds });
   }
 
-  /** Upload file lên B2, trả về object key (dùng làm fileRef). */
+  /** Upload file lÃªn B2, tráº£ vá» object key (dÃ¹ng lÃ m fileRef). */
   async uploadFile(
     file: Express.Multer.File,
   ): Promise<{ key: string; url: string }> {
-    const key = `uploads/${randomUUID()}-${file.originalname}`;
+    // Never place a client-controlled path or raw filename in an object key.
+    // B2 keys are not filesystem paths, but keeping separators/control
+    // characters out prevents confusing downstream workers and log tooling.
+    const safeName = (file.originalname || 'upload.blend')
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/[^a-zA-Z0-9._-]/g, '_')
+      .slice(0, 160) || 'upload.blend';
+    const key = `uploads/${randomUUID()}-${safeName}`;
 
     try {
       await this.s3.send(
@@ -84,16 +96,56 @@ export class B2StorageService {
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Upload B2 thất bại cho key ${key}: ${message}`);
-      throw new Error(`Upload file lên B2 thất bại: ${message}`);
+      this.logger.error(`Upload B2 tháº¥t báº¡i cho key ${key}: ${message}`);
+      throw new Error(`Upload file lÃªn B2 tháº¥t báº¡i: ${message}`);
     }
 
     const url = `https://${this.endpoint}/${this.bucketName}/${key}`;
     return { key, url };
   }
 
-  /** Liệt kê toàn bộ object theo prefix — dùng để tìm các frame PNG
-   * mà Worker đã upload cho 1 job (đường dẫn dạng renders/JOB_ID/
+
+  async createMultipartUpload(key: string, contentType: string): Promise<{ uploadId: string }> {
+    const result = await this.s3.send(new CreateMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    }));
+    if (!result.UploadId) throw new Error('B2 khÃ´ng tráº£ vá» multipart upload id');
+    return { uploadId: result.UploadId };
+  }
+
+  async uploadMultipartPart(key: string, uploadId: string, partNumber: number, buffer: Buffer): Promise<string> {
+    const result = await this.s3.send(new UploadPartCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+      Body: buffer,
+      ContentLength: buffer.length,
+    }));
+    if (!result.ETag) throw new Error('B2 khÃ´ng tráº£ vá» ETag cho chunk');
+    return result.ETag;
+  }
+
+  async completeMultipartUpload(key: string, uploadId: string, parts: { PartNumber: number; ETag: string }[]): Promise<void> {
+    await this.s3.send(new CompleteMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts },
+    }));
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    await this.s3.send(new AbortMultipartUploadCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      UploadId: uploadId,
+    }));
+  }
+  /** Liá»‡t kÃª toÃ n bá»™ object theo prefix â€” dÃ¹ng Ä‘á»ƒ tÃ¬m cÃ¡c frame PNG
+   * mÃ  Worker Ä‘Ã£ upload cho 1 job (Ä‘Æ°á»ng dáº«n dáº¡ng renders/JOB_ID/
    * task_ID/frame_N.png). */
   async listObjectsByPrefix(prefix: string): Promise<string[]> {
     const keys: string[] = [];
@@ -116,21 +168,21 @@ export class B2StorageService {
     return keys;
   }
 
-  /** Tải nội dung 1 object về dạng Buffer — dùng khi đóng gói kết quả
-   * (tải từng frame PNG để nén vào file zip). */
+  /** Táº£i ná»™i dung 1 object vá» dáº¡ng Buffer â€” dÃ¹ng khi Ä‘Ã³ng gÃ³i káº¿t quáº£
+   * (táº£i tá»«ng frame PNG Ä‘á»ƒ nÃ©n vÃ o file zip). */
   async getObjectBuffer(key: string): Promise<Buffer> {
     const res = await this.s3.send(
       new GetObjectCommand({ Bucket: this.bucketName, Key: key }),
     );
     const stream = res.Body;
     if (!stream || !('transformToByteArray' in stream)) {
-      throw new Error(`Không đọc được nội dung object ${key} từ B2`);
+      throw new Error(`KhÃ´ng Ä‘á»c Ä‘Æ°á»£c ná»™i dung object ${key} tá»« B2`);
     }
     const bytes = await stream.transformToByteArray();
     return Buffer.from(bytes);
   }
 
-  /** Upload buffer (vd file zip đã nén) lên B2, trả về URL trực tiếp. */
+  /** Upload buffer (vd file zip Ä‘Ã£ nÃ©n) lÃªn B2, tráº£ vá» URL trá»±c tiáº¿p. */
   async uploadBuffer(
     key: string,
     buffer: Buffer,
@@ -147,3 +199,4 @@ export class B2StorageService {
     return `https://${this.endpoint}/${this.bucketName}/${key}`;
   }
 }
+

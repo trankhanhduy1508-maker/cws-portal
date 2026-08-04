@@ -52,7 +52,12 @@ REM ----- Cau hinh cho Self Recovery + Auto Update (dua theo condor_master
 REM cua HTCondor: tien trinh cha DON GIAN, tu khoi dong lai neu con crash,
 REM tu kiem tra ban moi truoc moi lan chay). Xem 10_setup_worker_selfheal.sql -----
 set "SUPABASE_URL=https://ynhxlxetwuiyejcjypsi.supabase.co"
-set "SUPABASE_KEY=sb_publishable_OyV65PRDgzukM36BNZnCdg_6T3-OeG1"
+REM Secrets are injected by the host environment; never commit them here.
+set "SUPABASE_KEY=%CWS_SUPABASE_KEY%"
+if not defined CWS_SUPABASE_KEY (
+    echo [LOI] Thieu CWS_SUPABASE_KEY. Khong khoi dong Worker.
+    exit /b 1
+)
 set "VERSION_FILE=%CWS_DIR%\worker_version.txt"
 set "COOLDOWN_SEC=15"
 
@@ -63,8 +68,17 @@ REM chinh cua Worker (key do co quyen qua rong: doc/ghi toan bo bucket,
 REM bao gom du lieu render cua khach hang). Key nay tao rieng 22/07/2026,
 REM chi doc duoc dung thu muc worker-releases/, an toan de nhung vao .bat
 REM phan phoi cho nhieu may ma khong lo lo du lieu khach hang) -----
-set "B2_KEY_ID=00483fb516ab3b10000000002"
-set "B2_APP_KEY=K00404F3uE/NN9Iq5o5rkUd5twmspK8"
+REM B2 credentials are injected by the host environment; never commit them.
+if not defined CWS_B2_KEY_ID (
+    echo [LOI] Thieu CWS_B2_KEY_ID. Khong khoi dong Worker.
+    exit /b 1
+)
+if not defined CWS_B2_APP_KEY (
+    echo [LOI] Thieu CWS_B2_APP_KEY. Khong khoi dong Worker.
+    exit /b 1
+)
+set "B2_KEY_ID=%CWS_B2_KEY_ID%"
+set "B2_APP_KEY=%CWS_B2_APP_KEY%"
 set "B2_BUCKET_NAME=MTEB90"
 set "B2_FILE_NAME=worker-releases/cws_worker_full.py"
 

@@ -6,24 +6,34 @@ import {
   adminConfirmHostUsageFinalAmount,
   adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
   adminListPaymentDevices, adminListPaymentAnomalies,
+  adminListEditRequests, adminUpdateEditRequest,
+  adminListSupportTickets, adminUpdateSupportTicket,
 } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
 import StaffMfaLogin from '../components/StaffMfaLogin';
+import AdminAffiliatePanel from '../components/AdminAffiliatePanel';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 const STAFF_TOKEN_STORAGE = 'cws_staff_token';
 
-// Phase 8 CWS_WORKER_ROADMAP.md — hiển thị giây dạng "Xp Ys" ngắn gọn cho
-// bảng thống kê host usage (số giây thô từ Backend khó đọc trực tiếp).
+// Phase 8 CWS_WORKER_ROADMAP.md â€” hiá»ƒn thá»‹ giÃ¢y dáº¡ng "Xp Ys" ngáº¯n gá»n cho
+// báº£ng thá»‘ng kÃª host usage (sá»‘ giÃ¢y thÃ´ tá»« Backend khÃ³ Ä‘á»c trá»±c tiáº¿p).
 // Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
-// reconciliation") — nhãn tiếng Việt cho 3 loại bất thường của view
+// reconciliation") â€” nhÃ£n tiáº¿ng Viá»‡t cho 3 loáº¡i báº¥t thÆ°á»ng cá»§a view
 // payment_reconciliation_anomalies (xem worker_migrations/015_...).
 const ANOMALY_TYPE_LABEL = {
-  PAID_WITHOUT_PAYMENT_RECORD: 'Order "paid" nhưng thiếu dòng payments',
-  NOTIFICATION_STUCK_PROCESSING: 'Webhook kẹt "processing" >10 phút',
-  PAID_NOT_DELIVERED: 'Đã thanh toán >2 tiếng nhưng chưa nhận file',
+  PAID_WITHOUT_PAYMENT_RECORD: 'Order "paid" nhÆ°ng thiáº¿u dÃ²ng payments',
+  NOTIFICATION_STUCK_PROCESSING: 'Webhook káº¹t "processing" >10 phÃºt',
+  PAID_NOT_DELIVERED: 'ÄÃ£ thanh toÃ¡n >2 tiáº¿ng nhÆ°ng chÆ°a nháº­n file',
 };
+
+function formatDateTimeLocal(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, '0');
+  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
 
 function formatDurationSeconds(totalSeconds) {
   const s = Math.round(totalSeconds ?? 0);
@@ -33,19 +43,19 @@ function formatDurationSeconds(totalSeconds) {
 }
 
 /**
- * Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7) — KHÔNG nằm
- * trong luồng khách hàng bình thường, chỉ truy cập qua URL kèm
- * #admin (xem App.jsx). Bảo vệ bằng x-admin-key (shared secret đơn
- * giản, xem backend/src/common/guards/admin-key.guard.ts) — KHÔNG
- * phải hệ thống đăng nhập/phân quyền enterprise.
+ * Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai Ä‘oáº¡n 7) â€” KHÃ”NG náº±m
+ * trong luá»“ng khÃ¡ch hÃ ng bÃ¬nh thÆ°á»ng, chá»‰ truy cáº­p qua URL kÃ¨m
+ * #admin (xem App.jsx). Báº£o vá»‡ báº±ng x-admin-key (shared secret Ä‘Æ¡n
+ * giáº£n, xem backend/src/common/guards/admin-key.guard.ts) â€” KHÃ”NG
+ * pháº£i há»‡ thá»‘ng Ä‘Äƒng nháº­p/phÃ¢n quyá»n enterprise.
  */
 export default function AdminScreen() {
-  // adminKey giờ giữ ACCESS TOKEN Supabase (Bearer) thay vì shared key
-  // tĩnh cũ — chỉ có giá trị SAU KHI đăng nhập + MFA thật thành công
-  // (xem StaffMfaLogin/services/staffAuth.js). Đọc lại từ sessionStorage
-  // lúc mount CHỈ để tránh hiện lại màn login khi user F5 trong CÙNG
-  // tab — Backend vẫn tự kiểm tra lại claim aal của chính token này ở
-  // MỌI request (không tin tưởng việc token có mặt là đủ).
+  // adminKey giá» giá»¯ ACCESS TOKEN Supabase (Bearer) thay vÃ¬ shared key
+  // tÄ©nh cÅ© â€” chá»‰ cÃ³ giÃ¡ trá»‹ SAU KHI Ä‘Äƒng nháº­p + MFA tháº­t thÃ nh cÃ´ng
+  // (xem StaffMfaLogin/services/staffAuth.js). Äá»c láº¡i tá»« sessionStorage
+  // lÃºc mount CHá»ˆ Ä‘á»ƒ trÃ¡nh hiá»‡n láº¡i mÃ n login khi user F5 trong CÃ™NG
+  // tab â€” Backend váº«n tá»± kiá»ƒm tra láº¡i claim aal cá»§a chÃ­nh token nÃ y á»Ÿ
+  // Má»ŒI request (khÃ´ng tin tÆ°á»Ÿng viá»‡c token cÃ³ máº·t lÃ  Ä‘á»§).
   const [adminKey, setAdminKey] = useState(() => {
     try { return sessionStorage.getItem(STAFF_TOKEN_STORAGE) || ''; } catch { return ''; }
   });
@@ -58,6 +68,8 @@ export default function AdminScreen() {
   const [hostUsageSessions, setHostUsageSessions] = useState([]);
   const [paymentDevices, setPaymentDevices] = useState([]);
   const [paymentAnomalies, setPaymentAnomalies] = useState([]);
+  const [editRequests, setEditRequests] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [storageCodeQuery, setStorageCodeQuery] = useState('');
@@ -72,9 +84,9 @@ export default function AdminScreen() {
     Promise.all([
       adminListJobs(key), adminListCustomers(key), adminListWorkers(key),
       adminListIncidents(key), adminListHostUsageSessions(key), adminListPaymentDevices(key),
-      adminListPaymentAnomalies(key),
+      adminListPaymentAnomalies(key), adminListEditRequests(key), adminListSupportTickets(key),
     ])
-      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes]) => {
+      .then(([jobsRes, customersRes, workersRes, incidentsRes, hostUsageRes, paymentDevicesRes, paymentAnomaliesRes, editRequestsRes, supportTicketsRes]) => {
         setJobs(jobsRes);
         setCustomers(customersRes);
         setWorkers(workersRes);
@@ -82,15 +94,17 @@ export default function AdminScreen() {
         setHostUsageSessions(hostUsageRes);
         setPaymentDevices(paymentDevicesRes);
         setPaymentAnomalies(paymentAnomaliesRes);
+        setEditRequests(editRequestsRes.requests ?? []);
+        setSupportTickets(supportTicketsRes.tickets ?? []);
       })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Hành động Admin THẬT lên Worker Fleet (retry/requeue/quarantine/drain,
-  // ngoài CWS_WORKER_ROADMAP.md — đóng lỗ hổng Phase 6) — confirm() trước
-  // khi gọi vì đây là thay đổi trạng thái thật (không chỉ đọc), rồi
-  // loadAll() lại để bảng cập nhật đúng dữ liệu mới nhất.
+  // HÃ nh Ä‘á»™ng Admin THáº¬T lÃªn Worker Fleet (retry/requeue/quarantine/drain,
+  // ngoÃ i CWS_WORKER_ROADMAP.md â€” Ä‘Ã³ng lá»— há»•ng Phase 6) â€” confirm() trÆ°á»›c
+  // khi gá»i vÃ¬ Ä‘Ã¢y lÃ  thay Ä‘á»•i tráº¡ng thÃ¡i tháº­t (khÃ´ng chá»‰ Ä‘á»c), rá»“i
+  // loadAll() láº¡i Ä‘á»ƒ báº£ng cáº­p nháº­t Ä‘Ãºng dá»¯ liá»‡u má»›i nháº¥t.
   const runAdminAction = useCallback((confirmMessage, actionPromise) => {
     if (!window.confirm(confirmMessage)) return;
     setError(null);
@@ -101,7 +115,7 @@ export default function AdminScreen() {
         // trang thai failed) - neu khong kiem tra rieng, Admin se KHONG
         // biet hanh dong vua bam co that su co tac dung hay khong.
         if (result && result.ok === false) {
-          setError('Hành động không có tác dụng — điều kiện không đúng (ví dụ task/worker đã đổi trạng thái từ trước). Kiểm tra lại dữ liệu bên dưới.');
+          setError('HÃ nh Ä‘á»™ng khÃ´ng cÃ³ tÃ¡c dá»¥ng â€” Ä‘iá»u kiá»‡n khÃ´ng Ä‘Ãºng (vÃ­ dá»¥ task/worker Ä‘Ã£ Ä‘á»•i tráº¡ng thÃ¡i tá»« trÆ°á»›c). Kiá»ƒm tra láº¡i dá»¯ liá»‡u bÃªn dÆ°á»›i.');
         }
         return loadAll(adminKey);
       })
@@ -113,13 +127,13 @@ export default function AdminScreen() {
   }, [adminKey, runAdminAction]);
 
   const handleRequeueTask = useCallback((taskId) => {
-    runAdminAction(`Requeue task ${taskId} ngay (không đợi tự động)?`, adminRequeueTask(taskId, adminKey));
+    runAdminAction(`Requeue task ${taskId} ngay (khÃ´ng Ä‘á»£i tá»± Ä‘á»™ng)?`, adminRequeueTask(taskId, adminKey));
   }, [adminKey, runAdminAction]);
 
   const handleToggleQuarantine = useCallback((workerId, currentlyQuarantined) => {
     const next = !currentlyQuarantined;
     runAdminAction(
-      next ? `Quarantine worker ${workerId}? Worker sẽ không claim được task mới.` : `Bỏ quarantine worker ${workerId}?`,
+      next ? `Quarantine worker ${workerId}? Worker sáº½ khÃ´ng claim Ä‘Æ°á»£c task má»›i.` : `Bá» quarantine worker ${workerId}?`,
       adminSetWorkerQuarantine(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
@@ -127,40 +141,66 @@ export default function AdminScreen() {
   const handleToggleDrain = useCallback((workerId, currentlyDraining) => {
     const next = !currentlyDraining;
     runAdminAction(
-      next ? `Drain worker ${workerId}? Worker sẽ hoàn tất task hiện tại nhưng không nhận task mới.` : `Bỏ drain worker ${workerId}?`,
+      next ? `Drain worker ${workerId}? Worker sáº½ hoÃ n táº¥t task hiá»‡n táº¡i nhÆ°ng khÃ´ng nháº­n task má»›i.` : `Bá» drain worker ${workerId}?`,
       adminSetWorkerDrain(workerId, next, null, adminKey),
     );
   }, [adminKey, runAdminAction]);
 
+  const handleSupportTicketExpectedResponse = useCallback((ticket, value) => {
+    const expectedResponseAt = value ? new Date(value).getTime() : null;
+    if (value && !Number.isFinite(expectedResponseAt)) {
+      setError('Thá»i gian pháº£n há»“i khÃ´ng há»£p lá»‡');
+      return;
+    }
+    setError(null);
+    adminUpdateSupportTicket(ticket.id, ticket.status, adminKey, expectedResponseAt)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
+
+  const handleSupportTicketStatus = useCallback((ticketId, status) => {
+    setError(null);
+    adminUpdateSupportTicket(ticketId, status, adminKey)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
+
+  const handleEditRequestStatus = useCallback((requestId, status) => {
+    setError(null);
+    adminUpdateEditRequest(requestId, status, adminKey)
+      .then(() => loadAll(adminKey))
+      .catch((err) => setError(err.message));
+  }, [adminKey, loadAll]);
+
   const handleConfirmFinalAmount = useCallback((sessionId, estimatedAmount) => {
     const input = window.prompt(
-      'Nhập số tiền cuối cùng (VND):',
+      'Nháº­p sá»‘ tiá»n cuá»‘i cÃ¹ng (VND):',
       estimatedAmount != null ? String(estimatedAmount) : '',
     );
     // Number('') === 0 trong JS - neu khong chan rieng, bam OK voi o
     // trong (thuong xay ra vi estimatedAmount dang null khi chua cau
     // hinh hourly_rate) se AM THAM xac nhan final_amount=0, de bi nham
     // la "co chu dich, khong tinh tien" trong khi thuc ra la bo trong.
-    if (input == null || input.trim() === '') return; // Cancel hoặc để trống
+    if (input == null || input.trim() === '') return; // Cancel hoáº·c Ä‘á»ƒ trá»‘ng
     const finalAmount = Number(input);
     if (!Number.isFinite(finalAmount) || finalAmount < 0) {
-      setError('Số tiền không hợp lệ');
+      setError('Sá»‘ tiá»n khÃ´ng há»£p lá»‡');
       return;
     }
     setError(null);
     adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey)
       .then((result) => {
         if (result && result.ok === false) {
-          setError('Không xác nhận được final_amount — phiên host usage có thể không còn tồn tại.');
+          setError('KhÃ´ng xÃ¡c nháº­n Ä‘Æ°á»£c final_amount â€” phiÃªn host usage cÃ³ thá»ƒ khÃ´ng cÃ²n tá»“n táº¡i.');
         }
         return loadAll(adminKey);
       })
       .catch((err) => setError(err.message));
   }, [adminKey, loadAll]);
 
-  // Phase 6 CWS_WORKER_ROADMAP.md — lọc theo severity/đã xử lý ngay ở
-  // Frontend (danh sách tối đa 200 dòng gần nhất từ Backend, không cần
-  // gọi lại API mỗi lần đổi filter).
+  // Phase 6 CWS_WORKER_ROADMAP.md â€” lá»c theo severity/Ä‘Ã£ xá»­ lÃ½ ngay á»Ÿ
+  // Frontend (danh sÃ¡ch tá»‘i Ä‘a 200 dÃ²ng gáº§n nháº¥t tá»« Backend, khÃ´ng cáº§n
+  // gá»i láº¡i API má»—i láº§n Ä‘á»•i filter).
   const filteredIncidents = useMemo(() => (
     incidents.filter((inc) => {
       if (incidentSeverityFilter !== 'all' && inc.severity !== incidentSeverityFilter) return false;
@@ -168,6 +208,22 @@ export default function AdminScreen() {
       return true;
     })
   ), [incidents, incidentSeverityFilter, incidentShowResolved]);
+
+  const handleDownloadJob = useCallback(async (jobId) => {
+    setError(null);
+    try {
+      const objectUrl = await adminGetDownloadUrl(jobId, adminKey);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [adminKey]);
 
   const handleOpenPreview = useCallback((job) => {
     setPreviewJob({ id: job.id, projectName: job.projectName, images: [], isLoading: true, error: null });
@@ -180,8 +236,8 @@ export default function AdminScreen() {
     if (adminKey) loadAll(adminKey);
   }, [adminKey, loadAll]);
 
-  // customerId -> tên hiển thị — dùng để hiện tên khách ở bảng Job thay
-  // vì UUID trần, và để lọc Job theo Customer (Giai đoạn 7: "Tìm kiếm
+  // customerId -> tÃªn hiá»ƒn thá»‹ â€” dÃ¹ng Ä‘á»ƒ hiá»‡n tÃªn khÃ¡ch á»Ÿ báº£ng Job thay
+  // vÃ¬ UUID tráº§n, vÃ  Ä‘á»ƒ lá»c Job theo Customer (Giai Ä‘oáº¡n 7: "TÃ¬m kiáº¿m
   // theo Customer").
   const customerNameById = useMemo(() => {
     const map = new Map();
@@ -214,7 +270,7 @@ export default function AdminScreen() {
   const handleSignOut = useCallback(() => {
     try { sessionStorage.removeItem(STAFF_TOKEN_STORAGE); } catch { /* ignore */ }
     setAdminKey('');
-    signOutStaff().catch(() => { /* đã xoá token local, không chặn UI vì lỗi mạng */ });
+    signOutStaff().catch(() => { /* Ä‘Ã£ xoÃ¡ token local, khÃ´ng cháº·n UI vÃ¬ lá»—i máº¡ng */ });
   }, []);
 
   const handleSearchStorageCode = async (e) => {
@@ -253,10 +309,10 @@ export default function AdminScreen() {
         <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 20, fontWeight: 600 }}>CWS Admin</h2>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <button onClick={() => loadAll(adminKey)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#3B5BFF' }}>
-            <RefreshCw size={14} strokeWidth={2} /> Tải lại
+            <RefreshCw size={14} strokeWidth={2} /> Táº£i láº¡i
           </button>
           <button onClick={handleSignOut} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: '#666' }}>
-            <LogOut size={14} strokeWidth={2} /> Đăng xuất
+            <LogOut size={14} strokeWidth={2} /> ÄÄƒng xuáº¥t
           </button>
         </div>
       </div>
@@ -266,7 +322,7 @@ export default function AdminScreen() {
           <input
             value={storageCodeQuery}
             onChange={(e) => setStorageCodeQuery(e.target.value)}
-            placeholder="Tìm theo Storage Code (CWS-XXXXXXXX)"
+            placeholder="TÃ¬m theo Storage Code (CWS-XXXXXXXX)"
             style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
           />
           <button type="submit" style={{ padding: '10px 12px' }}><Search size={16} strokeWidth={2} /></button>
@@ -275,7 +331,7 @@ export default function AdminScreen() {
           <input
             value={paymentCodeQuery}
             onChange={(e) => setPaymentCodeQuery(e.target.value)}
-            placeholder="Tìm theo Payment Code"
+            placeholder="TÃ¬m theo Payment Code"
             style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
           />
           <button type="submit" style={{ padding: '10px 12px' }}><Search size={16} strokeWidth={2} /></button>
@@ -284,7 +340,7 @@ export default function AdminScreen() {
           <input
             value={customerQuery}
             onChange={(e) => setCustomerQuery(e.target.value)}
-            placeholder="Tìm theo Customer (tên/email/id)"
+            placeholder="TÃ¬m theo Customer (tÃªn/email/id)"
             style={{ flex: 1, padding: 10, borderRadius: 10, border: '1.5px solid #E8E8EA', fontSize: 13.5 }}
           />
         </div>
@@ -301,7 +357,9 @@ export default function AdminScreen() {
         </pre>
       )}
 
-      {isLoading && <p>Đang tải...</p>}
+      <AdminAffiliatePanel adminKey={adminKey} />
+
+      {isLoading && <p>Äang táº£i...</p>}
 
       {!isLoading && (
         <div style={{ overflowX: 'auto', marginBottom: 28 }}>
@@ -311,10 +369,10 @@ export default function AdminScreen() {
                 <th style={{ padding: 8 }}>Project</th>
                 <th style={{ padding: 8 }}>Customer</th>
                 <th style={{ padding: 8 }}>Status</th>
-                <th style={{ padding: 8 }}>Tiến độ</th>
+                <th style={{ padding: 8 }}>Tiáº¿n Ä‘á»™</th>
                 <th style={{ padding: 8 }}>Payment</th>
-                <th style={{ padding: 8 }}>Tạo lúc</th>
-                <th style={{ padding: 8 }}>File cuối</th>
+                <th style={{ padding: 8 }}>Táº¡o lÃºc</th>
+                <th style={{ padding: 8 }}>File cuá»‘i</th>
                 <th style={{ padding: 8 }}>Preview</th>
               </tr>
             </thead>
@@ -322,15 +380,15 @@ export default function AdminScreen() {
               {visibleJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
                   <td style={{ padding: 8 }}>{job.projectName}</td>
-                  <td style={{ padding: 8 }}>{job.customerId ? (customerNameById.get(job.customerId) ?? job.customerId) : '—'}</td>
+                  <td style={{ padding: 8 }}>{job.customerId ? (customerNameById.get(job.customerId) ?? job.customerId) : 'â€”'}</td>
                   <td style={{ padding: 8 }}>{JOB_STATUS_LABEL[job.status] ?? job.status}</td>
                   <td style={{ padding: 8 }}>{Math.round((job.stageProgress ?? 0) * 100)}%</td>
                   <td style={{ padding: 8 }}>{PAYMENT_STATUS_LABEL[job.paymentStatus] ?? job.paymentStatus}</td>
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
                   <td style={{ padding: 8 }}>
                     {job.downloadUrl ? (
-                      <a href={adminGetDownloadUrl(job.id, adminKey)} target="_blank" rel="noopener noreferrer">Tải</a>
-                    ) : '—'}
+                      <button type="button" onClick={() => handleDownloadJob(job.id)} style={{ border: 0, background: 'none', color: '#2563EB', cursor: 'pointer', padding: 0 }}>Táº£i</button>
+                    ) : 'â€”'}
                   </td>
                   <td style={{ padding: 8 }}>
                     <button
@@ -344,175 +402,7 @@ export default function AdminScreen() {
                 </tr>
               ))}
               {visibleJobs.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có job nào</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {previewJob && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20,
-          }}
-          onClick={() => setPreviewJob(null)}
-        >
-          <div
-            style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 640, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 15, fontWeight: 600 }}>
-                Preview — {previewJob.projectName}
-              </h3>
-              <button onClick={() => setPreviewJob(null)} type="button" style={{ padding: 4 }}>
-                <X size={18} strokeWidth={2} />
-              </button>
-            </div>
-            {previewJob.isLoading && <p style={{ fontSize: 13.5, color: '#6B6B70' }}>Đang tải...</p>}
-            {previewJob.error && <p style={{ fontSize: 13.5, color: '#E5484D' }}>{previewJob.error}</p>}
-            {!previewJob.isLoading && !previewJob.error && previewJob.images.length === 0 && (
-              <p style={{ fontSize: 13.5, color: '#9a9aa0' }}>Job này chưa có ảnh preview (chưa tới bước review_ready).</p>
-            )}
-            {previewJob.images.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-                {previewJob.images
-                  .slice()
-                  .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
-                  .map((img, i) => (
-                    <img
-                      key={img.url + i}
-                      src={img.url}
-                      alt={`Preview ${i + 1}`}
-                      style={{ width: '100%', borderRadius: 10, aspectRatio: '16 / 9', objectFit: 'cover' }}
-                    />
-                  ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!isLoading && (
-        <>
-          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-            Bất thường thanh toán / refund
-          </h3>
-          {/* Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
-              reconciliation") — CHỈ đọc, view payment_reconciliation_anomalies
-              (worker_migrations/015_...) là nguồn sự thật duy nhất, Frontend
-              KHÔNG tự tính lại logic phát hiện. Đặt NGAY SAU bảng Job (trước
-              Worker Fleet) vì đây là rủi ro trực tiếp tới khách/tiền — ưu
-              tiên hiển thị cao hơn tình trạng hạ tầng Worker. */}
-          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Loại</th>
-                  <th style={{ padding: 8 }}>Order / Storage Code</th>
-                  <th style={{ padding: 8 }}>Order status</th>
-                  <th style={{ padding: 8 }}>Payment status</th>
-                  <th style={{ padding: 8 }}>Số tiền</th>
-                  <th style={{ padding: 8 }}>Thời điểm mốc</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentAnomalies.map((a, i) => (
-                  <tr key={`${a.orderId}-${a.anomalyType}-${i}`} style={{ borderBottom: '1px solid #F0F0F1' }}>
-                    <td style={{ padding: 8, color: '#E5484D', fontWeight: 500 }}>
-                      {ANOMALY_TYPE_LABEL[a.anomalyType] ?? a.anomalyType}
-                    </td>
-                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{a.storageCode ?? a.orderId}</td>
-                    <td style={{ padding: 8 }}>{a.orderStatus ? (JOB_STATUS_LABEL[a.orderStatus] ?? a.orderStatus) : '—'}</td>
-                    <td style={{ padding: 8 }}>{a.paymentStatus ? (PAYMENT_STATUS_LABEL[a.paymentStatus] ?? a.paymentStatus) : '—'}</td>
-                    <td style={{ padding: 8 }}>{a.amountVnd != null ? a.amountVnd.toLocaleString('vi-VN') : '—'}</td>
-                    <td style={{ padding: 8 }}>{formatRelativeTime(a.referenceTime)}</td>
-                  </tr>
-                ))}
-                {paymentAnomalies.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có bất thường nào — dữ liệu thanh toán khớp bình thường</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-            Worker Fleet
-          </h3>
-          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Worker ID</th>
-                  <th style={{ padding: 8 }}>GPU</th>
-                  <th style={{ padding: 8 }}>Status</th>
-                  {/* Phase 5 CWS_WORKER_ROADMAP.md: cot chi tiet hon o BEN
-                      CANH "Status" (idle/busy/offline, van la nguon su that
-                      chinh) - null neu Worker dang chay ban cu chua co
-                      tinh nang bao cao observed_state (Phase 3). */}
-                  <th style={{ padding: 8 }}>Trạng thái chi tiết</th>
-                  <th style={{ padding: 8 }}>Last seen</th>
-                  <th style={{ padding: 8 }}>Crash count</th>
-                  <th style={{ padding: 8 }}>Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workers.map((w) => {
-                  const isQuarantined = w.healthState === 'QUARANTINED';
-                  const isDraining = w.desiredState === 'DRAINING';
-                  return (
-                    <tr key={w.workerId} style={{ borderBottom: '1px solid #F0F0F1' }}>
-                      <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
-                      <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
-                      <td style={{ padding: 8 }}>{w.status}</td>
-                      <td style={{ padding: 8 }} title={w.stateReason ?? ''}>
-                        {w.observedState ?? '—'}
-                        {w.lastTransitionAt ? ` (${formatRelativeTime(w.lastTransitionAt)})` : ''}
-                      </td>
-                      <td style={{ padding: 8 }}>{formatRelativeTime(w.lastSeenAt)}</td>
-                      <td style={{ padding: 8 }}>{w.crashCount}</td>
-                      <td style={{ padding: 8, display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleQuarantine(w.workerId, isQuarantined)}
-                          style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: isQuarantined ? '#FEE2E2' : '#fff', cursor: 'pointer' }}
-                        >
-                          {isQuarantined ? 'Bỏ quarantine' : 'Quarantine'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleDrain(w.workerId, isDraining)}
-                          style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: isDraining ? '#FEF3C7' : '#fff', cursor: 'pointer' }}
-                        >
-                          {isDraining ? 'Bỏ drain' : 'Drain'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {workers.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, margin: 0 }}>
-              Sự cố Worker Fleet
-            </h3>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}>
-              <select
-                value={incidentSeverityFilter}
-                onChange={(e) => setIncidentSeverityFilter(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
-              >
-                <option value="all">Mọi mức độ</option>
-                <option value="critical">critical</option>
-                <option value="error">error</option>
-                <option value="warning">warning</option>
+                <tr><td colSpan={8…2442 tokens truncated…ion>
               </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input
@@ -520,49 +410,49 @@ export default function AdminScreen() {
                   checked={incidentShowResolved}
                   onChange={(e) => setIncidentShowResolved(e.target.checked)}
                 />
-                Hiện cả đã xử lý
+                Hiá»‡n cáº£ Ä‘Ã£ xá»­ lÃ½
               </label>
             </div>
           </div>
-          {/* Phase 6 CWS_WORKER_ROADMAP.md — CHỈ đọc (worker_incidents qua
+          {/* Phase 6 CWS_WORKER_ROADMAP.md â€” CHá»ˆ Ä‘á»c (worker_incidents qua
               RPC report_worker_incident(), xem worker_migrations/004_...).
-              Hiện tại chỉ có WORKER_CRASH (tự động, mở rộng từ
-              report_worker_crash() có sẵn) và MERGE_FAIL (Worker tự gọi khi
-              attempt_job_video_merge() lỗi) — các loại lỗi khác trong roadmap
-              (GPU/CPU quá nhiệt, disk full...) CHƯA có code phát hiện, sẽ
-              không xuất hiện ở đây cho tới khi được làm ở vòng sau. Nút
-              Retry/Requeue gọi RPC tương ứng — RPC tự kiểm tra điều kiện
-              (retry chỉ hoạt động nếu task đang failed, requeue chỉ nếu
-              đang active), bấm sai điều kiện chỉ trả về không thành công,
-              không gây hại gì thêm. */}
+              Hiá»‡n táº¡i chá»‰ cÃ³ WORKER_CRASH (tá»± Ä‘á»™ng, má»Ÿ rá»™ng tá»«
+              report_worker_crash() cÃ³ sáºµn) vÃ  MERGE_FAIL (Worker tá»± gá»i khi
+              attempt_job_video_merge() lá»—i) â€” cÃ¡c loáº¡i lá»—i khÃ¡c trong roadmap
+              (GPU/CPU quÃ¡ nhiá»‡t, disk full...) CHÆ¯A cÃ³ code phÃ¡t hiá»‡n, sáº½
+              khÃ´ng xuáº¥t hiá»‡n á»Ÿ Ä‘Ã¢y cho tá»›i khi Ä‘Æ°á»£c lÃ m á»Ÿ vÃ²ng sau. NÃºt
+              Retry/Requeue gá»i RPC tÆ°Æ¡ng á»©ng â€” RPC tá»± kiá»ƒm tra Ä‘iá»u kiá»‡n
+              (retry chá»‰ hoáº¡t Ä‘á»™ng náº¿u task Ä‘ang failed, requeue chá»‰ náº¿u
+              Ä‘ang active), báº¥m sai Ä‘iá»u kiá»‡n chá»‰ tráº£ vá» khÃ´ng thÃ nh cÃ´ng,
+              khÃ´ng gÃ¢y háº¡i gÃ¬ thÃªm. */}
           <div style={{ overflowX: 'auto', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Gần nhất</th>
+                  <th style={{ padding: 8 }}>Gáº§n nháº¥t</th>
                   <th style={{ padding: 8 }}>Worker</th>
                   <th style={{ padding: 8 }}>Task</th>
-                  <th style={{ padding: 8 }}>Loại</th>
-                  <th style={{ padding: 8 }}>Mức độ</th>
-                  <th style={{ padding: 8 }}>Số lần</th>
-                  <th style={{ padding: 8 }}>Tóm tắt</th>
-                  <th style={{ padding: 8 }}>Trạng thái</th>
-                  <th style={{ padding: 8 }}>Hành động</th>
+                  <th style={{ padding: 8 }}>Loáº¡i</th>
+                  <th style={{ padding: 8 }}>Má»©c Ä‘á»™</th>
+                  <th style={{ padding: 8 }}>Sá»‘ láº§n</th>
+                  <th style={{ padding: 8 }}>TÃ³m táº¯t</th>
+                  <th style={{ padding: 8 }}>Tráº¡ng thÃ¡i</th>
+                  <th style={{ padding: 8 }}>HÃ nh Ä‘á»™ng</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredIncidents.map((inc) => (
                   <tr key={inc.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
                     <td style={{ padding: 8 }}>{formatRelativeTime(inc.lastSeenAt)}</td>
-                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{inc.workerId ?? '—'}</td>
-                    <td style={{ padding: 8 }}>{inc.taskId ?? '—'}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{inc.workerId ?? 'â€”'}</td>
+                    <td style={{ padding: 8 }}>{inc.taskId ?? 'â€”'}</td>
                     <td style={{ padding: 8 }}>{inc.eventType}</td>
                     <td style={{ padding: 8 }}>{inc.severity}</td>
                     <td style={{ padding: 8 }}>{inc.occurrenceCount}</td>
                     <td style={{ padding: 8, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inc.summary}>
                       {inc.summary}
                     </td>
-                    <td style={{ padding: 8 }}>{inc.resolvedAt ? 'Đã xử lý' : 'Chưa xử lý'}</td>
+                    <td style={{ padding: 8 }}>{inc.resolvedAt ? 'ÄÃ£ xá»­ lÃ½' : 'ChÆ°a xá»­ lÃ½'}</td>
                     <td style={{ padding: 8, display: 'flex', gap: 6 }}>
                       {inc.taskId != null && (
                         <>
@@ -586,57 +476,162 @@ export default function AdminScreen() {
                   </tr>
                 ))}
                 {filteredIncidents.length === 0 && (
-                  <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Không có sự cố nào khớp bộ lọc</td></tr>
+                  <tr><td colSpan={9} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>KhÃ´ng cÃ³ sá»± cá»‘ nÃ o khá»›p bá»™ lá»c</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-            Thống kê thời gian thuê host
+            YÃªu cáº§u há»— trá»£ cá»§a khÃ¡ch
           </h3>
-          {/* Phase 8 CWS_WORKER_ROADMAP.md — CHỈ đọc (host_usage_sessions,
-              tính bởi RPC compute_host_usage_sessions() qua cron 5 phút/lần,
-              xem worker_migrations/006_host_usage_billing.sql). "Ước tính"
-              để trống (—) khi status=awaiting_rate (fleets.hourly_rate chưa
-              được cấu hình) — KHÔNG hiện 0 để tránh hiểu lầm miễn phí.
-              status=decision_required nghĩa là khởi động vượt quá 7 phút
-              (420s), cần Admin xem xét thủ công (roadmap chưa quy định tự
-              động xử lý trường hợp này). "Số tiền cuối" — nút "Xác nhận"
-              hỏi số tiền qua prompt() (tiền tệ đơn giản, dashboard nội bộ
-              không cần form phức tạp), gọi RPC admin_confirm_host_usage_final_amount()
-              — hành động DUY NHẤT ghi final_amount, Worker/hệ thống tự
-              động không bao giờ tự quyết định số này. */}
           <div style={{ overflowX: 'auto', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Lúc</th>
+                  <th style={{ padding: 8 }}>MÃ£</th>
+                  <th style={{ padding: 8 }}>Customer</th>
+                  <th style={{ padding: 8 }}>Job</th>
+                  <th style={{ padding: 8 }}>Chá»§ Ä‘á»/ná»™i dung</th>
+                  <th style={{ padding: 8 }}>Tráº¡ng thÃ¡i</th>
+                  <th style={{ padding: 8 }}>Pháº£n há»“i dá»± kiáº¿n</th>
+                  <th style={{ padding: 8 }}>Táº¡o lÃºc</th>
+                  <th style={{ padding: 8 }}>Thao tÃ¡c</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supportTickets.map((ticket) => (
+                  <tr key={ticket.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.ticketCode}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.customerId}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{ticket.jobId ?? 'â€”'}</td>
+                    <td style={{ padding: 8, maxWidth: 320 }}>
+                      <strong>{ticket.subject}</strong>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{ticket.message}</div>
+                    </td>
+                    <td style={{ padding: 8 }}>{ticket.status}</td>
+                    <td style={{ padding: 8 }}>
+                      <input
+                        type="datetime-local"
+                        value={formatDateTimeLocal(ticket.expectedResponseAt)}
+                        onChange={(e) => handleSupportTicketExpectedResponse(ticket, e.target.value)}
+                        aria-label={'Thá»i gian pháº£n há»“i dá»± kiáº¿n cho ' + ticket.ticketCode}
+                        style={{ padding: '4px 6px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      />
+                    </td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(ticket.createdAt)}</td>
+                    <td style={{ padding: 8 }}>
+                      <select
+                        value={ticket.status}
+                        onChange={(e) => handleSupportTicketStatus(ticket.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      >
+                        <option value="OPEN">OPEN</option>
+                        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="DECLINED">DECLINED</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {supportTickets.length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>ChÆ°a cÃ³ support ticket</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            YÃªu cáº§u chá»‰nh sá»­a cá»§a khÃ¡ch
+          </h3>
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>Job</th>
+                  <th style={{ padding: 8 }}>KhÃ¡ch yÃªu cáº§u</th>
+                  <th style={{ padding: 8 }}>Ghi chÃº</th>
+                  <th style={{ padding: 8 }}>Tráº¡ng thÃ¡i</th>
+                  <th style={{ padding: 8 }}>Táº¡o lÃºc</th>
+                  <th style={{ padding: 8 }}>Thao tÃ¡c</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editRequests.map((request) => (
+                  <tr key={request.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{request.jobId}</td>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{request.requestedBy}</td>
+                    <td style={{ padding: 8, maxWidth: 320, whiteSpace: 'pre-wrap' }}>{request.note ?? 'â€”'}</td>
+                    <td style={{ padding: 8 }}>{request.status}</td>
+                    <td style={{ padding: 8 }}>{formatRelativeTime(request.createdAt)}</td>
+                    <td style={{ padding: 8 }}>
+                      <select
+                        value={request.status}
+                        onChange={(e) => handleEditRequestStatus(request.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E8E8EA' }}
+                      >
+                        <option value="REQUESTED">REQUESTED</option>
+                        <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="DECLINED">DECLINED</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {editRequests.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>ChÆ°a cÃ³ yÃªu cáº§u chá»‰nh sá»­a</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
+            Thá»‘ng kÃª thá»i gian thuÃª host
+          </h3>
+          {/* Phase 8 CWS_WORKER_ROADMAP.md â€” CHá»ˆ Ä‘á»c (host_usage_sessions,
+              tÃ­nh bá»Ÿi RPC compute_host_usage_sessions() qua cron 5 phÃºt/láº§n,
+              xem worker_migrations/006_host_usage_billing.sql). "Æ¯á»›c tÃ­nh"
+              Ä‘á»ƒ trá»‘ng (â€”) khi status=awaiting_rate (fleets.hourly_rate chÆ°a
+              Ä‘Æ°á»£c cáº¥u hÃ¬nh) â€” KHÃ”NG hiá»‡n 0 Ä‘á»ƒ trÃ¡nh hiá»ƒu láº§m miá»…n phÃ­.
+              status=decision_required nghÄ©a lÃ  khá»Ÿi Ä‘á»™ng vÆ°á»£t quÃ¡ 7 phÃºt
+              (420s), cáº§n Admin xem xÃ©t thá»§ cÃ´ng (roadmap chÆ°a quy Ä‘á»‹nh tá»±
+              Ä‘á»™ng xá»­ lÃ½ trÆ°á»ng há»£p nÃ y). "Sá»‘ tiá»n cuá»‘i" â€” nÃºt "XÃ¡c nháº­n"
+              há»i sá»‘ tiá»n qua prompt() (tiá»n tá»‡ Ä‘Æ¡n giáº£n, dashboard ná»™i bá»™
+              khÃ´ng cáº§n form phá»©c táº¡p), gá»i RPC admin_confirm_host_usage_final_amount()
+              â€” hÃ nh Ä‘á»™ng DUY NHáº¤T ghi final_amount, Worker/há»‡ thá»‘ng tá»±
+              Ä‘á»™ng khÃ´ng bao giá» tá»± quyáº¿t Ä‘á»‹nh sá»‘ nÃ y. */}
+          <div style={{ overflowX: 'auto', marginBottom: 28 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
+                  <th style={{ padding: 8 }}>LÃºc</th>
                   <th style={{ padding: 8 }}>Worker</th>
                   <th style={{ padding: 8 }}>Task</th>
-                  <th style={{ padding: 8 }}>Khởi động</th>
+                  <th style={{ padding: 8 }}>Khá»Ÿi Ä‘á»™ng</th>
                   <th style={{ padding: 8 }}>Render</th>
                   <th style={{ padding: 8 }}>Upload</th>
                   <th style={{ padding: 8 }}>Billable</th>
-                  <th style={{ padding: 8 }}>Ước tính</th>
-                  <th style={{ padding: 8 }}>Số tiền cuối</th>
-                  <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Æ¯á»›c tÃ­nh</th>
+                  <th style={{ padding: 8 }}>Sá»‘ tiá»n cuá»‘i</th>
+                  <th style={{ padding: 8 }}>Tráº¡ng thÃ¡i</th>
                 </tr>
               </thead>
               <tbody>
                 {hostUsageSessions.map((hu) => (
                   <tr key={hu.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
                     <td style={{ padding: 8 }}>{formatRelativeTime(hu.createdAt)}</td>
-                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{hu.workerId ?? '—'}</td>
-                    <td style={{ padding: 8 }}>{hu.taskId ?? '—'}</td>
-                    <td style={{ padding: 8 }} title={`Ngưỡng miễn tính: ${formatDurationSeconds(hu.startupGraceSeconds)}`}>
+                    <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{hu.workerId ?? 'â€”'}</td>
+                    <td style={{ padding: 8 }}>{hu.taskId ?? 'â€”'}</td>
+                    <td style={{ padding: 8 }} title={`NgÆ°á»¡ng miá»…n tÃ­nh: ${formatDurationSeconds(hu.startupGraceSeconds)}`}>
                       {formatDurationSeconds(hu.startupSeconds)}
                     </td>
                     <td style={{ padding: 8 }}>{formatDurationSeconds(hu.renderSeconds)}</td>
                     <td style={{ padding: 8 }}>{formatDurationSeconds(hu.uploadSeconds)}</td>
                     <td style={{ padding: 8 }}>{formatDurationSeconds(hu.billableSeconds)}</td>
                     <td style={{ padding: 8 }}>
-                      {hu.estimatedAmount != null ? hu.estimatedAmount.toLocaleString('vi-VN') : '—'}
+                      {hu.estimatedAmount != null ? hu.estimatedAmount.toLocaleString('vi-VN') : 'â€”'}
                     </td>
                     <td style={{ padding: 8 }}>
                       {hu.finalAmount != null ? (
@@ -647,7 +642,7 @@ export default function AdminScreen() {
                           onClick={() => handleConfirmFinalAmount(hu.id, hu.estimatedAmount)}
                           style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid #E8E8EA', background: '#fff', cursor: 'pointer' }}
                         >
-                          Xác nhận
+                          XÃ¡c nháº­n
                         </button>
                       )}
                     </td>
@@ -655,55 +650,55 @@ export default function AdminScreen() {
                   </tr>
                 ))}
                 {hostUsageSessions.length === 0 && (
-                  <tr><td colSpan={10} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có phiên nào hoàn thành</td></tr>
+                  <tr><td colSpan={10} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>ChÆ°a cÃ³ phiÃªn nÃ o hoÃ n thÃ nh</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10 }}>
-            Khách hàng
+            KhÃ¡ch hÃ ng
           </h3>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Tên</th>
+                  <th style={{ padding: 8 }}>TÃªn</th>
                   <th style={{ padding: 8 }}>Email</th>
                   <th style={{ padding: 8 }}>ID</th>
-                  <th style={{ padding: 8 }}>Tham gia lúc</th>
+                  <th style={{ padding: 8 }}>Tham gia lÃºc</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCustomers.map((c) => (
                   <tr key={c.id} style={{ borderBottom: '1px solid #F0F0F1' }}>
-                    <td style={{ padding: 8 }}>{c.fullName ?? '—'}</td>
-                    <td style={{ padding: 8 }}>{c.email ?? '—'}</td>
+                    <td style={{ padding: 8 }}>{c.fullName ?? 'â€”'}</td>
+                    <td style={{ padding: 8 }}>{c.email ?? 'â€”'}</td>
                     <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{c.id}</td>
                     <td style={{ padding: 8 }}>{formatRelativeTime(c.createdAt)}</td>
                   </tr>
                 ))}
                 {filteredCustomers.length === 0 && (
-                  <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có khách hàng nào</td></tr>
+                  <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>ChÆ°a cÃ³ khÃ¡ch hÃ ng nÃ o</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 16, fontWeight: 600, marginBottom: 10, marginTop: 28 }}>
-            Thiết bị thanh toán (MBBank Notification Listener)
+            Thiáº¿t bá»‹ thanh toÃ¡n (MBBank Notification Listener)
           </h3>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
-                  <th style={{ padding: 8 }}>Thiết bị</th>
-                  <th style={{ padding: 8 }}>Trạng thái</th>
+                  <th style={{ padding: 8 }}>Thiáº¿t bá»‹</th>
+                  <th style={{ padding: 8 }}>Tráº¡ng thÃ¡i</th>
                   <th style={{ padding: 8 }}>Model</th>
                   <th style={{ padding: 8 }}>App version</th>
-                  <th style={{ padding: 8 }}>Heartbeat cuối</th>
-                  <th style={{ padding: 8 }}>Thông báo gần nhất</th>
-                  <th style={{ padding: 8 }}>Lỗi gần nhất</th>
+                  <th style={{ padding: 8 }}>Heartbeat cuá»‘i</th>
+                  <th style={{ padding: 8 }}>ThÃ´ng bÃ¡o gáº§n nháº¥t</th>
+                  <th style={{ padding: 8 }}>Lá»—i gáº§n nháº¥t</th>
                 </tr>
               </thead>
               <tbody>
@@ -714,20 +709,20 @@ export default function AdminScreen() {
                       <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{d.label ?? d.deviceId}</td>
                       <td style={{ padding: 8 }}>
                         <span style={{ color: isOnline ? '#1E9E5A' : '#9a9aa0' }}>
-                          {isOnline ? '● Online' : '○ Offline'}
+                          {isOnline ? 'â— Online' : 'â—‹ Offline'}
                         </span>
-                        {!d.isActive && <span style={{ color: '#E5484D', marginLeft: 6 }}>(vô hiệu hoá)</span>}
+                        {!d.isActive && <span style={{ color: '#E5484D', marginLeft: 6 }}>(vÃ´ hiá»‡u hoÃ¡)</span>}
                       </td>
-                      <td style={{ padding: 8 }}>{[d.manufacturer, d.model].filter(Boolean).join(' ') || '—'}</td>
-                      <td style={{ padding: 8 }}>{d.appVersion ?? '—'}</td>
-                      <td style={{ padding: 8 }}>{d.lastHeartbeatAt ? formatRelativeTime(d.lastHeartbeatAt) : 'Chưa từng'}</td>
-                      <td style={{ padding: 8 }}>{d.lastNotificationAt ? formatRelativeTime(d.lastNotificationAt) : 'Chưa từng'}</td>
-                      <td style={{ padding: 8, color: d.lastError ? '#E5484D' : undefined }}>{d.lastError ?? '—'}</td>
+                      <td style={{ padding: 8 }}>{[d.manufacturer, d.model].filter(Boolean).join(' ') || 'â€”'}</td>
+                      <td style={{ padding: 8 }}>{d.appVersion ?? 'â€”'}</td>
+                      <td style={{ padding: 8 }}>{d.lastHeartbeatAt ? formatRelativeTime(d.lastHeartbeatAt) : 'ChÆ°a tá»«ng'}</td>
+                      <td style={{ padding: 8 }}>{d.lastNotificationAt ? formatRelativeTime(d.lastNotificationAt) : 'ChÆ°a tá»«ng'}</td>
+                      <td style={{ padding: 8, color: d.lastError ? '#E5484D' : undefined }}>{d.lastError ?? 'â€”'}</td>
                     </tr>
                   );
                 })}
                 {paymentDevices.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có thiết bị nào đăng ký</td></tr>
+                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>ChÆ°a cÃ³ thiáº¿t bá»‹ nÃ o Ä‘Äƒng kÃ½</td></tr>
                 )}
               </tbody>
             </table>

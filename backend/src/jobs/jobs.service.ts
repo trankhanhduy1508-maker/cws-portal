@@ -205,7 +205,7 @@ export class JobsService {
     isAdmin = false,
   ): void {
     if (isAdmin) return;
-    if (order.customerId && order.customerId !== customerId) {
+    if (!customerId || !order.customerId || order.customerId !== customerId) {
       throw new ForbiddenException(`Không có quyền truy cập job ${order.id}`);
     }
   }
@@ -232,9 +232,8 @@ export class JobsService {
   }
 
   /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Google).
-   * customerId null -> TRẢ TOÀN BỘ job của mọi khách (giới hạn đã biết:
-   * Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts và
-   * API_DOCUMENTATION.md). */
+   * customerId null chỉ được dùng bởi Admin route đã xác thực; customer
+   * route luôn phải có identity. */
   async listAll(customerId: string | null = null): Promise<RenderOrder[]> {
     if (customerId) return this.ordersRepository.findByCustomerId(customerId);
     return this.ordersRepository.findAll();
@@ -430,6 +429,18 @@ export class JobsService {
       );
     }
 
+    if (!customerId && !isAdmin) {
+      throw new ForbiddenException('Yêu cầu chỉnh sửa cần tài khoản khách hàng đã đăng nhập');
+    }
+
+    if (customerId) {
+      await this.storageService.createEditRequest({
+        jobId: id,
+        requestedBy: customerId,
+        note: note?.trim() || null,
+      });
+    }
+
     await this.storageService.notify(
       id,
       'Khách yêu cầu chỉnh sửa',
@@ -443,6 +454,16 @@ export class JobsService {
       note?.trim() || 'Khách yêu cầu chỉnh sửa, chưa có ghi chú',
       'info',
     );
+  }
+
+  /** Customer chỉ đọc các yêu cầu chỉnh sửa thuộc job đã qua assertOwnership. */
+  async getEditRequests(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ) {
+    this.assertOwnership(await this.getById(id), customerId, isAdmin);
+    return this.storageService.getEditRequests(id);
   }
 
   /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */

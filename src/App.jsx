@@ -13,6 +13,7 @@ import HistoryScreen from './pages/HistoryScreen';
 import AdminScreen from './pages/AdminScreen';
 import StaffLoginScreen from './pages/StaffLoginScreen';
 import HostScreen from './pages/HostScreen';
+import AffiliatePage from './pages/AffiliatePage';
 import { getStaffMe } from './services/staffApi';
 import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
@@ -23,19 +24,21 @@ import { useJobHistory } from './hooks/useJobHistory';
 import { useAuth } from './hooks/useAuth';
 import { JOB_STATUS, FILE_SOURCE } from './constants/renderConstants';
 import { getDownloadUrl } from './services/RenderService';
+import { trackAffiliateReferral, attachAffiliateReferral } from './services/RenderService';
+import { savePendingUploadFile, loadPendingUploadFile, clearPendingUploadFile } from './utils/pendingDraftStorage';
 
-// Screen điều hướng: LANDING giờ là 1 trang DUY NHẤT gộp cả hero +
-// Upload/Drive link + nút Google Login + CTA "Bắt đầu render" (yêu cầu
-// mới: khách phải thấy hết các hành động ngay từ đầu, KHÔNG bắt bấm
-// "Bắt đầu" mới lộ ra Upload, và KHÔNG có màn hình Login riêng chặn
-// trước — đăng nhập chỉ được yêu cầu đúng lúc khách bấm Render, xem
-// handleContinueFromUpload). -> Render Profile -> Processing (Job chạy
-// thật, MIỄN PHÍ, bao gồm cả lúc xong/lỗi/hủy/preview/CHỜ THANH TOÁN —
-// xem điều kiện render bên trong PROCESSING). Thanh toán (QR MB Bank)
-// chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
-// nên KHÔNG phải 1 SCREEN riêng trước Processing nữa — nó là 1 trạng
-// thái con của Processing (job.status === AWAITING_PAYMENT), giống
-// REVIEW_READY/FINISHED. History có thể mở từ bất kỳ đâu qua nút ở header.
+// Screen Ä‘iá»u hÆ°á»›ng: LANDING giá» lÃ  1 trang DUY NHáº¤T gá»™p cáº£ hero +
+// Upload/Drive link + nÃºt Google Login + CTA "Báº¯t Ä‘áº§u render" (yÃªu cáº§u
+// má»›i: khÃ¡ch pháº£i tháº¥y háº¿t cÃ¡c hÃ nh Ä‘á»™ng ngay tá»« Ä‘áº§u, KHÃ”NG báº¯t báº¥m
+// "Báº¯t Ä‘áº§u" má»›i lá»™ ra Upload, vÃ  KHÃ”NG cÃ³ mÃ n hÃ¬nh Login riÃªng cháº·n
+// trÆ°á»›c â€” Ä‘Äƒng nháº­p chá»‰ Ä‘Æ°á»£c yÃªu cáº§u Ä‘Ãºng lÃºc khÃ¡ch báº¥m Render, xem
+// handleContinueFromUpload). -> Render Profile -> Processing (Job cháº¡y
+// tháº­t, MIá»„N PHÃ, bao gá»“m cáº£ lÃºc xong/lá»—i/há»§y/preview/CHá»œ THANH TOÃN â€”
+// xem Ä‘iá»u kiá»‡n render bÃªn trong PROCESSING). Thanh toÃ¡n (QR MB Bank)
+// chá»‰ diá»…n ra SAU khi khÃ¡ch duyá»‡t preview (CWS_MVP_WORKFLOW_FINAL.md),
+// nÃªn KHÃ”NG pháº£i 1 SCREEN riÃªng trÆ°á»›c Processing ná»¯a â€” nÃ³ lÃ  1 tráº¡ng
+// thÃ¡i con cá»§a Processing (job.status === AWAITING_PAYMENT), giá»‘ng
+// REVIEW_READY/FINISHED. History cÃ³ thá»ƒ má»Ÿ tá»« báº¥t ká»³ Ä‘Ã¢u qua nÃºt á»Ÿ header.
 const SCREEN = {
   LANDING: 'landing',
   PROFILE: 'profile',
@@ -43,41 +46,44 @@ const SCREEN = {
   HISTORY: 'history',
 };
 
-// Google/Supabase OAuth redirect (redirectTo: window.location.origin) là
-// điều hướng TRANG THẬT — làm mất toàn bộ state React đang có (kể cả
-// driveLink đã dán). Lưu tạm ở đây (chỉ chuỗi text, KHÔNG lưu File object
-// vì File không sống sót qua điều hướng trang) để khôi phục lại sau khi
-// khách quay về đã đăng nhập xong, xem effect khôi phục trong CustomerPortalApp.
+// Google/Supabase OAuth redirect (redirectTo: window.location.origin) lÃ 
+// Ä‘iá»u hÆ°á»›ng TRANG THáº¬T â€” lÃ m máº¥t toÃ n bá»™ state React Ä‘ang cÃ³ (ká»ƒ cáº£
+// driveLink Ä‘Ã£ dÃ¡n). LÆ°u táº¡m á»Ÿ Ä‘Ã¢y (chá»‰ chuá»—i text, KHÃ”NG lÆ°u File object
+// vÃ¬ File khÃ´ng sá»‘ng sÃ³t qua Ä‘iá»u hÆ°á»›ng trang) Ä‘á»ƒ khÃ´i phá»¥c láº¡i sau khi
+// khÃ¡ch quay vá» Ä‘Ã£ Ä‘Äƒng nháº­p xong, xem effect khÃ´i phá»¥c trong CustomerPortalApp.
 const PENDING_DRIVE_LINK_KEY = 'cws_pending_drive_link';
 
 export default function App() {
-  // Admin Dashboard (Giai đoạn 7) — hoàn toàn tách biệt khỏi luồng
-  // khách hàng, chỉ vào được qua URL kèm #admin (không có nút/link nào
-  // dẫn tới từ giao diện khách hàng). Bảo vệ ở tầng Backend qua
-  // x-admin-key (xem AdminScreen.jsx), không phải qua ẩn URL. Tách
-  // thành nhánh riêng ở NGOÀI CustomerPortalApp (không phải early
-  // return bên trong nó) để không vi phạm Rules of Hooks — App() ở
-  // đây không gọi hook nào, chỉ CustomerPortalApp() mới gọi.
-  if (window.location.hash === '#admin') {
+  // Admin Dashboard (Giai Ä‘oáº¡n 7) â€” hoÃ n toÃ n tÃ¡ch biá»‡t khá»i luá»“ng
+  // khÃ¡ch hÃ ng, chá»‰ vÃ o Ä‘Æ°á»£c qua URL kÃ¨m #admin (khÃ´ng cÃ³ nÃºt/link nÃ o
+  // dáº«n tá»›i tá»« giao diá»‡n khÃ¡ch hÃ ng). Báº£o vá»‡ á»Ÿ táº§ng Backend qua
+  // x-admin-key (xem AdminScreen.jsx), khÃ´ng pháº£i qua áº©n URL. TÃ¡ch
+  // thÃ nh nhÃ¡nh riÃªng á»Ÿ NGOÃ€I CustomerPortalApp (khÃ´ng pháº£i early
+  // return bÃªn trong nÃ³) Ä‘á»ƒ khÃ´ng vi pháº¡m Rules of Hooks â€” App() á»Ÿ
+  // Ä‘Ã¢y khÃ´ng gá»i hook nÃ o, chá»‰ CustomerPortalApp() má»›i gá»i.
+  if (window.location.hash === '#admin' || new URLSearchParams(window.location.search).get('staff') === 'admin') {
     return <AdminScreen />;
   }
-  // Đăng nhập nhân sự thật (Phần 6) — tách biệt Google Login của
-  // khách hàng. #host BẮT BUỘC qua đây (không có secret key thay thế
-  // như #admin) — xem HostGate bên dưới, kiểm tra role qua Backend
-  // (GET /staff/me), KHÔNG tự đoán ở Frontend.
+  // ÄÄƒng nháº­p nhÃ¢n sá»± tháº­t (Pháº§n 6) â€” tÃ¡ch biá»‡t Google Login cá»§a
+  // khÃ¡ch hÃ ng. #host Báº®T BUá»˜C qua Ä‘Ã¢y (khÃ´ng cÃ³ secret key thay tháº¿
+  // nhÆ° #admin) â€” xem HostGate bÃªn dÆ°á»›i, kiá»ƒm tra role qua Backend
+  // (GET /staff/me), KHÃ”NG tá»± Ä‘oÃ¡n á»Ÿ Frontend.
   if (window.location.hash === '#staff-login') {
     return <StaffLoginScreen />;
   }
   if (window.location.hash === '#host') {
     return <HostGate />;
   }
+  if (window.location.hash === '#affiliate') {
+    return <AffiliatePage />;
+  }
   return <CustomerPortalApp />;
 }
 
-/** Chặn #host cho tới khi xác nhận ĐÚNG role='host' qua Backend thật
- * (RoleGuard) — không chỉ dựa vào việc có access token Supabase hay
- * không (1 khách Google đã đăng nhập cũng có access token, nhưng
- * KHÔNG có role trong staff_roles nên GET /staff/me sẽ trả 403). */
+/** Cháº·n #host cho tá»›i khi xÃ¡c nháº­n ÄÃšNG role='host' qua Backend tháº­t
+ * (RoleGuard) â€” khÃ´ng chá»‰ dá»±a vÃ o viá»‡c cÃ³ access token Supabase hay
+ * khÃ´ng (1 khÃ¡ch Google Ä‘Ã£ Ä‘Äƒng nháº­p cÅ©ng cÃ³ access token, nhÆ°ng
+ * KHÃ”NG cÃ³ role trong staff_roles nÃªn GET /staff/me sáº½ tráº£ 403). */
 function HostGate() {
   const [state, setState] = useState('loading'); // loading | ok | denied
 
@@ -88,9 +94,9 @@ function HostGate() {
   }, []);
 
   useEffect(() => {
-    // window.location.hash không tự kích hoạt App() render lại (không có
-    // hashchange listener) — reload() để chắc chắn StaffLoginScreen hiện
-    // ra, cùng cách StaffLoginScreen/HostScreen đang làm sau đăng nhập/xuất.
+    // window.location.hash khÃ´ng tá»± kÃ­ch hoáº¡t App() render láº¡i (khÃ´ng cÃ³
+    // hashchange listener) â€” reload() Ä‘á»ƒ cháº¯c cháº¯n StaffLoginScreen hiá»‡n
+    // ra, cÃ¹ng cÃ¡ch StaffLoginScreen/HostScreen Ä‘ang lÃ m sau Ä‘Äƒng nháº­p/xuáº¥t.
     if (state === 'denied') {
       window.location.hash = '#staff-login';
       window.location.reload();
@@ -98,7 +104,7 @@ function HostGate() {
   }, [state]);
 
   if (state === 'ok') return <HostScreen />;
-  return <p style={{ padding: 24 }}>Đang kiểm tra quyền truy cập...</p>;
+  return <p style={{ padding: 24 }}>Äang kiá»ƒm tra quyá»n truy cáº­p...</p>;
 }
 
 function CustomerPortalApp() {
@@ -118,74 +124,118 @@ function CustomerPortalApp() {
   const job = useRenderJob();
   const jobHistory = useJobHistory();
   const auth = useAuth();
-  // true đúng 1 nhịp: vừa khôi phục xong driveLink sau khi Google redirect
-  // về (xem 2 effect bên dưới) -> tự bấm tiếp giúp khách, không bắt thao
-  // tác lại từ đầu chỉ vì vừa phải đăng nhập.
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) {
+      trackAffiliateReferral(ref).then((result) => {
+        try { localStorage.setItem('cws_affiliate_attribution_token', result.attributionToken); } catch { /* private mode */ }
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!auth.isAuthenticated) return;
+    let token = null;
+    try { token = localStorage.getItem('cws_affiliate_attribution_token'); } catch { /* private mode */ }
+    if (!token) return;
+    attachAffiliateReferral(token).catch(() => {});
+  }, [auth.isAuthenticated]);
+  // true Ä‘Ãºng 1 nhá»‹p: vá»«a khÃ´i phá»¥c xong driveLink sau khi Google redirect
+  // vá» (xem 2 effect bÃªn dÆ°á»›i) -> tá»± báº¥m tiáº¿p giÃºp khÃ¡ch, khÃ´ng báº¯t thao
+  // tÃ¡c láº¡i tá»« Ä‘áº§u chá»‰ vÃ¬ vá»«a pháº£i Ä‘Äƒng nháº­p.
   const autoContinueRef = useRef(false);
 
-  // Google/Supabase redirect thật đã tải lại trang xong (mất hết state) —
-  // nếu khách từng dán link Drive trước khi bị yêu cầu đăng nhập, khôi
-  // phục lại link đó (đã lưu tạm ở handleContinueFromUpload) rồi tự
-  // resolve lại qua Backend thật (KHÔNG bịa dữ liệu, gọi lại y hệt lúc
-  // dán tay). Trường hợp source=UPLOAD (chọn file tay): KHÔNG khôi phục
-  // được — File object không sống sót qua điều hướng trang, đây là giới
-  // hạn thật của trình duyệt, khách cần chọn lại file (vẫn đã đăng nhập
-  // sẵn nên bấm "Bắt đầu render" lần 2 sẽ qua ngay).
+  // Google/Supabase redirect tháº­t Ä‘Ã£ táº£i láº¡i trang xong (máº¥t háº¿t state) â€”
+  // náº¿u khÃ¡ch tá»«ng dÃ¡n link Drive trÆ°á»›c khi bá»‹ yÃªu cáº§u Ä‘Äƒng nháº­p, khÃ´i
+  // phá»¥c láº¡i link Ä‘Ã³ (Ä‘Ã£ lÆ°u táº¡m á»Ÿ handleContinueFromUpload) rá»“i tá»±
+  // resolve láº¡i qua Backend tháº­t (KHÃ”NG bá»‹a dá»¯ liá»‡u, gá»i láº¡i y há»‡t lÃºc
+  // dÃ¡n tay). TrÆ°á»ng há»£p source=UPLOAD (chá»n file tay): KHÃ”NG khÃ´i phá»¥c
+  // Ä‘Æ°á»£c â€” File object khÃ´ng sá»‘ng sÃ³t qua Ä‘iá»u hÆ°á»›ng trang, Ä‘Ã¢y lÃ  giá»›i
+  // háº¡n tháº­t cá»§a trÃ¬nh duyá»‡t, khÃ¡ch cáº§n chá»n láº¡i file (váº«n Ä‘Ã£ Ä‘Äƒng nháº­p
+  // sáºµn nÃªn báº¥m "Báº¯t Ä‘áº§u render" láº§n 2 sáº½ qua ngay).
   useEffect(() => {
     if (!auth.isAuthenticated || screen !== SCREEN.LANDING) return;
     let pendingLink = null;
     try {
       pendingLink = sessionStorage.getItem(PENDING_DRIVE_LINK_KEY);
     } catch {
-      // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán lại link.
+      // sessionStorage cÃ³ thá»ƒ bá»‹ cháº·n â€” bá» qua an toÃ n, khÃ¡ch tá»± dÃ¡n láº¡i link.
     }
     if (!pendingLink) return;
     try {
       sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
     } catch {
-      // xem ghi chú ở trên
+      // xem ghi chÃº á»Ÿ trÃªn
     }
     autoContinueRef.current = true;
     setSource(FILE_SOURCE.GOOGLE_DRIVE);
     submitLink(pendingLink);
   }, [auth.isAuthenticated, screen, submitLink]);
 
-  // ---- Đăng nhập Google — dùng chung cho nút Google trên Landing lẫn
-  // bước bắt buộc đăng nhập khi bấm Render (handleContinueFromUpload).
-  // Lưu tạm driveLink (nếu đang ở nhánh Drive và đã có link) TRƯỚC khi
-  // gọi auth.login() vì Backend thật điều hướng rời trang gần như ngay lập tức. ----
+    // File tháº­t khÃ´ng sá»‘ng trong React state qua OAuth redirect. LÆ°u trong
+  // IndexedDB trÆ°á»›c redirect vÃ  khÃ´i phá»¥c sau khi phiÃªn Google quay láº¡i;
+  // khÃ´ng lÆ°u token/credential. Náº¿u quota/trÃ¬nh duyá»‡t tá»« chá»‘i, chá»‰ bá» qua
+  // an toÃ n vÃ  khÃ¡ch sáº½ nháº­n lá»—i cáº§n chá»n láº¡i file.
+  useEffect(() => {
+    if (!auth.isAuthenticated || screen !== SCREEN.LANDING) return undefined;
+    let cancelled = false;
+    loadPendingUploadFile()
+      .then((pendingFile) => {
+        if (!cancelled && pendingFile) {
+          setSource(FILE_SOURCE.UPLOAD);
+          setFile(pendingFile);
+          void clearPendingUploadFile().catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, screen, setFile]);
+
+// ---- ÄÄƒng nháº­p Google â€” dÃ¹ng chung cho nÃºt Google trÃªn Landing láº«n
+  // bÆ°á»›c báº¯t buá»™c Ä‘Äƒng nháº­p khi báº¥m Render (handleContinueFromUpload).
+  // LÆ°u táº¡m driveLink (náº¿u Ä‘ang á»Ÿ nhÃ¡nh Drive vÃ  Ä‘Ã£ cÃ³ link) TRÆ¯á»šC khi
+  // gá»i auth.login() vÃ¬ Backend tháº­t Ä‘iá»u hÆ°á»›ng rá»i trang gáº§n nhÆ° ngay láº­p tá»©c. ----
   const triggerGoogleLogin = useCallback(async () => {
+    if (source === FILE_SOURCE.UPLOAD && file) {
+      try {
+        await savePendingUploadFile(file);
+      } catch {
+        // IndexedDB/quota failure is non-fatal; no credential is stored.
+      }
+    }
     if (source === FILE_SOURCE.GOOGLE_DRIVE && driveLink) {
       try {
         sessionStorage.setItem(PENDING_DRIVE_LINK_KEY, driveLink);
       } catch {
-        // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán
-        // lại link sau khi đăng nhập nếu trình duyệt không hỗ trợ.
+        // sessionStorage cÃ³ thá»ƒ bá»‹ cháº·n â€” bá» qua an toÃ n, khÃ¡ch tá»± dÃ¡n
+        // láº¡i link sau khi Ä‘Äƒng nháº­p náº¿u trÃ¬nh duyá»‡t khÃ´ng há»— trá»£.
       }
     }
     return auth.login();
-  }, [auth, source, driveLink]);
+  }, [auth, source, driveLink, file]);
 
-  // ---- Bước 1: Upload/Drive -> Render Profile. Đăng nhập Google chỉ
-  // thực sự BẮT BUỘC tại đây (khách được xem/chọn Upload hoặc dán link
-  // tự do trước đó trên cùng trang Landing, xem UploadScreen bên dưới). ----
+  // ---- BÆ°á»›c 1: Upload/Drive -> Render Profile. ÄÄƒng nháº­p Google chá»‰
+  // thá»±c sá»± Báº®T BUá»˜C táº¡i Ä‘Ã¢y (khÃ¡ch Ä‘Æ°á»£c xem/chá»n Upload hoáº·c dÃ¡n link
+  // tá»± do trÆ°á»›c Ä‘Ã³ trÃªn cÃ¹ng trang Landing, xem UploadScreen bÃªn dÆ°á»›i). ----
   const handleContinueFromUpload = useCallback(async () => {
     if (!auth.isAuthenticated) {
-      // Backend thật: triggerGoogleLogin() điều hướng rời trang ngay
-      // (Supabase OAuth) -> loggedInNow luôn false, hàm return ở đây,
-      // flow thật sự tiếp tục sau khi khách quay về (xem 2 effect trên).
-      // Mock (demo, không có Google thật): trả về true ngay, KHÔNG điều
-      // hướng, nên tiếp tục luôn bên dưới không cần khách bấm lại.
+      // Backend tháº­t: triggerGoogleLogin() Ä‘iá»u hÆ°á»›ng rá»i trang ngay
+      // (Supabase OAuth) -> loggedInNow luÃ´n false, hÃ m return á»Ÿ Ä‘Ã¢y,
+      // flow tháº­t sá»± tiáº¿p tá»¥c sau khi khÃ¡ch quay vá» (xem 2 effect trÃªn).
+      // Mock (demo, khÃ´ng cÃ³ Google tháº­t): tráº£ vá» true ngay, KHÃ”NG Ä‘iá»u
+      // hÆ°á»›ng, nÃªn tiáº¿p tá»¥c luÃ´n bÃªn dÆ°á»›i khÃ´ng cáº§n khÃ¡ch báº¥m láº¡i.
       const loggedInNow = await triggerGoogleLogin();
       if (!loggedInNow) return;
-      // Mock: đăng nhập xong ngay, KHÔNG điều hướng -> tiếp tục luôn bên
-      // dưới trong cùng lượt gọi này, key tạm ở sessionStorage (nếu vừa
-      // ghi trong triggerGoogleLogin) không còn cần nữa, xoá để tránh
-      // effect khôi phục đọc nhầm 1 link cũ ở lần đăng nhập/tải trang sau.
+      // Mock: Ä‘Äƒng nháº­p xong ngay, KHÃ”NG Ä‘iá»u hÆ°á»›ng -> tiáº¿p tá»¥c luÃ´n bÃªn
+      // dÆ°á»›i trong cÃ¹ng lÆ°á»£t gá»i nÃ y, key táº¡m á»Ÿ sessionStorage (náº¿u vá»«a
+      // ghi trong triggerGoogleLogin) khÃ´ng cÃ²n cáº§n ná»¯a, xoÃ¡ Ä‘á»ƒ trÃ¡nh
+      // effect khÃ´i phá»¥c Ä‘á»c nháº§m 1 link cÅ© á»Ÿ láº§n Ä‘Äƒng nháº­p/táº£i trang sau.
       try {
         sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
+        await clearPendingUploadFile();
       } catch {
-        // bỏ qua an toàn, xem ghi chú tương tự ở trên
+        // bá» qua an toÃ n, xem ghi chÃº tÆ°Æ¡ng tá»± á»Ÿ trÃªn
       }
     }
     try {
@@ -200,14 +250,14 @@ function CustomerPortalApp() {
       }
       setScreen(SCREEN.PROFILE);
     } catch {
-      // Lỗi đã được lưu trong fileUploadResolver.uploadError, hiển thị
-      // ngay trên UploadScreen (xem UploadZone/fileError phía dưới).
+      // Lá»—i Ä‘Ã£ Ä‘Æ°á»£c lÆ°u trong fileUploadResolver.uploadError, hiá»ƒn thá»‹
+      // ngay trÃªn UploadScreen (xem UploadZone/fileError phÃ­a dÆ°á»›i).
     }
   }, [auth.isAuthenticated, triggerGoogleLogin, source, file, driveLink, resolvedInfo, fileUploadResolver]);
 
-  // Vừa khôi phục xong driveLink sau khi đăng nhập xong (effect phía
-  // trên) VÀ backend vừa resolve xong (isResolving chuyển false) -> tự
-  // tiếp tục luôn, khách không phải bấm "Bắt đầu render" lần 2.
+  // Vá»«a khÃ´i phá»¥c xong driveLink sau khi Ä‘Äƒng nháº­p xong (effect phÃ­a
+  // trÃªn) VÃ€ backend vá»«a resolve xong (isResolving chuyá»ƒn false) -> tá»±
+  // tiáº¿p tá»¥c luÃ´n, khÃ¡ch khÃ´ng pháº£i báº¥m "Báº¯t Ä‘áº§u render" láº§n 2.
   useEffect(() => {
     if (!autoContinueRef.current || isResolving) return;
     autoContinueRef.current = false;
@@ -216,25 +266,25 @@ function CustomerPortalApp() {
     }
   }, [isResolving, resolvedInfo, linkError, handleContinueFromUpload]);
 
-  // ---- Bước 2: Render Profile -> Processing (tạo job NGAY, render miễn
-  // phí — thanh toán chỉ diễn ra sau khi khách duyệt preview, xem
-  // job.status === AWAITING_PAYMENT bên dưới). ----
+  // ---- BÆ°á»›c 2: Render Profile -> Processing (táº¡o job NGAY, render miá»…n
+  // phÃ­ â€” thanh toÃ¡n chá»‰ diá»…n ra sau khi khÃ¡ch duyá»‡t preview, xem
+  // job.status === AWAITING_PAYMENT bÃªn dÆ°á»›i). ----
   const handleContinueToProcessing = useCallback(() => {
     setScreen(SCREEN.PROCESSING);
     job.start({ input: resolvedInput, profileId: selectedProfileId });
   }, [job, resolvedInput, selectedProfileId]);
 
-  // SỬA LỖI (tự phát hiện 31/07/2026): trước đây gọi job.cancel() không
-  // await/catch — job.cancel() là async, nếu Backend từ chối huỷ (vd
-  // job đã AWAITING_PAYMENT trở đi, xem JobsService.cancel()) lỗi bị bỏ
-  // qua hoàn toàn, khách bấm nút không thấy phản hồi gì. window.alert()
-  // dùng tạm (nhất quán với các dialog native khác đã dùng trong dự án,
-  // vd AdminScreen.jsx) — đủ cho 1 hành động hiếm khi thất bại.
+  // Sá»¬A Lá»–I (tá»± phÃ¡t hiá»‡n 31/07/2026): trÆ°á»›c Ä‘Ã¢y gá»i job.cancel() khÃ´ng
+  // await/catch â€” job.cancel() lÃ  async, náº¿u Backend tá»« chá»‘i huá»· (vd
+  // job Ä‘Ã£ AWAITING_PAYMENT trá»Ÿ Ä‘i, xem JobsService.cancel()) lá»—i bá»‹ bá»
+  // qua hoÃ n toÃ n, khÃ¡ch báº¥m nÃºt khÃ´ng tháº¥y pháº£n há»“i gÃ¬. window.alert()
+  // dÃ¹ng táº¡m (nháº¥t quÃ¡n vá»›i cÃ¡c dialog native khÃ¡c Ä‘Ã£ dÃ¹ng trong dá»± Ã¡n,
+  // vd AdminScreen.jsx) â€” Ä‘á»§ cho 1 hÃ nh Ä‘á»™ng hiáº¿m khi tháº¥t báº¡i.
   const handleCancelJob = useCallback(async () => {
     try {
       await job.cancel();
     } catch (err) {
-      window.alert(err.message || 'Không huỷ được job.');
+      window.alert(err.message || 'KhÃ´ng huá»· Ä‘Æ°á»£c job.');
     }
   }, [job]);
 
@@ -248,7 +298,7 @@ function CustomerPortalApp() {
     setScreen(SCREEN.LANDING);
   }, [job, clearFile, clearLink]);
 
-  // ---- Job Dashboard / History (chỉ khách đã đăng nhập mới xem được) ----
+  // ---- Job Dashboard / History (chá»‰ khÃ¡ch Ä‘Ã£ Ä‘Äƒng nháº­p má»›i xem Ä‘Æ°á»£c) ----
   const handleOpenHistory = useCallback(() => {
     setScreenBeforeHistory(screen);
     setScreen(SCREEN.HISTORY);
@@ -263,13 +313,13 @@ function CustomerPortalApp() {
   const handleOpenHistoryJob = useCallback((historyJob) => {
     const isTerminal = [JOB_STATUS.FINISHED, JOB_STATUS.ERROR, JOB_STATUS.CANCELLED].includes(historyJob.status);
     if (isTerminal) {
-      // Luôn qua route GET /jobs/:id/download (ghi log + kiểm tra chủ sở
-      // hữu) — KHÔNG mở thẳng historyJob.downloadUrl (URL B2 nội bộ, có
-      // thể đã hết hạn nếu là presigned URL, xem b2-storage.service.ts).
-      // getDownloadUrl() giờ async (cần lấy access token trước) — mở tab
-      // trống NGAY trong lúc click (đồng bộ) rồi mới gán location sau,
-      // để trình duyệt không chặn popup (chỉ cho phép window.open() gọi
-      // trực tiếp trong user gesture, không phải sau 1 await).
+      // LuÃ´n qua route GET /jobs/:id/download (ghi log + kiá»ƒm tra chá»§ sá»Ÿ
+      // há»¯u) â€” KHÃ”NG má»Ÿ tháº³ng historyJob.downloadUrl (URL B2 ná»™i bá»™, cÃ³
+      // thá»ƒ Ä‘Ã£ háº¿t háº¡n náº¿u lÃ  presigned URL, xem b2-storage.service.ts).
+      // getDownloadUrl() giá» async (cáº§n láº¥y access token trÆ°á»›c) â€” má»Ÿ tab
+      // trá»‘ng NGAY trong lÃºc click (Ä‘á»“ng bá»™) rá»“i má»›i gÃ¡n location sau,
+      // Ä‘á»ƒ trÃ¬nh duyá»‡t khÃ´ng cháº·n popup (chá»‰ cho phÃ©p window.open() gá»i
+      // trá»±c tiáº¿p trong user gesture, khÃ´ng pháº£i sau 1 await).
       const win = window.open('', '_blank', 'noopener');
       getDownloadUrl(historyJob.id).then((url) => {
         if (url && win) win.location.href = url;
@@ -277,7 +327,7 @@ function CustomerPortalApp() {
       });
       return;
     }
-    // Job đang chạy — mở lại (subscribe), KHÔNG tạo job mới.
+    // Job Ä‘ang cháº¡y â€” má»Ÿ láº¡i (subscribe), KHÃ”NG táº¡o job má»›i.
     setActiveProjectName(historyJob.projectName);
     setSelectedProfileId(historyJob.profileId);
     job.attach(historyJob.id);
@@ -349,10 +399,10 @@ function CustomerPortalApp() {
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.AWAITING_PAYMENT && (
           <PaymentScreen
             key="payment"
-            // SỬA LỖI (31/07/2026): KHÔNG fallback về estimates[...] (ước
-            // tính heuristic trước render) nữa — nếu paymentInfo (giá
-            // THẬT vừa tính từ approve()) chưa tải xong, PaymentScreen tự
-            // hiện "đang tải" thay vì hiện nhầm số ước tính SAI cho khách.
+            // Sá»¬A Lá»–I (31/07/2026): KHÃ”NG fallback vá» estimates[...] (Æ°á»›c
+            // tÃ­nh heuristic trÆ°á»›c render) ná»¯a â€” náº¿u paymentInfo (giÃ¡
+            // THáº¬T vá»«a tÃ­nh tá»« approve()) chÆ°a táº£i xong, PaymentScreen tá»±
+            // hiá»‡n "Ä‘ang táº£i" thay vÃ¬ hiá»‡n nháº§m sá»‘ Æ°á»›c tÃ­nh SAI cho khÃ¡ch.
             amountVnd={job.paymentInfo?.amountVnd}
             transferContent={job.paymentInfo?.transferContent}
             qrImageUrl={job.paymentInfo?.qrImageUrl}
@@ -379,6 +429,7 @@ function CustomerPortalApp() {
             overallProgress={job.overallProgress}
             fileName={activeProjectName}
             etaSeconds={estimates[selectedProfileId]?.etaSeconds}
+            queueSeconds={estimates[selectedProfileId]?.queueSeconds}
             onCancel={handleCancelJob}
           />
         )}

@@ -1,155 +1,204 @@
 // ============================================================
-// adminApi — Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7).
-// Gọi thẳng Backend NestJS, KHÔNG qua mockBackend.js (Admin không có
-// khái niệm demo — chỉ dùng được khi đã cấu hình Backend thật).
+// adminApi â€” Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai Ä‘oáº¡n 7).
+// Gá»i tháº³ng Backend NestJS, KHÃ”NG qua mockBackend.js (Admin khÃ´ng cÃ³
+// khÃ¡i niá»‡m demo â€” chá»‰ dÃ¹ng Ä‘Æ°á»£c khi Ä‘Ã£ cáº¥u hÃ¬nh Backend tháº­t).
 //
-// 2026-08-02 (Owner yêu cầu MFA bắt buộc, "Không tạo bypass"): mọi
-// request giờ đính kèm `Authorization: Bearer <access token Supabase>`
-// (thay cho x-admin-key cũ) — token này lấy được CHỈ SAU KHI hoàn tất
-// đăng nhập + MFA (TOTP) thật, xem services/staffAuth.js +
-// components/StaffMfaLogin.jsx. Backend (RoleGuard) tự kiểm tra lại
-// claim `aal` từ chính token, không tin tưởng Frontend.
+// 2026-08-02 (Owner yÃªu cáº§u MFA báº¯t buá»™c, "KhÃ´ng táº¡o bypass"): má»i
+// request giá» Ä‘Ã­nh kÃ¨m `Authorization: Bearer <access token Supabase>`
+// (thay cho x-admin-key cÅ©) â€” token nÃ y láº¥y Ä‘Æ°á»£c CHá»ˆ SAU KHI hoÃ n táº¥t
+// Ä‘Äƒng nháº­p + MFA (TOTP) tháº­t, xem services/staffAuth.js +
+// components/StaffMfaLogin.jsx. Backend (RoleGuard) tá»± kiá»ƒm tra láº¡i
+// claim `aal` tá»« chÃ­nh token, khÃ´ng tin tÆ°á»Ÿng Frontend.
 // ============================================================
 
 import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
 
 async function adminFetch(path, staffToken) {
   if (!IS_BACKEND_CONFIGURED) {
-    throw new Error('Chưa cấu hình Backend thật — Admin Dashboard không dùng được ở chế độ demo.');
+    throw new Error('ChÆ°a cáº¥u hÃ¬nh Backend tháº­t â€” Admin Dashboard khÃ´ng dÃ¹ng Ä‘Æ°á»£c á»Ÿ cháº¿ Ä‘á»™ demo.');
   }
   const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${staffToken}` },
   });
-  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
-  if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
+  if (res.status === 401 || res.status === 403) throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a Ä‘á»§ quyá»n/MFA â€” Ä‘Äƒng nháº­p láº¡i.');
+  if (!res.ok) throw new Error(`YÃªu cáº§u tháº¥t báº¡i (${res.status})`);
   return res.json();
 }
 
-/** Hành động Admin THẬT lên Worker Fleet (retry/requeue/quarantine/drain,
- * ngoài CWS_WORKER_ROADMAP.md — đóng lỗ hổng Phase 6), khác `adminFetch`
- * ở trên vì là POST + có body tuỳ chọn. */
+/** HÃ nh Ä‘á»™ng Admin THáº¬T lÃªn Worker Fleet (retry/requeue/quarantine/drain,
+ * ngoÃ i CWS_WORKER_ROADMAP.md â€” Ä‘Ã³ng lá»— há»•ng Phase 6), khÃ¡c `adminFetch`
+ * á»Ÿ trÃªn vÃ¬ lÃ  POST + cÃ³ body tuá»³ chá»n. */
 async function adminPost(path, staffToken, body) {
   if (!IS_BACKEND_CONFIGURED) {
-    throw new Error('Chưa cấu hình Backend thật — Admin Dashboard không dùng được ở chế độ demo.');
+    throw new Error('ChÆ°a cáº¥u hÃ¬nh Backend tháº­t â€” Admin Dashboard khÃ´ng dÃ¹ng Ä‘Æ°á»£c á»Ÿ cháº¿ Ä‘á»™ demo.');
   }
   const res = await fetch(`${API_CONFIG.BASE_URL}${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${staffToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
   });
-  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
-  if (!res.ok) throw new Error(`Yêu cầu thất bại (${res.status})`);
+  if (res.status === 401 || res.status === 403) throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a Ä‘á»§ quyá»n/MFA â€” Ä‘Äƒng nháº­p láº¡i.');
+  if (!res.ok) throw new Error(`YÃªu cáº§u tháº¥t báº¡i (${res.status})`);
   return res.json();
 }
 
-/** Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+export function adminListAffiliates(adminKey) { return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATES, adminKey); }
+export function adminSetAffiliateStatus(id, status, adminKey) { return adminPost(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATE_STATUS(id), adminKey, { status }); }
+export function adminListAffiliateWithdrawals(adminKey) { return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATE_WITHDRAWALS, adminKey); }
+export function adminListAffiliateCommissions(adminKey) { return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATE_COMMISSIONS, adminKey); }
+export function adminSetAffiliateWithdrawalStatus(id, status, adminKey, providerTransactionId, reason) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATE_WITHDRAWAL_STATUS(id), adminKey, { status, providerTransactionId, reason });
+}
+export function adminMakeAffiliateCommissionAvailable(id, adminKey) { return adminPost(API_CONFIG.ENDPOINTS.ADMIN_AFFILIATE_COMMISSION_AVAILABLE(id), adminKey); }
+
+/** Danh sÃ¡ch toÃ n bá»™ khÃ¡ch hÃ ng (CWS_ROADMAP_MVP_V1.md, Giai Ä‘oáº¡n 7). */
 export function adminListCustomers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, adminKey);
 }
 
-/** Danh sách toàn bộ job của mọi khách hàng. */
+/** Danh sÃ¡ch toÃ n bá»™ job cá»§a má»i khÃ¡ch hÃ ng. */
 export function adminListJobs(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_JOBS, adminKey);
 }
 
-/** Trạng thái Worker Fleet (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
- * "Worker") — chỉ đọc, không can thiệp. */
+/** Tráº¡ng thÃ¡i Worker Fleet (CWS_MVP_WORKFLOW_FINAL.md, má»¥c Admin â€”
+ * "Worker") â€” chá»‰ Ä‘á»c, khÃ´ng can thiá»‡p. */
 export function adminListWorkers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, adminKey);
 }
 
-/** Sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — chỉ đọc. Hành
- * động retry/requeue/quarantine/drain xem 4 hàm `adminRetryTask`/
- * `adminRequeueTask`/`adminSetWorkerQuarantine`/`adminSetWorkerDrain` bên dưới. */
+/** Sá»± cá»‘ Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) â€” chá»‰ Ä‘á»c. HÃ nh
+ * Ä‘á»™ng retry/requeue/quarantine/drain xem 4 hÃ m `adminRetryTask`/
+ * `adminRequeueTask`/`adminSetWorkerQuarantine`/`adminSetWorkerDrain` bÃªn dÆ°á»›i. */
 export function adminListIncidents(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, adminKey);
 }
 
-/** Đưa 1 task đang status=failed (permanent) về lại queued để thử lại. */
+/** ÄÆ°a 1 task Ä‘ang status=failed (permanent) vá» láº¡i queued Ä‘á»ƒ thá»­ láº¡i. */
 export function adminRetryTask(taskId, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_RETRY_TASK(taskId), adminKey);
 }
 
-/** Ép 1 task đang active về queued ngay (không đợi requeue_stale_tasks() tự động sau 240s). */
+/** Ã‰p 1 task Ä‘ang active vá» queued ngay (khÃ´ng Ä‘á»£i requeue_stale_tasks() tá»± Ä‘á»™ng sau 240s). */
 export function adminRequeueTask(taskId, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_REQUEUE_TASK(taskId), adminKey);
 }
 
-/** Bật/tắt quarantine 1 worker — worker bị quarantine sẽ KHÔNG claim được task mới (thực thi thật qua claim_task(), không chỉ là nhãn). */
+/** Báº­t/táº¯t quarantine 1 worker â€” worker bá»‹ quarantine sáº½ KHÃ”NG claim Ä‘Æ°á»£c task má»›i (thá»±c thi tháº­t qua claim_task(), khÃ´ng chá»‰ lÃ  nhÃ£n). */
 export function adminSetWorkerQuarantine(workerId, quarantined, reason, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_QUARANTINE_WORKER(workerId), adminKey, { quarantined, reason });
 }
 
-/** Bật/tắt drain 1 worker — worker đang drain sẽ hoàn tất task hiện tại nhưng KHÔNG claim task mới. */
+/** Báº­t/táº¯t drain 1 worker â€” worker Ä‘ang drain sáº½ hoÃ n táº¥t task hiá»‡n táº¡i nhÆ°ng KHÃ”NG claim task má»›i. */
 export function adminSetWorkerDrain(workerId, draining, reason, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_DRAIN_WORKER(workerId), adminKey, { draining, reason });
 }
 
-/** Xác nhận final_amount cho 1 phiên host_usage_sessions (Phase 8) — hành
- * động DUY NHẤT ghi số tiền cuối cùng, Worker/hệ thống tự động không tự quyết định. */
+/** XÃ¡c nháº­n final_amount cho 1 phiÃªn host_usage_sessions (Phase 8) â€” hÃ nh
+ * Ä‘á»™ng DUY NHáº¤T ghi sá»‘ tiá»n cuá»‘i cÃ¹ng, Worker/há»‡ thá»‘ng tá»± Ä‘á»™ng khÃ´ng tá»± quyáº¿t Ä‘á»‹nh. */
 export function adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey) {
   return adminPost(API_CONFIG.ENDPOINTS.ADMIN_CONFIRM_FINAL_AMOUNT(sessionId), adminKey, { finalAmount });
 }
 
-/** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —
- * chỉ đọc, tính bởi RPC compute_host_usage_sessions() (cron), không phải
- * Backend/Frontend tự tính. */
+/** Thá»‘ng kÃª thá»i gian/tiá»n thuÃª host (Phase 8 CWS_WORKER_ROADMAP.md) â€”
+ * chá»‰ Ä‘á»c, tÃ­nh bá»Ÿi RPC compute_host_usage_sessions() (cron), khÃ´ng pháº£i
+ * Backend/Frontend tá»± tÃ­nh. */
 export function adminListHostUsageSessions(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_HOST_USAGE, adminKey);
 }
 
-/** Danh sách thiết bị Android gửi payment notification (MBBank Notification
- * Listener MVP) — chỉ đọc, xem payment-devices.repository.ts. */
+/** Danh sÃ¡ch thiáº¿t bá»‹ Android gá»­i payment notification (MBBank Notification
+ * Listener MVP) â€” chá»‰ Ä‘á»c, xem payment-devices.repository.ts. */
 export function adminListPaymentDevices(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_DEVICES, adminKey);
 }
 
 /** Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
- * reconciliation") — 3 loại bất thường thanh toán (payment_status lệch
- * khỏi bảng payments thật, webhook kẹt 'processing', đã thanh toán thật
- * nhưng chưa nhận file) — chỉ đọc, xem
+ * reconciliation") â€” 3 loáº¡i báº¥t thÆ°á»ng thanh toÃ¡n (payment_status lá»‡ch
+ * khá»i báº£ng payments tháº­t, webhook káº¹t 'processing', Ä‘Ã£ thanh toÃ¡n tháº­t
+ * nhÆ°ng chÆ°a nháº­n file) â€” chá»‰ Ä‘á»c, xem
  * worker_migrations/015_payment_reconciliation_view.sql. */
 export function adminListPaymentAnomalies(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_ANOMALIES, adminKey);
 }
 
-/** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
- * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
- * xem JobsService.assertOwnership() trong Backend (trước đây route này
- * mở công khai theo jobId, không kiểm tra chủ sở hữu — đã sửa lỗ hổng
+/** áº¢nh preview cá»§a 1 job (CWS_MVP_WORKFLOW_FINAL.md, má»¥c Admin â€”
+ * "Preview") â€” cáº§n x-admin-key náº¿u job Ä‘Ã£ cÃ³ chá»§ (khÃ¡ch Ä‘Äƒng nháº­p),
+ * xem JobsService.assertOwnership() trong Backend (trÆ°á»›c Ä‘Ã¢y route nÃ y
+ * má»Ÿ cÃ´ng khai theo jobId, khÃ´ng kiá»ƒm tra chá»§ sá»Ÿ há»¯u â€” Ä‘Ã£ sá»­a lá»— há»•ng
  * IDOR, xem docs/MVP_GAP_REPORT.md). */
 export async function adminGetJobPreview(jobId, staffToken) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`, {
     headers: { Authorization: `Bearer ${staffToken}` },
   });
-  if (!res.ok) throw new Error(`Không lấy được ảnh preview (${res.status})`);
+  if (!res.ok) throw new Error(`KhÃ´ng láº¥y Ä‘Æ°á»£c áº£nh preview (${res.status})`);
   return res.json();
 }
 
-/** Tra cứu 1 job theo Storage Code. */
+/** Tra cá»©u 1 job theo Storage Code. */
 export function adminGetJobByStorageCode(storageCode, staffToken) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_JOB_BY_STORAGE_CODE(storageCode), staffToken);
 }
 
-/** Tra cứu payment theo Payment Code. */
+/** Tra cá»©u payment theo Payment Code. */
 export function adminGetPaymentByCode(paymentCode, staffToken) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_PAYMENT_BY_CODE(paymentCode), staffToken);
 }
 
-/** Log Worker (báo lỗi render) của 1 job. */
+/** Log Worker (bÃ¡o lá»—i render) cá»§a 1 job. */
 export async function adminGetJobLogs(jobId, staffToken) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ADMIN_JOB_LOGS(jobId)}`, {
     headers: { Authorization: `Bearer ${staffToken}` },
   });
-  if (!res.ok) throw new Error(`Không lấy được log (${res.status})`);
+  if (!res.ok) throw new Error(`KhÃ´ng láº¥y Ä‘Æ°á»£c log (${res.status})`);
   return res.json();
 }
 
-/** URL tải file kết quả cho link `<a href>` trong bảng Job — dùng thẳng
- * làm href (không phải fetch()) nên phải đính token qua query string
- * `?staffToken=` thay vì header Authorization (điều hướng trình duyệt
- * thường không set được custom header, xem staff-auth.util.ts —
- * Backend đọc cả header lẫn query cho đúng use-case này). */
-export function adminGetDownloadUrl(jobId, staffToken) {
-  return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?staffToken=${encodeURIComponent(staffToken)}`;
+/** URL táº£i file káº¿t quáº£ cho link `<a href>` trong báº£ng Job â€” dÃ¹ng tháº³ng
+ * lÃ m href. HÃ m nÃ y dÃ¹ng Authorization header, nháº­n response thÃ nh blob
+ * vÃ  táº¡o object URL táº¡m; token khÃ´ng bao giá» Ä‘i vÃ o URL/history/log. */
+export async function adminGetDownloadUrl(jobId, staffToken) {
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD_URL(jobId)}`, {
+    headers: { Authorization: `Bearer ${staffToken}` },
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a Ä‘á»§ quyá»n/MFA â€” Ä‘Äƒng nháº­p láº¡i.');
+  if (!res.ok) throw new Error(`KhÃ´ng láº¥y Ä‘Æ°á»£c signed URL (${res.status})`);
+  const data = await res.json();
+  return data.url ?? null;
+}
+
+/** Danh sÃ¡ch yÃªu cáº§u chá»‰nh sá»­a cá»§a khÃ¡ch â€” chá»‰ Admin MFA, backend RoleGuard enforce. */
+export function adminListEditRequests(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.STAFF_EDIT_REQUESTS, adminKey);
+}
+
+/** Cáº­p nháº­t tráº¡ng thÃ¡i yÃªu cáº§u chá»‰nh sá»­a â€” chá»‰ Admin MFA. */
+export function adminUpdateEditRequest(id, status, adminKey, expectedResponseAt = null) {
+  return fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.STAFF_UPDATE_EDIT_REQUEST(id)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${adminKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, expectedResponseAt }),
+  }).then(async (res) => {
+    if (res.status === 401 || res.status === 403) throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a Ä‘á»§ quyá»n/MFA â€” Ä‘Äƒng nháº­p láº¡i.');
+    if (!res.ok) throw new Error(`YÃªu cáº§u tháº¥t báº¡i (${res.status})`);
+    return res.json();
+  });
+}
+
+
+/** Support ticket queue â€” Admin MFA/RBAC only at backend. */
+export function adminListSupportTickets(adminKey) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_SUPPORT_TICKETS, adminKey);
+}
+
+export function adminUpdateSupportTicket(id, status, adminKey, expectedResponseAt = null) {
+  return fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ADMIN_SUPPORT_TICKET(id)}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${adminKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, expectedResponseAt }),
+  }).then(async (res) => {
+    if (res.status === 401 || res.status === 403) throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a Ä‘á»§ quyá»n/MFA â€” Ä‘Äƒng nháº­p láº¡i.');
+    if (!res.ok) throw new Error(`YÃªu cáº§u tháº¥t báº¡i (${res.status})`);
+    return res.json();
+  });
 }

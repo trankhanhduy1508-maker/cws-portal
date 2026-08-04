@@ -3,7 +3,7 @@ import { CheckCircle2, Eye, MessageSquareWarning } from 'lucide-react';
 import StepCard from '../components/StepCard';
 import StepDots from '../components/StepDots';
 import Button from '../components/Button';
-import { getJobPreview, requestJobChanges } from '../services/RenderService';
+import { getJobPreview, getJobEditRequests, requestJobChanges } from '../services/RenderService';
 
 /** Khách xem 3-5 ảnh preview (đã watermark "CWS RENDER") và bấm duyệt
  * trước khi Backend đóng gói + mở link tải file gốc (CWS_ROADMAP_MVP_V1.md,
@@ -23,14 +23,19 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestError, setRequestError] = useState(null);
   const [requestSent, setRequestSent] = useState(false);
+  const [editRequests, setEditRequests] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setLoadError(null);
-    getJobPreview(jobId)
-      .then((res) => { if (!cancelled) setImages(res.images ?? []); })
-      .catch((err) => { if (!cancelled) setLoadError(err.message || 'Không tải được ảnh xem trước'); })
+    Promise.all([getJobPreview(jobId), getJobEditRequests(jobId)])
+      .then(([preview, requests]) => {
+        if (cancelled) return;
+        setImages(preview.images ?? []);
+        setEditRequests(requests.requests ?? []);
+      })
+      .catch((err) => { if (!cancelled) setLoadError(err.message || 'Không tải được dữ liệu xem trước'); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, [jobId]);
@@ -53,6 +58,8 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
       await requestJobChanges(jobId, note);
       setRequestSent(true);
       setShowRequestForm(false);
+      const latest = await getJobEditRequests(jobId);
+      setEditRequests(latest.requests ?? []);
     } catch (err) {
       setRequestError(err.message || 'Gửi yêu cầu chỉnh sửa thất bại');
     } finally {
@@ -99,6 +106,14 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
       <Button variant="primary" icon={CheckCircle2} disabled={isApproving || isLoading} onClick={handleApprove}>
         {isApproving ? 'Đang xử lý...' : 'Duyệt kết quả này'}
       </Button>
+
+
+      {editRequests.length > 0 && (
+        <div style={{ padding: 10, borderRadius: 10, background: '#F7F7F8', fontSize: 13 }}>
+          <strong>Trạng thái yêu cầu chỉnh sửa:</strong>{' '}
+          {({ REQUESTED: 'Đã tiếp nhận', ACKNOWLEDGED: 'Đã xác nhận', IN_PROGRESS: 'Đang xử lý', RESOLVED: 'Đã xử lý', DECLINED: 'Không thể thực hiện' }[editRequests[0].status] || editRequests[0].status)}
+        </div>
+      )}
 
       {requestSent && (
         <p style={{ textAlign: 'center', fontSize: 13.5, color: '#2E7D32' }}>

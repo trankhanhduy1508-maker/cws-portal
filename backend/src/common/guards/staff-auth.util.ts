@@ -27,9 +27,7 @@ export async function isAuthenticatedMfaAdmin(
   const headerToken = req.headers.authorization?.startsWith('Bearer ')
     ? req.headers.authorization.slice('Bearer '.length)
     : null;
-  const queryToken =
-    typeof req.query.staffToken === 'string' ? req.query.staffToken : null;
-  const token = headerToken ?? queryToken;
+  const token = headerToken;
   if (!token) return false;
 
   if (getAuthenticatorAssuranceLevel(token) !== 'aal2') return false;

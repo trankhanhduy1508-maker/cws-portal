@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { submitGoogleDrive } from '../services/RenderService';
 
 /**
- * Hook quản lý việc nhập link Google Drive: validate cú pháp + resolve
- * (hỏi Backend lấy tên file) đều đi qua RenderService.submitGoogleDrive().
+ * Hook quản lý link Google Drive đã được Backend hỗ trợ thật: validate
+ * và resolve tên/dung lượng file đều đi qua RenderService.
  */
 export function useDriveLink() {
   const [driveLink, setDriveLinkState] = useState(null);

@@ -10,9 +10,11 @@ import { RoleGuard } from '../common/guards/role.guard';
 import { DeviceSignatureGuard } from '../common/guards/device-signature.guard';
 import { DeviceHeartbeatGuard } from '../common/guards/device-heartbeat.guard';
 import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AffiliateModule } from '../affiliates/affiliate.module';
 
 @Module({
-  imports: [SupabaseModule],
+  imports: [SupabaseModule, AffiliateModule],
   controllers: [PaymentsController, PaymentNotificationController],
   providers: [
     PaymentsService,
@@ -23,6 +25,7 @@ import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
     DeviceSignatureGuard,
     DeviceHeartbeatGuard,
     SepayWebhookGuard,
+    JwtAuthGuard,
   ],
   exports: [PaymentsService, PaymentDevicesRepository],
 })

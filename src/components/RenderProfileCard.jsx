@@ -34,6 +34,9 @@ export default function RenderProfileCard({ profile, estimate, isSelected, isLoa
           </div>
         )}
       </div>
+      <p className="profile-card__estimate-note">
+        Ước tính dựa trên dung lượng, cấu hình render và hàng đợi. Giá cuối chỉ xác định sau preview theo runtime Worker thật.
+      </p>
     </button>
   );
 }

@@ -16,6 +16,7 @@ import { PACKAGING_SERVICE } from './services/packaging.interface';
 import { RENDER_ORDERS_REPOSITORY } from './repositories/render-orders.repository.interface';
 import { SupabaseRenderOrdersRepository } from './repositories/render-orders.repository.supabase';
 import { RoleGuard } from '../common/guards/role.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @Module({
   imports: [SupabaseModule, PackagingModule, StorageModule, FilesModule, PaymentsModule],
@@ -25,6 +26,7 @@ import { RoleGuard } from '../common/guards/role.guard';
     WorkerFleetGateway,
     PricingService,
     RoleGuard,
+    JwtAuthGuard,
     { provide: PACKAGING_SERVICE, useExisting: PackagingService },
     {
       provide: RENDER_ORDERS_REPOSITORY,

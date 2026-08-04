@@ -75,3 +75,10 @@
   background: #F0F0F1;
   border-radius: 6px;
 }
+
+.profile-card__estimate-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8A8A90;
+}
