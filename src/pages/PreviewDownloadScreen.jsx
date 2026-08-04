@@ -19,19 +19,10 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
   useEffect(() => {
     if (!IS_BACKEND_CONFIGURED) return undefined;
     let cancelled = false;
-    let objectUrl = null;
     getDownloadUrl(jobId).then((url) => {
-      if (cancelled) {
-        if (url) URL.revokeObjectURL(url);
-        return;
-      }
-      objectUrl = url;
-      setRealHref(url);
+      if (!cancelled) setRealHref(url);
     }).catch(() => {});
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    return () => { cancelled = true; };
   }, [jobId]);
   const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
 
