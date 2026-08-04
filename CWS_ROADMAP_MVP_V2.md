@@ -165,7 +165,8 @@ Acceptance: test unit + HTTP/DB thật trên một order; không tuyên bố min
 1. **Live payment — BLOCKED/OWNER.** Owner liên kết MB Bank thật, cấu hình SePay Live webhook và secret trên Render; không tự giao dịch thật.
 2. Hiển thị payment deadline và trạng thái rõ ràng.
 3. Webhook duplicate/late/out-of-order phải idempotent và recoverable.
-4. Có reconciliation alert cho paid orphan/processing stuck/missing output.
+4. **Direct payment confirmation route — CODE PASS.** Removed unauthenticated POST /payments/:id/confirm; only guarded webhook/notification paths can confirm through matching/idempotency logic. Evidence: reports/security/CWS_PAYMENT_CONFIRMATION_BOUNDARY_2026-08-04.md.
+5. Có reconciliation alert cho paid orphan/processing stuck/missing output.
 5. Có runbook payment đã chuyển tiền nhưng chưa PAID.
 6. **Refund/compensation — BLOCKED/OWNER.** Cần policy và thao tác Admin an toàn; không tự động hoàn tiền khi chưa có quyết định.
 7. Không hiển thị Cancel nếu backend không hỗ trợ cancel thực tế.
