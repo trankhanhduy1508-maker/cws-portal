@@ -90,7 +90,7 @@ Không viết lại frontend/backend/database/storage/admin đã có evidence PA
 4. **Nguồn file trung thực — PASS (code-level, 2026-08-04).** UI và validation hiện chỉ nhận upload trực tiếp `.blend` hoặc Google Drive; Backend Google Drive resolver là nguồn link duy nhất có integration thật. OneDrive/Dropbox/Direct Link được giữ ngoài MVP cho tới khi có resolver/upload integration và evidence thật.
 5. **Không mất draft khi login — P1.** Giữ file/link/metadata qua OAuth redirect và khôi phục draft theo user sau login.
 6. **Job history — VERIFY.** Có danh sách Job, trạng thái, giá/payment/download history; kiểm tra ownership bằng tài khoản thật.
-7. **Giới hạn MVP công khai — P1.** Hiển thị Blender version/engine/plugin support, `.blend` only, 2GB, queue/render limits và nguồn upload thực tế. Không tự bịa version/engine nếu Worker chưa xác nhận.
+7. **Giới hạn MVP công khai — CODE PASS, runtime chưa xác minh.** Upload screen hiển thị `.blend` only, 2GB và Google Drive là nguồn link duy nhất; không tự bịa Blender version/engine/plugin support. Queue/render limits và Worker runtime vẫn cần evidence thật.
 
 ## 4. Giai đoạn 3 — Worker và Render
 
