@@ -42,6 +42,19 @@ describe('P0 authorization boundary contracts', () => {
     expect(controller).toContain("@Patch('admin/tickets/:id')");
   });
 
+  it('HTTP download and WebSocket realtime never accept bearer tokens in URLs', () => {
+    const authUtil = source('../common/optional-auth.util.ts');
+    const realtime = source('../realtime/jobs-realtime.server.ts');
+    const migration = source('../../migrations/020_create_realtime_access_tickets.sql');
+    expect(authUtil).toContain('Query-string bearer tokens bị từ chối');
+    expect(authUtil).toContain('return null;');
+    expect(realtime).toContain('one-time ticket');
+    expect(realtime).toContain('ticketService.consume');
+    expect(realtime).not.toContain('searchParams.get(\'token\')');
+    expect(migration).toContain('consume_realtime_access_ticket');
+    expect(migration).toContain('used_at IS NULL');
+  });
+
   it('payment confirmation has no unauthenticated direct route', () => {
     const controller = source('../payments/payments.controller.ts');
     expect(controller).not.toContain("@Post(':id/confirm')");
