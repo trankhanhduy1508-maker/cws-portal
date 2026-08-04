@@ -13,8 +13,10 @@ Branch: agent/roadmap-mvp-v2
 
 ## Verification
 
-- GitHub Actions #249 PASS on code head f28b569: backend build/tests and frontend build/lint.
+- GitHub Actions #251 PASS on code head c455005: backend build/tests and frontend build/lint.
 - Contract coverage asserts RLS, customer JWT, and Admin role boundaries.
 - Two-account production RLS/MFA verification and a real support response channel remain unverified.
 - Owner still must choose and operate the actual customer contact channel, support hours, and response SLA. The UI does not claim 24/7 or a response promise.
 - No production data, credentials, secrets, reboot, shutdown, or logoff was used.
+
+Unit tests also cover owned ticket creation, denial when linking another customer's Job, and invalid Admin status.
