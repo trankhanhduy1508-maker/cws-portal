@@ -302,3 +302,8 @@ Còn lại và được giữ BLOCKED/OWNER hoặc runtime: Worker claim/B2/Wind
 CI #251 (code head c455005) PASS sau SupportService ownership/status unit tests: backend build/test và frontend build/lint. Support ticket code path đã được test ở mức unit/contract; runtime hai tài khoản và kênh phản hồi thật vẫn chưa xác minh.
 
 Admin Support queue bổ sung trường đặt expected response time theo từng ticket; không tự đặt SLA mặc định. CI #253 PASS trên code head 1023268.
+
+
+## HTTP/WebSocket Token Boundary — 2026-08-04
+
+Đã đóng bearer-token query path: Customer/Admin download dùng Authorization header + blob URL; HTTP helper từ chối query bearer; WebSocket dùng one-time opaque ticket hash trong DB, TTL 60 giây, consume-once. TTL download UI sửa thành 5 phút đúng Backend. CI #266 PASS; production migration/browser/two-account runtime chưa xác minh. Evidence: reports/security/CWS_HTTP_WS_TOKEN_BOUNDARY_2026-08-04.md.
