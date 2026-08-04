@@ -107,7 +107,7 @@ Không viết lại frontend/backend/database/storage/admin đã có evidence PA
 1. **Claim từ `cws_worker_full.py` — BLOCKED/OWNER.** Claim 1 job Portal thật qua HTTP/RPC bằng Worker production path, không dùng SQL trực tiếp.
 2. **B2 upload thật — BLOCKED/OWNER.** Cần key đang chạy thật được nhập vào máy Worker qua cơ chế an toàn; không dán secret vào chat/repo.
 3. **Windows + Blender + GPU runtime — PARTIAL.** Local render evidence chưa thay thế Fleet physical evidence; cần 1 job MVP thật từ claim → download → render → upload → verify.
-4. **Frame timeout — P1.** Có timeout rõ cho từng frame/job; Worker phải fail/retry an toàn, không treo vô hạn.
+4. **Frame timeout — CODE PASS, runtime chưa xác minh.** `render_single_frame()` dùng `CWS_FRAME_TIMEOUT_SEC` (mặc định 3600 giây, tối thiểu 60), trả lỗi transient và dọn frame output dở dang khi timeout. Cần runtime Worker thật để xác minh retry/recovery end-to-end.
 5. **Retry/recovery — P1.** Retry lỗi tạm thời có giới hạn và backoff; không retry file lỗi vô hạn; stale generation/lease phải bị fencing.
 6. **Progress — P1.** UI hiển thị stage và progress thật; không dùng ETA giả. Queue delay phải có cảnh báo khi vượt threshold Owner chọn.
 7. **Cleanup — P1.** Xoá file tạm sau success/fail/retry; evidence disk trước/sau job.
