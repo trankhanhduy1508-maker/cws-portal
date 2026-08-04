@@ -1,14 +1,14 @@
-// Cấu hình kết nối Backend — hiện tại CHƯA có Backend thật nên để trống.
-// Khi Backend CWS hoàn thành, chỉ cần điền BASE_URL/WS_BASE_URL vào đây
-// (hoặc đọc từ biến môi trường .env), KHÔNG cần sửa bất kỳ Component
-// hay Service nào khác.
+// Cáº¥u hÃ¬nh káº¿t ná»‘i Backend â€” hiá»‡n táº¡i CHÆ¯A cÃ³ Backend tháº­t nÃªn Ä‘á»ƒ trá»‘ng.
+// Khi Backend CWS hoÃ n thÃ nh, chá»‰ cáº§n Ä‘iá»n BASE_URL/WS_BASE_URL vÃ o Ä‘Ã¢y
+// (hoáº·c Ä‘á»c tá»« biáº¿n mÃ´i trÆ°á»ng .env), KHÃ”NG cáº§n sá»­a báº¥t ká»³ Component
+// hay Service nÃ o khÃ¡c.
 
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_CWS_API_BASE_URL || '',
   WS_BASE_URL: import.meta.env.VITE_CWS_WS_BASE_URL || '',
 
-  // Endpoint dự kiến khi Backend hoàn thành (đặt tên trước để dễ đối
-  // chiếu, KHÔNG có nghĩa là các endpoint này đã tồn tại thật).
+  // Endpoint dá»± kiáº¿n khi Backend hoÃ n thÃ nh (Ä‘áº·t tÃªn trÆ°á»›c Ä‘á»ƒ dá»… Ä‘á»‘i
+  // chiáº¿u, KHÃ”NG cÃ³ nghÄ©a lÃ  cÃ¡c endpoint nÃ y Ä‘Ã£ tá»“n táº¡i tháº­t).
   ENDPOINTS: {
     UPLOAD_FILE: '/files/upload',
     UPLOAD_RESUMABLE_INIT: '/files/upload-resumable/init',
@@ -18,8 +18,8 @@ export const API_CONFIG = {
     UPLOAD_RESUMABLE_ABORT: (sessionId) => `/files/upload-resumable/${sessionId}`,
     DRIVE_RESOLVE: '/drive/resolve',
     ESTIMATE_JOB: '/jobs/estimate',
-    // Payment (QR MB Bank) chỉ tra cứu lại qua đây — Portal không tự
-    // tạo payment độc lập nữa, Backend tự tạo bên trong APPROVE_JOB.
+    // Payment (QR MB Bank) chá»‰ tra cá»©u láº¡i qua Ä‘Ã¢y â€” Portal khÃ´ng tá»±
+    // táº¡o payment Ä‘á»™c láº­p ná»¯a, Backend tá»± táº¡o bÃªn trong APPROVE_JOB.
     GET_PAYMENT_STATUS: (paymentId) => `/payments/${paymentId}`,
     CREATE_JOB: '/jobs',
     GET_JOB: (jobId) => `/jobs/${jobId}`,
@@ -33,7 +33,7 @@ export const API_CONFIG = {
     JOB_DOWNLOAD_URL: (jobId) => `/jobs/${jobId}/download-url`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
     JOB_REALTIME_TICKET: (jobId) => `/jobs/${jobId}/realtime-ticket`,
-    // Admin (Giai đoạn 7) — cần Bearer token Supabase của staff đã qua MFA/RBAC, xem services/adminApi.js.
+    // Admin (Giai Ä‘oáº¡n 7) â€” cáº§n Bearer token Supabase cá»§a staff Ä‘Ã£ qua MFA/RBAC, xem services/adminApi.js.
     ADMIN_LIST_CUSTOMERS: '/customers',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',
@@ -49,7 +49,7 @@ export const API_CONFIG = {
     ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
     ADMIN_LIST_PAYMENT_DEVICES: '/payments/devices',
     ADMIN_LIST_PAYMENT_ANOMALIES: '/payments/reconciliation-anomalies',
-    // Staff (Admin/Host thật, Phần 6) — cần Authorization: Bearer <session
+    // Staff (Admin/Host tháº­t, Pháº§n 6) â€” cáº§n Authorization: Bearer <session
     // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
     STAFF_EDIT_REQUESTS: '/staff/edit-requests',
@@ -59,6 +59,14 @@ export const API_CONFIG = {
     ADMIN_SUPPORT_TICKETS: '/support/admin/tickets',
     ADMIN_SUPPORT_TICKET: (id) => `/support/admin/tickets/${id}`,
     HOST_DASHBOARD: '/host/dashboard',
+    AFFILIATE_PROGRAM: '/affiliates/program',
+    AFFILIATE_TRACK: '/affiliates/track',
+    AFFILIATE_ATTACH: '/affiliates/attach',
+    AFFILIATE_REGISTER: '/affiliates/me',
+    AFFILIATE_DASHBOARD: '/affiliates/me/dashboard',
+    AFFILIATE_BANK_ACCOUNT: '/affiliates/me/bank-account',
+    AFFILIATE_WITHDRAWAL: '/affiliates/me/withdrawals',
+    AFFILIATE_FEEDBACK: '/affiliates/me/feedback',
   },
 };
 
