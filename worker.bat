@@ -1,8 +1,9 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 rem CWS Worker launcher for Render -> Supabase tasks and B2 outputs.
-set "CWS_DIR=G:\CWS_Render"
-set "PYTHON_DIR=%CWS_DIR%\PythonEmbed"
+if not defined CWS_DIR set "CWS_DIR=G:\CWS_Render"
+if not defined CWS_PYTHON_DIR set "CWS_PYTHON_DIR=%CWS_DIR%\PythonEmbed"
+set "PYTHON_DIR=%CWS_PYTHON_DIR%"
 set "PYTHON_EXE=%PYTHON_DIR%\python.exe"
 set "PYTHON_VERSION=3.12.7"
 set "PYTHON_ZIP_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
@@ -40,7 +41,7 @@ curl -fL -o "%PYTHON_DIR%\get-pip.py" "%GETPIP_URL%" || exit /b 1
 del /q "%PYTHON_DIR%\get-pip.py"
 
 :preflight
-"%PYTHON_EXE%" "%~dp0cws_worker.py" --preflight || exit /b 1
+"%PYTHON_EXE%" "%~dp0cws_worker.py" --preflight --verify-manifest || exit /b 1
 
 :supervise
 "%PYTHON_EXE%" "%~dp0cws_worker.py"
