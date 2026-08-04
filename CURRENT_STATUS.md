@@ -249,3 +249,5 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 ## CI Verification — 2026-08-04
 
 GitHub Actions run #202 (head a1dbffe) PASS: Backend build + 18 Jest suites/123 tests, Frontend build + lint. Đây là evidence code/build/test; chưa thay thế runtime hai tài khoản, RLS/MFA thật, Worker/B2 vật lý hoặc Full E2E. Chi tiết: reports/CWS_CI_VERIFICATION_2026-08-04.md.
+
+Latest CI recheck: GitHub Actions run #204 (head 750916c) PASS sau khi chỉnh comment auth controller; backend build/test và frontend build/lint đều PASS.
