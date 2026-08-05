@@ -96,7 +96,7 @@ Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSp
 
 ## Post-implementation verification
 
-- Generic Engine + Node Agent + generic launcher offline suite: **15/15 PASS**.
+- Generic Engine + Node Agent + generic launcher offline suite: **16/16 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
 - py_compile: PASS.
 - Legacy runtime sources cws_worker_full.py and cws_worker.bat were removed from main after salvage; historical reports remain for evidence only.
 - New generic package files: worker/worker_engine.py, worker-engine.bat, worker-engine-manifest.json.
