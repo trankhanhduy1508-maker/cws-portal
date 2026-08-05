@@ -351,3 +351,10 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Supabase staging assignment → Node Agent → Generic Worker Engine → Blender 5.2 → output integrity → B2 staging checkpoint/HEAD+SHA-256 → Supabase completion → cleanup → ACTIVE_IDLE: **REAL RUNTIME VERIFIED**.
 - Job `staging-safe-20260805-01`, task `1`, worker `cws-staging-worker-01`, generation `3`; no production endpoint or `cws_worker_full.py` runtime used.
 - Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+
+## P0 follow-up — Admin / multi-node / isolation — 2026-08-05
+
+- Admin Fleet real runtime: **BLOCKED/UNVERIFIED**. Code maps fresh heartbeat/lifecycle states and enforces AAL2, but staging has no `staff_roles`/`staff_worker_access` rows; no bypass or fake heartbeat was added.
+- Multi-node assignment/failover: **REAL RUNTIME VERIFIED** on staging. Evidence: `reports/worker/CWS_MULTI_NODE_FAILOVER_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+- Hostile `.blend` isolation: **UNVERIFIED/BLOCKED** pending a disposable Windows Sandbox-capable staging host. Evidence: `reports/worker/CWS_HOSTILE_BLEND_ISOLATION_POC_2026-08-05.md`.
+- Production rollout: **NO-GO** until Admin AAL2 runtime, deployment, isolation, credential, monitoring and rollback gates pass. Checklist: `reports/worker/CWS_PRODUCTION_ROLLOUT_READINESS_2026-08-05.md`.

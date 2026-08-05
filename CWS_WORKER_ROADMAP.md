@@ -895,3 +895,9 @@ Machine-safe env inspection found no staging values. Supabase connector exposes 
 ## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
 
 The isolated staging path is now verified end-to-end: assignment/fencing generation → Node Agent child Generic Worker → real Blender render → integrity/checkpoint → B2 staging HEAD+SHA-256 verification → Supabase completion → cleanup → `ACTIVE_IDLE`. Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+## P0 follow-up — 2026-08-05
+
+- Multi-node/failover: **REAL RUNTIME VERIFIED** in staging, including stale takeover and generation fencing. Evidence: `reports/worker/CWS_MULTI_NODE_FAILOVER_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+- Admin Fleet real runtime: **BLOCKED/UNVERIFIED** pending staging staff-role/AAL2 setup and deployed route verification.
+- Hostile `.blend` isolation: **UNVERIFIED/BLOCKED** pending a disposable Windows Sandbox-capable host. Evidence: `reports/worker/CWS_HOSTILE_BLEND_ISOLATION_POC_2026-08-05.md`.
+- Production rollout readiness: **NO-GO**. Evidence/checklist: `reports/worker/CWS_PRODUCTION_ROLLOUT_READINESS_2026-08-05.md`.

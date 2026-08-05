@@ -163,3 +163,9 @@ Canonical direction hiện tại:
 - Generic Worker claimed generation `3`, rendered the harmless Blender scene, validated output integrity, uploaded and verified the B2 object checksum, and completed the Supabase task.
 - The run used only `CWS_STAGING_*`, disabled Blender autoexec, and exited cleanly with no leaked Blender/Python worker process.
 - Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+
+## Multi-node and isolation — 2026-08-05
+
+- Two real Node Agents completed separate staging assignments; stale takeover at generation 2 rejected the old generation. **REAL RUNTIME VERIFIED**.
+- Hostile `.blend` isolation remains **UNVERIFIED**; `--disable-autoexec` is retained but is not treated as a security boundary.
+- Production rollout remains **NO-GO** until Admin AAL2 runtime and Windows isolation gates pass.

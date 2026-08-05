@@ -128,3 +128,9 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 
 - Node Agent claimed the staging assignment, spawned the Generic Worker child, observed the real Blender/render/upload/verify path, completed cleanup, and recorded `ACTIVE_IDLE` with `cleanup_complete`.
 - Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+
+## Multi-node recovery — 2026-08-05
+
+- Two independent Node Agent processes ran on staging; separate task claims and state-event streams were observed.
+- Crash/stale-heartbeat requeue and generation fencing were verified with a real takeover; both nodes returned to `ACTIVE_IDLE`.
+- Admin UI remains **BLOCKED/UNVERIFIED** by the missing staging staff-role/AAL2 boundary. Isolation and production rollout remain **UNVERIFIED/NO-GO**.
