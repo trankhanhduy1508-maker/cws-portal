@@ -94,6 +94,11 @@ alter table public.fleets enable row level security;
 alter table public.workers enable row level security;
 alter table public.jobs enable row level security;
 alter table public.tasks enable row level security;
+alter table public.partners enable row level security;
+alter table public.worker_leases enable row level security;
+alter table public.worker_state_events enable row level security;
+alter table public.task_attempts enable row level security;
+alter table public.worker_incidents enable row level security;
 
 create policy "allow read fleets" on public.fleets for select to public using (true);
 create policy "allow read workers" on public.workers for select to public using (true);
