@@ -96,7 +96,7 @@ Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSp
 
 ## Post-implementation verification
 
-- Generic Engine + Node Agent + generic launcher offline suite: **17/17 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
+- Generic Engine + Node Agent + generic launcher offline suite: **18/18 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
 - py_compile: PASS.
 - Legacy runtime sources cws_worker_full.py and cws_worker.bat are retained only as reference sources; they are not imported, launched or used as package dependencies.
 - New generic package files: worker/worker_engine.py, worker-engine.bat, worker-engine-manifest.json.
@@ -131,3 +131,32 @@ Legacy file remains available for future review only. It must never become the r
 - Legacy source reviewed from GitHub main: cws_worker_full.py, 2,578 lines, 36 functions.
 - It remains in the repository as reference knowledge only; no new Engine import, launcher dependency or production execution path points to it.
 - Current generic Engine suite after lease guard: **17/17 PASS**; py_compile PASS.
+
+
+## Detailed problem-to-design matrix
+
+| Problem | Old solution | Failure/risk | General principle | New owner | New design | Status / test |
+|---|---|---|---|---|---|---|
+| Two workers claim same task | RPC claim_task/claim_next_task | Depends on backend RPC contract; old Worker mixed scheduler knowledge | Claim must be atomic and server-authoritative | Backend/Scheduler | Node Agent receives one assignment + lease; Engine never scans queue | Backend evidence; staging adapter BLOCKED |
+| Old attempt completes after requeue | generation + worker_id in RPC | Missing/late heartbeat could make valid render stale | Every side effect must be fenced | Worker + Backend | AttemptGuard.assert_active before lifecycle boundaries; generation in JobSpec | CODE/UNIT VERIFIED; stale-generation test PASS |
+| Active render looks offline | task heartbeat thread | Thread can fail silently or report wrong task if not stopped | Presence and attempt lease are separate signals | Node Agent + Worker adapter | Node heartbeat is Node authority; Engine emits attempt heartbeat at boundaries | CODE/UNIT VERIFIED; real adapter UNVERIFIED |
+| Crash loses completed frames | per-frame B2 upload | Object may be partial/corrupt; list alone is not proof | Checkpoint must be idempotent and verified | Worker + B2 adapter | CheckpointStore put + verify; is_verified only skips verified frame | CODE/UNIT VERIFIED; B2 BLOCKED |
+| Partial task fails mid-range | fail_task with transient/persistent/permanent | Old flow can leave partial outputs and relies on recovery conventions | Retry only missing work, never double-complete | Backend + Worker | Same attempt/task plus verified frame checkpoints; Backend owns retry budget | CODE boundary; staging BLOCKED |
+| Bad .blend or missing file | classify stderr markers | Heuristic can misclassify unknown errors | Unknown errors should remain retryable; known invalid input is permanent | Worker + Backend | classify_blender_failure returns permanent only for strong invalid/missing markers | CODE/UNIT VERIFIED; classifier test PASS |
+| Blender hangs | subprocess timeout on range render | One timeout value hard-coded; process-tree cleanup not guaranteed | Timeout is policy data and supervisor must own process tree | Node Agent + Worker Renderer | Renderer timeout boundary; Node Agent supervises process tree; timeout from future capability/policy | Partial CODE; Windows runtime UNVERIFIED |
+| Customer Python executes | old --enable-autoexec and optimization python-expr | Arbitrary code, filesystem/network/credential risk | Untrusted project is data until isolated | Worker/Isolation layer | Engine rejects autoexec=true and BlenderCliRenderer uses --disable-autoexec | CODE/UNIT VERIFIED; sandbox UNVERIFIED |
+| Missing external assets | old analyzer/Blender inspection | Analyzer executes Blender Python and can touch untrusted scene | Preflight must be safe and explicit about confidence | Worker Preflight | BasicPreflight only checks safe filesystem contract; dependency scan needs isolated adapter | CODE/UNIT VERIFIED; asset scan NEEDS RESEARCH |
+| Large Drive download warning | HTML uuid extraction + second endpoint | Provider page/API can change; no size/hash/allowlist in old download | Ingestion adapter validates source, size and destination containment | Worker download adapter | ProjectDownloader boundary; source URI is JobSpec data; no provider logic in core | Interface only; integration BLOCKED |
+| Render output silently absent | expected PNG existence | Existence alone misses corrupt/blank output | Validate before upload and completion | Worker | OutputValidator; minimum size + format/path checks | CODE/UNIT VERIFIED |
+| Output path escape | old filename/path assumptions | Customer-controlled format/name can traverse | All derived paths must be contained and IDs allowlisted | Worker | safe IDs, safe output format, job-root containment | CODE/UNIT VERIFIED |
+| Retry creates duplicate uploads | old direct upload to deterministic key | Provider timeout leaves UNKNOWN result | Reconcile/idempotency before retry | B2 adapter + Backend | CheckpointStore must put/verify idempotently by attempt/task/frame; no blind retry | Design; B2 BLOCKED |
+| Scene optimization mutates source | old resize function wrote main .blend and caused GPU texture failures | Corrupts customer source and causes repeated failures | Never mutate source; derived artifacts need separate identity | Worker Preflight | No mutation in BasicPreflight; optimization adapter not enabled | DESIGN VERIFIED; implementation deferred |
+| GPU/VRAM mismatch | nvidia-smi VRAM detection | Detection fallback may admit unsuitable node | Capability is scheduler input, not Worker guess | Node Agent + Backend | Node Agent reports capability; Scheduler matches requirements | Existing design; runtime UNVERIFIED |
+| Render speed varies | report_render_speed RPC | Worker-side chunk changes can affect scheduler state | Telemetry informs scheduling, not billing | Worker reporter + Backend | Reporter progress/telemetry adapter; no price authority in Engine | Partial CODE |
+| No tasks / idle | polling loop + sleep | Worker owned PC lifecycle and could issue remote shutdown | PC lifecycle is separate from job execution | Node Agent | ACTIVE_IDLE remains online; Worker exits after attempt | Node Agent unit PASS |
+| Fleet update storm | random update jitter | Old Worker self-updated from B2, risks unsigned/unsafe artifact | Package update is pinned and staged | Node Agent update manager | Manifest SHA-256 and explicit launcher; rollout policy outside Engine | CODE/UNIT VERIFIED |
+| Crash visibility | best-effort report_worker_crash | Crash reporter can hide incident or expose details | Incident reporting must be bounded and non-secret | Node Agent + Backend | Reporter.fail/incident adapter; process supervisor captures exit | Partial CODE |
+| Repeated project analysis | dict cache by job_id | Mutable default/cache can leak stale data across attempts | Cache key must include immutable content/version and owner scope | Worker | No cross-customer cache in MVP; future content-addressed job-scoped cache | NEEDS RESEARCH |
+| Video merge | separate legacy BAT | Ordering/codec/audio/timeout not part of generic frame engine | Merge is a declared output capability | Worker adapter + Backend | JobSpec output plan selects adapter; no legacy BAT dependency | NEEDS RESEARCH |
+| Remote shutdown | RPC remote_commands + os.system shutdown | Dangerous production side effect and wrong owner | Worker must never power-manage PC | Node Agent/Operator policy | Not implemented in Engine; explicit power policy remains disabled | DELETE/OBSOLETE |
+| Auto package install | pip bootstrap on every start | Supply-chain/version drift and unbounded network action | Install/update is pinned deployment responsibility | Node Agent installer | No pip bootstrap in Engine; manifest package is pinned | CODE/UNIT VERIFIED |
