@@ -50,3 +50,8 @@ Blender tạo và render scene vô hại trong thư mục staging riêng:
 ## Kết luận
 
 Máy hiện tại đã đạt REAL RUNTIME VERIFIED cho Python + Blender CLI + safe .blend render với autoexec disabled. Các vòng Node Agent → Supabase heartbeat → canonical Worker → B2 → cleanup vẫn BLOCKED/UNVERIFIED vì artifact canonical, staging isolation và credential/runtime thật chưa đủ. Không nâng các mục này thành PASS bằng unit/mock test.
+
+
+## Bổ sung verification output
+
+- PNG staging đã được mở bằng công cụ kiểm tra ảnh local thành công sau render; không chỉ kiểm tra kích thước/hash.
