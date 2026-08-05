@@ -169,3 +169,13 @@ Legacy file remains available for future review only. It must never become the r
 - Resume requires job/task/frame identity, byte count and SHA-256 match; object/file existence alone is insufficient.
 - Failure test interrupts after frame 1; second run skips verified frame 1 and renders frame 2; workspace cleanup still passes.
 - Combined suite: **19/19 PASS**; real B2 adapter remains BLOCKED pending staging credential.
+
+
+## New salvage evidence — output integrity (2026-08-05)
+
+- Legacy principle salvaged: successful process exit is not sufficient; output must be validated before durable checkpoint.
+- New owner: generic Worker Engine.
+- New design: `OutputIntegrityValidator` checks PNG signature, IHDR, and non-zero dimensions; other formats use conservative size validation.
+- Status/test: implemented; Windows compile + combined suite **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
+- Full B2/production runtime: UNVERIFIED/BLOCKED.
