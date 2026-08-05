@@ -345,3 +345,9 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - B2 staging bucket/prefix/application key is absent.
 - Evidence: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md` and `reports/worker/CWS_STAGING_ASSIGNMENT_RPC_IMPLEMENTATION_2026-08-05.md`.
 - Next: Owner supplies isolated staging project + assignment contract and B2 scoped key; then run FULL E2E immediately.
+
+## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
+
+- Supabase staging assignment → Node Agent → Generic Worker Engine → Blender 5.2 → output integrity → B2 staging checkpoint/HEAD+SHA-256 → Supabase completion → cleanup → ACTIVE_IDLE: **REAL RUNTIME VERIFIED**.
+- Job `staging-safe-20260805-01`, task `1`, worker `cws-staging-worker-01`, generation `3`; no production endpoint or `cws_worker_full.py` runtime used.
+- Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.

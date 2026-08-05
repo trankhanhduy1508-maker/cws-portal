@@ -891,3 +891,7 @@ Credential-gated Supabase/B2 adapters are prepared with no production fallback o
 ## Staging blocker audit — 2026-08-05
 
 Machine-safe env inspection found no staging values. Supabase connector exposes no separate staging project; the existing claim RPC contract is incomplete for a dynamic JobSpec. B2 staging endpoint/bucket/key are also absent. Owner inputs and exact assignment alternatives: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
+
+## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
+
+The isolated staging path is now verified end-to-end: assignment/fencing generation → Node Agent child Generic Worker → real Blender render → integrity/checkpoint → B2 staging HEAD+SHA-256 verification → Supabase completion → cleanup → `ACTIVE_IDLE`. Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.

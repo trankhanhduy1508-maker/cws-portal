@@ -123,3 +123,8 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - No staging endpoint/credential is present on this machine; the only connector-visible Supabase project is not treated as staging.
 - Node Agent remains ready for injected register/ping/claim/heartbeat/state/complete/fail adapters, but no assignment is fabricated when the RPC lacks a complete JobSpec.
 - Evidence: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
+
+## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
+
+- Node Agent claimed the staging assignment, spawned the Generic Worker child, observed the real Blender/render/upload/verify path, completed cleanup, and recorded `ACTIVE_IDLE` with `cleanup_complete`.
+- Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.

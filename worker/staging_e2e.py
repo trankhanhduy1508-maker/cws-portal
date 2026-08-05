@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from urllib.parse import unquote, urlsplit
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -32,7 +33,12 @@ class StagingProjectDownloader:
         target = destination / "project.blend"
         uri = spec.project_uri
         if uri.startswith("file://"):
-            source = Path(uri[7:]).resolve()
+            parsed = urlsplit(uri)
+            raw_path = unquote(parsed.path)
+            # RFC file URIs use /C:/... on Windows; pathlib expects C:/....
+            if len(raw_path) >= 3 and raw_path[0] == "/" and raw_path[2] == ":":
+                raw_path = raw_path[1:]
+            source = Path(raw_path).resolve()
             if not source.is_file():
                 raise PermanentWorkerError("staging project file is unavailable")
             shutil.copy2(source, target)

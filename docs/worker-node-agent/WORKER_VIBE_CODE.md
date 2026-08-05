@@ -157,3 +157,9 @@ Canonical direction hiện tại:
 - Existing generic claim RPC returns only task/job/frame/generation; it cannot safely construct a complete JobSpec.
 - `CWS_STAGING_FLEET_ID` is an integer matching the existing `register_worker(... p_fleet_id bigint, ...)` contract.
 - Exact Owner inputs and the two supported assignment-contract options are recorded in `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
+
+## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
+
+- Generic Worker claimed generation `3`, rendered the harmless Blender scene, validated output integrity, uploaded and verified the B2 object checksum, and completed the Supabase task.
+- The run used only `CWS_STAGING_*`, disabled Blender autoexec, and exited cleanly with no leaked Blender/Python worker process.
+- Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
