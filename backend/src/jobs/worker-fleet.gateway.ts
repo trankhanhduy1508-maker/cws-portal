@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { deriveWorkerFleetState } from './worker-fleet-state';
 
 /**
  * LỚP DUY NHẤT trong toàn bộ Backend được phép chạm vào bảng `jobs` và
@@ -122,6 +123,10 @@ export class WorkerFleetGateway {
       healthState: string | null;
       desiredState: string | null;
       currentTaskId: number | null;
+      online: boolean;
+      nodeState: string;
+      workerState: string | null;
+      staleAfterSeconds: number;
     }[]
   > {
     const client = this.supabaseService.getClient();
@@ -136,6 +141,7 @@ export class WorkerFleetGateway {
       this.logger.error(`listWorkers() thất bại: ${error.message}`);
       throw new Error(`Không đọc được danh sách Worker: ${error.message}`);
     }
+    const nowMs = Date.now();
     return (data ?? []).map((r) => {
       const row = r as {
         worker_id: string;
@@ -151,6 +157,13 @@ export class WorkerFleetGateway {
         desired_state: string | null;
         current_task_id: number | null;
       };
+      const fleetState = deriveWorkerFleetState({
+        status: row.status,
+        observedState: row.observed_state,
+        healthState: row.health_state,
+        lastSeenAt: new Date(row.last_seen_at).getTime(),
+        nowMs,
+      });
       return {
         workerId: row.worker_id,
         gpuName: row.gpu_name,
@@ -166,6 +179,7 @@ export class WorkerFleetGateway {
         healthState: row.health_state,
         desiredState: row.desired_state,
         currentTaskId: row.current_task_id,
+        ...fleetState,
       };
     });
   }
