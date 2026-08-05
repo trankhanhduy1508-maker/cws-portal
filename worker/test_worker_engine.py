@@ -77,6 +77,10 @@ class WorkerEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "autoexec"):
             spec(autoexec=True)
 
+    def test_unsafe_output_format_is_rejected(self):
+        with self.assertRaisesRegex(Exception, "output_format"):
+            spec(output_format="png/../../secret")
+
     def test_invalid_output_fails_and_cleans_workspace(self):
         class EmptyRenderer(Renderer):
             def render(self, spec, project, frame, output):
