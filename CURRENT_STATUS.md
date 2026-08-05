@@ -225,3 +225,12 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - Fixed production Admin route: `vercel.json` SPA rewrite plus `/admin` pathname guard; prior read-only check returned Vercel NOT_FOUND before this change.
 - Tests: targeted state 3/3 PASS, backend build PASS, frontend build/lint/tests PASS (6/6). Live Vercel deploy, Admin MFA session and real Node Agent heartbeat remain UNVERIFIED.
 - Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
+
+
+## Production Admin/Fleet verification — 2026-08-05 follow-up
+
+- Vercel canonical project remains `cws-portal`; latest READY production deployment observed is commit `13cf7ed`, before later Admin route/fleet commits. Direct deployment tool requires file upload; local `dist` contains non-deployable internal documents, so no unsafe upload was performed.
+- Production `/admin` remains 404 until a clean deployment containing `vercel.json` and pathname guard is created.
+- Read-only Windows process check found no running Node Agent/cws_worker/Blender process; no fake heartbeat or Supabase mutation was performed.
+- Real Node Agent → Supabase → Admin E2E is BLOCKED/UNVERIFIED pending clean Vercel deployment, real staging Agent process and Admin AAL2 session.
+- Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
