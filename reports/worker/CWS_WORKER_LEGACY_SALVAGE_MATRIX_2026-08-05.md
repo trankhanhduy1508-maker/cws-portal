@@ -189,3 +189,13 @@ Legacy file remains available for future review only. It must never become the r
 - Status/test: implemented; Windows compile + combined suite **22/22 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
 - Live timeout test: UNVERIFIED; no production mutation.
+
+
+## New salvage evidence — capability preflight (2026-08-05)
+
+- Legacy principle: do not start a render on an unsuitable node.
+- New owner: Worker final preflight; Node Agent reports capabilities; Backend/Scheduler chooses nodes.
+- New design: dynamic JobSpec VRAM/RAM minimums checked against injected node profile.
+- Status/test: implemented; Windows compile + combined suite **24/24 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_CAPABILITY_PREFLIGHT_2026-08-05.md`.
+- Physical capability discovery and real fleet admission: UNVERIFIED/BLOCKED.
