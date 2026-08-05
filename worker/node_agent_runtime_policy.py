@@ -5,8 +5,7 @@ monitor callbacks, but this module never calls Sleep/Hibernate/shutdown or
 Windows power APIs. ACTIVE_IDLE means the PC remains online.
 """
 
-from typing import Callable, Optional
-from node_agent import NodeState
+from typing import Callable, Optional, Any
 
 
 class RuntimePolicy:
@@ -17,11 +16,13 @@ class RuntimePolicy:
     ):
         self.monitor_off = monitor_off or (lambda: None)
         self.monitor_on = monitor_on or (lambda: None)
-        self.last_state: Optional[NodeState] = None
+        self.last_state: Optional[Any] = None
 
-    def on_state(self, state: NodeState) -> None:
-        if state is NodeState.ACTIVE_IDLE and self.last_state is not NodeState.ACTIVE_IDLE:
+    def on_state(self, state: Any) -> None:
+        state_value = getattr(state, "value", state)
+        last_value = getattr(self.last_state, "value", self.last_state)
+        if state_value == "ACTIVE_IDLE" and last_value != "ACTIVE_IDLE":
             self.monitor_off()
-        elif state is not NodeState.ACTIVE_IDLE and self.last_state is NodeState.ACTIVE_IDLE:
+        elif state_value != "ACTIVE_IDLE" and last_value == "ACTIVE_IDLE":
             self.monitor_on()
         self.last_state = state
