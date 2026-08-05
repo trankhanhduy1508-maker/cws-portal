@@ -41,3 +41,8 @@ READ STATE → FIND P0 GAP → VERIFY SOURCE OF TRUTH → CODE → TEST → FIX 
 ## Không được
 
 Không reboot/shutdown/logoff/sleep máy hiện tại; không claim job production, không live payment, không rotate/revoke credential, không xóa production data.
+
+
+## Generic Worker Engine correction — 2026-08-05
+
+cws_worker_full.py/cws_worker.bat là legacy knowledge, không phải package runtime mới. Worker mới nhận JobSpec động và chạy một attempt rồi exit; Node Agent spawn/supervise và quay về ACTIVE_IDLE. Không sửa Worker theo từng customer/job.
