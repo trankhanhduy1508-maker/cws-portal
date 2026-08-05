@@ -251,6 +251,37 @@ class BasicOutputValidator:
             raise RetryableWorkerError(f"invalid render output: {output.name}")
 
 
+class OutputIntegrityValidator(BasicOutputValidator):
+    """Validate output bytes without executing or fully decoding customer data.
+
+    PNG renders get a lightweight structural check (signature + IHDR). Other
+    formats retain the conservative size check until a format-specific
+    validator is deliberately added. This keeps validation generic and avoids
+    trusting a filename or a successful Blender exit code alone.
+    """
+
+    _PNG_SIGNATURE = b"\\x89PNG\\r\\n\\x1a\\n"
+
+    def validate(self, output: Path) -> None:
+        super().validate(output)
+        if output.suffix.lower() != ".png":
+            return
+        try:
+            with output.open("rb") as stream:
+                signature = stream.read(8)
+                length = int.from_bytes(stream.read(4), "big")
+                chunk_type = stream.read(4)
+                ihdr = stream.read(13) if length == 13 and chunk_type == b"IHDR" else b""
+        except OSError as exc:
+            raise RetryableWorkerError(f"cannot read render output: {output.name}") from exc
+        if signature != self._PNG_SIGNATURE or len(ihdr) != 13:
+            raise RetryableWorkerError(f"invalid PNG output: {output.name}")
+        width = int.from_bytes(ihdr[0:4], "big")
+        height = int.from_bytes(ihdr[4:8], "big")
+        if width < 1 or height < 1:
+            raise RetryableWorkerError(f"invalid PNG dimensions: {output.name}")
+
+
 class BlenderCliRenderer:
     """Render one frame with customer auto-execution disabled."""
 
