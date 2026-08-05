@@ -1,7 +1,7 @@
 import unittest
 
 from worker_engine import PermanentWorkerError
-from staging_adapters import StagingConfig
+from staging_adapters import StagingConfig, SupabaseStagingRpc
 
 
 class StagingAdapterContractTests(unittest.TestCase):
@@ -17,11 +17,28 @@ class StagingAdapterContractTests(unittest.TestCase):
             "CWS_STAGING_B2_KEY_ID": "staging-key-id",
             "CWS_STAGING_B2_APP_KEY": "staging-app-key",
             "CWS_STAGING_B2_BUCKET": "cws-staging",
+            "CWS_STAGING_B2_PREFIX": "cws-staging/worker-e2e",
             "CWS_STAGING_WORKER_ID": "staging-node-1",
             "CWS_STAGING_FLEET_ID": "staging-fleet",
         })
         self.assertEqual(config.b2_endpoint, "s3.us-west-004.backblazeb2.com")
         self.assertEqual(config.worker_id, "staging-node-1")
+        self.assertEqual(config.b2_prefix, "cws-staging/worker-e2e")
+
+    def test_claim_assignment_requires_complete_dynamic_job_spec(self):
+        assignment = {
+            "job_id": "job-1", "task_id": "task-1", "attempt_id": "attempt-1",
+            "lease_generation": 3, "project_uri": "https://staging/input.blend",
+            "frame_start": 1, "frame_end": 2, "output_prefix": "renders/",
+            "output_format": "png", "autoexec": False,
+        }
+        spec = SupabaseStagingRpc.assignment_to_job_spec([assignment])
+        self.assertEqual(spec.task_id, "task-1")
+        self.assertIsNone(SupabaseStagingRpc.assignment_to_job_spec([None]))
+
+    def test_claim_assignment_does_not_infer_missing_fields(self):
+        with self.assertRaisesRegex(PermanentWorkerError, "JobSpec missing fields"):
+            SupabaseStagingRpc.assignment_to_job_spec({"task_id": "task-1"})
 
 
 if __name__ == "__main__":

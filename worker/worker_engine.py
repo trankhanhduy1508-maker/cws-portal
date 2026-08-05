@@ -277,7 +277,7 @@ class OutputIntegrityValidator(BasicOutputValidator):
     trusting a filename or a successful Blender exit code alone.
     """
 
-    _PNG_SIGNATURE = b"\\x89PNG\\r\\n\\x1a\\n"
+    _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
     def validate(self, output: Path) -> None:
         super().validate(output)

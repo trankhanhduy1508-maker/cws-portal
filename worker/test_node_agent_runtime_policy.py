@@ -35,12 +35,12 @@ class NodeAgentRuntimePolicyTests(unittest.TestCase):
             max_retries=1,
             retry_backoff_seconds=5,
         )
-        for _ in range(5):
+        for _ in range(4):
             agent.tick()
         self.assertEqual(agent.state, NodeState.RECOVERY)
         self.assertEqual(launches, ["job-1"])
         clock[0] = 5.0
-        for _ in range(4):
+        for _ in range(5):
             agent.tick()
         self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)
         self.assertEqual(launches, ["job-1", "job-1"])

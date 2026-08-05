@@ -114,5 +114,6 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 
 - Node Agent can be wired to staging RPC adapters for register/ping/claim/heartbeat/state/complete/fail without production fallback.
 - Required identity/config is isolated under `CWS_STAGING_*`.
+- The staging environment template is `worker/staging.env.example`; it contains placeholders only.
 - Full E2E remains blocked until staging assignment returns a complete JobSpec and staging credentials are installed.
 - Contract: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.

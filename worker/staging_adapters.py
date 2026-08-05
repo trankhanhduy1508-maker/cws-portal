@@ -29,6 +29,7 @@ class StagingConfig:
     b2_key_id: str
     b2_app_key: str
     b2_bucket: str
+    b2_prefix: str
     worker_id: str
     fleet_id: str
 
@@ -42,6 +43,7 @@ class StagingConfig:
             "b2_key_id": "CWS_STAGING_B2_KEY_ID",
             "b2_app_key": "CWS_STAGING_B2_APP_KEY",
             "b2_bucket": "CWS_STAGING_B2_BUCKET",
+            "b2_prefix": "CWS_STAGING_B2_PREFIX",
             "worker_id": "CWS_STAGING_WORKER_ID",
             "fleet_id": "CWS_STAGING_FLEET_ID",
         }
@@ -54,9 +56,12 @@ class StagingConfig:
             raise PermanentWorkerError("invalid staging Supabase URL")
         if endpoint.startswith("http://") or endpoint.startswith("https://"):
             endpoint = endpoint.split("://", 1)[1].rstrip("/")
+        prefix = values[names["b2_prefix"]].strip().strip("/")
+        if not prefix or ".." in prefix.split("/"):
+            raise PermanentWorkerError("invalid staging B2 prefix")
         return cls(url, values[names["supabase_key"]], endpoint,
                    values[names["b2_key_id"]], values[names["b2_app_key"]],
-                   values[names["b2_bucket"]], values[names["worker_id"]],
+                   values[names["b2_bucket"]], prefix, values[names["worker_id"]],
                    values[names["fleet_id"]])
 
 
@@ -106,6 +111,26 @@ class SupabaseStagingRpc:
         return self.call("claim_next_generic_task", {"p_worker_id": self.config.worker_id,
                                                       "p_worker_vram_mb": vram_mb})
 
+    @staticmethod
+    def assignment_to_job_spec(result: Any) -> JobSpec | None:
+        """Convert exactly one staging assignment into the generic JobSpec.
+
+        A null/empty claim is normal polling state. Any non-empty assignment
+        must contain the complete dynamic contract; no production schema or
+        legacy Worker fields are inferred here.
+        """
+        if result is None:
+            return None
+        if isinstance(result, list):
+            if not result or result == [None]:
+                return None
+            if len(result) != 1:
+                raise PermanentWorkerError("staging claim returned multiple assignments")
+            result = result[0]
+        if not isinstance(result, Mapping):
+            raise PermanentWorkerError("staging claim returned invalid assignment")
+        return JobSpec.from_mapping(result)
+
     def transition(self, state: str, task_id: int | None = None, reason: str | None = None) -> Any:
         return self.call("report_worker_state_transition", {
             "p_worker_id": self.config.worker_id, "p_to_state": state,
@@ -127,7 +152,7 @@ class SupabaseStagingRpc:
 class B2StagingCheckpointStore(CheckpointStore):
     """S3-compatible B2 frame checkpoint store with frame-level idempotency."""
 
-    def __init__(self, config: StagingConfig, prefix: str):
+    def __init__(self, config: StagingConfig, prefix: str | None = None):
         try:
             import boto3
             from botocore.exceptions import ClientError
@@ -138,7 +163,10 @@ class B2StagingCheckpointStore(CheckpointStore):
                                    aws_access_key_id=config.b2_key_id,
                                    aws_secret_access_key=config.b2_app_key)
         self.bucket = config.b2_bucket
-        self.prefix = prefix.strip("/")
+        chosen_prefix = config.b2_prefix if prefix is None else prefix.strip("/")
+        if not chosen_prefix or ".." in chosen_prefix.split("/"):
+            raise PermanentWorkerError("invalid staging B2 prefix")
+        self.prefix = chosen_prefix
 
     def _key(self, spec: JobSpec, frame: int, suffix: str = "") -> str:
         return f"{self.prefix}/{spec.task_id}/frame_{frame:04d}.{spec.output_format}{suffix}"

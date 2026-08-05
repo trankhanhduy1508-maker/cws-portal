@@ -145,6 +145,8 @@ Canonical direction hiện tại:
 - Added credential-gated `worker/staging_adapters.py` for Supabase RPC and B2 S3-compatible checkpoints.
 - Uses only `CWS_STAGING_*`; no production fallback, service-role requirement, delete, bucket-admin or key-admin capability.
 - B2 frame checkpoint uses idempotent metadata and SHA-256 verification.
+- `CWS_STAGING_B2_PREFIX` is mandatory; checkpoint keys cannot be selected ad hoc by the harness.
+- Supabase claim results are accepted only when they satisfy the complete dynamic JobSpec contract; no legacy fields are inferred.
 - Staging assignment still needs a full JobSpec contract: assignment RPC or minimal RLS SELECT for jobs/tasks.
 - Evidence/Owner action: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
 - Current status: adapter CODE/UNIT VERIFIED; Supabase/B2 FULL E2E BLOCKED pending staging credentials.

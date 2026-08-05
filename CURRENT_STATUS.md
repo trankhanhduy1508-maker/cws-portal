@@ -326,3 +326,12 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - No staging variables are currently present on this machine.
 - Supabase/B2 FULL E2E: **BLOCKED** pending separate staging project, assignment JobSpec contract, bucket/prefix and least-privilege credentials.
 - Evidence/Owner action: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
+
+## New Windows machine context recovery — 2026-08-05
+
+- Official `cws-portal` recovered from GitHub `main` at `72a175ba`; no duplicate checkout found.
+- User-scoped Git and Python 3.12.10 were prepared; Node 24.19.0/npm 11.17.0 were already present.
+- Generic Worker/Node Agent offline suite: **28/28 PASS** after fixing two existing verification defects (PNG signature literal and test syntax/timing).
+- Blender, Supabase CLI, B2 credentials and staging variables remain absent; this is machine readiness, not staging E2E.
+- Evidence: `reports/worker/CWS_NEW_MACHINE_CONTEXT_RECOVERY_2026-08-05.md`.
+- Next: real isolated staging E2E when staging artifacts and credentials are present.

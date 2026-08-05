@@ -90,8 +90,10 @@ class WorkerEngineTests(unittest.TestCase):
             project.write_bytes(b"safe blend")
             renderer = BlenderCliRenderer(executable, timeout_seconds=1)
             process = TimedOutProcess()
-            with patch("worker_engine.subprocess.Popen", return_value=process), \\
-                 patch.object(renderer, "_terminate_tree") as terminate:
+            with (
+                patch("worker_engine.subprocess.Popen", return_value=process),
+                patch.object(renderer, "_terminate_tree") as terminate,
+            ):
                 with self.assertRaises(RetryableWorkerError):
                     renderer.render(spec(), project, 1, Path(tmp) / "frame_0001.png")
                 terminate.assert_called_once_with(process)
@@ -99,15 +101,15 @@ class WorkerEngineTests(unittest.TestCase):
     def test_output_integrity_rejects_truncated_png(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "frame_0001.png"
-            output.write_bytes(b"\\x89PNG\\r\\n\\x1a\\n" + b"\\x00" * 300)
+            output.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 300)
             with self.assertRaises(RetryableWorkerError):
                 OutputIntegrityValidator(10).validate(output)
 
     def test_output_integrity_accepts_structurally_valid_png_header(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "frame_0001.png"
-            ihdr = (1920).to_bytes(4, "big") + (1080).to_bytes(4, "big") + b"\\x08\\x02\\x00\\x00\\x00"
-            output.write_bytes(b"\\x89PNG\\r\\n\\x1a\\n" + (13).to_bytes(4, "big") + b"IHDR" + ihdr + b"\\x00" * 300)
+            ihdr = (1920).to_bytes(4, "big") + (1080).to_bytes(4, "big") + b"\x08\x02\x00\x00\x00"
+            output.write_bytes(b"\x89PNG\r\n\x1a\n" + (13).to_bytes(4, "big") + b"IHDR" + ihdr + b"\x00" * 300)
             OutputIntegrityValidator(10).validate(output)
 
     def test_partial_checkpoint_resumes_after_failure(self):
