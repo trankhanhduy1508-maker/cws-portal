@@ -832,3 +832,12 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - `GET /fleet/workers` and Admin table expose Node state, Worker state, current task, last seen and health.
 - Production route `/admin` now has SPA rewrite and pathname entry; runtime deploy/MFA verification remains UNVERIFIED.
 - Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
+
+
+# 20A. Node Agent lifecycle hardening — 2026-08-05
+
+- `worker/node_agent.py` now has explicit transition reasons, injected runtime policy, bounded non-blocking exponential retry backoff and retry reset after cleanup.
+- `worker/node_agent_runtime_policy.py` emits monitor-off/on boundary hooks once; it does not call power APIs or sleep the PC.
+- Verification: py_compile PASS; offline suite **11/11 PASS**.
+- Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
+- Runtime process supervision, Blender/B2 staging, real heartbeat/lease, Windows isolation, failover and production deployment remain UNVERIFIED/BLOCKED.
