@@ -17,11 +17,15 @@ No production project, production RPC, production job, or credential was used.
 - Public execution is revoked; only `anon` and `authenticated` receive the
   staging RPC grant in the isolated staging project.
 - The Python staging adapter now calls `claim_next_staging_job`.
+- Added `worker/staging_e2e.py` to wire the staging RPCs, Node Agent,
+  Generic Worker, Blender child process, B2 checkpoint store, completion,
+  cleanup, and `ACTIVE_IDLE`.
 
 ## Verification
 
 - Python compile: PASS for adapter, tests, and generic engine.
 - Staging adapter contract tests: **5/5 PASS**.
+- Staging runner compile: PASS.
 - `git diff --check`: PASS.
 - SQL runtime execution and Supabase advisors: **NOT RUN** because no staging
   project/credential is available. This migration is not claimed as runtime
