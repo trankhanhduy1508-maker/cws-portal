@@ -283,3 +283,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Added conservative Blender failure classification: invalid/missing project markers are permanent; timeout/resource/driver/unknown failures remain retryable for Backend policy.
 - Generic Engine tests 7/7; combined Worker/Node/launcher suite 18/18 PASS.
 - No production job, Supabase RPC, B2 write or power action was performed.
+
+
+## Worker P0 update — 2026-08-05
+
+- Generic Worker Engine output integrity implemented: PNG signature/IHDR/dimensions validation before checkpoint/upload.
+- Windows staging compile and combined suite: **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
+- Classification: CODE/UNIT VERIFIED and Windows runtime validator verified; production/B2 E2E remains UNVERIFIED/BLOCKED.
