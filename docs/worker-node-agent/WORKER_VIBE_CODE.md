@@ -62,7 +62,7 @@ Nếu thiếu level, ghi đúng level, không nâng thành PASS.
 
 ## Last verified
 
-- Node state machine + pinned launcher tests: **9/9 PASS** offline.
+- Node state machine + generic engine/launcher tests: **16/16 PASS** offline.
 - Evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md` và `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`.
 - Next action: OWNER TEST STEP trong staging procedure; không claim runtime thật từ offline suite.
 
@@ -78,5 +78,5 @@ Canonical direction hiện tại:
 - Pipeline: download → safe preflight → Blender disable-autoexec → per-frame checkpoint → output validation → upload/verify adapter → completion report → cleanup → exit.
 - Node Agent owns node presence/lifecycle/process supervision; Backend owns claim/lease/priority/retry/billing; Worker owns one job attempt execution.
 - Job mới là data, không tạo Worker source/version mới.
-- Engine tests: 4/4 PASS; CODE/UNIT VERIFIED only.
+- Engine tests: 5/5 PASS; CODE/UNIT VERIFIED only.
 - Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
