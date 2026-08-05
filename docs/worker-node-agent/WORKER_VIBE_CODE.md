@@ -97,3 +97,13 @@ Canonical direction hiện tại:
 - Backend remains the retry-budget authority; Worker never retries indefinitely.
 - Generic Engine tests: 7/7; combined Worker/Node/launcher suite: 18/18 PASS.
 - Missing-assets analysis remains isolated preflight research; customer code is not executed.
+
+
+## Latest P0 implementation — output integrity (2026-08-05)
+
+- Implemented `OutputIntegrityValidator` in the generic Worker Engine.
+- PNG output now requires minimum size, PNG signature, IHDR chunk, and non-zero dimensions before checkpoint/upload.
+- Non-PNG formats retain conservative minimum-size validation until a format-specific validator is added.
+- Windows staging Python compile + combined Worker/Node tests: **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
+- Production/B2 end-to-end remains UNVERIFIED/BLOCKED pending safe staging credentials and real integration.
