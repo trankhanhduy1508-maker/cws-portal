@@ -307,3 +307,13 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Windows staging compile + combined suite: **24/24 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_CAPABILITY_PREFLIGHT_2026-08-05.md`.
 - Actual hardware capability discovery and production/B2 E2E remain UNVERIFIED/BLOCKED.
+
+
+## Worker/Node Agent runtime integration update — 2026-08-05
+
+- Windows staging real runtime: Node Agent → child Generic Worker → Blender 5.2 → output integrity → filesystem checkpoint → cleanup → ACTIVE_IDLE: **REAL RUNTIME VERIFIED**.
+- Crash-once recovery: **REAL RUNTIME VERIFIED**.
+- One-second timeout/process cleanup: **REAL RUNTIME VERIFIED** after fixing a staging harness hang.
+- Hardware: RTX 2060 SUPER 8192 MiB, driver 576.88; RAM ≈16 GiB.
+- Supabase lease/heartbeat and B2 staging upload/resume: **BLOCKED**; no isolated staging-safe credential/endpoint.
+- Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
