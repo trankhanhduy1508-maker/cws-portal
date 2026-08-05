@@ -1,11 +1,14 @@
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 from pathlib import Path
 
 from worker_engine import (BasicOutputValidator, BasicPreflight, JobSpec,
                            FailureCategory, PermanentWorkerError,
                            FilesystemCheckpointStore, RetryableWorkerError, WorkerEngine,
                            OutputIntegrityValidator, classify_blender_failure)
+from worker_engine import BlenderCliRenderer
 
 
 class Downloader:
@@ -72,6 +75,27 @@ def spec(**overrides):
 
 
 class WorkerEngineTests(unittest.TestCase):
+    def test_blender_timeout_cleans_owned_process_tree_and_is_retryable(self):
+        class TimedOutProcess:
+            pid = 12345
+            returncode = None
+
+            def communicate(self, timeout):
+                raise subprocess.TimeoutExpired(["blender"], timeout)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            executable = Path(tmp) / "blender.exe"
+            executable.write_bytes(b"fixture")
+            project = Path(tmp) / "project.blend"
+            project.write_bytes(b"safe blend")
+            renderer = BlenderCliRenderer(executable, timeout_seconds=1)
+            process = TimedOutProcess()
+            with patch("worker_engine.subprocess.Popen", return_value=process), \\
+                 patch.object(renderer, "_terminate_tree") as terminate:
+                with self.assertRaises(RetryableWorkerError):
+                    renderer.render(spec(), project, 1, Path(tmp) / "frame_0001.png")
+                terminate.assert_called_once_with(process)
+
     def test_output_integrity_rejects_truncated_png(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "frame_0001.png"
