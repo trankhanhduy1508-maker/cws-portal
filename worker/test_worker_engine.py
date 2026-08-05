@@ -1,7 +1,4 @@
-Exit code: 0
-Wall time: 1.2 seconds
-Output:
-import tempfile
+­r^Ñf¥Ø¦{]¬yÊ'vÃ®¶­import tempfile
 import unittest
 from pathlib import Path
 
@@ -94,4 +91,3 @@ class WorkerEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
