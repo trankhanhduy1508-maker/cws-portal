@@ -124,3 +124,10 @@ Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSp
 | Incident reporting | Reporter.fail boundary; backend incident adapter pending | Partial CODE VERIFIED |
 
 Legacy file remains available for future review only. It must never become the runtime import path again.
+
+
+## Reference source verification
+
+- Legacy source reviewed from GitHub main: cws_worker_full.py, 2,578 lines, 36 functions.
+- It remains in the repository as reference knowledge only; no new Engine import, launcher dependency or production execution path points to it.
+- Current generic Engine suite after lease guard: **17/17 PASS**; py_compile PASS.
