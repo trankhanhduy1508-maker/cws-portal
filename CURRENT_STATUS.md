@@ -341,6 +341,7 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Machine-safe env inspection: no `CWS_STAGING_*`, Supabase, B2, AWS or S3 values present.
 - Supabase connector: exactly one non-staging project visible; it was not queried or mutated.
 - Existing claim RPC returns insufficient fields for a complete dynamic JobSpec; no inference was made.
+- Added staging-only migration/RPC `worker_migrations/016_staging_job_assignment_contract.sql`; code/test verified, not yet applied or runtime-verified in Supabase staging.
 - B2 staging bucket/prefix/application key is absent.
-- Evidence and exact Owner inputs: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
+- Evidence: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md` and `reports/worker/CWS_STAGING_ASSIGNMENT_RPC_IMPLEMENTATION_2026-08-05.md`.
 - Next: Owner supplies isolated staging project + assignment contract and B2 scoped key; then run FULL E2E immediately.

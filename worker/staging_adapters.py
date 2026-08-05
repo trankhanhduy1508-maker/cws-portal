@@ -114,8 +114,8 @@ class SupabaseStagingRpc:
         return result is True
 
     def claim_next(self, vram_mb: int) -> Any:
-        return self.call("claim_next_generic_task", {"p_worker_id": self.config.worker_id,
-                                                      "p_worker_vram_mb": vram_mb})
+        return self.call("claim_next_staging_job", {"p_worker_id": self.config.worker_id,
+                                                     "p_worker_vram_mb": vram_mb})
 
     @staticmethod
     def assignment_to_job_spec(result: Any) -> JobSpec | None:
