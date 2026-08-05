@@ -317,3 +317,12 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Hardware: RTX 2060 SUPER 8192 MiB, driver 576.88; RAM ≈16 GiB.
 - Supabase lease/heartbeat and B2 staging upload/resume: **BLOCKED**; no isolated staging-safe credential/endpoint.
 - Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
+
+
+## Staging E2E integration update — 2026-08-05
+
+- Added credential-gated Supabase RPC and B2 S3-compatible staging adapters.
+- Adapter tests + Worker suite: **26/26 PASS** on Windows Python runtime.
+- No staging variables are currently present on this machine.
+- Supabase/B2 FULL E2E: **BLOCKED** pending separate staging project, assignment JobSpec contract, bucket/prefix and least-privilege credentials.
+- Evidence/Owner action: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
