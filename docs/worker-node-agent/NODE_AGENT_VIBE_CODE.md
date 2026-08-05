@@ -108,3 +108,11 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - Crash-once recovery and timeout cleanup were observed in the real local process loop.
 - Supabase presence/lease and Admin fleet visibility remain BLOCKED pending staging-safe endpoint/credential.
 - Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
+
+
+## Staging integration contract — 2026-08-05
+
+- Node Agent can be wired to staging RPC adapters for register/ping/claim/heartbeat/state/complete/fail without production fallback.
+- Required identity/config is isolated under `CWS_STAGING_*`.
+- Full E2E remains blocked until staging assignment returns a complete JobSpec and staging credentials are installed.
+- Contract: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
