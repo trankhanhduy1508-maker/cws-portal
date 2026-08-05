@@ -206,3 +206,13 @@ UX fix), `reports/customer/CWS_CUSTOMER_OBJECTION_DESIRE_RESEARCH_300.md`
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` (Worker
 audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 đầy đủ trước khi file này được rút gọn).
+
+
+## Worker + Node Agent VIBE loop — 2026-08-05
+
+- Canonical Worker on main verified: `cws_worker_full.py` (blob `e3b0872c2236e47849ec6450532eab18018b129f`) + `cws_worker.bat` (blob `11f71e049358fe7d35b992b0a89fde9d600638b6`). Older report names are not treated as current package artifacts.
+- Added `worker/canonical_worker_launcher.py`: manifest version/direct-child path/SHA-256 validation before explicit launch; no pip bootstrap, no second supervisor, no power API.
+- Offline verification: Node Agent + launcher suite **9/9 PASS** and py_compile PASS. Evidence: `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`.
+- Added exact staging procedure: `reports/worker/CWS_WORKER_STAGING_PROCEDURE_1_18_0.md`.
+- Status remains **UNIT/CODE VERIFIED only**. Blender CLI, `--disable-autoexec`, B2 checkpoint, real lease/heartbeat, Windows isolation and two-node failover are not claimed PASS.
+- OWNER TODO: run the staging procedure on a real Windows staging node with a harmless `.blend` and scoped staging B2 credential; do not provide secrets in chat.
