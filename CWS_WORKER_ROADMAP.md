@@ -877,3 +877,8 @@ Blender subprocess timeout now cleans up the owned process tree on Windows and p
 ## P0 status update — capability preflight (2026-08-05)
 
 Generic Worker preflight now enforces dynamic minimum VRAM/RAM requirements from JobSpec against the Node-provided capability profile. Tests: 24/24 PASS; physical capability discovery remains unverified.
+
+
+## Runtime integration status — 2026-08-05
+
+Windows safe staging has verified the local Node Agent → Generic Worker → Blender → validation → checkpoint → cleanup → ACTIVE_IDLE loop, including crash recovery and timeout cleanup. Supabase/B2 integration remains blocked by absent staging-safe credentials/endpoints. Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
