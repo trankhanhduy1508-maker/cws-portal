@@ -823,3 +823,12 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - Staging procedure: `reports/worker/CWS_WORKER_STAGING_PROCEDURE_1_18_0.md`.
 - Chưa gọi PASS: Blender/B2 runtime, real claim/heartbeat, Windows ACL/service identity/Defender/process isolation, timeout/crash/retry runtime và multi-node failover.
 - P0 tiếp theo: Owner chạy staging procedure trên Windows staging với B2 staging credential scoped và scene vô hại; sau đó mới xem xét rollout/failover.
+
+
+# 20. Node Agent → Supabase → Admin visibility — 2026-08-05
+
+- `worker-fleet-state.ts` is the backend mapping boundary for PC state. Heartbeat freshness, not Worker process existence, determines ONLINE/OFFLINE.
+- Fresh heartbeat with Worker STOPPED/idle maps to ACTIVE_IDLE; stale heartbeat over 180 seconds maps to OFFLINE.
+- `GET /fleet/workers` and Admin table expose Node state, Worker state, current task, last seen and health.
+- Production route `/admin` now has SPA rewrite and pathname entry; runtime deploy/MFA verification remains UNVERIFIED.
+- Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
