@@ -70,3 +70,12 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`
 - `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`
 - Physical Windows/Blender/network/B2/failover remain unverified.
+
+
+## Admin fleet visibility — 2026-08-05
+
+- Backend boundary: `backend/src/jobs/worker-fleet-state.ts`.
+- Fresh Node Agent heartbeat + Worker STOPPED/idle = ONLINE + ACTIVE_IDLE; stale heartbeat >180s = OFFLINE.
+- Admin endpoint `GET /fleet/workers` exposes Node state, Worker state, health, current task and stale policy.
+- Production URL support: `/admin` SPA rewrite + pathname guard. Live deploy/MFA/real heartbeat remains UNVERIFIED.
+- Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
