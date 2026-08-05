@@ -181,6 +181,13 @@ giữ nguyên.
    job thật qua UI HOẶC cung cấp máy Worker vật lý. Chi tiết:
    `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`.
 
+## Customer Google Login Regression — 2026-08-04
+
+- Root cause đã xác minh: production domain vẫn phục vụ deployment cũ `8852181`; bundle không có Supabase URL nên `IS_SUPABASE_CONFIGURED=false`. Customer UI redesign commit `95b1382` không làm thay đổi OAuth helper.
+- Patch tương thích public env + evidence: `reports/evidence/CWS_CUSTOMER_GOOGLE_LOGIN_REGRESSION_2026-08-04.md`.
+- Local frontend test 6/6, lint và production build PASS.
+- Production runtime OAuth vẫn NEEDS_VERIFICATION sau khi Vercel deploy commit mới.
+
 ## Last Updated
 
 2026-08-03 — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
