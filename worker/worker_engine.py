@@ -310,8 +310,13 @@ class BlenderCliRenderer:
     def _terminate_tree(process: subprocess.Popen[str]) -> None:
         """Stop only the Blender process tree owned by this render attempt."""
         if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                           capture_output=True, text=True, check=False)
+            try:
+                subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                               capture_output=True, text=True, check=False, timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+            # taskkill is best-effort; never leave the owned direct child alive.
+            process.kill()
         else:
             process.kill()
         try:
