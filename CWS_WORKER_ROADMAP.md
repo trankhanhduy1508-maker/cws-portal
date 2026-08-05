@@ -862,3 +862,8 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - Node Agent owns PC lifecycle/supervision; Backend owns assignment/lease/priority/retry/billing; Worker owns one execution attempt.
 - Engine test: 4/4 PASS; CODE/UNIT VERIFIED.
 - Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
+
+
+## P0 status update — 2026-08-05
+
+Output integrity is implemented in the generic Worker Engine. PNG outputs are structurally checked before checkpoint/upload; tests are 21/21 PASS. Full B2/production runtime verification remains blocked by staging integration credentials/endpoints.
