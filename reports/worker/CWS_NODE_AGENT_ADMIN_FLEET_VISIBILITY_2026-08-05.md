@@ -40,3 +40,10 @@ No production job, payment, database migration, power state, or credential was c
 - Latest READY production deployment observed: dpl_5tPsq54K6fAwjksjCN3yBxcsE6AU, commit 13cf7ed (state helper commit).
 - This deployment metadata does not include the later route/Admin commits; production GET /admin still returned 404 at check time.
 - Therefore production Admin route and live fleet data are **NOT YET VERIFIED**. Do not report production PASS until a deployment containing the route/state commits is READY and an Admin AAL2 session can load GET /fleet/workers.
+
+
+## Staging process check — 2026-08-05
+
+- Read-only process inspection found no running Node Agent/cws_worker/Blender process on the current Windows session. Only unrelated Node processes and Parsec were present.
+- Therefore no real heartbeat was emitted and no Supabase row was changed. Real Node Agent → Supabase → Admin E2E remains **BLOCKED/UNVERIFIED**, correctly not simulated.
+- Required next physical step: start the pinned Node Agent on the designated staging PC with its scoped environment and capture heartbeat/last_seen before opening Admin AAL2 session.
