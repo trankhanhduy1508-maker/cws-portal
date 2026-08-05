@@ -1,5 +1,9 @@
 # CWS Blender Render Optimization Research — 2026-08-05
 
+## Follow-up implementation
+
+`worker/blender_optimizer.py` now performs plan-only analysis by default, copies the input to a working file, and permits only Persistent Data on multi-frame Cycles working copies as `SAFE_AUTO`. The harmless staging EEVEE scene produced a valid plan with no mutation and no speedup claim.
+
 ## Rule
 
 No customer scene is mutated by this work. Optimization is a per-job proposal with `ORIGINAL → PROPOSED → EXPECTED SPEEDUP → QUALITY RISK → REVERSIBILITY` and an explicit tier.

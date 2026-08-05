@@ -1,5 +1,11 @@
 # CWS WORKER VIBE CODE
 
+## Remediation continuation — 2026-08-05
+
+- Job workspace now rejects symlink/reparse-like path components before creation; Python suite is 30/30 PASS.
+- Blender optimizer is working-copy-only and plan-first; only Persistent Data for multi-frame Cycles can be SAFE_AUTO. No customer file is mutated.
+- Job Object containment remains a separate POC until launcher integration is proven without regression.
+
 ## Total review — 2026-08-05
 
 - Do not rerun verified Full E2E or failover without regression evidence.

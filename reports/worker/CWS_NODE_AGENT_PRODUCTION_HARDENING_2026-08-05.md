@@ -1,5 +1,9 @@
 # CWS Node Agent Production Hardening — 2026-08-05
 
+## Follow-up runtime evidence
+
+The native pywin32 SCM PoC was installed and started as `CWSNodeAgentStaging`, emitted real `ACTIVE_IDLE` heartbeat events, was stopped, restarted, and removed. Recovery actions were configured with `sc failure`. Blender was intentionally not launched from Session 0; the service host exposes a user-session helper boundary instead.
+
 ## Result
 
 The state machine and staging runtime remain **REAL RUNTIME VERIFIED** by the existing Full E2E and multi-node evidence. This review did not rerun those flows. Production hardening is **UNVERIFIED/BLOCKED** at the host-supervision layer.

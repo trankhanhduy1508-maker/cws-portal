@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence
 
+from path_boundary import reject_reparse_points
+
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
@@ -384,6 +386,10 @@ class WorkerEngine:
         job_root = (self.workspace_root / spec.task_id).resolve()
         if not _inside(self.workspace_root, job_root):
             raise PermanentWorkerError("job workspace escaped workspace root")
+        try:
+            reject_reparse_points(self.workspace_root, self.workspace_root / spec.task_id)
+        except ValueError as exc:
+            raise PermanentWorkerError("job workspace contains a reparse point") from exc
         job_root.mkdir(parents=True, exist_ok=True)
         try:
             self._guard(spec, "CLAIMED")

@@ -1,5 +1,16 @@
 # Current Status
 
+## Production NO-GO remediation continuation — 2026-08-05
+
+- CORS: **CODE/UNIT VERIFIED**; canonical `https://cws-portal.vercel.app` allowlist, production fail-closed, no wildcard credentials. Owner must set `CORS_ORIGINS` on Render.
+- Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
+- Windows SCM: Node Agent service PoC **REAL RUNTIME VERIFIED** for install/start/heartbeat/stop/restart/remove; GPU Worker remains a user-session helper boundary.
+- Job Object: timeout/child cleanup **REAL RUNTIME VERIFIED**; integration into Generic Worker remains **UNVERIFIED**.
+- Path boundary: symlink rejection **CODE/UNIT VERIFIED**; junction/reparse disposable-host matrix remains **UNVERIFIED**.
+- Blender optimizer: working-copy-only plan/apply harness **REAL RUNTIME VERIFIED** on harmless EEVEE plan; no speedup claimed. ArchViz profiles are **CODE/UNIT VERIFIED** only.
+- Dependency audit: clean-install backend reports 5 High / 0 Critical production vulnerabilities; safe override experiment was rejected and removed. Nest 11 requires a separate canary.
+- Decision: **PRODUCTION NO-GO**. Evidence: `reports/CWS_PRODUCTION_NO_GO_REMEDIATION_2026-08-05.md`.
+
 ## Total review — 2026-08-05
 
 - Security: current-tree credential fallback removed, Admin token URL exposure fixed, and staging admin RPC client EXECUTE revoked. Historical credentials require rotation. See `reports/security/CWS_FULL_SECURITY_AUDIT_2026-08-05.md`.

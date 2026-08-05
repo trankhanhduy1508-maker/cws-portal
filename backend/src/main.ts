@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { parseCorsOrigins } from './common/cors-origin.util';
 import { JobsRealtimeServer } from './realtime/jobs-realtime.server';
 import type { Server as HttpServer } from 'http';
 
@@ -13,7 +14,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origin: parseCorsOrigins(process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN),
+    credentials: false,
   });
 
   app.useGlobalPipes(

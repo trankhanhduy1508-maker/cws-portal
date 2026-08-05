@@ -1,5 +1,11 @@
 # CWS NODE AGENT / ACTIVE_IDLE VIBE CODE
 
+## Remediation continuation — 2026-08-05
+
+- Native SCM service PoC is **REAL RUNTIME VERIFIED** for lifecycle/heartbeat/restart; no Blender launch is attempted from Session 0.
+- Job Object process-tree cleanup is **REAL RUNTIME VERIFIED** as a POC, not yet integrated.
+- Production Node Agent remains **UNVERIFIED/BLOCKED** until service account, user-session GPU helper, update/rollback and real staging backend reconnect evidence exist.
+
 ## Total review — 2026-08-05
 
 - Existing state loop, Full E2E and failover remain **REAL RUNTIME VERIFIED** and are not repeated here.

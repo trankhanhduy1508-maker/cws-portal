@@ -9,7 +9,7 @@ export interface AppConfig {
     bucketName: string;
   };
   googleDriveApiKey: string | null;
-  corsOrigin: string;
+  corsOrigin: string[];
   mbBank: {
     accountNumber: string | null;
     accountName: string | null;
@@ -46,7 +46,10 @@ export function loadConfig(): AppConfig {
       bucketName: required('B2_BUCKET_NAME'),
     },
     googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY ?? null,
-    corsOrigin: process.env.CORS_ORIGIN ?? '*',
+    corsOrigin: (process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     mbBank: {
       // Optional: chưa có số tài khoản MB Bank thật trong môi trường
       // này — nếu để trống, QrBankProvider chỉ trả nội dung chuyển

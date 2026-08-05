@@ -1,0 +1,5 @@
+{
+  "ARCHVIZ_SAFE": {"automatic": ["missing_asset_diagnostics", "path_preflight", "instance_and_texture_report"], "conditional": [], "quality_tradeoff": []},
+  "ARCHVIZ_BALANCED": {"automatic": ["missing_asset_diagnostics", "path_preflight"], "conditional": ["adaptive_sampling", "denoising", "texture_footprint", "bounce_review"], "quality_tradeoff": ["resolution_or_sample_reduction"]},
+  "ARCHVIZ_MAX_QUALITY": {"automatic": ["missing_asset_diagnostics", "path_preflight", "memory_report"], "conditional": ["persistent_data_for_animation"], "quality_tradeoff": ["none_automatic"]}
+}
