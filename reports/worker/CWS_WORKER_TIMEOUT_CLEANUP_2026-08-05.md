@@ -21,7 +21,7 @@ python -m py_compile worker\worker_engine.py
 python -m unittest discover -s worker -p 'test_*.py' -v
 ```
 
-Result: **21/21 PASS**.
+Result: **22/22 PASS**.
 
 ## Classification
 
