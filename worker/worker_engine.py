@@ -63,6 +63,12 @@ class JobSpec:
         start, end = int(value["frame_start"]), int(value["frame_end"])
         if start < 0 or end < start or end - start > 100000:
             raise PermanentWorkerError("invalid frame range")
+        generation = int(value["lease_generation"])
+        if generation < 0:
+            raise PermanentWorkerError("invalid lease_generation")
+        output_format = str(value["output_format"]).lstrip(".").lower()
+        if not re.fullmatch(r"[a-z0-9]{1,8}", output_format):
+            raise PermanentWorkerError("invalid output_format")
         if not str(value["project_uri"]).strip():
             raise PermanentWorkerError("project_uri is required")
         if bool(value.get("autoexec", False)):
@@ -71,12 +77,12 @@ class JobSpec:
             job_id=str(value["job_id"]),
             task_id=str(value["task_id"]),
             attempt_id=str(value["attempt_id"]),
-            lease_generation=int(value["lease_generation"]),
+            lease_generation=generation,
             project_uri=str(value["project_uri"]),
             frame_start=start,
             frame_end=end,
             output_prefix=str(value["output_prefix"]),
-            output_format=str(value["output_format"]),
+            output_format=output_format,
             autoexec=False,
         )
 
@@ -202,7 +208,7 @@ class WorkerEngine:
                     self.reporter.progress(spec, frame, total)
                     continue
                 self.reporter.stage(spec, "RENDERING")
-                output = job_root / f"frame_{frame:04d}.{spec.output_format.lstrip('.') }"
+                output = job_root / f"frame_{frame:04d}.{spec.output_format}"
                 rendered = self.renderer.render(spec, project, frame, output)
                 self.validator.validate(rendered)
                 self.reporter.stage(spec, "UPLOADING")
