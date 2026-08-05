@@ -677,3 +677,8 @@ hiện có trong repo thay vì tiếp tục chờ.
     `claim_task()` bị mở rộng thêm kiểm tra quarantine/drain (mục
     "Ngoài roadmap" phía trên) — dù đã test kỹ qua MCP, đây vẫn là RPC lõi
     nhất của toàn bộ hệ thống, đáng được xác nhận lại trên máy thật.
+
+
+## Legacy architecture superseded — 2026-08-05
+
+Tài liệu này là audit lịch sử. cws_worker_full.py/cws_worker.bat đã được salvage và loại khỏi runtime source; không dùng các mô tả đó làm hướng dẫn triển khai mới. Hướng mới là generic Worker Engine nhận JobSpec động và Node Agent supervise.
