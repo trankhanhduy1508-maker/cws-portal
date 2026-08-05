@@ -841,3 +841,12 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - Verification: py_compile PASS; offline suite **11/11 PASS**.
 - Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
 - Runtime process supervision, Blender/B2 staging, real heartbeat/lease, Windows isolation, failover and production deployment remain UNVERIFIED/BLOCKED.
+
+# 20B. Windows staging verification — 2026-08-05
+
+- Python 3.12.7 and Blender 5.2.0 LTS safe CLI render with disable-autoexec: REAL RUNTIME VERIFIED.
+- Supabase connectivity only: REAL RUNTIME VERIFIED at HTTP reachability; authenticated staging heartbeat not attempted.
+- Canonical Worker 1.18.0 spawn: BLOCKED because current Windows checkout lacks cws_worker_full.py and manifest is not canonical.
+- B2 read-only: BLOCKED with HTTP 401; no write/delete.
+- Node Agent → heartbeat → Worker → B2 → cleanup remains BLOCKED/UNVERIFIED.
+- Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
