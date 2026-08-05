@@ -276,3 +276,10 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Stale generation rejection and cleanup are tested; no production heartbeat/RPC was sent.
 - Combined Worker/Node/launcher offline suite: 17/17 PASS.
 - Real Supabase lease/heartbeat integration remains UNVERIFIED pending isolated staging.
+
+
+## Generic Engine failure classification — 2026-08-05
+
+- Added conservative Blender failure classification: invalid/missing project markers are permanent; timeout/resource/driver/unknown failures remain retryable for Backend policy.
+- Generic Engine tests 7/7; combined Worker/Node/launcher suite 18/18 PASS.
+- No production job, Supabase RPC, B2 write or power action was performed.
