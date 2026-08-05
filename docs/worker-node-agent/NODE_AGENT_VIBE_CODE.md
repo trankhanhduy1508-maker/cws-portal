@@ -134,3 +134,9 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - Two independent Node Agent processes ran on staging; separate task claims and state-event streams were observed.
 - Crash/stale-heartbeat requeue and generation fencing were verified with a real takeover; both nodes returned to `ACTIVE_IDLE`.
 - Admin UI remains **BLOCKED/UNVERIFIED** by the missing staging staff-role/AAL2 boundary. Isolation and production rollout remain **UNVERIFIED/NO-GO**.
+
+## Admin Auth / isolation follow-up — 2026-08-05
+
+- `staff_roles`/`staff_worker_access` staging schema is applied with RLS and no client policies.
+- Real Admin visibility is **BLOCKED/UNVERIFIED** until Owner creates the staging MFA identity and server-only backend configuration.
+- Job Object timeout and process-tree cleanup are **REAL RUNTIME VERIFIED**; host filesystem/network boundary remains **UNVERIFIED**.

@@ -169,3 +169,9 @@ Canonical direction hiện tại:
 - Two real Node Agents completed separate staging assignments; stale takeover at generation 2 rejected the old generation. **REAL RUNTIME VERIFIED**.
 - Hostile `.blend` isolation remains **UNVERIFIED**; `--disable-autoexec` is retained but is not treated as a security boundary.
 - Production rollout remains **NO-GO** until Admin AAL2 runtime and Windows isolation gates pass.
+
+## Admin RBAC and isolation follow-up — 2026-08-05
+
+- Staging RBAC schema matches the application contract and is RLS-protected; no browser service-role credential is permitted.
+- Admin Fleet real UI remains **BLOCKED/UNVERIFIED** pending staging Auth/MFA identity and server-only backend configuration.
+- Job Object timeout/child cleanup is **REAL RUNTIME VERIFIED**; filesystem/network isolation is **UNVERIFIED**.
