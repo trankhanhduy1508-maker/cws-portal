@@ -216,3 +216,12 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - Added exact staging procedure: `reports/worker/CWS_WORKER_STAGING_PROCEDURE_1_18_0.md`.
 - Status remains **UNIT/CODE VERIFIED only**. Blender CLI, `--disable-autoexec`, B2 checkpoint, real lease/heartbeat, Windows isolation and two-node failover are not claimed PASS.
 - OWNER TODO: run the staging procedure on a real Windows staging node with a harmless `.blend` and scoped staging B2 credential; do not provide secrets in chat.
+
+
+## Worker + Node Agent → Admin fleet visibility — 2026-08-05
+
+- Added backend derivation of Node Agent authority in `GET /fleet/workers`: fresh heartbeat + stopped Worker remains ONLINE/ACTIVE_IDLE; stale heartbeat (>180s) becomes OFFLINE; lifecycle states map to PREPARING/BUSY/RECOVERY.
+- Admin Worker table now shows PC/Node state, Worker state, current Job, last seen and health.
+- Fixed production Admin route: `vercel.json` SPA rewrite plus `/admin` pathname guard; prior read-only check returned Vercel NOT_FOUND before this change.
+- Tests: targeted state 3/3 PASS, backend build PASS, frontend build/lint/tests PASS (6/6). Live Vercel deploy, Admin MFA session and real Node Agent heartbeat remain UNVERIFIED.
+- Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
