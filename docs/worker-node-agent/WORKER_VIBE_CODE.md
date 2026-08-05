@@ -89,3 +89,11 @@ Canonical direction hiện tại:
 - A stale generation is rejected and cleanup still runs; adapter failures are retryable.
 - Tests: generic engine 6/6; combined Worker/Node/launcher suite 17/17 PASS.
 - Real Supabase lease/heartbeat adapter remains UNVERIFIED pending isolated staging endpoint/task.
+
+
+## Failure classification salvage — 2026-08-05
+
+- Added classify_blender_failure to separate strong invalid/missing project evidence (permanent) from timeout/OOM/driver/unknown failures (retryable).
+- Backend remains the retry-budget authority; Worker never retries indefinitely.
+- Generic Engine tests: 7/7; combined Worker/Node/launcher suite: 18/18 PASS.
+- Missing-assets analysis remains isolated preflight research; customer code is not executed.
