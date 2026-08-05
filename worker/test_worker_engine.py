@@ -4,7 +4,7 @@ from pathlib import Path
 
 from worker_engine import (BasicOutputValidator, BasicPreflight, JobSpec,
                            FailureCategory, PermanentWorkerError,
-                           RetryableWorkerError, WorkerEngine,
+                           FilesystemCheckpointStore, RetryableWorkerError, WorkerEngine,
                            classify_blender_failure)
 
 
@@ -72,6 +72,29 @@ def spec(**overrides):
 
 
 class WorkerEngineTests(unittest.TestCase):
+    def test_partial_checkpoint_resumes_after_failure(self):
+        class FailOnSecondFrame(Renderer):
+            def render(self, spec, project, frame, output):
+                if frame == 2:
+                    raise RetryableWorkerError("simulated node interruption")
+                output.write_bytes(b"PNG-safe-render-output-" + str(frame).encode())
+                return output
+
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoint_root = Path(tmp) / "checkpoints"
+            store = FilesystemCheckpointStore(checkpoint_root)
+            with self.assertRaises(RetryableWorkerError):
+                WorkerEngine(Path(tmp) / "work", Downloader(), BasicPreflight(),
+                             FailOnSecondFrame(), store, BasicOutputValidator(10), Reporter()).run(spec())
+            self.assertTrue(store.is_verified(spec(), 1))
+            self.assertFalse(store.is_verified(spec(), 2))
+
+            checkpoints, reporter = store, Reporter()
+            WorkerEngine(Path(tmp) / "work", Downloader(), BasicPreflight(), Renderer(),
+                         checkpoints, BasicOutputValidator(10), reporter).run(spec())
+            self.assertIn(("complete", "task-1"), reporter.events)
+            self.assertTrue(store.is_verified(spec(), 2))
+
     def test_failure_classifier_separates_bad_project_from_node_failure(self):
         self.assertEqual(
             classify_blender_failure(1, "Error: cannot read file project.blend"),
