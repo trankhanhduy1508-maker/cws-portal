@@ -116,6 +116,13 @@ class OutputValidator(Protocol):
     def validate(self, output: Path) -> None: ...
 
 
+class AttemptGuard(Protocol):
+    """Lease/fencing boundary supplied by the control plane adapter."""
+
+    def heartbeat(self, spec: JobSpec, state: str) -> None: ...
+    def assert_active(self, spec: JobSpec) -> None: ...
+
+
 def _inside(root: Path, child: Path) -> bool:
     try:
         child.resolve().relative_to(root.resolve())
@@ -178,7 +185,7 @@ class WorkerEngine:
     def __init__(self, workspace_root: Path, downloader: ProjectDownloader,
                  preflight: Preflight, renderer: Renderer,
                  checkpoints: CheckpointStore, validator: OutputValidator,
-                 reporter: Reporter):
+                 reporter: Reporter, guard: AttemptGuard | None = None):
         self.workspace_root = workspace_root.resolve()
         self.downloader = downloader
         self.preflight = preflight
@@ -186,6 +193,18 @@ class WorkerEngine:
         self.checkpoints = checkpoints
         self.validator = validator
         self.reporter = reporter
+        self.guard = guard
+
+    def _guard(self, spec: JobSpec, state: str) -> None:
+        if self.guard is None:
+            return
+        try:
+            self.guard.assert_active(spec)
+            self.guard.heartbeat(spec, state)
+        except (PermanentWorkerError, RetryableWorkerError):
+            raise
+        except Exception as exc:
+            raise RetryableWorkerError("lease/heartbeat adapter unavailable") from exc
 
     def run(self, spec: JobSpec) -> None:
         self.workspace_root.mkdir(parents=True, exist_ok=True)
@@ -194,7 +213,9 @@ class WorkerEngine:
             raise PermanentWorkerError("job workspace escaped workspace root")
         job_root.mkdir(parents=True, exist_ok=True)
         try:
+            self._guard(spec, "CLAIMED")
             self.reporter.stage(spec, "DOWNLOADING")
+            self._guard(spec, "DOWNLOADING")
             project = self.downloader.download(spec, job_root)
             project = project.resolve()
             if not _inside(job_root, project):
@@ -204,6 +225,7 @@ class WorkerEngine:
             self.reporter.stage(spec, "PREPARING")
             total = spec.frame_end - spec.frame_start + 1
             for frame in range(spec.frame_start, spec.frame_end + 1):
+                self._guard(spec, "RENDERING")
                 if self.checkpoints.is_verified(spec, frame):
                     self.reporter.progress(spec, frame, total)
                     continue
@@ -215,6 +237,7 @@ class WorkerEngine:
                 self.checkpoints.put(spec, frame, rendered)
                 self.reporter.stage(spec, "VERIFYING")
                 self.checkpoints.verify(spec, frame, rendered)
+                self._guard(spec, "CHECKPOINTED")
                 self.reporter.progress(spec, frame, total)
             self.reporter.complete(spec)
         except (PermanentWorkerError, RetryableWorkerError) as exc:
