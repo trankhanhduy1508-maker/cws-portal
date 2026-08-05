@@ -61,3 +61,18 @@ Nếu thiếu level, ghi đúng level, không nâng thành PASS.
 - Node state machine + pinned launcher tests: **9/9 PASS** offline.
 - Evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md` và `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`.
 - Next action: OWNER TEST STEP trong staging procedure; không claim runtime thật từ offline suite.
+
+
+## Architecture correction — generic Worker Engine — 2026-08-05
+
+Owner xác nhận cws_worker_full.py là legacy Worker và không còn là canonical artifact. Không restore/copy/để subsystem mới phụ thuộc file này.
+
+Canonical direction hiện tại:
+
+- Engine: worker/worker_engine.py.
+- Input: dynamic JobSpec/TaskSpec từ Node Agent assignment.
+- Pipeline: download → safe preflight → Blender disable-autoexec → per-frame checkpoint → output validation → upload/verify adapter → completion report → cleanup → exit.
+- Node Agent owns node presence/lifecycle/process supervision; Backend owns claim/lease/priority/retry/billing; Worker owns one job attempt execution.
+- Job mới là data, không tạo Worker source/version mới.
+- Engine tests: 4/4 PASS; CODE/UNIT VERIFIED only.
+- Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
