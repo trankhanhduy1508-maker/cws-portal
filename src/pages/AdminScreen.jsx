@@ -310,7 +310,8 @@ export default function AdminScreen() {
               <tr style={{ textAlign: 'left', borderBottom: '1.5px solid #E8E8EA' }}>
                 <th style={{ padding: 8 }}>Project</th>
                 <th style={{ padding: 8 }}>Customer</th>
-                <th style={{ padding: 8 }}>Status</th>
+                <th style={{ padding: 8 }}>PC / Node</th>
+                  <th style={{ padding: 8 }}>Worker</th>
                 <th style={{ padding: 8 }}>Tiến độ</th>
                 <th style={{ padding: 8 }}>Payment</th>
                 <th style={{ padding: 8 }}>Tạo lúc</th>
@@ -466,7 +467,16 @@ export default function AdminScreen() {
                     <tr key={w.workerId} style={{ borderBottom: '1px solid #F0F0F1' }}>
                       <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12 }}>{w.workerId}</td>
                       <td style={{ padding: 8 }}>{w.gpuName ?? '—'}</td>
-                      <td style={{ padding: 8 }}>{w.status}</td>
+                      <td style={{ padding: 8 }}>
+                        <strong>{w.nodeState ?? (w.status === 'idle' ? 'ACTIVE_IDLE' : w.status)}</strong>
+                        <div style={{ fontSize: 11, color: '#777' }}>
+                          {w.online ? 'ONLINE' : 'OFFLINE'} · {w.healthState ?? 'HEALTHY'}
+                        </div>
+                      </td>
+                      <td style={{ padding: 8 }}>
+                        {w.workerState ?? w.status ?? '—'}
+                        {w.currentTaskId ? ` · Job ${w.currentTaskId}` : ''}
+                      </td>
                       <td style={{ padding: 8 }} title={w.stateReason ?? ''}>
                         {w.observedState ?? '—'}
                         {w.lastTransitionAt ? ` (${formatRelativeTime(w.lastTransitionAt)})` : ''}
@@ -493,7 +503,7 @@ export default function AdminScreen() {
                   );
                 })}
                 {workers.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
+                  <tr><td colSpan={8} style={{ padding: 16, textAlign: 'center', color: '#9a9aa0' }}>Chưa có Worker nào</td></tr>
                 )}
               </tbody>
             </table>
