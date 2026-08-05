@@ -268,3 +268,11 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 ## Generic Worker Engine correction — 2026-08-05
 
 Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sources after salvage review; excluded from runtime package and never imported/launched. Generic Engine `worker/worker_engine.py` is data-driven and receives JobSpec per attempt; no per-job Worker update is required. Offline Worker/Node suite: 17/17 PASS.
+
+
+## Generic Engine lease/fencing — 2026-08-05
+
+- Added AttemptGuard boundary to generic Worker Engine for active lease assertion and heartbeat at claim/download/render/checkpoint boundaries.
+- Stale generation rejection and cleanup are tested; no production heartbeat/RPC was sent.
+- Combined Worker/Node/launcher offline suite: 17/17 PASS.
+- Real Supabase lease/heartbeat integration remains UNVERIFIED pending isolated staging.
