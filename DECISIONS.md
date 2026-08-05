@@ -150,3 +150,10 @@ Worker Auto Update
 **[ACTIVE]** Latest version comes from backend.
 
 **[ACTIVE]** Never hardcode version.
+
+
+## Worker architecture correction — 2026-08-05
+
+Owner xác nhận cws_worker_full.py là legacy Worker. Quyết định: không restore/copy/để Worker mới phụ thuộc artifact cũ. Worker fleet cài Engine một lần; mỗi JobSpec/TaskSpec mới là dữ liệu động từ Backend/Scheduler. Node Agent quản lý presence/lifecycle/supervision; Backend quản lý assignment/lease/priority/retry/billing; Worker chỉ thực thi một attempt render và thoát.
+
+Evidence: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
