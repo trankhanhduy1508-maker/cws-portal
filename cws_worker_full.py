@@ -63,8 +63,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 # ===== SUPABASE =====
-SUPABASE_URL = "https://ynhxlxetwuiyejcjypsi.supabase.co"
-SUPABASE_KEY = "sb_publishable_OyV65PRDgzukM36BNZnCdg_6T3-OeG1"
+SUPABASE_URL = os.environ.get("CWS_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("CWS_SUPABASE_KEY") or os.environ.get("SUPABASE_KEY")
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -72,10 +72,13 @@ HEADERS = {
 }
 
 # ===== BACKBLAZE B2 =====
-B2_KEY_ID = "00483fb516ab3b10000000001"
-B2_APP_KEY = "K004my930oX1OkA4WyDWy1o4vhWCPcw"
-B2_ENDPOINT = "https://s3.us-west-004.backblazeb2.com"
-B2_BUCKET = "MTEB90"
+B2_KEY_ID = os.environ.get("CWS_B2_KEY_ID")
+B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY")
+B2_ENDPOINT = os.environ.get("CWS_B2_ENDPOINT")
+B2_BUCKET = os.environ.get("CWS_B2_BUCKET")
+
+if not all((SUPABASE_URL, SUPABASE_KEY, B2_KEY_ID, B2_APP_KEY, B2_ENDPOINT, B2_BUCKET)):
+    raise RuntimeError("legacy worker requires Supabase/B2 configuration from environment; no secret fallback exists")
 
 # ===== BLENDER =====
 BLENDER_VERSION = "5.2.0"

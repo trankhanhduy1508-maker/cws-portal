@@ -150,6 +150,20 @@ export async function adminGetJobLogs(jobId, staffToken) {
  * `?staffToken=` thay vì header Authorization (điều hướng trình duyệt
  * thường không set được custom header, xem staff-auth.util.ts —
  * Backend đọc cả header lẫn query cho đúng use-case này). */
-export function adminGetDownloadUrl(jobId, staffToken) {
-  return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}?staffToken=${encodeURIComponent(staffToken)}`;
+export async function adminDownloadJob(jobId, staffToken) {
+  if (!IS_BACKEND_CONFIGURED) throw new Error('Chưa cấu hình Backend thật.');
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {
+    headers: { Authorization: `Bearer ${staffToken}` },
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('Phiên đăng nhập hết hạn hoặc chưa đủ quyền/MFA — đăng nhập lại.');
+  if (!res.ok) throw new Error(`Không tải được file (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `cws-job-${jobId}`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

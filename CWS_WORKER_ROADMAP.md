@@ -1,5 +1,12 @@
 # CWS WORKER ROADMAP
 
+## Total review gates — 2026-08-05
+
+- Security: staging admin RPC hardening is verified; production privilege migration, secret rotation, dependency upgrade and explicit CORS remain gates.
+- Node Agent: staging runtime is verified; SCM service, non-blocking I/O, Job Object integration, quotas, update verification and rollback need evidence.
+- Blender/ArchViz: read-only analyzer is verified on harmless staging input; optimization profiles are proposals until benchmarked.
+- Production rollout remains **NO-GO** until security, Admin AAL2, isolation, observability, rollback and canary gates pass.
+
 **Tên tài liệu:** `CWS_WORKER_ROADMAP.md`  
 **Dự án:** Computer Workspace — CWS  
 **Mục tiêu:** Hoàn thiện kiến trúc Worker sau khi MVP hoàn tất, bảo đảm tương thích cao với hệ thống hiện tại, có khả năng quan sát, phục hồi, điều phối lại công việc và thống kê thời gian thuê chính xác.

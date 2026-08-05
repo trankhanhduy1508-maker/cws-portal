@@ -176,7 +176,6 @@ export class WorkerFleetGateway {
         lastTransitionAt: row.last_transition_at
           ? new Date(row.last_transition_at).getTime()
           : null,
-        healthState: row.health_state,
         desiredState: row.desired_state,
         currentTaskId: row.current_task_id,
         ...fleetState,

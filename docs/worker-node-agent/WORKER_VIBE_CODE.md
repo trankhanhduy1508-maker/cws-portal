@@ -1,5 +1,12 @@
 # CWS WORKER VIBE CODE
 
+## Total review — 2026-08-05
+
+- Do not rerun verified Full E2E or failover without regression evidence.
+- Staging admin RPC client-role EXECUTE is hardened by migration 018; production equivalent is pending review.
+- The scene analyzer is read-only and tested only with the harmless staging scene; no customer quality tradeoff is automatic.
+- Host-level Node/Worker hardening and hostile `.blend` isolation remain **UNVERIFIED/BLOCKED**.
+
 ## Mục tiêu
 
 Đóng vòng kín thật:

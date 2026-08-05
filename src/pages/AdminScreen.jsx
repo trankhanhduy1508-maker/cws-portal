@@ -4,7 +4,7 @@ import {
   adminListCustomers, adminListJobs, adminListWorkers, adminListIncidents, adminListHostUsageSessions,
   adminRetryTask, adminRequeueTask, adminSetWorkerQuarantine, adminSetWorkerDrain,
   adminConfirmHostUsageFinalAmount,
-  adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminGetDownloadUrl,
+  adminGetJobByStorageCode, adminGetPaymentByCode, adminGetJobPreview, adminDownloadJob,
   adminListPaymentDevices, adminListPaymentAnomalies,
 } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
@@ -176,6 +176,15 @@ export default function AdminScreen() {
       .catch((err) => setPreviewJob((p) => (p && p.id === job.id ? { ...p, isLoading: false, error: err.message } : p)));
   }, [adminKey]);
 
+  const handleDownload = useCallback(async (jobId) => {
+    try {
+      setError(null);
+      await adminDownloadJob(jobId, adminKey);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [adminKey]);
+
   useEffect(() => {
     if (adminKey) loadAll(adminKey);
   }, [adminKey, loadAll]);
@@ -330,7 +339,7 @@ export default function AdminScreen() {
                   <td style={{ padding: 8 }}>{formatRelativeTime(job.createdAt)}</td>
                   <td style={{ padding: 8 }}>
                     {job.downloadUrl ? (
-                      <a href={adminGetDownloadUrl(job.id, adminKey)} target="_blank" rel="noopener noreferrer">Tải</a>
+                      <button type="button" onClick={() => handleDownload(job.id)} style={{ color: '#3B5BFF', textDecoration: 'underline' }}>Tải</button>
                     ) : '—'}
                   </td>
                   <td style={{ padding: 8 }}>

@@ -1,5 +1,10 @@
 # CWS NODE AGENT / ACTIVE_IDLE VIBE CODE
 
+## Total review — 2026-08-05
+
+- Existing state loop, Full E2E and failover remain **REAL RUNTIME VERIFIED** and are not repeated here.
+- Bounded retry/cleanup is present and power-management APIs are absent; synchronous remote I/O and lack of SCM/Job Object integration keep production hardening **UNVERIFIED/BLOCKED**.
+
 ## Mục tiêu
 
 Một Node Agent nhẹ chạy liên tục trên PC:

@@ -161,13 +161,16 @@ class B2StagingCheckpointStore(CheckpointStore):
     def __init__(self, config: StagingConfig, prefix: str | None = None):
         try:
             import boto3
+            from botocore.config import Config
             from botocore.exceptions import ClientError
         except ImportError as exc:
             raise PermanentWorkerError("boto3 is required for B2 staging") from exc
         self._client_error = ClientError
         self.client = boto3.client("s3", endpoint_url=f"https://{config.b2_endpoint}",
                                    aws_access_key_id=config.b2_key_id,
-                                   aws_secret_access_key=config.b2_app_key)
+                                   aws_secret_access_key=config.b2_app_key,
+                                   config=Config(connect_timeout=10, read_timeout=30,
+                                                 retries={"max_attempts": 3, "mode": "standard"}))
         self.bucket = config.b2_bucket
         chosen_prefix = config.b2_prefix if prefix is None else prefix.strip("/")
         if not chosen_prefix or ".." in chosen_prefix.split("/"):

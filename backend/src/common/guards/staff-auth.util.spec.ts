@@ -62,6 +62,6 @@ describe('isAuthenticatedMfaAdmin (dùng chung cho JobsController#isAdminRequest
 
   it('true khi dùng query ?staffToken= (cho link tải trực tiếp, không set được header)', async () => {
     const req = makeRequest({ staffToken: makeToken('aal2') });
-    await expect(isAuthenticatedMfaAdmin(req, makeSupabase('admin'))).resolves.toBe(true);
+    await expect(isAuthenticatedMfaAdmin(req, makeSupabase('admin'))).resolves.toBe(false);
   });
 });

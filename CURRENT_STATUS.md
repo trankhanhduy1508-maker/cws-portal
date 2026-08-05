@@ -1,5 +1,12 @@
 # Current Status
 
+## Total review — 2026-08-05
+
+- Security: current-tree credential fallback removed, Admin token URL exposure fixed, and staging admin RPC client EXECUTE revoked. Historical credentials require rotation. See `reports/security/CWS_FULL_SECURITY_AUDIT_2026-08-05.md`.
+- Node Agent: prior Full E2E and multi-node evidence remains **REAL RUNTIME VERIFIED**; SCM service, non-blocking I/O, host isolation, quotas and rollback are **UNVERIFIED/BLOCKED**.
+- Blender/ArchViz analyzer: **CODE VERIFIED** and harmless staging execution **REAL RUNTIME VERIFIED**; customer optimization remains **UNVERIFIED**.
+- Production readiness: **NO-GO** pending production RPC migration, dependency canary, explicit CORS, host isolation, Admin AAL2 runtime, observability and rollback evidence.
+
 > Entry point đầu tiên của LOOP (AGENTS.md — Source-of-Truth Sync).
 > File này CHỈ ghi trạng thái mới nhất, không phải lịch sử. Chi tiết
 > bằng chứng nằm trong `reports/` (link ở mục Last Updated).
