@@ -1,5 +1,9 @@
 # CWS Customer Google Login Regression Audit — 2026-08-04
 
+## Deployment retry — 2026-08-05
+
+PR #17 đã chuyển sang Ready for review để kích hoạt lại Vercel Git integration sau khi quota 24 giờ có thể đã reset. Chỉ chấp nhận deployment có ref `agent/fix-customer-google-login-regression` và source commit chứa `cea3c7e`.
+
 ## Kết luận
 
 Đây là regression triển khai/cấu hình production, không phải regression trong `signInWithOAuth` do Customer UI redesign.
