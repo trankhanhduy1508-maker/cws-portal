@@ -850,3 +850,13 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - B2 read-only: BLOCKED with HTTP 401; no write/delete.
 - Node Agent → heartbeat → Worker → B2 → cleanup remains BLOCKED/UNVERIFIED.
 - Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
+
+
+# 20C. Generic Worker Engine correction — 2026-08-05
+
+- Legacy cws_worker_full.py đã được đọc để salvage knowledge; không restore/copy và không còn là kiến trúc đích.
+- Added worker/worker_engine.py và worker/test_worker_engine.py.
+- Job mới chỉ truyền JobSpec/TaskSpec động; không hard-code job/customer/frame/B2 object.
+- Node Agent owns PC lifecycle/supervision; Backend owns assignment/lease/priority/retry/billing; Worker owns one execution attempt.
+- Engine test: 4/4 PASS; CODE/UNIT VERIFIED.
+- Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
