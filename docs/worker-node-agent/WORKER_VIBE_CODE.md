@@ -10,7 +10,7 @@ Worker chỉ xử lý task đã được Backend/Fleet claim hợp lệ. Billing
 
 ## Canonical artifact
 
-Legacy cws_worker_full.py and cws_worker.bat were read as knowledge/evidence only and are removed from the runtime source of main. They are not restored and are not dependencies.
+Legacy cws_worker_full.py and cws_worker.bat are retained as knowledge/evidence only, excluded from the runtime package, never imported/launched, and not dependencies.
 
 Current generic package direction:
 
@@ -78,5 +78,5 @@ Canonical direction hiện tại:
 - Pipeline: download → safe preflight → Blender disable-autoexec → per-frame checkpoint → output validation → upload/verify adapter → completion report → cleanup → exit.
 - Node Agent owns node presence/lifecycle/process supervision; Backend owns claim/lease/priority/retry/billing; Worker owns one job attempt execution.
 - Job mới là data, không tạo Worker source/version mới.
-- Engine tests: 5/5 PASS; CODE/UNIT VERIFIED only.
+- Engine tests: 6/6 PASS; CODE/UNIT VERIFIED only.
 - Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
