@@ -263,3 +263,8 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - Job mới không yêu cầu sửa Python hoặc update fleet.
 - Chưa có Backend/Node Agent production adapter, canonical package staging hoặc B2/Supabase integration runtime; status CODE/UNIT VERIFIED בלבד.
 - Evidence: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
+
+
+## Generic Worker Engine correction — 2026-08-05
+
+Legacy `cws_worker_full.py`/`cws_worker.bat` were removed from runtime source after salvage review. Generic Engine `worker/worker_engine.py` is data-driven and receives JobSpec per attempt; no per-job Worker update is required. Offline Worker/Node suite: 15/15 PASS.
