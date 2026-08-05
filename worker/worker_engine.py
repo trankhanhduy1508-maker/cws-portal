@@ -1,7 +1,4 @@
-Exit code: 0
-Wall time: 1.1 seconds
-Output:
-"""Generic CWS render engine.
+­r^Ñf¥Ø¦{]¬yÊ'vÃ®¶­"""Generic CWS render engine.
 
 The engine is intentionally job-data driven. A Node Agent supplies one
 authorized JobSpec per attempt; this module contains no customer/job IDs,
@@ -243,4 +240,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
