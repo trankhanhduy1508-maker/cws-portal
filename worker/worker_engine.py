@@ -1,4 +1,4 @@
-­r^Ñf¥Ø¦{]¬yÊ'vÃ®¶­"""Generic CWS render engine.
+"""Generic CWS render engine.
 
 The engine is intentionally job-data driven. A Node Agent supplies one
 authorized JobSpec per attempt; this module contains no customer/job IDs,
