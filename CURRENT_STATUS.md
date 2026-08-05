@@ -253,3 +253,13 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - B2 read-only is BLOCKED: User-scope B2 configuration was loaded only into a child process for a list test and returned HTTP 401; no upload/download/delete was attempted.
 - Real Node Agent heartbeat, canonical Worker completion, B2 checkpoint, cleanup and monitor-off remain BLOCKED/UNVERIFIED.
 - Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
+
+
+## Generic Worker Engine architecture correction — 2026-08-05
+
+- Legacy cws_worker_full.py đã được đọc như knowledge/evidence; không restore và không dùng làm dependency.
+- Đã thêm generic data-driven engine worker/worker_engine.py và 4 test offline PASS.
+- Engine nhận JobSpec động, bắt buộc customer autoexec false, có job-scoped workspace, per-frame checkpoint/resume boundary, output validation và cleanup.
+- Job mới không yêu cầu sửa Python hoặc update fleet.
+- Chưa có Backend/Node Agent production adapter, canonical package staging hoặc B2/Supabase integration runtime; status CODE/UNIT VERIFIED בלבד.
+- Evidence: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
