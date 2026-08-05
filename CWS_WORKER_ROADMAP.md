@@ -813,3 +813,13 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - `worker/test_node_agent.py` verifies 6 offline contracts on Windows; evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
 - This is UNIT VERIFIED only. It does not claim real Backend lease/heartbeat, Blender, B2, Windows isolation, physical multi-node failover or power management.
 - ACTIVE_IDLE explicitly does not call Sleep/Hibernate/shutdown/logoff; the PC remains online. Production adapters must be injected and tested against the canonical Worker artifact before enabling them.
+
+
+# 19. Worker + Node Agent VIBE loop — 2026-08-05
+
+- Canonical source trên main: `cws_worker_full.py` + `cws_worker.bat`; không dùng tên artifact cũ nếu không có ref tương ứng.
+- `worker/canonical_worker_launcher.py` validate manifest version, direct-child paths và SHA-256 rồi mới gọi `cws_worker.bat`; không thêm supervisor, pip bootstrap hoặc power API.
+- Node Agent state machine + pinned launcher offline suite: **9/9 PASS**, py_compile PASS. Evidence: `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`.
+- Staging procedure: `reports/worker/CWS_WORKER_STAGING_PROCEDURE_1_18_0.md`.
+- Chưa gọi PASS: Blender/B2 runtime, real claim/heartbeat, Windows ACL/service identity/Defender/process isolation, timeout/crash/retry runtime và multi-node failover.
+- P0 tiếp theo: Owner chạy staging procedure trên Windows staging với B2 staging credential scoped và scene vô hại; sau đó mới xem xét rollout/failover.
