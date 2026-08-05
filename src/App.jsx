@@ -58,7 +58,7 @@ export default function App() {
   // thành nhánh riêng ở NGOÀI CustomerPortalApp (không phải early
   // return bên trong nó) để không vi phạm Rules of Hooks — App() ở
   // đây không gọi hook nào, chỉ CustomerPortalApp() mới gọi.
-  if (window.location.hash === '#admin') {
+  if (window.location.pathname === '/admin' || window.location.hash === '#admin') {
     return <AdminScreen />;
   }
   // Đăng nhập nhân sự thật (Phần 6) — tách biệt Google Login của
