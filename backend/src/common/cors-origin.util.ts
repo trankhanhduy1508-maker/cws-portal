@@ -23,3 +23,7 @@ export function parseCorsOrigins(raw: string | undefined, nodeEnv = process.env.
   if (origins.size === 0) return [...LOCAL_ORIGINS];
   return [...origins];
 }
+
+export function isAllowedCorsOrigin(requestOrigin: string | undefined, allowedOrigins: string[]): boolean {
+  return requestOrigin === undefined || allowedOrigins.includes(requestOrigin);
+}

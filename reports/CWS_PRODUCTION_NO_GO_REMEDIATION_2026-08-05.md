@@ -11,7 +11,9 @@ Continuation from `a9653cf`; verified Full E2E and multi-node evidence was not r
 | Path boundary | Workspace traversal defense only | Reject symlink/reparse components before job directory creation | `worker/path_boundary.py`, 30/30 Python tests | CODE/UNIT VERIFIED | Junction behavior needs a dedicated disposable-host test |
 | Blender optimizer | Analyzer/plan absent | Working-copy-only plan/apply harness; only multi-frame Cycles Persistent Data may auto-apply | `worker/blender_optimizer.py`, harmless EEVEE plan runtime | REAL RUNTIME VERIFIED | No speedup claim; benchmark scenes are still needed |
 | ArchViz profiles | Research only | Added SAFE/BALANCED/MAX_QUALITY policy data; no blind quality changes | `worker/archviz_profiles.json` | CODE/UNIT VERIFIED | VRAM/time estimates and quality thresholds unverified |
-| Dependencies | 9 High / 0 Critical production audit | Confirmed safe non-major fixes; rejected invalid overrides; Nest 11 remains major canary | backend npm audit and official Nest migration guide | BLOCKED | 5 High remain in Nest 10 dependency chain; major upgrade required |
+| Secret rotation | Historical hard-coded values in legacy/config history | Removed legacy runtime fallback; documented env-only rotation order without printing values | `CWS_FULL_SECURITY_AUDIT_2026-08-05.md`, disabled `cws_auto_ghep_video.bat` | BLOCKED | Owner must rotate confirmed historical Supabase/B2 credentials and verify deployment history |
+| Dependencies | 9 High / 0 Critical production audit | Confirmed safe non-major fixes; rejected invalid overrides; Nest 11 remains major canary | backend npm audit and official Nest migration guide | BLOCKED | 5 High remain in Nest 10 dependency chain; major upgrade requires canary |
+| Admin AAL2 | Backend guard/schema exists; no Owner-created staging identity/TOTP evidence | Staging metadata verified; no auth bypass or fake heartbeat | `CWS_ADMIN_AAL2_STAGING_RUNTIME_PLAN_2026-08-05.md` | BLOCKED | Owner must create staging Admin identity and enroll TOTP |
 
 ## Owner actions
 
@@ -20,6 +22,8 @@ Continuation from `a9653cf`; verified Full E2E and multi-node evidence was not r
 3. Rotate every historical Supabase/B2/backend secret listed in the prior security reports, then update hosting envs without posting values.
 4. Create a staging Admin Auth user, enroll TOTP, add `staff_roles` and `staff_worker_access`, then run the real Admin UI verification.
 5. Approve a Nest 11 canary only after migration-note review and staging regression evidence.
+
+6. Create the staging Admin identity and enroll TOTP using the exact steps in `reports/admin/CWS_ADMIN_AAL2_STAGING_RUNTIME_PLAN_2026-08-05.md`.
 
 ## Decision
 

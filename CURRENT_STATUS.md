@@ -3,7 +3,10 @@
 ## Production NO-GO remediation continuation — 2026-08-05
 
 - CORS: **CODE/UNIT VERIFIED**; canonical `https://cws-portal.vercel.app` allowlist, production fail-closed, no wildcard credentials. Owner must set `CORS_ORIGINS` on Render.
+- CORS request-origin callback: **CODE/UNIT VERIFIED** for canonical allow, same-origin/no-origin, and denied origin. Deployment verification remains pending Owner configuration.
+- Secret rotation readiness: **CODE/UNIT VERIFIED**; legacy helper fallback removed and rotation order documented without values. Actual production rotation remains **BLOCKED** on Owner action.
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
+- Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.
 - Windows SCM: Node Agent service PoC **REAL RUNTIME VERIFIED** for install/start/heartbeat/stop/restart/remove; GPU Worker remains a user-session helper boundary.
 - Job Object: timeout/child cleanup **REAL RUNTIME VERIFIED**; integration into Generic Worker remains **UNVERIFIED**.
 - Path boundary: symlink rejection **CODE/UNIT VERIFIED**; junction/reparse disposable-host matrix remains **UNVERIFIED**.

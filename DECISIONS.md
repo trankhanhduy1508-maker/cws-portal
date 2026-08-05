@@ -1,5 +1,13 @@
 # Official Decisions
 
+## Remediation decisions — 2026-08-05
+
+**[ACTIVE]** Production CORS is an explicit canonical-origin allowlist with `credentials: false`; wildcard origins are rejected. Staging/local origins are tested only through non-production configuration.
+
+**[ACTIVE]** Historical credentials are never printed or embedded in reports. Legacy credential-bearing helpers are disabled; production rotation is Owner-controlled and follows replacement → deploy/health-check → revoke-old order.
+
+**[ACTIVE]** Worker publishable RPCs remain available only because the current staging/full-E2E contract depends on them; production rollout remains blocked until worker node authentication is redesigned and reviewed. Migration 019 was applied only to staging.
+
 Authentication
 
 **[ACTIVE]** Google OAuth through Supabase only for MVP (updated 2026-08-01).

@@ -5,6 +5,7 @@
 - P0 security: explicit CORS and staging RPC privilege hardening are verified; production Worker node authentication, secret rotation and Nest dependency canary remain gates.
 - P0 host: SCM Node Agent and Job Object POCs have real runtime evidence; production integration and Session 0/user-session GPU split remain gates.
 - P1 optimization: analyzer → working-copy plan/apply exists; ArchViz profiles are policy data only and require benchmark evidence before customer use.
+- Remaining P0 gates: Owner secret rotation, production RPC change approval, Admin AAL2 runtime, and Nest 11 canary. No new Blender tradeoff optimization is in scope.
 
 ## Total review gates — 2026-08-05
 

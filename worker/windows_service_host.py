@@ -25,6 +25,7 @@ class CwsNodeAgentService(win32serviceutil.ServiceFramework):
     _svc_name_ = "CWSNodeAgentStaging"
     _svc_display_name_ = "CWS Node Agent (Staging PoC)"
     _svc_description_ = "Staging-only CWS Node Agent SCM lifecycle and heartbeat PoC."
+    _max_log_bytes = 5 * 1024 * 1024
 
     def __init__(self, args):
         super().__init__(args)
@@ -36,6 +37,11 @@ class CwsNodeAgentService(win32serviceutil.ServiceFramework):
 
     def _event(self, event: str, **fields: object) -> None:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.log_path.exists() and self.log_path.stat().st_size >= self._max_log_bytes:
+            rotated = self.log_path.with_name(f"{self.log_path.name}.1")
+            if rotated.exists():
+                rotated.unlink()
+            self.log_path.replace(rotated)
         payload = {"event": event, "ts": time.time(), **fields}
         with self.log_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(payload, sort_keys=True) + "\n")

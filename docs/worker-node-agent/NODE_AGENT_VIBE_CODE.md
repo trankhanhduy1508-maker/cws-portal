@@ -151,3 +151,7 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - `staff_roles`/`staff_worker_access` staging schema is applied with RLS and no client policies.
 - Real Admin visibility is **BLOCKED/UNVERIFIED** until Owner creates the staging MFA identity and server-only backend configuration.
 - Job Object timeout and process-tree cleanup are **REAL RUNTIME VERIFIED**; host filesystem/network boundary remains **UNVERIFIED**.
+# Remediation continuation — 2026-08-05
+
+- Native SCM PoC remains **REAL RUNTIME VERIFIED** for lifecycle and heartbeat. The service now bounds its JSONL event log with one explicit rotated file; user-session Worker/Blender launching remains a separate boundary.
+- Do not claim production service readiness until service-account policy, update/rollback, GPU session behavior, and real Admin AAL2 fleet evidence are complete.

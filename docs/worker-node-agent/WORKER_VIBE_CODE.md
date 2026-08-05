@@ -5,6 +5,8 @@
 - Job workspace now rejects symlink/reparse-like path components before creation; Python suite is 30/30 PASS.
 - Blender optimizer is working-copy-only and plan-first; only Persistent Data for multi-frame Cycles can be SAFE_AUTO. No customer file is mutated.
 - Job Object containment remains a separate POC until launcher integration is proven without regression.
+- Legacy video helper is disabled; runtime credentials are env-only and historical rotation order is documented without values.
+- Admin fleet verification must use a real staging Supabase Auth user with `aal2`; no shared token, browser service-role key, or fake heartbeat.
 
 ## Total review — 2026-08-05
 

@@ -1,4 +1,4 @@
-import { parseCorsOrigins } from './cors-origin.util';
+import { isAllowedCorsOrigin, parseCorsOrigins } from './cors-origin.util';
 
 describe('parseCorsOrigins', () => {
   it('uses local-only defaults outside production', () => {
@@ -16,5 +16,12 @@ describe('parseCorsOrigins', () => {
   });
   it('rejects unapproved production origins', () => {
     expect(() => parseCorsOrigins('https://evil.example', 'production')).toThrow(/approved/);
+  });
+
+  it('allows canonical and same-origin requests but denies other origins', () => {
+    const allowed = parseCorsOrigins('https://cws-portal.vercel.app', 'production');
+    expect(isAllowedCorsOrigin('https://cws-portal.vercel.app', allowed)).toBe(true);
+    expect(isAllowedCorsOrigin(undefined, allowed)).toBe(true);
+    expect(isAllowedCorsOrigin('https://evil.example', allowed)).toBe(false);
   });
 });

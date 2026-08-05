@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { parseCorsOrigins } from './common/cors-origin.util';
+import { isAllowedCorsOrigin, parseCorsOrigins } from './common/cors-origin.util';
 import { JobsRealtimeServer } from './realtime/jobs-realtime.server';
 import type { Server as HttpServer } from 'http';
 
@@ -13,8 +13,9 @@ async function bootstrap() {
   // thứ tự field/khoảng trắng có thể khác byte gốc, làm sai lệch chữ ký).
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
+  const allowedCorsOrigins = parseCorsOrigins(process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN);
   app.enableCors({
-    origin: parseCorsOrigins(process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN),
+    origin: (requestOrigin, callback) => callback(null, isAllowedCorsOrigin(requestOrigin, allowedCorsOrigins)),
     credentials: false,
   });
 

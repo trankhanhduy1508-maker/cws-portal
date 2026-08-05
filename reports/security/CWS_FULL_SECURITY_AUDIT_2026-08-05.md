@@ -6,6 +6,29 @@ Since commit `a9653cf`, CORS is now an explicit allowlist with production fail-c
 
 Scope: repository, staging metadata/RPC contract, and existing runtime evidence. Production database was queried read-only for metadata/function definitions only. No customer/job rows or secrets were copied.
 
+## Secret rotation readiness (values intentionally omitted)
+
+The current tree is env-only for runtime credentials. The legacy video helper was disabled because it contained a historical hard-coded publishable Supabase credential and production endpoint fallback; it is not a runtime dependency. Historical values are not reproduced here.
+
+| Credential class | Historical exposure | Current use | Rotation action/order |
+|---|---|---|---|
+| Supabase production service-role key | Historical backend/example or legacy configuration | `SUPABASE_SERVICE_ROLE_KEY`, backend only | Owner creates/replaces key; update backend hosting env; deploy/restart; verify health and Admin staging-equivalent calls; revoke old key last. |
+| Supabase legacy anon/publishable key | Historical legacy worker/video helper | Frontend publishable key and staging worker key are env-configured; publishable key is not a server secret | Replace legacy key if still active; update Vercel/frontend and staging envs; deploy; verify browser auth and worker staging; revoke old key last. |
+| B2 application key and paired key ID | Historical legacy/config exposure | `B2_APPLICATION_KEY`/`B2_KEY_ID` server-side; staging uses scoped env values | Create least-privilege replacement; update backend hosting env; verify upload/HEAD/download authorization; revoke old pair last. |
+| Admin/payment/webhook credentials | No literal current-tree value confirmed | Env-only names such as `ADMIN_API_KEY`, payment/webhook and SePay credentials | Configuration rotation check in deployment history; rotate only if Owner confirms a historical value was exposed. |
+
+Rotation order is: prepare replacement and rollback window → update server-side hosting env → deploy and health-check → update client publishable env if applicable → verify staging and production read-only health → revoke old credential. No production credential was rotated by this run.
+
+Historical paths reviewed for the rotation map were `backend/.env.example`, `.env.production`, `cws_worker_full.py`, `cws_worker.bat`, and `cws_auto_ghep_video.bat`; values are intentionally omitted. The current canonical Worker/Node runtime has no dependency on the disabled video helper.
+
+## Migration 019 production apply and rollback plan
+
+Migration `worker_migrations/019_rpc_privilege_hardening.sql` is idempotent: it resolves each known signature with `to_regprocedure`, then revokes client-role EXECUTE and pins `search_path=public, pg_temp`. It was applied and metadata-verified in staging only. It does not revoke the current publishable-key Worker RPCs because doing so would break the already-verified runtime contract; that authentication gap remains a production blocker.
+
+Apply plan: review the exact signature list and Worker authentication replacement → take the normal Supabase migration backup/change window → apply through the reviewed production migration process → query `pg_proc`/ACL metadata only to verify SECURITY DEFINER, pinned search path, and no `anon`/`authenticated` EXECUTE on internal/admin RPCs → run authenticated Admin smoke checks and the existing Worker canary contract.
+
+Rollback plan: do not restore broad client EXECUTE. If the migration causes a verified regression, stop rollout, restore the previous migration state through a reviewed compensating migration for only the affected exact signatures, re-run ACL/search-path metadata checks, and revert the application canary. Production apply is not authorized by this run.
+
 ## Executive result
 
 Production rollout remains **NO-GO**. The current tree has no confirmed Critical exploitable issue after the fixes below, but High items remain blocked by dependency-major upgrades, production RPC privilege migration, and a real host isolation boundary for untrusted `.blend` files.
@@ -49,3 +72,4 @@ Production rollout remains **NO-GO**. The current tree has no confirmed Critical
 - `src/services/adminApi.js`
 - `backend/package-lock.json` audit remediation
 - `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`
+- `cws_auto_ghep_video.bat` (disabled legacy helper; no credential fallback remains)
