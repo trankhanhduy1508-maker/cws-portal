@@ -189,6 +189,13 @@ giữ nguyên.
 - Callback/session restore bằng tài khoản Google thật: NEEDS_VERIFICATION vì môi trường này không có browser automation/tài khoản tương tác.
 - Evidence: `reports/evidence/CWS_CUSTOMER_GOOGLE_LOGIN_REGRESSION_2026-08-04.md`.
 
+## Worker + Node Agent VIBE CODE — 2026-08-05
+
+- Created `docs/worker-node-agent/README.md`, `WORKER_VIBE_CODE.md` and `NODE_AGENT_VIBE_CODE.md` as the canonical long-lived context.
+- Added `worker/node_agent.py`: deterministic ACTIVE_IDLE/prepare/start/run/recovery/cleanup state machine.
+- Offline Windows test: 6/6 PASS. Evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
+- Status: UNIT VERIFIED only. Physical Blender/B2, real lease/heartbeat, isolation and multi-node failover remain NEEDS_VERIFICATION/HUMAN BLOCKER.
+
 ## Last Updated
 
 2026-08-03 — xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`
