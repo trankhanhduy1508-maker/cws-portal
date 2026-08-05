@@ -299,3 +299,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Windows staging compile + combined suite: **22/22 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
 - Live timeout runtime test: UNVERIFIED; production/B2 E2E remains BLOCKED.
+
+
+## Worker P0 update — capability preflight (2026-08-05)
+
+- Dynamic JobSpec VRAM/RAM minimums and Worker-side final capability guard implemented.
+- Windows staging compile + combined suite: **24/24 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_CAPABILITY_PREFLIGHT_2026-08-05.md`.
+- Actual hardware capability discovery and production/B2 E2E remain UNVERIFIED/BLOCKED.
