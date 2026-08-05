@@ -1,4 +1,4 @@
-­r^Ñf¥Ø¦{]¬yÊ'vÃ®¶­import tempfile
+import tempfile
 import unittest
 from pathlib import Path
 
