@@ -1,0 +1,14 @@
+{
+  "job_id": "staging-runtime-job-20260805",
+  "task_id": "staging-runtime-task-1",
+  "attempt_id": "staging-runtime-attempt-1",
+  "lease_generation": 1,
+  "project_uri": "local://CWS_Staging_20260805/safe_scene.blend",
+  "frame_start": 1,
+  "frame_end": 1,
+  "output_prefix": "staging/runtime/task-1/",
+  "output_format": "png",
+  "required_vram_mb": 0,
+  "required_ram_mb": 0,
+  "autoexec": false
+}
