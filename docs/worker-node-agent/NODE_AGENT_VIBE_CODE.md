@@ -100,3 +100,11 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - B2 read-only: BLOCKED; configured User-scope credentials returned 401. No upload/download/delete.
 - Node Agent real heartbeat, canonical Worker, B2 checkpoint, cleanup and production Admin remain BLOCKED/UNVERIFIED.
 - Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
+
+
+## Integration phase — Windows staging runtime (2026-08-05)
+
+- Node Agent spawned the generic Worker Engine as a real child process and returned to ACTIVE_IDLE after Blender completion.
+- Crash-once recovery and timeout cleanup were observed in the real local process loop.
+- Supabase presence/lease and Admin fleet visibility remain BLOCKED pending staging-safe endpoint/credential.
+- Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
