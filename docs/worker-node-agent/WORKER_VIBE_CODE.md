@@ -107,3 +107,13 @@ Canonical direction hiện tại:
 - Windows staging Python compile + combined Worker/Node tests: **21/21 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
 - Production/B2 end-to-end remains UNVERIFIED/BLOCKED pending safe staging credentials and real integration.
+
+
+## Latest P0 implementation — timeout/process-tree cleanup (2026-08-05)
+
+- `BlenderCliRenderer` now owns the Blender PID and uses bounded communicate timeout.
+- Windows timeout terminates only that owned process tree; timeout remains retryable and Backend/Node Agent retain retry authority.
+- No power-management behavior is introduced.
+- Windows staging compile + combined suite: **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
+- Live timed-out Blender tree test remains UNVERIFIED; no customer/production process was used.
