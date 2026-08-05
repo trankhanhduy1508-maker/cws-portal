@@ -138,3 +138,13 @@ Canonical direction hiện tại:
 - Supabase lease/heartbeat: BLOCKED, no staging-safe credential/endpoint.
 - B2 upload/resume: BLOCKED, no staging-safe credential/bucket.
 - Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
+
+
+## Staging integration contract — 2026-08-05
+
+- Added credential-gated `worker/staging_adapters.py` for Supabase RPC and B2 S3-compatible checkpoints.
+- Uses only `CWS_STAGING_*`; no production fallback, service-role requirement, delete, bucket-admin or key-admin capability.
+- B2 frame checkpoint uses idempotent metadata and SHA-256 verification.
+- Staging assignment still needs a full JobSpec contract: assignment RPC or minimal RLS SELECT for jobs/tasks.
+- Evidence/Owner action: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
+- Current status: adapter CODE/UNIT VERIFIED; Supabase/B2 FULL E2E BLOCKED pending staging credentials.
