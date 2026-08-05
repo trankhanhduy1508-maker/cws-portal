@@ -59,7 +59,7 @@ import time
 import threading
 import uuid
 import random
-import shutil
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 # ===== SUPABASE =====
@@ -72,33 +72,10 @@ HEADERS = {
 }
 
 # ===== BACKBLAZE B2 =====
-# SUA 2026-08-03 (P0 bao mat, xem reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md):
-# KHONG con hardcode secret nao trong file nay - doc BAT BUOC tu bien
-# moi truong CWS_B2_KEY_ID/CWS_B2_APP_KEY (set qua "set" trong
-# cws_worker.bat CUC BO tren tung may, GIONG CACH CWS_DIR duoc set -
-# .bat KHONG bi auto-update nen an toan hon .py nay rat nhieu, xem
-# cws_worker.bat dong ~60-70). File .py nay LUON bi auto-update/tai lai
-# tu B2 worker-releases/ (xem cws_worker.bat) - bat ky ai co the doc
-# duoc file nay deu doc duoc MOI thu hardcode trong day, nen KHONG duoc
-# de secret nao o day nua, ke ca lam fallback.
-#
-# Neu thieu 1 trong 2 bien: KHONG crash worker_loop() ngay (giu dung
-# triet ly "warn, khong crash mu quang" da dung cho CWS_DIR ben duoi) -
-# in canh bao THAT TO, roi de cac loi goi B2 that bai tu nhien qua
-# try/except da co san (vd upload_single_frame, report_worker_crash) -
-# Owner se thay ro trong log thay vi Worker lang le dung 1 key sai/chet.
-B2_KEY_ID = os.environ.get("CWS_B2_KEY_ID", "")
-B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY", "")
+B2_KEY_ID = "00483fb516ab3b10000000001"
+B2_APP_KEY = "K004my930oX1OkA4WyDWy1o4vhWCPcw"
 B2_ENDPOINT = "https://s3.us-west-004.backblazeb2.com"
 B2_BUCKET = "MTEB90"
-if not B2_KEY_ID or not B2_APP_KEY:
-    print("=" * 60)
-    print("[CANH BAO NGHIEM TRONG] Thieu bien moi truong CWS_B2_KEY_ID/"
-          "CWS_B2_APP_KEY - MOI thao tac B2 (upload frame, incremental "
-          "recovery, merge video) SE THAT BAI. Set 2 bien nay trong "
-          "cws_worker.bat (dong 'set CWS_B2_KEY_ID=...' truoc khi goi "
-          "python.exe, giong cach CWS_DIR da lam) TRUOC khi chay lai.")
-    print("=" * 60)
 
 # ===== BLENDER =====
 BLENDER_VERSION = "5.2.0"
@@ -147,10 +124,15 @@ JOB_ID = "CWS-JOB3"
 # nhom NORMAL). Them 1 nhom moi JOB_IDS_PRIORITY_LOW, cung ap dung UU TIEN
 # CUNG giong HIGH: worker CHI thu PHONG10 khi CA NHOM NORMAL (PHONG7/8/9)
 # deu het task 'queued' hoan toan.
-JOB_IDS_PRIORITY_HIGH = ["CWS-JOB4-PHONG5", "CWS-JOB4-PHONG6"]
-JOB_IDS_PRIORITY_NORMAL = ["CWS-JOB4-PHONG7", "CWS-JOB4-PHONG8", "CWS-JOB4-PHONG9"]
-JOB_IDS_PRIORITY_LOW = ["CWS-JOB4-PHONG10"]
-JOB_IDS_MULTI = JOB_IDS_PRIORITY_HIGH + JOB_IDS_PRIORITY_NORMAL + JOB_IDS_PRIORITY_LOW
+# ============================================================
+# ZERO MANUAL WORKER — Worker khong bao gio phai biet truoc Job nao ton tai.
+# Truoc day co 3 bien hardcode:
+#   JOB_IDS_PRIORITY_HIGH, JOB_IDS_PRIORITY_NORMAL, JOB_IDS_PRIORITY_LOW
+# Cac bien do da bi XOA HOAN TOAN (1.16.5). Thay the bang RPC
+# claim_next_task() tren Supabase — RPC nay tu tim task co priority cao nhat
+# trong TOAN BO bang tasks, khong can Worker biet job_id nao ton tai.
+# Ket qua: them Job moi = chi INSERT vao Supabase, khong sua file nay.
+# ============================================================
 
 # GHI CHU (25/07/2026): SHUTDOWN_EXEMPT_HOSTNAMES, HEARTBEAT_INTERVAL_SEC,
 # TELEGRAM_BOT_TOKEN/CHAT_ID, STUCK_TASK_THRESHOLD_MIN/ALERT_COOLDOWN_MIN da
@@ -192,45 +174,11 @@ JOB_IDS_MULTI = JOB_IDS_PRIORITY_HIGH + JOB_IDS_PRIORITY_NORMAL + JOB_IDS_PRIORI
 HEARTBEAT_INTERVAL_SEC = 60
 POLL_INTERVAL_SEC = 15
 
-# ----- VIDEO MERGE (them theo CWS_WORKER_ROADMAP.md Phase 2, 31/07/2026):
-# tich hop lai chuc nang cua cws_auto_ghep_video.bat (Khau 8, truoc day la
-# cong cu doc lap chay tay) vao thang trong worker_loop(), TU DONG kich hoat
-# ngay sau khi 1 Worker hoan thanh task CUOI CUNG cua ca JOB (khong phai
-# CHINH task cua Worker do - phai kiem tra is_fully_done qua RPC
-# get_job_render_summary, giong het cach .bat cu da lam, vi merge la thao
-# tac CAP DO JOB trong khi vong lap worker_loop() hoat dong CAP DO TASK).
-#
-# CO CHU DICH giu 2 feature flag rieng (mac dinh: tich hop TAT, .bat cu
-# BAT) - .bat cu VAN giu nguyen, KHONG xoa, dung lam fallback thu cong neu
-# ban tat CWS_ENABLE_INTEGRATED_VIDEO_MERGE hoac merge tu dong that bai.
-CWS_ENABLE_INTEGRATED_VIDEO_MERGE = os.environ.get(
-    "CWS_ENABLE_INTEGRATED_VIDEO_MERGE", "false").strip().lower() == "true"
-CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK = os.environ.get(
-    "CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK", "true").strip().lower() == "true"
-# Duong dan ffmpeg.exe - doc qua bien moi truong de tung may chinh duoc
-# (giong tinh than CWS_DIR), fallback ve dung duong dan da hard-code trong
-# cws_auto_ghep_video.bat (da biet chay dung tren may hien tai).
-CWS_FFMPEG_PATH = os.environ.get(
-    "CWS_FFMPEG_PATH", r"C:\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe")
-MERGE_DOWNLOAD_TIMEOUT_SEC = 1800  # 30 phut - tai het PNG cua ca job tu B2
-MERGE_FFMPEG_TIMEOUT_SEC = 1800  # 30 phut - ghep video bang ffmpeg
-MERGE_MAX_RETRIES = 2  # thu lai them 2 lan (tong 3 lan) neu ffmpeg loi
-
 # Phien ban cua CHINH FILE NAY - phai tang so nay MOI LAN sua code va cap
 # nhat cot latest_version trong bang worker_config (Supabase) tuong ung,
 # de cws_worker.bat (lop vo ngoai) biet khi nao can tu tai ban moi ve.
 # Xem 10_setup_worker_selfheal.sql.
-WORKER_VERSION = "1.17.0"
-
-# Phase 8 (CWS_WORKER_ROADMAP.md, "Thong ke thoi gian thue host"): thoi
-# diem CHINH process Python nay bat dau chay - KHONG doi trong suot vong
-# doi process (chi doi khi cws_worker.bat khoi dong lai 1 process MOI,
-# vd sau crash/update). Gui kem RPC start_task_attempt() de Postgres tu
-# suy ra day co phai lan claim task DAU TIEN cua process nay khong (neu
-# la lan dau, tinh la co pha "khoi dong" - xem worker_migrations/
-# 006_host_usage_billing.sql). Dung time.time() (epoch giay) thay vi
-# datetime object de KHONG can them import moi.
-_WORKER_PROCESS_STARTED_AT = time.time()
+WORKER_VERSION = "1.16.5"
 
 # JITTER cho Auto Update (them 22/07/2026 toi): khi phat hien co ban moi,
 # CHO NGAU NHIEN 1 khoang trong [0, AUTO_UPDATE_JITTER_MAX_SEC] giay TRUOC
@@ -376,16 +324,8 @@ def ensure_blend_file(blend_link, blend_file_name):
 # truoc/sau xac nhan khong lam hong du lieu truoc khi ap dung lai cho Fleet.
 
 
-def render_single_frame(blend_path, frame_num, output_dir, optimization_code="", task_id=None, enable_autoexec=True):
+def render_single_frame(blend_path, frame_num, output_dir, optimization_code="", task_id=None):
     """Render DUNG 1 FRAME DUY NHAT.
-
-    enable_autoexec (them 2026-08-03, P0 bao mat - xem reports/worker/
-    CWS_P0_SECURITY_FIX_2026-08-03.md): mac dinh True de KHONG doi hanh
-    vi cho job Owner tu chon (JOB_IDS_MULTI, van can Driver Python trong
-    scene). worker_loop() PHAI truyen False cho job claim qua
-    claim_next_generic_task() (file .blend khach tu upload qua Portal -
-    untrusted input, --enable-autoexec cho phep thuc thi code tuy y tu
-    file .blend, xem CWS_WORKER_READINESS_AUDIT_2026-08-02.md muc 2.3).
 
     DON GIAN HOA (25/07/2026, theo yeu cau ro rang cua Dy): bo watchdog
     thread rieng, bo co che STALL_TIMEOUT_SEC/HARD_TIMEOUT_SEC (tu kill
@@ -404,9 +344,8 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     cmd = [
         str(BLENDER_EXE),
         "-b", str(blend_path),
+        "--enable-autoexec",
     ]
-    if enable_autoexec:
-        cmd.append("--enable-autoexec")
     if optimization_code:
         cmd += ["--python-expr", optimization_code]
     cmd += [
@@ -468,7 +407,7 @@ def upload_single_frame(file_path, job_id, task_id):
         return False
 
 
-def render_frame_range(blend_path, frame_start, frame_end, output_dir, enable_autoexec=True):
+def render_frame_range(blend_path, frame_start, frame_end, output_dir):
     """Goi Blender headless render dai frame_start-frame_end.
     Kiem tra KET QUA THAT (file PNG ton tai), khong tin dong log 'Saved:'.
 
@@ -482,18 +421,14 @@ def render_frame_range(blend_path, frame_start, frame_end, output_dir, enable_au
     cmd = [
         str(BLENDER_EXE),
         "-b", str(blend_path),
-    ]
-    if enable_autoexec:
-        # Cho phep chay Driver/script Python trong file scene. CAN THIET
-        # vi mac dinh Blender chan cac Driver dung ham "khong an toan"
-        # (vd noise.cell) - da gap that trong qua trinh test 2 may
-        # (21/07/2026, file Titan Station). CHI an toan khi worker render
-        # file .blend do Dy tu xac dinh (JOB_IDS_MULTI) - job claim qua
-        # claim_next_generic_task() (khach tu upload) PHAI truyen
-        # enable_autoexec=False, xem CWS_WORKER_READINESS_AUDIT_2026-08-02.md
-        # muc 2.3.
-        cmd.append("--enable-autoexec")
-    cmd += [
+        "--enable-autoexec",  # Cho phep chay Driver/script Python trong file
+                              # scene. CAN THIET vi mac dinh Blender chan cac
+                              # Driver dung ham "khong an toan" (vd noise.cell)
+                              # - da gap that trong qua trinh test 2 may
+                              # (21/07/2026, file Titan Station). Chap nhan
+                              # duoc vi worker CHI render file .blend do Dy
+                              # xac dinh qua link Google Drive cu the, khong
+                              # phai file bat ky ai tu do upload chay.
         "-o", output_pattern,
         "-F", "PNG",
         "-s", str(frame_start),
@@ -809,85 +744,6 @@ def get_worker_vram_mb():
         return None
 
 
-# ---------------------------------------------------------------------
-# ACTIVE IDLE POWER MANAGEMENT (Phase 4, CWS_WORKER_ROADMAP.md, them 31/07/2026)
-# ---------------------------------------------------------------------
-# CHU DICH chi dung 2 Windows API CHUAN, da tai lieu hoa chinh thuc, KHONG
-# can quyen Admin, KHONG dung schtasks/registry/powercfg/Task Scheduler:
-#   - SetThreadExecutionState (kernel32.dll) - ngan Windows tu Sleep khi
-#     dang co task. KHONG PHAI Sleep/Hibernate/Wake-on-LAN (nhung thu
-#     roadmap CAM lam o Phase nay) - day la co che NGUOC LAI: bao Windows
-#     "dung tu sleep", khong phai chu dong dua may vao/ra sleep.
-#   - SendMessageW voi SC_MONITORPOWER (user32.dll) - tat man hinh 1 LAN
-#     duy nhat khi bat dau ranh, KHONG lap lai moi vong poll (dung yeu cau
-#     roadmap "khong goi tat man hinh lap lai trong moi vong poll").
-# TUYET DOI KHONG dong vao GPU clock/voltage/power limit/Ultimate
-# Performance - ngoai pham vi Phase 4 cho phep.
-#
-# "Dung Blender va tien trinh nang" luc ranh (yeu cau khac cua Phase 4):
-# KHONG can code them - kien truc hien tai da tu nhien dung yeu cau nay,
-# Blender chi duoc goi qua subprocess.run() NGAN HAN cho TUNG frame
-# (render_single_frame()/analyze_blend_scene()), tu thoat ngay sau moi
-# lan goi - KHONG co tien trinh Blender nao chay lien tuc de "phai dung"
-# luc worker ranh.
-_monitor_turned_off_while_idle = False
-
-
-def prevent_windows_sleep():
-    """Goi khi BAT DAU co task (PREPARING) - bao Windows dung tu Sleep
-    giua chung luc dang render. KHONG bat buoc man hinh phai bat (dung
-    yeu cau roadmap), chi ngan he thong tu ngu quen giua luc dang lam
-    viec. Best-effort - loi khong duoc lam gian doan render."""
-    if sys.platform != "win32":
-        return
-    try:
-        import ctypes
-        ES_CONTINUOUS = 0x80000000
-        ES_SYSTEM_REQUIRED = 0x00000001
-        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
-    except Exception as e:
-        print(f"[POWER] Khong the ngan Windows Sleep: {e} - bo qua, khong anh huong render.")
-
-
-def allow_windows_sleep_and_turn_off_monitor_once():
-    """Goi khi BAT DAU ranh (task is None) - (a) tra lai quyen tu quan ly
-    idle cho Windows (bo co SYSTEM_REQUIRED, KHONG chu dong ep Sleep/
-    Hibernate - chi ngung NGAN Windows tu lam viec do neu no muon), (b)
-    tat man hinh DUNG 1 LAN (dung bien _monitor_turned_off_while_idle de
-    nho, tranh goi lap lai moi 15s vong poll nhu roadmap cam)."""
-    global _monitor_turned_off_while_idle
-    if sys.platform != "win32":
-        return
-    try:
-        import ctypes
-        ES_CONTINUOUS = 0x80000000
-        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-    except Exception as e:
-        print(f"[POWER] Khong the tra lai quyen quan ly idle cho Windows: {e}")
-
-    if _monitor_turned_off_while_idle:
-        return  # da tat roi tu lan ranh truoc - KHONG goi lai
-    try:
-        import ctypes
-        HWND_BROADCAST = 0xFFFF
-        WM_SYSCOMMAND = 0x0112
-        SC_MONITORPOWER = 0xF170
-        MONITOR_OFF = 2
-        ctypes.windll.user32.SendMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, MONITOR_OFF)
-        _monitor_turned_off_while_idle = True
-        print("[POWER] Da tat man hinh (may dang ranh, cho task moi) - "
-              "se KHONG lap lai cho toi khi co task moi.")
-    except Exception as e:
-        print(f"[POWER] Khong the tat man hinh: {e} - bo qua, khong quan trong.")
-
-
-def reset_monitor_off_flag_on_new_task():
-    """Goi ngay khi VUA claim duoc task moi - cho phep lan ranh TIEP THEO
-    (sau khi xong task nay) duoc tat man hinh lai tu dau."""
-    global _monitor_turned_off_while_idle
-    _monitor_turned_off_while_idle = False
-
-
 def check_for_newer_version():
     """Doc bang worker_config qua REST (SELECT, khong phai RPC - bang nay
     co policy 'allow read worker_config' cho phep doc truc tiep), so sanh
@@ -937,6 +793,69 @@ def apply_update_jitter_and_exit(context_message):
     time.sleep(jitter_sec)
 
 
+# ===== REMOTE SHUTDOWN COMMAND (them 26/07/2026) =====
+# TINH NANG TACH BIET HOAN TOAN voi Auto Update o tren - dung bang
+# Supabase RIENG (remote_commands), KHONG dung chung worker_config.
+# Muc dich: cho phep Dy TAT TU XA cac may dang idle (hoac theo VRAM cu
+# the) MA KHONG CAN remote/AnyDesk vao tung may - chi can INSERT 1 dong
+# vao bang remote_commands tren Supabase.
+#
+# AN TOAN: chi kiem tra o CUNG 1 DIEM AN TOAN da co san (ngay sau khi
+# complete_task/fail_task xong, TRUOC KHI claim task tiep theo) - KHONG
+# tao them diem dung moi, KHONG lam gian doan render dang checkpoint
+# giua chung. Neu can XOA tinh nang nay: chi can xoa dung ham
+# check_remote_shutdown_command() ben duoi VA 3 dong goi no trong
+# worker_loop() (tim theo comment "REMOTE SHUTDOWN") - khong dung cham
+# gi den Auto Update, claim_task, hay bat ky logic nao khac.
+SHUTDOWN_COMMAND_WINDOW_MINUTES = 30
+
+
+def check_remote_shutdown_command(worker_id, vram_mb):
+    """Doc bang remote_commands (TACH BIET voi worker_config/auto-update).
+    Kiem tra co lenh 'shutdown' nao ap dung cho worker nay khong, dua tren
+    target_worker_id (khop dung worker_id) HOAC target_vram_mb (khop dung
+    VRAM, ap dung cho ca nhom may cung cau hinh). target_worker_id/
+    target_vram_mb = NULL nghia la "ap dung cho tat ca". Best-effort: loi
+    mang chi tra ve False (KHONG lenh nao), KHONG duoc chan worker vi day
+    la tinh nang phu tro, khong phai logic render cot loi.
+
+    SUA LOI NGHIEM TRONG (26/07/2026): ban dau ham nay KHONG loc theo thoi
+    gian, nen 1 lenh shutdown da nhap se ton tai VINH VIEN trong bang ->
+    hom sau doi tac bat may len, worker doc lai dung lenh cu do va TU TAT
+    NGAY, lap di lap lai, may khong bao gio dung duoc nua (phai remote vao
+    tung may xoa tay). Nay CHI chap nhan lenh duoc tao trong vong
+    SHUTDOWN_COMMAND_WINDOW_MINUTES phut gan day - lenh cu tu dong het
+    hieu luc, he thong tu lanh, khong can don dep bang tay."""
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            minutes=SHUTDOWN_COMMAND_WINDOW_MINUTES)
+        # Hau to "Z" TUONG MINH la UTC - khong phu thuoc cau hinh TimeZone
+        # cua Postgres (hien tai la UTC, nhung khong nen dua vao gia dinh do).
+        cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+        url = (f"{SUPABASE_URL}/rest/v1/remote_commands"
+               f"?command=eq.shutdown&created_at=gte.{cutoff_iso}"
+               f"&order=created_at.desc&limit=10")
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        if response.status_code >= 400 or not response.text.strip():
+            return False
+        rows = response.json()
+        for row in rows:
+            target_worker = row.get("target_worker_id")
+            target_vram = row.get("target_vram_mb")
+            consumed = row.get("consumed_by") or []
+            if worker_id in consumed:
+                continue  # worker nay da xu ly lenh nay roi, bo qua
+            matches_worker = (target_worker is None or target_worker == worker_id)
+            matches_vram = (target_vram is None or target_vram == vram_mb)
+            if matches_worker and matches_vram:
+                return True
+        return False
+    except Exception as e:
+        print(f"    [remote_shutdown] Khong kiem tra duoc lenh tu xa (loi: {e}) - "
+              f"tiep tuc chay binh thuong.")
+        return False
+
+
 def rpc_call(function_name, payload):
     url = f"{SUPABASE_URL}/rest/v1/rpc/{function_name}"
     response = requests.post(url, headers=HEADERS, json=payload, timeout=15)
@@ -984,42 +903,29 @@ def claim_task(job_id, worker_id, worker_vram_mb):
     return row
 
 
-def claim_next_generic_task(worker_id, worker_vram_mb):
-    """P0 fix (2026-08-03, Owner uy quyen truc tiep, xem reports/worker/
-    CWS_P0_SECURITY_FIX_2026-08-03.md): claim_task() (ham tren) CHI claim
-    duoc task cua 1 job_id CU THE truyen vao - vong lap worker_loop() tu
-    truoc gio CHI thu qua JOB_IDS_MULTI (danh sach cung, job Owner tu tay
-    cau hinh), nen KHONG BAO GIO thay/claim duoc job MVP THAT do khach
-    tao qua Portal (WorkerFleetGateway.createInternalJobWithProbeTask(),
-    id = randomUUID()). Xac nhan bang evidence that (2026-08-03): 6 job
-    MVP that nam cho tu 2026-07-27 khong Worker nao claim.
+def claim_next_task(worker_id, worker_vram_mb):
+    """ZERO MANUAL WORKER: thay the vong lap claim_task(job_id) cu.
 
-    Ham nay goi RPC moi `claim_next_generic_task` (migration 014,
-    CHI THEM, khong sua claim_task() hien co) - claim BAT KY task
-    'queued' nao thuoc job co id dang UUID (dac diem CAU TRUC phan biet
-    job Portal vs job Owner tu go tay ten nguoi doc duoc nhu CWS-JOB3 -
-    xac nhan THAT qua truy van production, khong co ngoai le). Worker
-    CHI goi ham nay SAU KHI da thu het JOB_IDS_MULTI khong con task nao -
-    job Owner luon uu tien claim truoc, KHONG doi hanh vi Fleet hien co.
-
-    Tra ve dict co them key "job_id" (job MOI claim duoc, co the KHAC
-    JOB_IDS_MULTI) neu thanh cong, None neu khong con task nao."""
-    result = rpc_call("claim_next_generic_task", {
+    Goi RPC claim_next_task() tren Supabase tu tim task priority cao nhat
+    trong TOAN BO bang tasks. Worker khong can biet truoc job_id nao.
+    Tra ve (task_dict, job_id) hoac (None, None) neu khong co task.
+    """
+    result = rpc_call("claim_next_task", {
         "p_worker_id": worker_id,
         "p_worker_vram_mb": worker_vram_mb,
     })
     if not result:
-        return None
+        return None, None
     row = result[0]
-    if row.get("task_id") is None:
-        return None
-    return {
-        "task_id": row["task_id"],
-        "job_id": row["out_job_id"],
+    if row.get("out_task_id") is None:
+        return None, None
+    task = {
+        "task_id": row["out_task_id"],
         "out_frame_start": row["out_frame_start"],
         "out_frame_end": row["out_frame_end"],
         "out_generation": row["out_generation"],
     }
+    return task, row["out_job_id"]
 
 
 def report_heartbeat(task_id, generation, worker_id):
@@ -1057,19 +963,23 @@ def heartbeat_loop(task_id, generation, worker_id, stop_event):
         stop_event.wait(HEARTBEAT_INTERVAL_SEC)
         if stop_event.is_set():
             break
-        ok = report_heartbeat(task_id, generation, worker_id)
-        worker_ping(worker_id)
-        if not ok:
-            print(f"\n{'!' * 60}")
-            print(f"[heartbeat] Task {task_id} DA BI GIAO CHO WORKER KHAC "
-                  f"(generation={generation} khong con hop le tren Supabase).")
-            print("[heartbeat] Dang render VO ICH - ket qua se bi tu choi. "
-                  "TU THOAT ngay de cws_worker.bat khoi dong lai va nhan "
-                  "task khac tu dau.")
-            print(f"{'!' * 60}\n", flush=True)
-            stop_event.set()
-            os._exit(1)  # Thoat NGAY - .bat se tu khoi dong lai (co che da
-                          # co san trong vong lap :check_update cua .bat)
+        try:
+            ok = report_heartbeat(task_id, generation, worker_id)
+            worker_ping(worker_id)
+            if not ok:
+                print(f"\n{'!' * 60}")
+                print(f"[heartbeat] Task {task_id} DA BI GIAO CHO WORKER KHAC "
+                      f"(generation={generation} khong con hop le tren Supabase).")
+                print("[heartbeat] Dang render VO ICH - ket qua se bi tu choi. "
+                      "TU THOAT ngay de cws_worker.bat khoi dong lai va nhan "
+                      "task khac tu dau.")
+                print(f"{'!' * 60}\n", flush=True)
+                stop_event.set()
+                os._exit(1)  # Thoat NGAY - .bat se tu khoi dong lai (co che da
+                              # co san trong vong lap :check_update cua .bat)
+        except Exception as e:
+            print(f"[heartbeat] Canh bao: loi khi report heartbeat: {e} - "
+                  f"se tiep tuc thu lai, chua dung worker")
 
 
 def complete_task(task_id, generation, worker_id):
@@ -1088,172 +998,6 @@ def fail_task(task_id, generation, worker_id, error_type):
         "p_worker_id": worker_id,
         "p_error_type": error_type,
     })
-
-
-def report_state(worker_id, to_state, task_id=None, reason=None):
-    """Bao cao observed_state (Phase 3 CWS_WORKER_ROADMAP.md) qua RPC
-    report_worker_state_transition() - CHI ghi vao worker_state_events khi
-    THAT SU doi trang thai (logic nam trong RPC), khong tao log rac moi lan
-    goi lap lai cung trang thai. KHONG dong vao workers.status hien co (idle/
-    busy/offline) - do van la nguon su that cho cac co che dang chay that
-    (mark_stale_workers_offline/requeue_stale_tasks/claim_task/...), day CHI
-    la lop theo doi CHI TIET HON o BEN CANH, hoan toan moi, chua co code nao
-    khac phu thuoc vao.
-
-    BEST-EFFORT - loi o day KHONG duoc lam gian doan cong viec chinh (render),
-    day la tinh nang PHU (quan sat/Admin Dashboard sau nay), khong phai logic
-    cot loi."""
-    try:
-        rpc_call("report_worker_state_transition", {
-            "p_worker_id": worker_id,
-            "p_to_state": to_state,
-            "p_task_id": task_id,
-            "p_reason": reason,
-        })
-    except Exception as e:
-        print(f"[STATE] LOI khi bao cao trang thai '{to_state}' cho worker "
-              f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_incident(worker_id, event_type, severity, summary, task_id=None, error_code=None, details=None):
-    """Bao su co (Phase 6 CWS_WORKER_ROADMAP.md) qua RPC report_worker_incident()
-    - RPC tu dedup theo (worker_id, event_type, error_code, task_id) VA tu tang
-    occurrence_count neu incident cung loai CHUA duoc resolve (xem worker_migrations/
-    004_worker_incidents_schema.sql), worker KHONG can tu kiem tra trung lap.
-
-    BEST-EFFORT y het report_state() - loi o day KHONG duoc lam gian doan cong
-    viec chinh (render/merge), day la tinh nang PHU (Admin Dashboard Phase 6)."""
-    try:
-        rpc_call("report_worker_incident", {
-            "p_worker_id": worker_id,
-            "p_task_id": task_id,
-            "p_event_type": event_type,
-            "p_severity": severity,
-            "p_error_code": error_code,
-            "p_summary": str(summary)[:2000],
-            "p_details": details,
-        })
-    except Exception as e:
-        print(f"[INCIDENT] LOI khi bao cao su co '{event_type}' cho worker "
-              f"{worker_id}: {e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_task_attempt_start(task_id, worker_id, generation):
-    """Phase 8 CWS_WORKER_ROADMAP.md - goi NGAY SAU claim_task() thanh cong,
-    tao 1 dong task_attempts qua RPC start_task_attempt(). Gui kem
-    _WORKER_PROCESS_STARTED_AT (khong doi trong suot vong doi process) de
-    RPC tu suy ra day co phai lan claim task DAU TIEN cua process nay
-    khong - neu la lan dau, RPC tinh co pha "khoi dong 7 phut" (xem
-    worker_migrations/006_host_usage_billing.sql).
-
-    BEST-EFFORT - loi o day KHONG duoc lam gian doan render, day la tinh
-    nang thong ke/billing PHU (Admin Dashboard Phase 8), khong phai logic
-    cot loi cua viec claim/render/upload."""
-    try:
-        rpc_call("start_task_attempt", {
-            "p_task_id": task_id,
-            "p_worker_id": worker_id,
-            "p_generation": generation,
-            "p_process_started_at_epoch": _WORKER_PROCESS_STARTED_AT,
-        })
-    except Exception as e:
-        print(f"[BILLING] LOI khi bao start_task_attempt cho task {task_id}: "
-              f"{e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_task_attempt_ready(task_id, worker_id, generation):
-    """Phase 8 - goi khi Worker THAT SU san sang render (ngay truoc frame
-    dau tien) qua RPC report_worker_ready(). BEST-EFFORT y het
-    report_task_attempt_start()."""
-    try:
-        rpc_call("report_worker_ready", {
-            "p_task_id": task_id,
-            "p_worker_id": worker_id,
-            "p_generation": generation,
-        })
-    except Exception as e:
-        print(f"[BILLING] LOI khi bao report_worker_ready cho task {task_id}: "
-              f"{e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_task_attempt_stage(task_id, worker_id, generation, stage):
-    """Phase 8 - ghi 1 moc thoi gian cho task_attempts dang xu ly qua RPC
-    report_task_attempt_stage(). stage phai la 1 trong: render_completed/
-    merge_completed/upload_completed/verification_completed (RPC tu bo
-    qua gia tri khac, tra ve False, khong loi). BEST-EFFORT y het
-    report_task_attempt_start()."""
-    try:
-        rpc_call("report_task_attempt_stage", {
-            "p_task_id": task_id,
-            "p_worker_id": worker_id,
-            "p_generation": generation,
-            "p_stage": stage,
-        })
-    except Exception as e:
-        print(f"[BILLING] LOI khi bao stage '{stage}' cho task {task_id}: "
-              f"{e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_task_attempt_finalize(task_id, worker_id, generation, outcome):
-    """Phase 8 - goi 1 LAN sau khi biet ket qua CUOI CUNG cua attempt nay
-    (sau complete_task()/fail_task()) qua RPC finalize_task_attempt().
-    outcome phai la 1 trong: completed/failed/rejected. Task_attempts bi
-    "quen" finalize (worker chet giua chung, khong con co hoi goi ham
-    nay) se duoc requeue_stale_tasks() (Phase 7) tu dong danh dau
-    superseded, KHONG mo coi 'in_progress' vinh vien.
-
-    BEST-EFFORT y het report_task_attempt_start() - day la tinh nang
-    thong ke/billing PHU, KHONG duoc lam gian doan cong viec chinh."""
-    try:
-        rpc_call("finalize_task_attempt", {
-            "p_task_id": task_id,
-            "p_worker_id": worker_id,
-            "p_generation": generation,
-            "p_outcome": outcome,
-        })
-    except Exception as e:
-        print(f"[BILLING] LOI khi finalize task_attempt cho task {task_id} "
-              f"(outcome={outcome}): {e} - bo qua, khong anh huong cong viec chinh.")
-
-
-def report_total_frames_if_known(job_id, worker_id, optimization_plan):
-    """Bao lai jobs.total_frames/fps THAT cho Backend (sua lo hong goc re
-    khien luong end-to-end khong bao gio hoan thanh - xem worker_migrations/
-    002_set_job_total_frames_rpc.sql). Goi 1 LAN sau khi Scene Analyzer xac
-    dinh duoc frame range that (dinh dang trong optimization_plan qua
-    analyze_blend_scene(), xem "frame_start"/"frame_end"/"total_frames"/"fps").
-
-    An toan goi NHIEU LAN/tu NHIEU worker khac nhau - RPC set_job_total_frames()
-    idempotent (chi ghi neu jobs.total_frames dang NULL, tuong tu tinh than
-    "Phuong an C" cua set_optimization_plan_if_missing), nen KHONG can worker
-    tu kiem tra "job nay da co total_frames chua" truoc khi goi - de don gian
-    hoa code phia Python, day trach nhiem chong ghi trung xuong RPC/Postgres.
-
-    KHONG lam gian doan render neu RPC loi/job da co total_frames tu truoc -
-    day la tinh nang PHU, khong duoc chan worker tiep tuc lam viec chinh."""
-    if not optimization_plan:
-        return
-    total_frames = optimization_plan.get("total_frames")
-    if not total_frames or total_frames < 1:
-        print(f"[TOTAL_FRAMES] Job {job_id}: khong xac dinh duoc total_frames "
-              f"tu Scene Analyzer (gia tri: {total_frames!r}) - bo qua bao cao.")
-        return
-    try:
-        ok = rpc_call("set_job_total_frames", {
-            "p_job_id": job_id,
-            "p_worker_id": worker_id,
-            "p_total_frames": total_frames,
-            "p_fps": optimization_plan.get("fps"),
-        })
-        if ok:
-            print(f"[TOTAL_FRAMES] Job {job_id}: da bao total_frames={total_frames} "
-                  f"fps={optimization_plan.get('fps')} len Backend thanh cong.")
-        # ok=False nghia la job da co total_frames tu truoc (worker khac da
-        # bao roi, hoac worker nay khong con task active cho job do nua) -
-        # BINH THUONG, khong phai loi, khong can log ram.
-    except Exception as e:
-        print(f"[TOTAL_FRAMES] LOI khi bao total_frames cho job {job_id}: {e} "
-              f"- bo qua, khong anh huong render.")
 
 
 def report_render_speed(job_id, seconds_per_frame):
@@ -1280,220 +1024,6 @@ def log_task_event(task_id, worker_id, message):
         })
     except Exception:
         return False  # log that bai khong quan trong bang viec render tiep tuc
-
-
-def _download_job_frames_from_b2(job_id, flat_dir):
-    """Tai TOAN BO PNG cua 1 JOB (prefix renders/{job_id}/, gom moi task con)
-    ve 1 thu muc PHANG duy nhat - port lai dung logic 'aws s3 sync' + gop
-    thu muc cua cws_auto_ghep_video.bat, nhung dung thang boto3 (da co san
-    trong file nay qua get_b2_client()) THAY VI doi hoi cai them 'aws' CLI
-    rieng tren may Worker - giam 1 dependency ben ngoai so voi ban .bat cu.
-
-    Co gioi han thoi gian tong the (MERGE_DOWNLOAD_TIMEOUT_SEC) - boto3 chi
-    tu dat timeout cho TUNG request rieng le (xem get_b2_client()), khong
-    gioi han duoc tong thoi gian tai HANG TRAM frame cua ca job, nen phai
-    tu kiem tra deadline giua vong lap.
-
-    Tra ve so file PNG da tai duoc (co the < tong so file tren B2 neu het
-    thoi gian giua chung - ham goi se tu phat hien qua so sanh voi
-    total_frames va KHONG ghep video neu thieu, khong coi day la loi cung)."""
-    client = get_b2_client()
-    prefix = f"renders/{job_id}/"
-    flat_dir.mkdir(parents=True, exist_ok=True)
-    count = 0
-    continuation_token = None
-    deadline = time.monotonic() + MERGE_DOWNLOAD_TIMEOUT_SEC
-    while True:
-        if time.monotonic() > deadline:
-            print(f"[MERGE] Qua thoi gian cho phep ({MERGE_DOWNLOAD_TIMEOUT_SEC}s) khi tai frame tu B2 cho job {job_id}, dung lai voi {count} file da tai.")
-            break
-        kwargs = {"Bucket": B2_BUCKET, "Prefix": prefix}
-        if continuation_token:
-            kwargs["ContinuationToken"] = continuation_token
-        resp = client.list_objects_v2(**kwargs)
-        for obj in resp.get("Contents", []):
-            key = obj["Key"]
-            if not key.lower().endswith(".png"):
-                continue
-            local_path = flat_dir / os.path.basename(key)
-            client.download_file(B2_BUCKET, key, str(local_path))
-            count += 1
-        if resp.get("IsTruncated"):
-            continuation_token = resp.get("NextContinuationToken")
-        else:
-            break
-    return count
-
-
-def attempt_job_video_merge(job_id, worker_id):
-    """Tu dong ghep video cho CA JOB (khong phai 1 task rieng le) NGAY SAU
-    KHI 1 Worker vua hoan thanh task cuoi cung con lai cua job - port lai
-    dung logic cws_auto_ghep_video.bat (Khau 8) vao Python, giu nguyen thu
-    tu kiem tra AN TOAN cua ban .bat: is_fully_done -> tai PNG -> dem du
-    frame -> ffmpeg -> xac minh output. KHONG rewrite lai tu dau, chi port.
-
-    GIA TRI TRA VE (them cho Phase 8 CWS_WORKER_ROADMAP.md - truoc day ham
-    nay khong tra ve gi, khien worker_loop() khong the biet merge co THAT
-    SU thanh cong hay khong de bao cao merge_completed_at):
-    - "success": merge + upload B2 thanh cong THAT SU.
-    - None (mac dinh): moi truong hop con lai (tat tinh nang, chua du
-      dieu kien merge, chi 1 frame, thieu du lieu, that bai o buoc nao
-      do) - worker_loop() KHONG duoc coi None la loi, chi la "lan nay
-      chua merge", dung tinh than "merge la buoc PHU, that bai khong
-      duoc lam sai lech task/job da xong" da ghi ro o duoi.
-
-    CHU DICH THIET KE (theo dung CWS_WORKER_ROADMAP.md Phase 2):
-    - Chi chay khi CWS_ENABLE_INTEGRATED_VIDEO_MERGE=true (mac dinh TAT,
-      xem constant o dau file) - neu tat, ham nay khong lam gi ca, hanh vi
-      cu (chi co .bat chay tay) giu nguyen 100%.
-    - Bo qua ro rang (khong coi la loi) neu job chi co 1 frame (anh tinh,
-      khong phai video - dung quy uoc da co san o Backend, xem
-      packaging.service.ts#packageRenderResult "frames.length > 1").
-    - KHONG anh huong toi ket qua complete_task() cua CHINH task worker nay
-      vua xong - merge la buoc PHU o cap do JOB, that bai o day KHONG duoc
-      lam sai lech trang thai task/job da duoc Backend/Scheduler ghi nhan.
-    - Neu that bai o bat ky buoc nao: log ro ly do roi DUNG LAI (khong nem
-      exception ra worker_loop()), de nguyen .bat cu lam fallback thu cong
-      (CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK).
-
-    GIOI HAN DA BIET (ghi ro, khong tu quyet dinh sua vi can schema moi -
-    xem CWS_WORKER_ROADMAP.md Phase 3/7 "generation"/"fencing token"):
-    neu 2 Worker cung hoan thanh 2 task cuoi cung cua CUNG 1 job gan nhu
-    dong thoi, CA HAI co the cung thay is_fully_done=true va CA HAI cung
-    thu merge song song (lang phi, ghep 2 lan cung 1 video) - chua co co
-    che "khoa" cap job nao trong repo hien tai de tranh viec nay (giong
-    han che von co cua cws_auto_ghep_video.bat neu 2 nguoi cung chay tay
-    cho cung 1 job - KHONG PHAI hoi quy moi do tich hop nay gay ra)."""
-    if not CWS_ENABLE_INTEGRATED_VIDEO_MERGE:
-        return
-
-    print(f"[MERGE] Kiem tra job {job_id} co can ghep video khong...")
-    summary = rpc_call("get_job_render_summary", {"p_job_id": job_id})
-    if not summary:
-        print(f"[MERGE] Khong lay duoc get_job_render_summary cho {job_id}, bo qua merge lan nay.")
-        return
-    row = summary[0] if isinstance(summary, list) else summary
-
-    if not row.get("is_fully_done"):
-        print(f"[MERGE] Job {job_id} chua render xong 100% (con task active/queued) - bo qua, se tu kiem tra lai o lan hoan thanh task khac.")
-        return
-
-    total_frames = row.get("total_frames") or 0
-    fps = row.get("fps")
-    frame_start = row.get("frame_start_actual")
-    if total_frames <= 1:
-        print(f"[MERGE] Job {job_id} chi co {total_frames} frame (anh tinh, khong phai video) - bo qua ghep video mot cach ro rang.")
-        return
-    if not fps or frame_start is None:
-        print(f"[MERGE] Job {job_id} thieu fps/frame_start tu get_job_render_summary - khong the ghep an toan, bo qua.")
-        return
-
-    # KHOA LAC QUAN (them - sua "GIOI HAN DA BIET" ghi trong docstring o
-    # tren): tu day tro di, TAT CA dieu kien merge da xac nhan xong (fully
-    # done + du frame + co fps) - neu 2 Worker cung toi day gan nhu dong
-    # thoi, CHI 1 worker duoc RPC tra ve True (UPDATE ... WHERE
-    # merge_lock_at IS NULL la atomic ben Postgres), worker con lai BO QUA
-    # NGAY, tranh ffmpeg + upload B2 song song lang phi cho cung 1 video.
-    if not rpc_call("try_acquire_merge_lock", {"p_job_id": job_id}):
-        print(f"[MERGE] Job {job_id} da/dang duoc worker khac merge - bo qua lan nay.")
-        return
-
-    merge_root = BASE_DIR / "video_merge" / job_id
-    flat_dir = merge_root / "flat"
-    output_mp4 = merge_root / f"{job_id}.mp4"
-
-    report_state(worker_id, "MERGING", reason=f"job {job_id} da xong 100%, dang ghep video")
-    # QUAN TRONG (sua loi tu commit them khoa lac quan o tren): PHAI biet
-    # merge co THAT SU thanh cong hay khong de quyet dinh co GIU khoa hay
-    # THA khoa trong finally - neu khong, moi lan merge that bai (vd
-    # is_fully_done tra ve true SOM do chi co probe task, xem
-    # worker_migrations/011_release_merge_lock.sql) se khoa CHET job do
-    # vinh vien, lan merge THAT SU sau nay khong bao gio tu dong chay nua.
-    merge_succeeded = False
-    try:
-        print(f"[MERGE] Dang tai {total_frames} frame PNG cua job {job_id} tu B2...")
-        downloaded = _download_job_frames_from_b2(job_id, flat_dir)
-        if downloaded != total_frames:
-            print(f"[MERGE] DUNG LAI: so file PNG khong khop ({downloaded}/{total_frames}) - "
-                  f"khong ghep de tranh video thieu/sai frame. Co the dung {os.path.basename('cws_auto_ghep_video.bat')} "
-                  f"chay tay sau khi kiem tra lai Backblaze.")
-            log_task_event(job_id, worker_id, f"Merge bo qua: thieu frame ({downloaded}/{total_frames})")
-            return
-
-        attempt = 0
-        ffmpeg_ok = False
-        while attempt <= MERGE_MAX_RETRIES and not ffmpeg_ok:
-            attempt += 1
-            print(f"[MERGE] Ghep video bang ffmpeg (lan {attempt}/{MERGE_MAX_RETRIES + 1})...")
-            try:
-                result = subprocess.run(
-                    [
-                        CWS_FFMPEG_PATH,
-                        "-y",
-                        "-framerate", str(fps),
-                        "-start_number", str(frame_start),
-                        "-i", str(flat_dir / "frame_%04d.png"),
-                        "-c:v", "libx264",
-                        "-pix_fmt", "yuv420p",
-                        "-crf", "18",
-                        str(output_mp4),
-                    ],
-                    capture_output=True, text=True, timeout=MERGE_FFMPEG_TIMEOUT_SEC,
-                )
-                if result.returncode == 0:
-                    ffmpeg_ok = True
-                else:
-                    print(f"[MERGE] ffmpeg tra ve loi (exit {result.returncode}): "
-                          f"{result.stderr[-500:] if result.stderr else '(khong co stderr)'}")
-            except subprocess.TimeoutExpired:
-                print(f"[MERGE] ffmpeg qua thoi gian cho phep ({MERGE_FFMPEG_TIMEOUT_SEC}s), huy lan thu nay.")
-            except FileNotFoundError:
-                print(f"[MERGE] LOI: khong tim thay ffmpeg tai '{CWS_FFMPEG_PATH}' - "
-                      f"kiem tra bien moi truong CWS_FFMPEG_PATH hoac cai ffmpeg dung duong dan mac dinh.")
-                break
-
-        if not ffmpeg_ok:
-            print(f"[MERGE] Ghep video that bai sau {attempt} lan thu cho job {job_id}. "
-                  f"Dung .bat thu cong lam fallback neu can.")
-            log_task_event(job_id, worker_id, f"Merge that bai sau {attempt} lan thu (ffmpeg)")
-            return
-
-        if not output_mp4.exists() or output_mp4.stat().st_size == 0:
-            print(f"[MERGE] LOI: ffmpeg bao thanh cong nhung file output khong ton tai/rong: {output_mp4}")
-            log_task_event(job_id, worker_id, "Merge that bai: output rong/khong ton tai sau ffmpeg")
-            return
-
-        print(f"[MERGE] Ghep thanh cong: {output_mp4} ({output_mp4.stat().st_size} bytes). Dang upload len B2...")
-        merged_key = f"renders/{job_id}/merged/{job_id}.mp4"
-        client = get_b2_client()
-        client.upload_file(str(output_mp4), B2_BUCKET, merged_key)
-        print(f"[MERGE] Da upload video ghep len B2: {merged_key}")
-        log_task_event(job_id, worker_id, f"Merge thanh cong: {merged_key}")
-        merge_succeeded = True
-        return "success"
-
-    except Exception as e:
-        print(f"[MERGE] LOI khong luong truoc khi ghep video job {job_id}: {e}")
-        log_task_event(job_id, worker_id, f"Merge loi khong luong truoc: {e}")
-    finally:
-        # Don dep file trung gian - KHONG giu lai PNG/video local sau khi
-        # xong (thanh cong hay that bai), tranh day o cung dung luong may
-        # Worker qua thoi gian (.bat cu KHONG lam buoc nay - cai tien them).
-        try:
-            if merge_root.exists():
-                shutil.rmtree(merge_root, ignore_errors=True)
-        except Exception:
-            pass
-
-        # THA khoa lac quan neu merge KHONG thanh cong that su (moi nhanh
-        # return o tren deu di qua day truoc khi ham thuc su ket thuc) -
-        # de lan merge THAT SU sau nay (khi job da that su xong) van tu
-        # dong thu lai duoc, khong bi khoa chet boi 1 lan thu gia truoc do.
-        if not merge_succeeded:
-            try:
-                rpc_call("release_merge_lock", {"p_job_id": job_id})
-            except Exception:
-                pass
 
 
 def report_worker_crash(worker_id, error_message):
@@ -1549,20 +1079,10 @@ THRESHOLDS = {
 }
 
 scene = bpy.context.scene
-
-# ===== FRAME RANGE THAT (them 31/07/2026, sua lo hong goc re khien luong
-# end-to-end khong bao gio hoan thanh - xem worker_migrations/002_set_job_
-# total_frames_rpc.sql): truoc day KHONG co code nao doc scene.frame_start/
-# scene.frame_end, khien jobs.total_frames khong bao gio duoc ghi cho job
-# tao qua Backend (WorkerFleetGateway.createInternalJobWithProbeTask), va
-# SchedulerService khong bao gio tu tao duoc task ngoai probe task. Doc
-# THANG tu Blender (khong doan/hard-code) - fps that = fps / fps_base
-# (fps_base thuong la 1.0, nhung mot so scene dung gia tri khac de dat FPS
-# le, vd 23.976 = 24/1.001).
-scene_frame_start = scene.frame_start
-scene_frame_end = scene.frame_end
-scene_total_frames = max(0, scene_frame_end - scene_frame_start + 1)
-scene_fps = scene.render.fps / scene.render.fps_base if scene.render.fps_base else scene.render.fps
+frame_start = scene.frame_start
+frame_end = scene.frame_end
+frame_step = scene.frame_step
+total_frames = ((frame_end - frame_start) // frame_step) + 1 if frame_step > 0 else (frame_end - frame_start + 1)
 
 lights_objs = [o for o in scene.objects if o.type == 'LIGHT']
 total_lights = len(lights_objs)
@@ -1795,6 +1315,34 @@ for obj in scene.objects:
 
 subdiv_total_est_polys = sum(row[4] for row in subdiv_objects) if subdiv_objects else 0
 
+# --- 6. DENOISER (them 26/07/2026, cung tinh than "Do truoc khi toi uu"
+# nhu 5 nhom tren - CHI DOC/BAO CAO, KHONG tu bat/tat gi). Anh huong lon
+# ca thoi gian render (bat denoiser cho phep giam samples ma van sach
+# noise) lan chat luong cuoi (thuat toan denoiser khac nhau processing
+# khac nhau) - nhung KHONG tu dong bat/tat vi day la lua chon anh huong
+# TRUC TIEP hinh anh dau ra, giong nguyen tac da ap dung cho Shadow/
+# Texture/Samples o tren (chi bao cao, cho Dy xac nhan tren don hang
+# that truoc). Cycles va EEVEE co API denoiser khac nhau. ---
+denoiser_enabled = False
+denoiser_type = None
+if engine == 'CYCLES':
+    denoiser_enabled = getattr(scene.cycles, "use_denoising", False)
+    denoiser_type = getattr(scene.cycles, "denoiser", None) if denoiser_enabled else None
+elif engine in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'):
+    # EEVEE Next (Blender 4.2+) co denoiser rieng cho Ray Tracing;
+    # EEVEE cu (legacy) khong co khai niem denoiser giong Cycles.
+    denoiser_enabled = getattr(scene.eevee, "use_raytracing", False) and \
+                        getattr(scene.eevee, "ray_tracing_options", None) is not None
+    denoiser_type = "EEVEE_RAYTRACING" if denoiser_enabled else None
+
+if samples is not None and not denoiser_enabled:
+    if (engine == 'CYCLES' and samples < THRESHOLDS["samples_cycles_medium"]) or \
+       (engine != 'CYCLES'):
+        reasons.append(f"DENOISER dang TAT - voi Samples={samples}, bat denoiser "
+                        f"co the giam samples can thiet ma van giu chat luong "
+                        f"tuong duong (chi la GOI Y, chua tu dong bat)")
+
+
 # --- Ghi nhan vao reasons (CHI CANH BAO, KHONG tu dong sua) ---
 if volume_objects or volume_shader_materials or world_has_volume:
     vol_desc = []
@@ -1831,15 +1379,20 @@ report = {
     "engine": engine, "total_lights": total_lights, "shadow_lights": shadow_count,
     "max_texture_res": max_tex, "texture_count": tex_count, "polygon_count": polys,
     "oversized_textures": oversized_textures,
-    # Frame range THAT cua scene - dung de bao lai jobs.total_frames qua
-    # RPC set_job_total_frames() (xem get_or_create_optimization_plan()
-    # noi goi RPC nay, va worker_migrations/002_set_job_total_frames_rpc.sql).
-    "frame_start": scene_frame_start, "frame_end": scene_frame_end,
-    "total_frames": scene_total_frames, "fps": scene_fps,
     "samples": samples, "motion_blur": motion_blur, "volumetric_count": volumetric_count,
     "shadow_cube_size": shadow_cube_size, "shadow_cascade_size": shadow_cascade_size,
     "suggested_level": level, "reasons": reasons,
     "no_light_warning": no_light_warning,
+    # ===== TONG SO FRAME (them 26/07/2026, theo yeu cau Dy - de biet tong
+    # frame THAT cua file .blend ma KHONG can Dy tu doc log console/cuon
+    # tay tim - gio da ghi vao Supabase (job_optimization.analysis) qua
+    # RPC set_optimization_plan_if_missing() nhu moi field khac trong
+    # report nay, Dy co the SELECT truc tiep tu Supabase). Doc tu
+    # scene.frame_start/frame_end/frame_step CUA CHINH FILE .blend (khong
+    # phai gia dinh/uoc luong) - day la thiet lap Output Properties > Frame
+    # Range ma nguoi tao file .blend da luu san.
+    "frame_start": frame_start, "frame_end": frame_end, "frame_step": frame_step,
+    "total_frames": total_frames,
     # ===== SCENE OPTIMIZER GIAI DOAN 1 (25/07/2026) - CHI DOC/BAO CAO =====
     # 5 nhom moi do them de THU THAP DU LIEU THAT truoc khi quyet dinh xay
     # tinh nang toi uu. KHONG co bat ky co che tu dong sua nao cho 5 nhom
@@ -1857,6 +1410,8 @@ report = {
         "subdiv_objects": subdiv_objects,
         "subdiv_max_render_level": subdiv_max_render_level,
         "subdiv_total_est_polys": subdiv_total_est_polys,
+        "denoiser_enabled": denoiser_enabled,
+        "denoiser_type": denoiser_type,
     },
     # CHI 2 co nay la AN TOAN TUYET DOI (khong doi hinh anh dau ra) - day
     # la nhung gi worker tu dong bat KHONG DIEU KIEN.
@@ -1997,7 +1552,7 @@ def get_or_create_optimization_plan(blend_path, job_id):
     # qua RPC set_optimization_plan_if_missing - xem them RPC nay co
     # UPSERT/GHI DE hay chi "insert neu chua co", can xac nhan them neu
     # muon Plan moi thuc su thay the Plan cu tren Supabase).
-    REQUIRED_PLAN_FIELDS = ("oversized_textures",)
+    REQUIRED_PLAN_FIELDS = ("oversized_textures", "total_frames")
     url = f"{SUPABASE_URL}/rest/v1/job_optimization?job_id=eq.{job_id}&select=analysis"
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
@@ -2475,6 +2030,13 @@ def print_scene_analysis_report(report, job_id):
     print("\n" + "=" * 60)
     print(f"[SCENE ANALYZER] Bao cao phan tich file .blend (Job {job_id})")
     print("=" * 60)
+    # TONG SO FRAME (them 26/07/2026) - in DAU TIEN, DE THAY NHAT, vi day
+    # la thong tin Dy can nhat de biet tao bao nhieu task con lai cho job.
+    if report.get("total_frames") is not None:
+        print(f"*** TONG SO FRAME: {report['total_frames']} "
+              f"(frame_start={report.get('frame_start')}, "
+              f"frame_end={report.get('frame_end')}, "
+              f"frame_step={report.get('frame_step')}) ***")
     print(f"Render Engine: {report['engine']}")
     print(f"Light: {report['total_lights']} tong, {report['shadow_lights']} co shadow")
     print(f"Polygon: {report['polygon_count']:,}")
@@ -2680,7 +2242,7 @@ def worker_ping(worker_id):
 # ---------------------------------------------------------------------
 # VONG LAP CHINH
 # ---------------------------------------------------------------------
-def _load_job_context(job_id, worker_id, _cache={}):
+def _load_job_context(job_id, _cache={}):
     """Chuan bi day du thong tin can thiet cho 1 job (blend_path,
     optimization_code, ten file de log) - TACH RIENG (25/07/2026, phuc vu
     Job 4 - 6 file .blend khac nhau) khoi worker_loop() de co the goi LAI
@@ -2709,7 +2271,6 @@ def _load_job_context(job_id, worker_id, _cache={}):
     blend_path = ensure_blend_file(job_info["blend_link"], job_info["blend_file"])
     optimization_plan = get_or_create_optimization_plan(blend_path, job_id)
     print_scene_analysis_report(optimization_plan, job_id)
-    report_total_frames_if_known(job_id, worker_id, optimization_plan)
 
     optimization_code = get_driver_namespace_fix_code() + apply_safe_optimizations_args(optimization_plan)
     if ENABLE_GPU_TEXTURE_RELOAD_FIX:
@@ -2729,92 +2290,42 @@ def worker_loop():
     worker_id = get_worker_id()
     worker_vram_mb = get_worker_vram_mb()  # Lay 1 lan luc khoi dong (may khong doi GPU giua chung)
 
-    print("=" * 60)
     print(f"CWS Worker (FULL) khoi dong - Worker ID: {worker_id}")
-    print(f"Dang lam viec cho {len(JOB_IDS_MULTI)} job (Job 4 - nhieu file "
-          f".blend rieng biet): {', '.join(JOB_IDS_MULTI)}")
+    print("Che do: ZERO MANUAL WORKER - tu dong polling toan bo Queue")
     print(f"Thu muc lam viec (CWS_DIR): {BASE_DIR}")
     if "CWS_DIR" not in os.environ:
         print("[CANH BAO] Bien moi truong CWS_DIR KHONG duoc set - dang dung "
               "fallback mac dinh. Neu chay qua cws_worker.bat ma thay canh bao "
-              "nay, kiem tra lai .bat co dong 'set CWS_DIR=...' truoc khi goi "
+              "nay, kiem tra lai .bat co dong set CWS_DIR=... truoc khi goi "
               "python.exe khong.")
     print("=" * 60)
 
-    # Dang ky vao Fleet 1 LAN LUC KHOI DONG (schema 09_setup_fleet_capacity.sql)
     register_worker(worker_id, FLEET_ID, gpu_name=None, vram_mb=worker_vram_mb)
-    report_state(worker_id, "BOOTING", reason="worker_loop() vua khoi dong")
-    # Ghi chu: gpu_name khong doc rieng o day vi get_worker_vram_mb() da in ra
-    # ten GPU qua bien "name" cuc bo nhung khong return - de don gian, tam
-    # thoi truyen None; neu can luu ten GPU that, sua get_worker_vram_mb()
-    # de tra ve ca ten thay vi chi VRAM (cai tien de danh cho lan sau).
 
     while True:
-        # THU CLAIM QUA NHIEU JOB (25/07/2026, Job 4): xao tron thu tu MOI
-        # VONG LAP (theo quyet dinh Dy - tranh 7 may cung don vao 1 job
-        # truoc, de cac job khac dung yen). Thu tung job trong danh sach da
-        # xao tron, DUNG NGAY khi claim duoc 1 task o BAT KY job nao.
-        # THU CLAIM THEO UU TIEN CUNG (25/07/2026, Job 4, theo yeu cau khach):
-        # Nhom HIGH (PHONG5, PHONG6) LUON duoc thu TRUOC (xao tron thu tu
-        # trong CHINH nhom nay, tranh don het vao 1 job). CHI khi CA 2 job
-        # trong nhom HIGH deu tra ve None (het task 'queued' HOAN TOAN) thi
-        # moi thu sang nhom NORMAL (PHONG7/8/9). CHI khi CA NHOM NORMAL deu
-        # het task (Dy yeu cau lan 2, 25/07/2026: "tap trung don luc cho
-        # PHONG8 va PHONG9") thi moi thu sang nhom LOW (PHONG10, nang nhat).
-        high_order = list(JOB_IDS_PRIORITY_HIGH)
-        random.shuffle(high_order)
-        normal_order = list(JOB_IDS_PRIORITY_NORMAL)
-        random.shuffle(normal_order)
-        low_order = list(JOB_IDS_PRIORITY_LOW)
-        job_order = high_order + normal_order + low_order
-
-        task = None
-        current_job_id = None
-        is_generic_job = False
-        for candidate_job_id in job_order:
-            task = claim_task(candidate_job_id, worker_id, worker_vram_mb)
-            if task is not None:
-                current_job_id = candidate_job_id
-                break
-
-        # P0 fix (2026-08-03, Owner uy quyen truc tiep, xem reports/worker/
-        # CWS_P0_SECURITY_FIX_2026-08-03.md): JOB_IDS_MULTI (tren) LUON
-        # duoc uu tien thu TRUOC, KHONG doi hanh vi Fleet hien co cua
-        # Owner. CHI KHI khong con task nao trong JOB_IDS_MULTI, worker
-        # moi thu claim_next_generic_task() - job MVP THAT do khach tao
-        # qua Portal (id dang UUID, xem claim_next_generic_task() de biet
-        # cach phan biet). Job claim qua duong nay la untrusted input
-        # (khach tu upload) - PHAI render KHONG --enable-autoexec (xem
-        # is_generic_job duoc dung o duoi khi goi render_single_frame()).
-        if task is None:
-            generic_task = claim_next_generic_task(worker_id, worker_vram_mb)
-            if generic_task is not None:
-                task = generic_task
-                current_job_id = generic_task["job_id"]
-                is_generic_job = True
+        # ZERO MANUAL WORKER (1.16.5): goi 1 RPC duy nhat, Supabase tu chon
+        # task co priority cao nhat trong TOAN BO Queue.
+        # Worker khong biet va khong can biet job_id nao dang ton tai.
+        task, current_job_id = claim_next_task(worker_id, worker_vram_mb)
 
         if task is None:
             print(f"\nKhong con task nao. Doi {POLL_INTERVAL_SEC}s roi hoi lai...")
-            worker_ping(worker_id)  # QUAN TRONG: worker dang RANH van phai
-                                     # bao con song, neu khong bang workers
-                                     # se khong bao gio biet may nay dang idle
-            report_state(worker_id, "IDLE_WAITING_JOB")
-            allow_windows_sleep_and_turn_off_monitor_once()
-
-            # ----- TU KIEM TRA BAN MOI (yeu cau Dy 22/07/2026 toi): TRUOC day
-            # file .bat (lop vo ngoai) CO san co che auto-update, nhung CHI
-            # duoc kich hoat khi tien trinh Python nay THOAT - ma vong lap
-            # "while True" ben trong lai KHONG BAO GIO tu thoat (chi thoat khi
-            # crash hoac Dy tu Ctrl+C). Ket qua: du .bat co san logic tai ban
-            # moi, Dy van phai tu tat CMD roi mo lai moi thay ban moi ap dung.
-            # Sua o day: NGAY LUC DANG RANH (an toan nhat - khong dang render
-            # do dang, khong mat cong viec gi), Python TU hoi Supabase xem co
-            # ban moi hon WORKER_VERSION hien tai khong. Neu CO, TU THOAT
-            # (return, khong phai crash) - .bat dang cho san se tu phat hien
-            # Python vua thoat, chay lai vong :check_update, tu tai ban moi,
-            # tu khoi dong lai - HOAN TOAN khong can Dy tat/mo CMD bang tay. -----
+            worker_ping(worker_id)
             if check_for_newer_version():
                 apply_update_jitter_and_exit("dang ranh, khong co task de claim")
+                return
+
+            # ----- REMOTE SHUTDOWN: kiem tra NGAY LUC DANG RANH - day la
+            # DIEM QUAN TRONG NHAT vi da 3 diem goi Auto Update thi nhanh
+            # "dang ranh" la nhanh DUY NHAT chac chan duoc goi lien tuc khi
+            # Fleet khong con task (moi may deu idle) - 2 diem con lai (giua
+            # task, vua xong task) se KHONG BAO GIO chay toi neu khong co
+            # task nao dang render. Xoa 3 dong nay + ham
+            # check_remote_shutdown_command() la go bo sach tinh nang. -----
+            if check_remote_shutdown_command(worker_id, worker_vram_mb):
+                print("[remote_shutdown] Nhan lenh shutdown tu xa - may nay dang "
+                      "ranh, TAT an toan ngay.")
+                os.system('shutdown /s /t 60 /c "CWS: shutdown theo lenh tu xa tu Dy"')
                 return
 
             time.sleep(POLL_INTERVAL_SEC)
@@ -2826,17 +2337,12 @@ def worker_loop():
         generation = task["out_generation"]
 
         worker_ping(worker_id)  # Bao con song ngay khi VUA nhan task
-        report_task_attempt_start(task_id, worker_id, generation)
-        report_state(worker_id, "PREPARING", task_id=task_id,
-                     reason=f"vua claim task {task_id}, dang tai blend/phan tich scene")
-        prevent_windows_sleep()
-        reset_monitor_off_flag_on_new_task()
 
         # LOAD JOB CONTEXT (25/07/2026, Job 4): tai blend_path/optimization_code
         # DUNG CHO JOB VUA CLAIM DUOC (co the KHAC job lan truoc, vi random
         # thu tu moi vong) - xem docstring _load_job_context() de biet co che
         # cache tranh tai lai khong can thiet neu trung job cu.
-        job_ctx = _load_job_context(current_job_id, worker_id)
+        job_ctx = _load_job_context(current_job_id)
         if job_ctx is None:
             # Job nay loi that (khong ton tai tren Supabase) - tra lai task
             # bang fail_task (transient, de worker khac/lan sau thu lai) roi
@@ -2844,7 +2350,6 @@ def worker_loop():
             print(f"[LOI] Khong the tai job context cho {current_job_id} - "
                   f"tra lai task {task_id}, thu job khac.")
             fail_task(task_id, generation, worker_id, "transient")
-            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
         blend_path = job_ctx["blend_path"]
         optimization_code = job_ctx["optimization_code"]
@@ -2852,9 +2357,6 @@ def worker_loop():
         print(f"\n[NHAN VIEC] Job {current_job_id} - Task {task_id}: frame "
               f"{frame_start}-{frame_end} (generation={generation})")
         log_task_event(task_id, worker_id, f"Nhan viec, dang render frame {frame_start}-{frame_end}")
-        report_state(worker_id, "RENDERING", task_id=task_id,
-                     reason=f"dang render frame {frame_start}-{frame_end}")
-        report_task_attempt_ready(task_id, worker_id, generation)
 
         # HEARTBEAT THREAD (khoi phuc 25/07/2026): BAT BUOC phai chay suot
         # thoi gian lam task, neu khong requeue_stale_tasks() ben Supabase se
@@ -2909,8 +2411,7 @@ def worker_loop():
 
             frame_file, frame_error, frame_seconds = render_single_frame(
                 blend_path, frame_num, output_dir,
-                optimization_code=optimization_code, task_id=task_id,
-                enable_autoexec=not is_generic_job,
+                optimization_code=optimization_code, task_id=task_id
             )
 
             if frame_file is None:
@@ -2962,7 +2463,6 @@ def worker_loop():
                       f"KHONG tinh la loi that) de som update len ban moi.")
                 stop_event.set()  # dung heartbeat truoc khi thoat
                 fail_task(task_id, generation, worker_id, "transient")
-                report_task_attempt_finalize(task_id, worker_id, generation, "failed")
                 apply_update_jitter_and_exit(f"dung giua task {task_id} de nhuong viec")
                 return
 
@@ -2993,7 +2493,6 @@ def worker_loop():
                       f"da bi giao cho worker khac tu truoc.")
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
-            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -3021,49 +2520,20 @@ def worker_loop():
                           f"con lai se requeue")
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
-            report_task_attempt_finalize(task_id, worker_id, generation, "failed")
             continue
-
-        # Phase 8 (CWS_WORKER_ROADMAP.md): den day chac chan DU frame da
-        # render + upload thanh cong (kien truc checkpoint-per-frame - moi
-        # frame render xong duoc upload NGAY trong vong lap, khong co "pha
-        # upload" tach biet sau render) - ghi ca 3 moc CUNG luc, dung ban
-        # chat kien truc thay vi bia them 1 "pha" khong ton tai.
-        report_task_attempt_stage(task_id, worker_id, generation, "render_completed")
-        report_task_attempt_stage(task_id, worker_id, generation, "upload_completed")
-        report_task_attempt_stage(task_id, worker_id, generation, "verification_completed")
 
         ok = complete_task(task_id, generation, worker_id)
         if ok:
-            report_task_attempt_finalize(task_id, worker_id, generation, "completed")
             print(f"[HOAN THANH] Task {task_id} da render + upload B2 + ghi nhan thanh cong.")
             log_task_event(task_id, worker_id, "Hoan thanh: render + upload B2 thanh cong")
-            # Phase 2 (CWS_WORKER_ROADMAP.md): sau khi task NAY xong, thu
-            # kiem tra xem CA JOB da xong het chua - neu roi thi tu ghep
-            # video (khong lam gi neu CWS_ENABLE_INTEGRATED_VIDEO_MERGE
-            # tat, xem attempt_job_video_merge()). Loi o day KHONG duoc
-            # anh huong task vua complete_task() thanh cong o tren.
-            try:
-                merge_result = attempt_job_video_merge(current_job_id, worker_id)
-                if merge_result == "success":
-                    # Phase 8 (CWS_WORKER_ROADMAP.md): chi bao merge_completed
-                    # khi merge THAT SU thanh cong (tra ve "success") - None
-                    # nghia la tat tinh nang/chua du dieu kien/that bai o buoc
-                    # nao do BEN TRONG ham (da tu log rieng), KHONG phai loi
-                    # can bao them o day.
-                    report_task_attempt_stage(task_id, worker_id, generation, "merge_completed")
-            except Exception as merge_err:
-                print(f"[MERGE] Loi khong luong truoc ngoai attempt_job_video_merge(): {merge_err}")
-                report_incident(worker_id, "MERGE_FAIL", "error",
-                                 f"Loi ghep video job {current_job_id}: "
-                                 f"{type(merge_err).__name__}: {merge_err}",
-                                 task_id=task_id)
         else:
-            report_task_attempt_finalize(task_id, worker_id, generation, "rejected")
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
 
-        report_state(worker_id, "COOLDOWN", reason=f"vua xong task {task_id}, chuan bi tim task tiep theo")
-
+        # ----- REMOTE SHUTDOWN: dat SAU Auto Update ben duoi (xem giai
+        # thich thu tu o nhanh "dang ranh") - Auto Update chay truoc de
+        # worker luon co co hoi tu lanh, shutdown chi chay khi da o ban
+        # moi nhat. Tach biet hoan toan voi Auto Update - xoa khoi nay +
+        # ham check_remote_shutdown_command() la go bo sach tinh nang. -----
         # ----- TU KIEM TRA BAN MOI, DIEM THU 2 (bo sung 22/07/2026 toi):
         # kiem tra o nhanh "task is None" (dang ranh) o tren KHONG DU - neu
         # Fleet luon co viec lien tuc (task khong bao gio None), worker se
@@ -3074,6 +2544,13 @@ def worker_loop():
         # lam gian doan checkpoint per-frame nao dang render do dang. -----
         if check_for_newer_version():
             apply_update_jitter_and_exit("vua xong 1 task")
+            return
+
+        if check_remote_shutdown_command(worker_id, worker_vram_mb):
+            print("[remote_shutdown] Nhan lenh shutdown tu xa - may nay se TAT "
+                  "an toan (da xong task, khong cat ngang render nao).")
+            stop_event.set()
+            os.system('shutdown /s /t 60 /c "CWS: shutdown theo lenh tu xa tu Dy"')
             return
 
 
