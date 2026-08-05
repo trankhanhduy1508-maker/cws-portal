@@ -27,8 +27,9 @@ READ STATE → FIND P0 GAP → VERIFY SOURCE OF TRUTH → CODE → TEST → FIX 
 
 - Node Agent state machine: **UNIT VERIFIED**, 6/6 test cũ PASS.
 - Pinned launcher contract: **UNIT VERIFIED**, thêm 3 test checksum/path safety; tổng Worker/Node offline suite **9/9 PASS**.
-- Canonical Worker trên main đã xác minh là `cws_worker_full.py` (GitHub blob `e3b0872c2236e47849ec6450532eab18018b129f`) với launcher `cws_worker.bat` (GitHub blob `11f71e049358fe7d35b992b0a89fde9d600638b6`). Không dùng tên artifact cũ trong report làm package source.
-- `worker/canonical_worker_launcher.py` chỉ validate manifest SHA-256 và gọi launcher đã pin khi caller chủ động yêu cầu; không pip bootstrap, không thêm supervisor, không gọi power API.
+- Legacy `cws_worker_full.py`/`cws_worker.bat` đã được đọc để salvage knowledge và loại khỏi runtime source; không phải canonical package mới.
+- Generic package direction: `worker/worker_engine.py` + `worker-engine.bat` + `worker-engine-manifest.json`; JobSpec/TaskSpec là dữ liệu động cho mỗi attempt.
+- `worker/canonical_worker_launcher.py` validate manifest SHA-256 và gọi generic launcher khi caller chủ động yêu cầu; không pip bootstrap, không thêm supervisor, không gọi power API.
 - Blender CLI thật, B2 checkpoint thật, Windows ACL/service identity/Defender và multi-node failover: **CHƯA VERIFIED**.
 - Không tuyên bố production PASS từ unit/mock evidence.
 
