@@ -5,7 +5,7 @@ from pathlib import Path
 from worker_engine import (BasicOutputValidator, BasicPreflight, JobSpec,
                            FailureCategory, PermanentWorkerError,
                            FilesystemCheckpointStore, RetryableWorkerError, WorkerEngine,
-                           classify_blender_failure)
+                           OutputIntegrityValidator, classify_blender_failure)
 
 
 class Downloader:
@@ -72,6 +72,20 @@ def spec(**overrides):
 
 
 class WorkerEngineTests(unittest.TestCase):
+    def test_output_integrity_rejects_truncated_png(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "frame_0001.png"
+            output.write_bytes(b"\\x89PNG\\r\\n\\x1a\\n" + b"\\x00" * 300)
+            with self.assertRaises(RetryableWorkerError):
+                OutputIntegrityValidator(10).validate(output)
+
+    def test_output_integrity_accepts_structurally_valid_png_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "frame_0001.png"
+            ihdr = (1920).to_bytes(4, "big") + (1080).to_bytes(4, "big") + b"\\x08\\x02\\x00\\x00\\x00"
+            output.write_bytes(b"\\x89PNG\\r\\n\\x1a\\n" + (13).to_bytes(4, "big") + b"IHDR" + ihdr + b"\\x00" * 300)
+            OutputIntegrityValidator(10).validate(output)
+
     def test_partial_checkpoint_resumes_after_failure(self):
         class FailOnSecondFrame(Renderer):
             def render(self, spec, project, frame, output):
