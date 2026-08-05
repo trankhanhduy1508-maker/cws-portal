@@ -234,3 +234,13 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - Read-only Windows process check found no running Node Agent/cws_worker/Blender process; no fake heartbeat or Supabase mutation was performed.
 - Real Node Agent → Supabase → Admin E2E is BLOCKED/UNVERIFIED pending clean Vercel deployment, real staging Agent process and Admin AAL2 session.
 - Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
+
+
+## Worker + Node Agent lifecycle hardening — 2026-08-05
+
+- Added explicit Node Agent transition reasons and injected runtime policy.
+- Added bounded, non-blocking exponential retry backoff; retry readiness does not block heartbeat/poll loops.
+- Added safe monitor-off/on boundary hooks for ACTIVE_IDLE; no Sleep/Hibernate/shutdown/logoff or power API is called.
+- Verification: Python py_compile PASS; combined offline suite **11/11 PASS**.
+- Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
+- Still **UNIT/CODE VERIFIED only**: no physical Node Agent/Worker/Blender process is running on the current machine; Vercel fleet revision is not deployed; real heartbeat, B2, ACL/isolation, crash/timeout runtime and multi-node failover remain BLOCKED/UNVERIFIED.
