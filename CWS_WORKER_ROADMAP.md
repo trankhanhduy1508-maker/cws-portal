@@ -866,9 +866,9 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 
 ## P0 status update — 2026-08-05
 
-Output integrity is implemented in the generic Worker Engine. PNG outputs are structurally checked before checkpoint/upload; tests are 21/21 PASS. Full B2/production runtime verification remains blocked by staging integration credentials/endpoints.
+Output integrity is implemented in the generic Worker Engine. PNG outputs are structurally checked before checkpoint/upload; tests are 22/22 PASS. Full B2/production runtime verification remains blocked by staging integration credentials/endpoints.
 
 
 ## P0 status update — timeout cleanup (2026-08-05)
 
-Blender subprocess timeout now cleans up the owned process tree on Windows and preserves retry classification. Compile + combined suite 21/21 PASS; live timed-out Blender verification remains unverified.
+Blender subprocess timeout now cleans up the owned process tree on Windows and preserves retry classification. Compile + combined suite 22/22 PASS; live timed-out Blender verification remains unverified.
