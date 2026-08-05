@@ -1,8 +1,8 @@
 """Pinned, non-bootstrap launcher contract for the canonical CWS Worker.
 
-This module does not start a Worker at import time. It validates a staging
+This module does not start a Worker at import time.  It validates a staging
 package before launch and invokes the repository's single launcher only when
-the caller explicitly asks it to. It never installs packages, changes ACLs,
+the caller explicitly asks it to.  It never installs packages, changes ACLs,
 or calls Windows power APIs.
 """
 
@@ -24,10 +24,10 @@ class ArtifactValidationError(ValueError):
 @dataclass(frozen=True)
 class WorkerArtifact:
     package_root: Path
-    entrypoint: str = "cws_worker_full.py"
-    launcher: str = "cws_worker.bat"
-    manifest: str = "worker-artifact-manifest.json"
-    expected_version: str = "1.18.0"
+    entrypoint: str = "worker_engine.py"
+    launcher: str = "worker-engine.bat"
+    manifest: str = "worker-engine-manifest.json"
+    expected_version: str = "0.1.0"
 
 
 def _safe_child(root: Path, relative: str) -> Path:
@@ -83,15 +83,8 @@ class PinnedWorkerLauncher:
         self.validate()
         if os.name != "nt":
             raise ArtifactValidationError("canonical .bat launcher requires Windows")
-        # The .bat is the only supervisor. Do not add a second restart loop.
-        return [
-            "cmd.exe",
-            "/d",
-            "/s",
-            "/c",
-            str(_safe_child(self.root, self.artifact.launcher)),
-            *extra_args,
-        ]
+        # The .bat is the only supervisor.  Do not add a second restart loop.
+        return ["cmd.exe", "/d", "/s", "/c", str(_safe_child(self.root, self.artifact.launcher)), *extra_args]
 
     def launch(self, extra_args: Sequence[str] = ()) -> subprocess.Popen:
         command = self.command(extra_args)
