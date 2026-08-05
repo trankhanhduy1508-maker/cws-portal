@@ -89,3 +89,14 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - Verification: Python py_compile PASS; combined offline suite **11/11 PASS**.
 - Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
 - Runtime Windows, real Blender/B2, Supabase heartbeat, ACL/isolation, failover and production Admin remain UNVERIFIED/BLOCKED; no fake heartbeat or deployment workaround was used.
+
+
+## Windows staging verification — 2026-08-05
+
+- Python 3.12.7 runtime: REAL RUNTIME VERIFIED.
+- Blender 5.2.0 LTS CLI: REAL RUNTIME VERIFIED with harmless factory-startup .blend, disable-autoexec, exit 0, non-empty PNG and SHA-256 verification.
+- Supabase endpoint connectivity: REAL RUNTIME VERIFIED only at unauthenticated HTTP reachability (401); no RPC/heartbeat mutation was sent.
+- Canonical Worker spawn: BLOCKED because the current Windows checkout lacks cws_worker_full.py and local manifest is an older artifact schema.
+- B2 read-only: BLOCKED; configured User-scope credentials returned 401. No upload/download/delete.
+- Node Agent real heartbeat, canonical Worker, B2 checkpoint, cleanup and production Admin remain BLOCKED/UNVERIFIED.
+- Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
