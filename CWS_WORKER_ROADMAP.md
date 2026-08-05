@@ -882,3 +882,8 @@ Generic Worker preflight now enforces dynamic minimum VRAM/RAM requirements from
 ## Runtime integration status — 2026-08-05
 
 Windows safe staging has verified the local Node Agent → Generic Worker → Blender → validation → checkpoint → cleanup → ACTIVE_IDLE loop, including crash recovery and timeout cleanup. Supabase/B2 integration remains blocked by absent staging-safe credentials/endpoints. Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
+
+
+## Staging E2E integration update — 2026-08-05
+
+Credential-gated Supabase/B2 adapters are prepared with no production fallback or destructive capability. Full E2E remains blocked by missing staging credentials and complete assignment JobSpec contract.
