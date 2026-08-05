@@ -244,3 +244,12 @@ audit gốc), `reports/CURRENT_STATUS_ARCHIVE_2026-08-02.md` (lịch sử
 - Verification: Python py_compile PASS; combined offline suite **11/11 PASS**.
 - Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
 - Still **UNIT/CODE VERIFIED only**: no physical Node Agent/Worker/Blender process is running on the current machine; Vercel fleet revision is not deployed; real heartbeat, B2, ACL/isolation, crash/timeout runtime and multi-node failover remain BLOCKED/UNVERIFIED.
+
+## Windows staging verification — 2026-08-05
+
+- Python 3.12.7 and Blender 5.2.0 LTS were runtime-verified on this Windows machine using a harmless factory-startup scene, disable-autoexec, exit code 0, non-empty PNG and SHA-256 output check.
+- Supabase REST endpoint was reachable read-only but unauthenticated probe returned HTTP 401; no production RPC or heartbeat mutation was attempted.
+- Canonical Worker spawn is BLOCKED: current Windows checkout does not contain cws_worker_full.py and its local manifest is an older artifact schema.
+- B2 read-only is BLOCKED: User-scope B2 configuration was loaded only into a child process for a list test and returned HTTP 401; no upload/download/delete was attempted.
+- Real Node Agent heartbeat, canonical Worker completion, B2 checkpoint, cleanup and monitor-off remain BLOCKED/UNVERIFIED.
+- Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
