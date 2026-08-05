@@ -57,6 +57,14 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 5. Hai node: duplicate claim/failover/heartbeat stale lease.
 6. Chỉ sau evidence thật mới thiết kế wake/power integration; hiện tại không dùng Sleep.
 
+## Completed loop task — 2026-08-05
+
+- Added `worker/node_agent.py`: side-effect-free deterministic state machine.
+- Added `worker/test_node_agent.py`: 6 offline tests PASS.
+- Covered ACTIVE_IDLE, heartbeat degradation, PREPARING, single Worker launch, bounded retry, failure cleanup and return to ACTIVE_IDLE.
+- No Windows power API, Sleep/Hibernate, network call, credential or production job is touched.
+- Evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
+
 ## Evidence
 
 - Unit/state-machine PASS không đồng nghĩa Node Agent production PASS.
