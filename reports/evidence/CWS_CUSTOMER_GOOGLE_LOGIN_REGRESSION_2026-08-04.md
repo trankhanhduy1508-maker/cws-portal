@@ -1,8 +1,13 @@
 # CWS Customer Google Login Regression Audit — 2026-08-04
 
-## Deployment retry — 2026-08-05
+## Production verification — 2026-08-05
 
-PR #17 đã chuyển sang Ready for review để kích hoạt lại Vercel Git integration sau khi quota 24 giờ có thể đã reset. Chỉ chấp nhận deployment có ref `agent/fix-customer-google-login-regression` và source commit chứa `cea3c7e`.
+- PR #17 đã merge thành commit `9d2d223`.
+- Vercel production deployment `dpl_CLb4MZErFT3rbNUspiAEUQuNqvRa` READY.
+- Alias `https://cws-portal.vercel.app` đang trỏ deployment này; Vercel metadata xác nhận ref `main`, commit `9d2d223`.
+- Production bundle có Supabase project URL và `signInWithOAuth`; không phát hiện service-role/Google secret.
+- HTTP OAuth test thật: Supabase `/auth/v1/authorize?provider=google&redirect_to=https://cws-portal.vercel.app/` trả `302 Found` tới `accounts.google.com`, giữ redirect production.
+- Chưa xác minh callback/session restore bằng tài khoản Google tương tác trong môi trường Codex.
 
 ## Kết luận
 
