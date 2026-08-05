@@ -80,3 +80,12 @@ Canonical direction hiện tại:
 - Job mới là data, không tạo Worker source/version mới.
 - Engine tests: 6/6 PASS; CODE/UNIT VERIFIED only.
 - Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
+
+
+## Lease/fencing salvage — 2026-08-05
+
+- Salvaged old generation/fencing + heartbeat lesson into generic Engine AttemptGuard.
+- Worker checks active lease and emits heartbeat at CLAIMED, DOWNLOADING, RENDERING and CHECKPOINTED boundaries.
+- A stale generation is rejected and cleanup still runs; adapter failures are retryable.
+- Tests: generic engine 6/6; combined Worker/Node/launcher suite 17/17 PASS.
+- Real Supabase lease/heartbeat adapter remains UNVERIFIED pending isolated staging endpoint/task.
