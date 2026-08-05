@@ -92,3 +92,12 @@ Engine mới có:
 Không tiếp tục dùng cws_worker_full.py hoặc cws_worker.bat làm canonical artifact. Package/launcher phải được chuyển sang Worker Engine generic sau khi Node Agent adapter và staging contract hoàn thiện.
 
 Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSpec.
+
+
+## Post-implementation verification
+
+- Generic Engine + Node Agent + generic launcher offline suite: **15/15 PASS**.
+- py_compile: PASS.
+- Legacy runtime sources cws_worker_full.py and cws_worker.bat were removed from main after salvage; historical reports remain for evidence only.
+- New generic package files: worker/worker_engine.py, worker-engine.bat, worker-engine-manifest.json.
+- No production heartbeat, claim, B2 upload, payment or power action was performed.
