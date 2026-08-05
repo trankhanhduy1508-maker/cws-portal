@@ -3,7 +3,9 @@ import unittest
 from pathlib import Path
 
 from worker_engine import (BasicOutputValidator, BasicPreflight, JobSpec,
-                           PermanentWorkerError, RetryableWorkerError, WorkerEngine)
+                           FailureCategory, PermanentWorkerError,
+                           RetryableWorkerError, WorkerEngine,
+                           classify_blender_failure)
 
 
 class Downloader:
@@ -70,6 +72,16 @@ def spec(**overrides):
 
 
 class WorkerEngineTests(unittest.TestCase):
+    def test_failure_classifier_separates_bad_project_from_node_failure(self):
+        self.assertEqual(
+            classify_blender_failure(1, "Error: cannot read file project.blend"),
+            FailureCategory.PERMANENT,
+        )
+        self.assertEqual(
+            classify_blender_failure(1, "CUDA out of memory on render node"),
+            FailureCategory.RETRYABLE,
+        )
+
     def test_dynamic_job_runs_all_frames_and_cleans_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
             checkpoints, reporter = Checkpoints(), Reporter()
