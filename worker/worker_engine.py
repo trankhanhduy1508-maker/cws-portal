@@ -15,6 +15,7 @@ import json
 import re
 import shutil
 import subprocess
+from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence
@@ -33,6 +34,26 @@ class RetryableWorkerError(WorkerEngineError):
 
 class PermanentWorkerError(WorkerEngineError):
     """The project/spec is not safe or valid for this attempt."""
+
+
+class FailureCategory(str, Enum):
+    RETRYABLE = "retryable"
+    PERMANENT = "permanent"
+
+
+def classify_blender_failure(returncode: int | None, output: str) -> FailureCategory:
+    """Classify observable Blender failure without pretending certainty.
+
+    Missing/invalid project data is permanent for the same JobSpec. Timeout,
+    resource pressure, driver and transport failures may be retried by the
+    Backend policy on another attempt. Unknown failures remain retryable so a
+    single node does not permanently poison a valid project.
+    """
+    text = output.lower()
+    permanent_markers = ("cannot read file", "missing", "no such file", "invalid blend")
+    if any(marker in text for marker in permanent_markers):
+        return FailureCategory.PERMANENT
+    return FailureCategory.RETRYABLE
 
 
 @dataclass(frozen=True)
@@ -169,9 +190,8 @@ class BlenderCliRenderer:
         except subprocess.TimeoutExpired as exc:
             raise RetryableWorkerError("Blender render timed out") from exc
         if result.returncode != 0:
-            text = f"{result.stdout}\n{result.stderr}".lower()
-            category = "permanent" if any(x in text for x in ("cannot read", "missing", "invalid")) else "retryable"
-            error = PermanentWorkerError if category == "permanent" else RetryableWorkerError
+            category = classify_blender_failure(result.returncode, f"{result.stdout}\n{result.stderr}")
+            error = PermanentWorkerError if category is FailureCategory.PERMANENT else RetryableWorkerError
             raise error(f"Blender failed with exit code {result.returncode}")
         rendered = output.parent / f"frame_{frame:04d}.png"
         if not rendered.is_file():
