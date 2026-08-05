@@ -179,3 +179,13 @@ Legacy file remains available for future review only. It must never become the r
 - Status/test: implemented; Windows compile + combined suite **21/21 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
 - Full B2/production runtime: UNVERIFIED/BLOCKED.
+
+
+## New salvage evidence — timeout/process-tree cleanup (2026-08-05)
+
+- Legacy principle: a timeout must not leave orphan render processes.
+- New owner: Worker Engine for process execution; Node Agent remains lifecycle/recovery owner.
+- New design: owned Blender PID, bounded communicate timeout, Windows tree cleanup, retryable result.
+- Status/test: implemented; Windows compile + combined suite **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
+- Live timeout test: UNVERIFIED; no production mutation.
