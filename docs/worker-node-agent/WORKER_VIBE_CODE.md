@@ -117,3 +117,12 @@ Canonical direction hiện tại:
 - Windows staging compile + combined suite: **22/22 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
 - Live timed-out Blender tree test remains UNVERIFIED; no customer/production process was used.
+
+
+## Latest P0 implementation — capability preflight (2026-08-05)
+
+- JobSpec now carries dynamic minimum VRAM/RAM requirements.
+- Generic Worker preflight rejects an insufficient injected node profile before Blender starts; Scheduler remains node-selection authority.
+- Windows staging compile + combined suite: **24/24 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_CAPABILITY_PREFLIGHT_2026-08-05.md`.
+- Actual NVML/Windows capability discovery and real fleet admission remain UNVERIFIED/BLOCKED.
