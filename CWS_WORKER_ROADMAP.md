@@ -803,3 +803,13 @@ Nên chia thành các phiên:
 7. Security và review cuối.
 
 Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
+
+
+---
+
+# Node Agent / ACTIVE_IDLE — 2026-08-05
+
+- `worker/node_agent.py` implements the first side-effect-free state machine: `ACTIVE_IDLE → PREPARING → WORKER_START → WORKER_RUNNING → RECOVERY/CLEANUP → ACTIVE_IDLE`.
+- `worker/test_node_agent.py` verifies 6 offline contracts on Windows; evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
+- This is UNIT VERIFIED only. It does not claim real Backend lease/heartbeat, Blender, B2, Windows isolation, physical multi-node failover or power management.
+- ACTIVE_IDLE explicitly does not call Sleep/Hibernate/shutdown/logoff; the PC remains online. Production adapters must be injected and tested against the canonical Worker artifact before enabling them.
