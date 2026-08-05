@@ -11,10 +11,13 @@ backend/B2 implementation without coupling the render process to secrets.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
@@ -131,6 +134,85 @@ class CheckpointStore(Protocol):
     def is_verified(self, spec: JobSpec, frame: int) -> bool: ...
     def put(self, spec: JobSpec, frame: int, output: Path) -> None: ...
     def verify(self, spec: JobSpec, frame: int, output: Path) -> None: ...
+
+
+@dataclass(frozen=True)
+class CheckpointRecord:
+    job_id: str
+    task_id: str
+    frame: int
+    bytes: int
+    sha256: str
+    attempt_id: str
+    lease_generation: int
+
+
+class FilesystemCheckpointStore:
+    """Atomic, idempotent checkpoint reference implementation.
+
+    This is a safe local staging adapter and model for the B2 adapter. It
+    never treats object existence alone as success: the sidecar identity,
+    byte count and SHA-256 must all match before a frame is resumed.
+    """
+
+    def __init__(self, root: Path):
+        self.root = root.resolve()
+
+    def _paths(self, spec: JobSpec, frame: int) -> tuple[Path, Path]:
+        task_root = (self.root / spec.task_id).resolve()
+        if not _inside(self.root, task_root):
+            raise PermanentWorkerError("checkpoint path escaped root")
+        return (task_root / f"frame_{frame:04d}.{spec.output_format}",
+                task_root / f"frame_{frame:04d}.json")
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _read_verified(self, spec: JobSpec, frame: int) -> bool:
+        output, metadata = self._paths(spec, frame)
+        try:
+            record = json.loads(metadata.read_text(encoding="utf-8"))
+            return (
+                output.is_file()
+                and record.get("job_id") == spec.job_id
+                and record.get("task_id") == spec.task_id
+                and int(record.get("frame")) == frame
+                and int(record.get("bytes")) == output.stat().st_size
+                and record.get("sha256") == self._sha256(output)
+            )
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return False
+
+    def is_verified(self, spec: JobSpec, frame: int) -> bool:
+        return self._read_verified(spec, frame)
+
+    def put(self, spec: JobSpec, frame: int, output: Path) -> None:
+        if self._read_verified(spec, frame):
+            return
+        destination, metadata = self._paths(spec, frame)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        digest = self._sha256(output)
+        record = CheckpointRecord(spec.job_id, spec.task_id, frame,
+                                  output.stat().st_size, digest,
+                                  spec.attempt_id, spec.lease_generation)
+        with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as temp:
+            temp.write(output.read_bytes())
+            temp_path = Path(temp.name)
+        os.replace(temp_path, destination)
+        with tempfile.NamedTemporaryFile(dir=metadata.parent, mode="w", encoding="utf-8", delete=False) as temp:
+            json.dump(record.__dict__, temp, sort_keys=True)
+            temp.write("\n")
+            metadata_temp = Path(temp.name)
+        os.replace(metadata_temp, metadata)
+
+    def verify(self, spec: JobSpec, frame: int, output: Path) -> None:
+        if not self._read_verified(spec, frame):
+            raise RetryableWorkerError(f"checkpoint verification failed for frame {frame}")
 
 
 class OutputValidator(Protocol):
