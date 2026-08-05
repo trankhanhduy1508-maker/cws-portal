@@ -150,3 +150,10 @@ Canonical direction hiện tại:
 - Staging assignment still needs a full JobSpec contract: assignment RPC or minimal RLS SELECT for jobs/tasks.
 - Evidence/Owner action: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
 - Current status: adapter CODE/UNIT VERIFIED; Supabase/B2 FULL E2E BLOCKED pending staging credentials.
+
+## Staging blocker audit — 2026-08-05
+
+- New Windows machine has no `CWS_STAGING_*` values and the connector account exposes no separate staging Supabase project.
+- Existing generic claim RPC returns only task/job/frame/generation; it cannot safely construct a complete JobSpec.
+- `CWS_STAGING_FLEET_ID` is an integer matching the existing `register_worker(... p_fleet_id bigint, ...)` contract.
+- Exact Owner inputs and the two supported assignment-contract options are recorded in `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.

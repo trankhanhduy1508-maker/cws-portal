@@ -31,7 +31,7 @@ class StagingConfig:
     b2_bucket: str
     b2_prefix: str
     worker_id: str
-    fleet_id: str
+    fleet_id: int
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "StagingConfig":
@@ -59,10 +59,16 @@ class StagingConfig:
         prefix = values[names["b2_prefix"]].strip().strip("/")
         if not prefix or ".." in prefix.split("/"):
             raise PermanentWorkerError("invalid staging B2 prefix")
+        try:
+            fleet_id = int(values[names["fleet_id"]])
+        except (TypeError, ValueError) as exc:
+            raise PermanentWorkerError("CWS_STAGING_FLEET_ID must be an integer") from exc
+        if fleet_id < 1:
+            raise PermanentWorkerError("CWS_STAGING_FLEET_ID must be positive")
         return cls(url, values[names["supabase_key"]], endpoint,
                    values[names["b2_key_id"]], values[names["b2_app_key"]],
                    values[names["b2_bucket"]], prefix, values[names["worker_id"]],
-                   values[names["fleet_id"]])
+                   fleet_id)
 
 
 class SupabaseStagingRpc:

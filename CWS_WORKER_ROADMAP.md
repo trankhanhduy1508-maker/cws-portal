@@ -887,3 +887,7 @@ Windows safe staging has verified the local Node Agent → Generic Worker → Bl
 ## Staging E2E integration update — 2026-08-05
 
 Credential-gated Supabase/B2 adapters are prepared with no production fallback or destructive capability. Full E2E remains blocked by missing staging credentials and complete assignment JobSpec contract.
+
+## Staging blocker audit — 2026-08-05
+
+Machine-safe env inspection found no staging values. Supabase connector exposes no separate staging project; the existing claim RPC contract is incomplete for a dynamic JobSpec. B2 staging endpoint/bucket/key are also absent. Owner inputs and exact assignment alternatives: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.

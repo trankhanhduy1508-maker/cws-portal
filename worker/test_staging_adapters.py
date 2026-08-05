@@ -19,10 +19,11 @@ class StagingAdapterContractTests(unittest.TestCase):
             "CWS_STAGING_B2_BUCKET": "cws-staging",
             "CWS_STAGING_B2_PREFIX": "cws-staging/worker-e2e",
             "CWS_STAGING_WORKER_ID": "staging-node-1",
-            "CWS_STAGING_FLEET_ID": "staging-fleet",
+            "CWS_STAGING_FLEET_ID": "42",
         })
         self.assertEqual(config.b2_endpoint, "s3.us-west-004.backblazeb2.com")
         self.assertEqual(config.worker_id, "staging-node-1")
+        self.assertEqual(config.fleet_id, 42)
         self.assertEqual(config.b2_prefix, "cws-staging/worker-e2e")
 
     def test_claim_assignment_requires_complete_dynamic_job_spec(self):

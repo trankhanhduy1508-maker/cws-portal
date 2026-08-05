@@ -117,3 +117,9 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - The staging environment template is `worker/staging.env.example`; it contains placeholders only.
 - Full E2E remains blocked until staging assignment returns a complete JobSpec and staging credentials are installed.
 - Contract: `reports/worker/CWS_STAGING_E2E_CONTRACT_2026-08-05.md`.
+
+## Staging blocker audit — 2026-08-05
+
+- No staging endpoint/credential is present on this machine; the only connector-visible Supabase project is not treated as staging.
+- Node Agent remains ready for injected register/ping/claim/heartbeat/state/complete/fail adapters, but no assignment is fabricated when the RPC lacks a complete JobSpec.
+- Evidence: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.

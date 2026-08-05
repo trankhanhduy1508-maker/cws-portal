@@ -335,3 +335,12 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Blender, Supabase CLI, B2 credentials and staging variables remain absent; this is machine readiness, not staging E2E.
 - Evidence: `reports/worker/CWS_NEW_MACHINE_CONTEXT_RECOVERY_2026-08-05.md`.
 - Next: real isolated staging E2E when staging artifacts and credentials are present.
+
+## Staging blocker audit — 2026-08-05
+
+- Machine-safe env inspection: no `CWS_STAGING_*`, Supabase, B2, AWS or S3 values present.
+- Supabase connector: exactly one non-staging project visible; it was not queried or mutated.
+- Existing claim RPC returns insufficient fields for a complete dynamic JobSpec; no inference was made.
+- B2 staging bucket/prefix/application key is absent.
+- Evidence and exact Owner inputs: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
+- Next: Owner supplies isolated staging project + assignment contract and B2 scoped key; then run FULL E2E immediately.
