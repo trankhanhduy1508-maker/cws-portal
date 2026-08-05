@@ -24,7 +24,7 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - báo capability/health tối thiểu, không gửi dữ liệu cá nhân không cần thiết;
 - nhận job descriptor đã authorization;
 - tạo job-scoped workspace;
-- gọi Worker qua pinned executable/manifest;
+- gọi `worker/canonical_worker_launcher.py` sau khi manifest SHA-256 pass;
 - supervise process tree, timeout và exit code;
 - retry/recovery có bounded attempts;
 - cleanup rồi quay về ACTIVE_IDLE;
@@ -48,25 +48,25 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - Heartbeat lỗi không được làm Node Agent crash; phải ghi degraded health.
 - Shutdown/stop là explicit operator action, không phải ACTIVE_IDLE behavior.
 
-## P0 backlog
+## P0 backlog — ordered
 
-1. Contract/state machine code thuần, không side effect power.
-2. Adapter thật cho Backend heartbeat/job lease và pinned Worker launcher.
+1. Backend lease/heartbeat adapter thật, khớp RPC hiện hành và không log secret.
+2. Pinned canonical Worker launcher — **CODE VERIFIED**, runtime launch chưa verify.
 3. Windows process-tree isolation, ACL/service identity và cleanup.
 4. Staging runtime: 1 PC, Blender CLI, timeout/recovery, B2 checkpoint.
-5. Hai node: duplicate claim/failover/heartbeat stale lease.
+5. Hai node: duplicate claim/failover/stale lease.
 6. Chỉ sau evidence thật mới thiết kế wake/power integration; hiện tại không dùng Sleep.
 
-## Completed loop task — 2026-08-05
+## Completed
 
-- Added `worker/node_agent.py`: side-effect-free deterministic state machine.
-- Added `worker/test_node_agent.py`: 6 offline tests PASS.
-- Covered ACTIVE_IDLE, heartbeat degradation, PREPARING, single Worker launch, bounded retry, failure cleanup and return to ACTIVE_IDLE.
-- No Windows power API, Sleep/Hibernate, network call, credential or production job is touched.
-- Evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
+- `worker/node_agent.py`: deterministic state machine.
+- `worker/test_node_agent.py`: 6 offline tests PASS.
+- `worker/canonical_worker_launcher.py`: manifest/path/checksum validation; 3 tests PASS.
+- Combined offline suite: **9/9 PASS**.
+- No Windows power API, Sleep/Hibernate, network call, credential or production job was touched.
 
 ## Evidence
 
-- Unit/state-machine PASS không đồng nghĩa Node Agent production PASS.
-- Physical Windows/Blender/network/B2/failover phải có report riêng.
-- Mỗi task hoàn thành phải cập nhật file này, WORKER_VIBE_CODE.md và CURRENT_STATUS.md nếu trạng thái thay đổi.
+- `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`
+- `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`
+- Physical Windows/Blender/network/B2/failover remain unverified.
