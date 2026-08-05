@@ -79,3 +79,13 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 - Admin endpoint `GET /fleet/workers` exposes Node state, Worker state, health, current task and stale policy.
 - Production URL support: `/admin` SPA rewrite + pathname guard. Live deploy/MFA/real heartbeat remains UNVERIFIED.
 - Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
+
+
+## Lifecycle hardening — 2026-08-05
+
+- Added explicit transition reasons and injected `RuntimePolicy` in `worker/node_agent.py`.
+- Added non-blocking exponential retry backoff via `retry_ready_at`; attempts remain bounded and cleanup resets retry state.
+- Added `worker/node_agent_runtime_policy.py`: monitor-off/on hooks are emitted once per state boundary only; no Sleep/Hibernate/shutdown/logoff/power API.
+- Verification: Python py_compile PASS; combined offline suite **11/11 PASS**.
+- Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
+- Runtime Windows, real Blender/B2, Supabase heartbeat, ACL/isolation, failover and production Admin remain UNVERIFIED/BLOCKED; no fake heartbeat or deployment workaround was used.
