@@ -126,3 +126,15 @@ Canonical direction hiện tại:
 - Windows staging compile + combined suite: **24/24 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_CAPABILITY_PREFLIGHT_2026-08-05.md`.
 - Actual NVML/Windows capability discovery and real fleet admission remain UNVERIFIED/BLOCKED.
+
+
+## Integration phase — Windows staging runtime (2026-08-05)
+
+- Safe local runtime harness now verifies Node Agent → child Generic Worker → Blender 5.2 → output validation → filesystem checkpoint → cleanup → ACTIVE_IDLE.
+- Happy path: REAL RUNTIME VERIFIED.
+- Crash-once bounded recovery: REAL RUNTIME VERIFIED.
+- One-second Blender timeout and owned process cleanup: REAL RUNTIME VERIFIED; first harness hang was fixed and rerun.
+- Hardware observed: RTX 2060 SUPER 8192 MiB, driver 576.88; Windows RAM ≈16 GiB.
+- Supabase lease/heartbeat: BLOCKED, no staging-safe credential/endpoint.
+- B2 upload/resume: BLOCKED, no staging-safe credential/bucket.
+- Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
