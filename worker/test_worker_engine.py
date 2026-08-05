@@ -164,6 +164,25 @@ class WorkerEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "autoexec"):
             spec(autoexec=True)
 
+    def test_capability_preflight_rejects_insufficient_vram(self):
+        project = Path(tempfile.mkdtemp()) / "project.blend"
+        try:
+            project.write_bytes(b"safe blend")
+            requested = spec(required_vram_mb=8192)
+            with self.assertRaisesRegex(PermanentWorkerError, "VRAM"):
+                BasicPreflight({"vram_mb": 4096}).inspect(requested, project)
+        finally:
+            project.unlink(missing_ok=True)
+
+    def test_capability_preflight_accepts_sufficient_resources(self):
+        project = Path(tempfile.mkdtemp()) / "project.blend"
+        try:
+            project.write_bytes(b"safe blend")
+            requested = spec(required_vram_mb=4096, required_ram_mb=16384)
+            BasicPreflight({"vram_mb": 8192, "ram_mb": 32768}).inspect(requested, project)
+        finally:
+            project.unlink(missing_ok=True)
+
     def test_unsafe_output_format_is_rejected(self):
         with self.assertRaisesRegex(Exception, "output_format"):
             spec(output_format="png/../../secret")
