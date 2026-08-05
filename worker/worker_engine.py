@@ -71,6 +71,8 @@ class JobSpec:
     output_prefix: str
     output_format: str
     autoexec: bool = False
+    required_vram_mb: int = 0
+    required_ram_mb: int = 0
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "JobSpec":
@@ -97,6 +99,10 @@ class JobSpec:
             raise PermanentWorkerError("project_uri is required")
         if bool(value.get("autoexec", False)):
             raise PermanentWorkerError("customer autoexec is disabled by policy")
+        required_vram_mb = int(value.get("required_vram_mb", 0))
+        required_ram_mb = int(value.get("required_ram_mb", 0))
+        if required_vram_mb < 0 or required_ram_mb < 0:
+            raise PermanentWorkerError("invalid capability requirement")
         return cls(
             job_id=str(value["job_id"]),
             task_id=str(value["task_id"]),
@@ -108,6 +114,8 @@ class JobSpec:
             output_prefix=str(value["output_prefix"]),
             output_format=output_format,
             autoexec=False,
+            required_vram_mb=required_vram_mb,
+            required_ram_mb=required_ram_mb,
         )
 
 
@@ -237,9 +245,18 @@ def _inside(root: Path, child: Path) -> bool:
 class BasicPreflight:
     """Safe filesystem-only preflight; it never executes customer code."""
 
+    def __init__(self, capabilities: Mapping[str, Any] | None = None):
+        self.capabilities = capabilities or {}
+
     def inspect(self, spec: JobSpec, project: Path) -> None:
         if project.suffix.lower() != ".blend" or not project.is_file():
             raise PermanentWorkerError("project is not a readable .blend file")
+        available_vram = int(self.capabilities.get("vram_mb", 0))
+        available_ram = int(self.capabilities.get("ram_mb", 0))
+        if spec.required_vram_mb and available_vram < spec.required_vram_mb:
+            raise PermanentWorkerError("node VRAM capability is insufficient")
+        if spec.required_ram_mb and available_ram < spec.required_ram_mb:
+            raise PermanentWorkerError("node RAM capability is insufficient")
 
 
 class BasicOutputValidator:
