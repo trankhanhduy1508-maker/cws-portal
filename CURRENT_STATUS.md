@@ -291,3 +291,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Windows staging compile and combined suite: **21/21 PASS**.
 - Evidence: `reports/worker/CWS_WORKER_OUTPUT_INTEGRITY_2026-08-05.md`.
 - Classification: CODE/UNIT VERIFIED and Windows runtime validator verified; production/B2 E2E remains UNVERIFIED/BLOCKED.
+
+
+## Worker P0 update — timeout cleanup (2026-08-05)
+
+- Blender render subprocess supervision now has bounded timeout and Windows process-tree cleanup scoped to the owned PID.
+- Windows staging compile + combined suite: **21/21 PASS**.
+- Evidence: `reports/worker/CWS_WORKER_TIMEOUT_CLEANUP_2026-08-05.md`.
+- Live timeout runtime test: UNVERIFIED; production/B2 E2E remains BLOCKED.
