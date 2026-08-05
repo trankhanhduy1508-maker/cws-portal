@@ -289,6 +289,20 @@ class BlenderCliRenderer:
         self.executable = executable.resolve()
         self.timeout_seconds = timeout_seconds
 
+    @staticmethod
+    def _terminate_tree(process: subprocess.Popen[str]) -> None:
+        """Stop only the Blender process tree owned by this render attempt."""
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                           capture_output=True, text=True, check=False)
+        else:
+            process.kill()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=10)
+
     def render(self, spec: JobSpec, project: Path, frame: int, output: Path) -> Path:
         if not self.executable.is_file():
             raise RetryableWorkerError("Blender executable is unavailable")
@@ -297,11 +311,15 @@ class BlenderCliRenderer:
         command = [str(self.executable), "--background", str(project),
                    "--disable-autoexec", "--python-exit-code", "1",
                    "--render-output", pattern, "--render-frame", str(frame)]
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True, creationflags=creationflags)
         try:
-            result = subprocess.run(command, capture_output=True, text=True,
-                                    timeout=self.timeout_seconds, check=False)
+            stdout, stderr = process.communicate(timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
+            self._terminate_tree(process)
             raise RetryableWorkerError("Blender render timed out") from exc
+        result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
         if result.returncode != 0:
             category = classify_blender_failure(result.returncode, f"{result.stdout}\n{result.stderr}")
             error = PermanentWorkerError if category is FailureCategory.PERMANENT else RetryableWorkerError
