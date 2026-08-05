@@ -11,15 +11,15 @@ class PinnedWorkerLauncherTests(unittest.TestCase):
     def make_package(self):
         temp = tempfile.TemporaryDirectory()
         root = Path(temp.name)
-        entry = root / "cws_worker_full.py"
-        launcher = root / "cws_worker.bat"
+        entry = root / "worker_engine.py"
+        launcher = root / "worker-engine.bat"
         entry.write_text("print('staging')\n", encoding="utf-8")
         launcher.write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
         hashes = {}
         for path in (entry, launcher):
             hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
-        (root / "worker-artifact-manifest.json").write_text(
-            json.dumps({"version": "1.18.0", "files": hashes}), encoding="utf-8"
+        (root / "worker-engine-manifest.json").write_text(
+            json.dumps({"version": "0.1.0", "files": hashes}), encoding="utf-8"
         )
         return temp, root
 
@@ -27,20 +27,20 @@ class PinnedWorkerLauncherTests(unittest.TestCase):
         temp, root = self.make_package()
         self.addCleanup(temp.cleanup)
         result = PinnedWorkerLauncher(WorkerArtifact(root)).validate()
-        self.assertEqual(result["version"], "1.18.0")
+        self.assertEqual(result["version"], "0.1.0")
 
     def test_rejects_tampered_entrypoint(self):
         temp, root = self.make_package()
         self.addCleanup(temp.cleanup)
-        (root / "cws_worker_full.py").write_text("tampered\n", encoding="utf-8")
+        (root / "worker_engine.py").write_text("tampered\n", encoding="utf-8")
         with self.assertRaises(ArtifactValidationError):
             PinnedWorkerLauncher(WorkerArtifact(root)).validate()
 
     def test_rejects_path_traversal(self):
         temp, root = self.make_package()
         self.addCleanup(temp.cleanup)
-        manifest = {"version": "1.18.0", "files": {"..\\outside": "0"}}
-        (root / "worker-artifact-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        manifest = {"version": "0.1.0", "files": {"..\\outside": "0"}}
+        (root / "worker-engine-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
         with self.assertRaises(ArtifactValidationError):
             PinnedWorkerLauncher(WorkerArtifact(root)).validate()
 
