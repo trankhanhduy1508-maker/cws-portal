@@ -25,7 +25,7 @@ READ STATE → FIND P0 GAP → VERIFY SOURCE OF TRUTH → CODE → TEST → FIX 
 
 ## Trạng thái hiện tại trên main
 
-- VIBE CODE: đang được khởi tạo bằng commit này.
+- VIBE CODE: đã tạo trên main; Node Agent state machine unit verified 6/6.
 - Worker implementation/evidence chi tiết được nhắc trong `CURRENT_STATUS.md` nhưng một số artifact Worker không có trên ref `main`; agent phải xác minh ref/commit trước khi sửa, không coi report là code đã có.
-- Node Agent runtime production: chưa được claim PASS; chỉ code/test local mới được đánh dấu VERIFIED.
+- Node Agent runtime production: chưa được claim PASS; hiện chỉ code/unit test local được đánh dấu UNIT VERIFIED.
 - Không tuyên bố physical Windows, Blender/B2, failover hoặc power-management PASS nếu chưa có evidence runtime thật.
