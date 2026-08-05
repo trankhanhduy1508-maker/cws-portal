@@ -96,7 +96,7 @@ Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSp
 
 ## Post-implementation verification
 
-- Generic Engine + Node Agent + generic launcher offline suite: **18/18 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
+- Generic Engine + Node Agent + generic launcher offline suite: **19/19 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
 - py_compile: PASS.
 - Legacy runtime sources cws_worker_full.py and cws_worker.bat are retained only as reference sources; they are not imported, launched or used as package dependencies.
 - New generic package files: worker/worker_engine.py, worker-engine.bat, worker-engine-manifest.json.
@@ -160,3 +160,12 @@ Legacy file remains available for future review only. It must never become the r
 | Video merge | separate legacy BAT | Ordering/codec/audio/timeout not part of generic frame engine | Merge is a declared output capability | Worker adapter + Backend | JobSpec output plan selects adapter; no legacy BAT dependency | NEEDS RESEARCH |
 | Remote shutdown | RPC remote_commands + os.system shutdown | Dangerous production side effect and wrong owner | Worker must never power-manage PC | Node Agent/Operator policy | Not implemented in Engine; explicit power policy remains disabled | DELETE/OBSOLETE |
 | Auto package install | pip bootstrap on every start | Supply-chain/version drift and unbounded network action | Install/update is pinned deployment responsibility | Node Agent installer | No pip bootstrap in Engine; manifest package is pinned | CODE/UNIT VERIFIED |
+
+
+## Checkpoint implementation evidence
+
+- Added FilesystemCheckpointStore as a local safe adapter/model for B2.
+- Writes frame bytes and identity sidecar through temporary files + atomic replace.
+- Resume requires job/task/frame identity, byte count and SHA-256 match; object/file existence alone is insufficient.
+- Failure test interrupts after frame 1; second run skips verified frame 1 and renders frame 2; workspace cleanup still passes.
+- Combined suite: **19/19 PASS**; real B2 adapter remains BLOCKED pending staging credential.
