@@ -6,6 +6,10 @@
 
 ---
 
+
+
+> **Architecture correction 2026-08-05:** Job mới là dữ liệu JobSpec/TaskSpec. Canonical implementation direction là `worker/worker_engine.py` + `worker-engine.bat` + manifest. Các đoạn lịch sử nhắc artifact legacy không phải hướng dẫn triển khai mới.
+
 # 1. NGUYÊN TẮC BẮT BUỘC
 
 1. Chỉ triển khai roadmap Worker sau khi MVP hiện tại đã hoàn thành, build ổn định và các luồng chính đã được kiểm thử.
@@ -17,12 +21,10 @@
    - `CWS_MVP_WORKFLOW_FINAL.md`
    - `CWS_DATABASE_SCHEMA.md`
    - roadmap chính thức mới nhất nếu tồn tại
-5. Ưu tiên số một là tính tương thích với Worker hiện tại.
-6. Không được nhầm vai trò của:
-   - `cws_worker.bat`
-   - `cws_worker_full.py`
-   - `cws_auto_ghep_video.bat`
-7. Không thêm supervisor mới nếu `cws_worker.bat` đã tự restart Worker.
+5. Ưu tiên số một là tương thích với generic Worker Engine và Node Agent contract hiện tại.
+6. Legacy `cws_worker_full.py`/`cws_worker.bat` chỉ là knowledge/evidence đã salvage; không restore, copy hoặc dùng làm dependency.
+7. Không tạo Worker source mới cho từng JobSpec. Generic Engine được cài một lần; Node Agent là supervisor duy nhất.
+8. `cws_auto_ghep_video.bat` chỉ là legacy evidence; output merge mới phải là capability/adapter của Engine khi có correctness evidence.
 8. Không triển khai Sleep, Hibernate, Wake-on-LAN, MQTT, GPU power limit hoặc viết lại Worker bằng Go/Rust trong giai đoạn này.
 9. Mọi thay đổi phải có feature flag, test, rollback, log và migration tương thích nếu có thay đổi database.
 10. Không được lưu secret thật trong source hoặc báo cáo.
