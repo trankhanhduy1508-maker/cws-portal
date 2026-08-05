@@ -236,3 +236,8 @@ bất kỳ dòng code nào ở Portal.
 - GET /health — kiểm tra Backend còn sống
 - Log Scheduler (mỗi 10 giây) in ra ở console — theo dõi qua log
   platform hosting (Render có sẵn tab Logs)
+
+
+## Worker architecture correction — 2026-08-05
+
+Các đoạn lịch sử nhắc cws_worker_full.py chỉ mô tả legacy evidence. Runtime direction hiện tại là generic Worker Engine worker/worker_engine.py + worker-engine.bat + manifest; JobSpec/TaskSpec mới là dữ liệu động. Không tạo/upload Worker source mới cho từng Job.
