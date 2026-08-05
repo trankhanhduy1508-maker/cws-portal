@@ -96,8 +96,31 @@ Không phục hồi file cũ. Không cập nhật Worker fleet theo từng JobSp
 
 ## Post-implementation verification
 
-- Generic Engine + Node Agent + generic launcher offline suite: **16/16 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
+- Generic Engine + Node Agent + generic launcher offline suite: **17/17 PASS**. Added unsafe output-format rejection to prevent path-like extensions from influencing workspace output paths.
 - py_compile: PASS.
-- Legacy runtime sources cws_worker_full.py and cws_worker.bat were removed from main after salvage; historical reports remain for evidence only.
+- Legacy runtime sources cws_worker_full.py and cws_worker.bat are retained only as reference sources; they are not imported, launched or used as package dependencies.
 - New generic package files: worker/worker_engine.py, worker-engine.bat, worker-engine-manifest.json.
 - No production heartbeat, claim, B2 upload, payment or power action was performed.
+
+
+## Capability status after lease-guard implementation
+
+| Legacy capability | New implementation status | Test status |
+|---|---|---|
+| Atomic claim | Backend/Scheduler remains owner; Worker receives assigned attempt | Not runtime verified in Engine; backend evidence retained |
+| Generation/fencing | JobSpec lease_generation + AttemptGuard.assert_active boundary | CODE/UNIT VERIFIED; stale generation test PASS |
+| Heartbeat | AttemptGuard heartbeat at claim, download, render and checkpoint boundaries | CODE/UNIT VERIFIED; real adapter BLOCKED |
+| Per-frame checkpoint | CheckpointStore.put/verify per frame | CODE/UNIT VERIFIED; B2 adapter BLOCKED |
+| B2 resume/recovery | CheckpointStore.is_verified skips only verified frames | CODE/UNIT VERIFIED; B2 runtime BLOCKED |
+| Output validation | OutputValidator + size/path checks | CODE/UNIT VERIFIED |
+| Error classification | RetryableWorkerError/PermanentWorkerError and reporter category | CODE/UNIT VERIFIED |
+| Preflight | Safe filesystem-only BasicPreflight; no customer code execution | CODE/UNIT VERIFIED |
+| Capability/VRAM | Node Agent responsibility, not hard-coded in Worker Engine | Design documented; runtime UNVERIFIED |
+| Render progress/telemetry | Reporter stage/progress boundary exists; duration telemetry adapter pending | Partial CODE VERIFIED |
+| Cleanup | finally cleanup constrained to job workspace | CODE/UNIT VERIFIED |
+| Crash recovery | Node Agent supervision and Backend retry policy | Node unit verified; real process UNVERIFIED |
+| Cache | No cross-customer cache; adapter/job-scoped cache remains future work | Needs implementation/research |
+| Update/version | Package manifest + launcher validation; fleet update belongs Node Agent | CODE/UNIT VERIFIED; rollout UNVERIFIED |
+| Incident reporting | Reporter.fail boundary; backend incident adapter pending | Partial CODE VERIFIED |
+
+Legacy file remains available for future review only. It must never become the runtime import path again.
