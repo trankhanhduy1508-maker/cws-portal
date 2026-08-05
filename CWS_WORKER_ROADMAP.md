@@ -872,3 +872,8 @@ Output integrity is implemented in the generic Worker Engine. PNG outputs are st
 ## P0 status update — timeout cleanup (2026-08-05)
 
 Blender subprocess timeout now cleans up the owned process tree on Windows and preserves retry classification. Compile + combined suite 22/22 PASS; live timed-out Blender verification remains unverified.
+
+
+## P0 status update — capability preflight (2026-08-05)
+
+Generic Worker preflight now enforces dynamic minimum VRAM/RAM requirements from JobSpec against the Node-provided capability profile. Tests: 24/24 PASS; physical capability discovery remains unverified.
