@@ -117,7 +117,7 @@ tách rời khỏi 1 lần Render thật.
 
 ------------------------------------------------------------------------
 
-# Giai đoạn 7 -- Trang quản trị [DONE — code+unit test; HUMAN_VERIFICATION_PENDING — enroll MFA thật]
+# Giai đoạn 7 -- Trang quản trị [NEEDS_VERIFICATION — Google OAuth + MFA runtime]
 
 Audit lại `AdminScreen.jsx` (689 dòng) 2026-08-02: nội dung dashboard đã
 đầy đủ, không cần viết lại — chỉ thiếu lớp xác thực đúng chuẩn (đã bổ
@@ -131,12 +131,18 @@ sung, xem dưới).
 -   File cuối — DONE (link `adminGetDownloadUrl` trong bảng Job, qua route đã audit ở Giai đoạn 6)
 -   Tìm kiếm theo Customer / Storage Code / Payment Code — DONE (3 ô tìm kiếm riêng, đều hoạt động qua route thật)
 
-**Authentication + Authorization + MFA (2026-08-02, DONE ở mức code/unit test, xem `reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`):**
+**Authentication + Authorization + MFA (2026-08-06, CODE/UNIT VERIFIED; production runtime pending, xem `reports/admin/CWS_ADMIN_GOOGLE_OAUTH_AAL2_2026-08-06.md`):**
 - Bỏ hoàn toàn nhánh `x-admin-key` làm bypass trong `RoleGuard` (route Admin Portal chính) — theo đúng yêu cầu "Không tạo bypass".
-- Bắt buộc Supabase session thật (email/password, tài khoản provision qua migration 013 `staff_roles`) + MFA (TOTP) CHÍNH THỨC của Supabase Auth (`supabase.auth.mfa.*`, bật mặc định miễn phí trên mọi project — không tự lưu/quản lý TOTP secret).
+- Bắt buộc Supabase session thật (Google OAuth, tài khoản Google được cấp role qua `staff_roles`) + MFA (TOTP) CHÍNH THỨC của Supabase Auth (`supabase.auth.mfa.*`, không tự lưu/quản lý TOTP secret).
 - Backend enforce lại bằng cách đọc claim `aal` (Authenticator Assurance Level) từ chính access token đã được `client.auth.getUser()` xác thực — `aal !== 'aal2'` → từ chối, không tin tưởng Frontend.
 - 6 kịch bản bảo mật bắt buộc đều có unit test PASS (`role.guard.spec.ts`): anonymous → DENY, customer authenticated → DENY, admin chưa MFA → DENY, admin + MFA (aal2) → PASS, gọi API trực tiếp thiếu MFA assurance → DENY, cross-role/privilege escalation → DENY.
-- Frontend: `StaffMfaLogin.jsx` — đăng nhập email/password → tự động enroll (hiện QR do Supabase sinh) nếu tài khoản chưa có factor, hoặc challenge (nhập mã 6 số) nếu đã có — không có đường tắt bỏ qua bước này.
+- Frontend: `StaffMfaLogin.jsx` — Google OAuth → kiểm tra staff role → tự động enroll (QR do Supabase sinh) nếu chưa có factor, hoặc challenge mã 6 số nếu đã có; bearer token chỉ giữ trong memory.
+- Backend: `GET /staff/mfa-status` chỉ xác nhận staff identity trước MFA; mọi Admin/Host data route vẫn qua `RoleGuard` và bắt buộc `aal2`. Không có `x-admin-key` bypass.
+
+**PRODUCTION_VERIFICATION_PENDING**: production bundle hiện vẫn là deployment
+cũ chứa email/password staff flow; patch Google OAuth này chưa được deploy.
+Cần Owner bật Google provider/redirect allowlist nếu chưa có và hoàn tất một
+lần đăng nhập Google + TOTP thật trên production.
 
 **HUMAN_VERIFICATION_PENDING**: chưa có tài khoản Admin/Host thật nào
 được Owner tạo qua Supabase Dashboard (`staff_roles`) để tự chạy thử

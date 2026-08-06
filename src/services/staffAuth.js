@@ -1,5 +1,5 @@
 // ============================================================
-// staffAuth — đăng nhập Admin/Host qua Supabase Auth (email/password)
+// staffAuth — đăng nhập Admin/Host qua Supabase Auth (Google OAuth)
 // + MFA (TOTP) CHÍNH THỨC của Supabase (supabase.auth.mfa.*), KHÔNG tự
 // viết/lưu TOTP secret riêng (2026-08-02, Owner yêu cầu "Ưu tiên MFA
 // chính thức của auth provider hiện tại"). Backend enforce lại claim
@@ -16,13 +16,22 @@ function ensureConfigured() {
   }
 }
 
-/** Bước 1: email/password thật (tài khoản Admin/Host do Owner tạo thủ
- * công qua Supabase Dashboard, xem migration 013). */
-export async function signInStaff(email, password) {
+/** Bắt đầu Google OAuth cho staff. Role và AAL2 vẫn được kiểm tra server-side. */
+export async function signInStaffWithGoogle() {
   ensureConfigured();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/#admin` },
+  });
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function getStaffSession() {
+  ensureConfigured();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error(error.message);
+  return data.session;
 }
 
 /** Đọc AAL hiện tại của session — 'aal2' nghĩa là ĐÃ hoàn tất MFA

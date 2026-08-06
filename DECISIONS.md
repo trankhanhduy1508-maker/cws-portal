@@ -27,15 +27,17 @@ nhau, không mâu thuẫn nhau.
 
 Admin Authentication (thêm 2026-08-02)
 
-**[ACTIVE]** Admin/Host (staff, KHÔNG phải khách hàng) đăng nhập bằng
-Supabase Auth email/password (tài khoản provision thủ công qua Supabase
-Dashboard + 1 dòng `staff_roles`, migration 013 — không có màn hình tự
-đăng ký) + BẮT BUỘC MFA (TOTP) chính thức của Supabase Auth
-(`supabase.auth.mfa.*`, không tự lưu/quản lý TOTP secret riêng, không
-dùng thư viện TOTP bên thứ 3). Backend enforce lại bằng cách đọc claim
-`aal` từ access token (`aal2` mới được coi là đã hoàn tất MFA) —
-`RoleGuard` áp dụng cho toàn bộ Admin Portal API. Xem
-`reports/admin/CWS_ADMIN_MFA_IMPLEMENTATION_2026-08-02.md`.
+**[SUPERSEDED — thay thế bởi quyết định Google OAuth + AAL2 2026-08-06]**
+Admin/Host đăng nhập bằng Supabase Auth email/password. Thiết kế cũ này
+không còn đáp ứng yêu cầu Owner về Google Login cho Admin.
+
+**[ACTIVE — 2026-08-06]** Admin/Host (staff, KHÔNG phải khách hàng) đăng
+nhập bằng Google OAuth qua Supabase Auth. Chỉ user đã được cấp `staff_roles`
+mới được vào bước MFA; không có đăng ký hoặc bypass. Sau OAuth, bắt buộc
+TOTP chính thức của Supabase Auth (`supabase.auth.mfa.*`), không tự lưu/quản
+lý TOTP secret và không dùng thư viện TOTP bên thứ ba. Backend chỉ mở Admin
+data routes khi token hợp lệ, role đúng và claim `aal2`; pre-MFA status route
+chỉ xác nhận staff identity để hoàn tất onboarding, không trả dữ liệu Admin.
 
 **[SUPERSEDED — thay thế bởi quyết định MFA 2026-08-02 ở trên]** Bảo vệ
 Admin Portal chỉ bằng 1 shared secret tĩnh (`x-admin-key`) không gắn

@@ -18,13 +18,6 @@ function assertConfigured() {
   }
 }
 
-export async function staffLogin(email, password) {
-  assertConfigured();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message || 'Đăng nhập thất bại');
-  return data.session;
-}
-
 export async function staffLogout() {
   assertConfigured();
   await supabase.auth.signOut();
@@ -53,6 +46,11 @@ async function staffFetch(path) {
  * #admin hay #host ngay sau khi đăng nhập (KHÔNG tự đoán role ở Frontend). */
 export function getStaffMe() {
   return staffFetch(API_CONFIG.ENDPOINTS.STAFF_ME);
+}
+
+/** Pre-MFA role check only; this endpoint exposes no Admin data. */
+export function getStaffMfaStatus() {
+  return staffFetch('/staff/mfa-status');
 }
 
 /** Dữ liệu Host Dashboard — Backend đã tự lọc chỉ trả worker của ĐÚNG

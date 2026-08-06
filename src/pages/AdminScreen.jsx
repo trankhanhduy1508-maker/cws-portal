@@ -12,8 +12,6 @@ import StaffMfaLogin from '../components/StaffMfaLogin';
 import { JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import { formatRelativeTime } from '../utils/timeUtils';
 
-const STAFF_TOKEN_STORAGE = 'cws_staff_token';
-
 // Phase 8 CWS_WORKER_ROADMAP.md — hiển thị giây dạng "Xp Ys" ngắn gọn cho
 // bảng thống kê host usage (số giây thô từ Backend khó đọc trực tiếp).
 // Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
@@ -43,12 +41,9 @@ export default function AdminScreen() {
   // adminKey giờ giữ ACCESS TOKEN Supabase (Bearer) thay vì shared key
   // tĩnh cũ — chỉ có giá trị SAU KHI đăng nhập + MFA thật thành công
   // (xem StaffMfaLogin/services/staffAuth.js). Đọc lại từ sessionStorage
-  // lúc mount CHỈ để tránh hiện lại màn login khi user F5 trong CÙNG
-  // tab — Backend vẫn tự kiểm tra lại claim aal của chính token này ở
-  // MỌI request (không tin tưởng việc token có mặt là đủ).
-  const [adminKey, setAdminKey] = useState(() => {
-    try { return sessionStorage.getItem(STAFF_TOKEN_STORAGE) || ''; } catch { return ''; }
-  });
+  // Supabase owns the session; keep the bearer token in memory only. The
+  // backend revalidates token, staff role and aal2 on every protected request.
+  const [adminKey, setAdminKey] = useState('');
   const [jobs, setJobs] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -216,12 +211,10 @@ export default function AdminScreen() {
   }, [jobs, customerQuery, filteredCustomers]);
 
   const handleAuthenticated = useCallback((accessToken) => {
-    try { sessionStorage.setItem(STAFF_TOKEN_STORAGE, accessToken); } catch { /* ignore */ }
     setAdminKey(accessToken);
   }, []);
 
   const handleSignOut = useCallback(() => {
-    try { sessionStorage.removeItem(STAFF_TOKEN_STORAGE); } catch { /* ignore */ }
     setAdminKey('');
     signOutStaff().catch(() => { /* đã xoá token local, không chặn UI vì lỗi mạng */ });
   }, []);

@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { LogIn, ShieldCheck } from 'lucide-react';
 import {
-  signInStaff,
+  signInStaffWithGoogle,
+  getStaffSession,
+  getAssuranceLevel,
   listVerifiedTotpFactors,
   enrollTotp,
   createChallenge,
   verifyChallenge,
   getStaffAccessToken,
 } from '../services/staffAuth';
+import { getStaffMfaStatus } from '../services/staffApi';
 
 const inputStyle = {
   padding: 12,
@@ -17,7 +20,7 @@ const inputStyle = {
 };
 
 /**
- * Đăng nhập Admin/Host: email/password (Supabase Auth) -> BẮT BUỘC MFA
+ * Đăng nhập Admin/Host: Google OAuth (Supabase Auth) -> BẮT BUỘC MFA
  * (TOTP chính thức của Supabase, xem services/staffAuth.js) trước khi
  * gọi `onAuthenticated(accessToken)`. KHÔNG có đường tắt nào bỏ qua
  * bước MFA — nếu tài khoản chưa enroll factor nào, màn hình này ép
@@ -25,11 +28,9 @@ const inputStyle = {
  * cho vào Dashboard, đúng yêu cầu "admin chưa MFA -> DENIED".
  */
 export default function StaffMfaLogin({ onAuthenticated }) {
-  // step: 'credentials' -> 'challenge' (đã có factor, nhập mã) ->
+  // step: 'google' -> 'challenge' (đã có factor, nhập mã) ->
   // 'enroll' (chưa có factor, hiện QR + nhập mã lần đầu)
-  const [step, setStep] = useState('credentials');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState('google');
   const [code, setCode] = useState('');
   const [factorId, setFactorId] = useState(null);
   const [challengeId, setChallengeId] = useState(null);
@@ -37,31 +38,60 @@ export default function StaffMfaLogin({ onAuthenticated }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  async function handleCredentials(e) {
-    e.preventDefault();
+  const prepareAuthenticatedStaff = useCallback(async () => {
+    const session = await getStaffSession();
+    if (!session) return;
+
+    // Do not enroll a random customer account. This endpoint only confirms
+    // staff membership and does not grant access to Admin data.
+    await getStaffMfaStatus();
+    const assurance = await getAssuranceLevel();
+    if (assurance.currentLevel === 'aal2') {
+      onAuthenticated(session.access_token);
+      return;
+    }
+
+    const verifiedFactors = await listVerifiedTotpFactors();
+    if (verifiedFactors.length > 0) {
+      const fId = verifiedFactors[0].id;
+      const challenge = await createChallenge(fId);
+      setFactorId(fId);
+      setChallengeId(challenge.id);
+      setStep('challenge');
+      return;
+    }
+
+    const enrolled = await enrollTotp();
+    setFactorId(enrolled.id);
+    setEnrollData(enrolled.totp);
+    const challenge = await createChallenge(enrolled.id);
+    setChallengeId(challenge.id);
+    setStep('enroll');
+  }, [onAuthenticated]);
+
+  useEffect(() => {
+    let mounted = true;
+    const restore = async () => {
+      try {
+        if (mounted) setIsLoading(true);
+        await prepareAuthenticatedStaff();
+      } catch (err) {
+        if (mounted) setError(err.message || 'Không thể kiểm tra phiên nhân sự');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    restore();
+    return () => { mounted = false; };
+  }, [prepareAuthenticatedStaff]);
+
+  async function handleGoogleLogin() {
     setError(null);
     setIsLoading(true);
     try {
-      await signInStaff(email, password);
-      const verifiedFactors = await listVerifiedTotpFactors();
-
-      if (verifiedFactors.length > 0) {
-        const fId = verifiedFactors[0].id;
-        const challenge = await createChallenge(fId);
-        setFactorId(fId);
-        setChallengeId(challenge.id);
-        setStep('challenge');
-      } else {
-        const enrolled = await enrollTotp();
-        setFactorId(enrolled.id);
-        setEnrollData(enrolled.totp);
-        const challenge = await createChallenge(enrolled.id);
-        setChallengeId(challenge.id);
-        setStep('enroll');
-      }
+      await signInStaffWithGoogle();
     } catch (err) {
       setError(err.message);
-    } finally {
       setIsLoading(false);
     }
   }
@@ -81,36 +111,21 @@ export default function StaffMfaLogin({ onAuthenticated }) {
     }
   }
 
-  if (step === 'credentials') {
+  if (step === 'google') {
     return (
       <div style={{ maxWidth: 360, margin: '80px auto', padding: 20 }}>
         <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-          CWS Admin — Đăng nhập
+          CWS Admin — Đăng nhập Google
         </h2>
-        <form onSubmit={handleCredentials} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            style={inputStyle}
-            autoFocus
-            required
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mật khẩu"
-            style={inputStyle}
-            required
-          />
-          {error && <div style={{ color: '#E5484D', fontSize: 13 }}>{error}</div>}
-          <button type="submit" className="btn btn--primary btn--full" disabled={isLoading}>
-            <KeyRound size={16} strokeWidth={2} style={{ marginRight: 6 }} />
-            {isLoading ? 'Đang đăng nhập...' : 'Tiếp tục'}
-          </button>
-        </form>
+        <p style={{ fontSize: 13.5, color: '#666', marginBottom: 14 }}>
+          Chỉ tài khoản Google đã được cấp role Admin/Host mới được tiếp tục.
+          Sau Google Login, Authenticator TOTP vẫn bắt buộc.
+        </p>
+        {error && <div style={{ color: '#E5484D', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        <button type="button" className="btn btn--primary btn--full" disabled={isLoading} onClick={handleGoogleLogin}>
+          <LogIn size={16} strokeWidth={2} style={{ marginRight: 6 }} />
+          {isLoading ? 'Đang mở Google...' : 'Đăng nhập bằng Google'}
+        </button>
       </div>
     );
   }
