@@ -504,3 +504,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Generic Worker checks the attempt lease immediately before checkpoint/output side effects, reducing stale-attempt writes after failover fencing.
 - Worker suite: **49/49 PASS**. This is code/local evidence only; authenticated physical Worker and production E2E remain unverified.
 - Evidence: `reports/worker/CWS_GENERIC_WORKER_FENCING_MEMORY_HARDENING_2026-08-06.md`.
+
+## Read-only production wiring probe - 2026-08-06
+
+- `https://cws-portal.vercel.app/`: HTTP **200**; served bundle contains the canonical backend `https://cws-portal.onrender.com`.
+- `https://cws-portal.onrender.com/health`: HTTP **200**.
+- CORS preflight from `https://cws-portal.vercel.app`: HTTP **204**, `Access-Control-Allow-Origin` matches exactly.
+- This verifies deployment wiring/health only. Customer → physical Worker → Blender → B2 → real payment → download remains **NOT E2E PASS**.
+- Evidence: `reports/evidence/CWS_READ_ONLY_PRODUCTION_WIRING_PROBE_2026-08-06.md`.
