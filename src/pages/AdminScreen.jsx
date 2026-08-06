@@ -3,6 +3,7 @@ import { LogOut, Moon, RefreshCw, UserRound, Wifi, WifiOff, Zap } from 'lucide-r
 import StaffMfaLogin from '../components/StaffMfaLogin';
 import { adminListCustomers, adminListWorkers } from '../services/adminApi';
 import { signOutStaff } from '../services/staffAuth';
+import { summarizeWorkers } from '../services/fleetMetrics';
 
 function Metric({ label, value, icon: Icon, tone }) {
   return (
@@ -49,16 +50,7 @@ export default function AdminScreen() {
     if (staffToken) loadWorkers(staffToken);
   }, [staffToken, loadWorkers]);
 
-  const metrics = useMemo(() => {
-    const online = workers.filter((worker) => worker.online);
-    return {
-      total: workers.length,
-      online: online.length,
-      offline: workers.length - online.length,
-      idleSaver: online.filter((worker) => worker.nodeState === 'ACTIVE_IDLE').length,
-      rendering: online.filter((worker) => worker.nodeState === 'BUSY').length,
-    };
-  }, [workers]);
+  const metrics = useMemo(() => summarizeWorkers(workers), [workers]);
 
   const handleSignOut = useCallback(() => {
     setStaffToken('');

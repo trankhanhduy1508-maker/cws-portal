@@ -20,7 +20,10 @@ No duplicate CRM schema or sensitive credential storage was added.
 ## Verification
 
 - Backend: 22 suites / 136 tests PASS; build PASS.
-- Frontend: 3 files / 8 tests PASS; lint PASS; build PASS.
+- Backend aggregate coverage now includes paid/non-paid/orphan payment,
+  latest-job, activity and lifecycle cases in `customer-crm-summary.spec.ts`.
+- Backend: 23 suites / 137 tests PASS; build PASS.
+- Frontend: 4 files / 9 tests PASS; lint PASS; build PASS.
 - Vercel production deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for
   commit `5e20211`; its bundle contains fleet/CRM endpoint markers and the
   production backend URL. Render initially returned HTTP 404 for
