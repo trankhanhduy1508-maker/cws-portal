@@ -169,11 +169,12 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 
 # Production verification follow-up — 2026-08-06
 
-- Vercel `main` commit `da6c16a`: READY production deployment; live Google/MFA staff bundle verified by marker inspection.
+- Vercel latest observed READY production deployment remains commit `33dc578` (`dpl_4qKLiPHdub6vPb93seejXPDYCCYf`); commit `83fdff7` is pushed to `main` but is not yet observed deployed.
 - Supabase Google authorize initiation: HTTP 302 to Google with production callback/redirect target.
 - Render `/staff/mfa-status`: HTTP 404 while `/health`: HTTP 200. Backend deployment remains stale/miswired; Admin Google → staff_roles → TOTP → aal2 → Admin API is not runtime verified.
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
 - Admin Fleet UI scope is CODE/UNIT VERIFIED: chỉ gọi `GET /fleet/workers` và map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
+- Fresh read-only probes: Vercel public bundle still contains the old `Tiếp tục thanh toán` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 404. No production PASS is claimed.
 
 # Definition of Done
 
