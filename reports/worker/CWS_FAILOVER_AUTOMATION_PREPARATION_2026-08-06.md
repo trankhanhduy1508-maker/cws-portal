@@ -23,6 +23,8 @@
   renderer crash, reconnect, fencing, duplicate completion, retry limit,
   unhealthy/capability-incompatible replacement, multiple failure, no
   suitable Worker, Idle Saver wake, Customer recovery status and payment gate.
+  It also exercises Admin Fleet state mapping and credential revoke/expiry/
+  rotation semantics without using a real secret.
 - Live two-Worker smoke remains credential/physical-host gated. No production
   mutation, payment or live claim was attempted.
 

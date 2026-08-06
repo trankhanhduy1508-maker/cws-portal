@@ -8,6 +8,7 @@ before the credential-gated staging smoke run.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 
 
 @dataclass
@@ -28,6 +29,26 @@ class SimTask:
     generation: int = 1
     retry_count: int = 0
     failed_by: list[str] = field(default_factory=list)
+
+
+class SimCredentialRegistry:
+    def __init__(self):
+        self.hashes: dict[str, str] = {}
+        self.revoked: set[str] = set()
+        self.expiry: dict[str, int] = {}
+
+    def rotate(self, worker_id: str, token: str, expires_at: int) -> None:
+        self.hashes[worker_id] = hashlib.sha256(token.encode()).hexdigest()
+        self.expiry[worker_id] = expires_at
+        self.revoked.discard(worker_id)
+
+    def revoke(self, worker_id: str) -> None:
+        self.revoked.add(worker_id)
+
+    def authenticate(self, worker_id: str, token: str, now: int) -> bool:
+        return (worker_id not in self.revoked
+                and now < self.expiry.get(worker_id, 0)
+                and self.hashes.get(worker_id) == hashlib.sha256(token.encode()).hexdigest())
 
 
 class FailoverSimulation:
@@ -91,6 +112,19 @@ class FailoverSimulation:
         if self.task.status == "active": return "RENDERING"
         return "ALLOCATING_WORKERS"
 
+    def admin_states(self) -> dict[str, str]:
+        states: dict[str, str] = {}
+        for worker_id, worker in self.workers.items():
+            if not worker.online:
+                states[worker_id] = "OFFLINE"
+            elif worker.task_id is not None:
+                states[worker_id] = "RENDERING"
+            elif worker.idle_saver:
+                states[worker_id] = "IDLE_SAVER"
+            else:
+                states[worker_id] = "ONLINE"
+        return states
+
 
 def run_all() -> list[str]:
     checks: list[str] = []
@@ -100,10 +134,11 @@ def run_all() -> list[str]:
     sim.advance(241)
     assert sim.requeue_stale() and sim.customer_status() == "RECOVERING"
     assert sim.claim("worker-b")
+    assert sim.admin_states()["worker-b"] == "RENDERING"
     assert not sim.complete("worker-a", old_generation)
     assert sim.complete("worker-b", sim.task.generation)
     assert sim.task.status == "done" and sim.customer_status() == "REVIEW_READY"
-    checks.append("stale heartbeat/network loss/power loss → reassign → stale completion rejected → one completion")
+    checks.append("stale heartbeat/network loss/power loss -> reassign -> stale completion rejected -> one completion")
 
     sim = FailoverSimulation(max_retries=2)
     assert sim.claim("worker-a")
@@ -111,7 +146,7 @@ def run_all() -> list[str]:
     assert sim.claim("worker-b")
     sim.advance(241); assert sim.requeue_stale()
     assert sim.task.status == "failed" and sim.customer_status() == "ERROR"
-    checks.append("renderer/process crash → bounded retry limit and no infinite retry")
+    checks.append("renderer/process crash -> bounded retry limit and no infinite retry")
 
     sim = FailoverSimulation()
     sim.workers["worker-b"].healthy = False
@@ -132,6 +167,19 @@ def run_all() -> list[str]:
     sim.advance(241); assert sim.requeue_stale()
     assert not sim.claim("worker-b") and sim.customer_status() == "RECOVERING"
     checks.append("multiple Worker failure/no suitable Worker keeps Customer in recovery")
+
+    registry = SimCredentialRegistry()
+    registry.rotate("worker-a", "token-v1", expires_at=100)
+    assert registry.authenticate("worker-a", "token-v1", now=1)
+    registry.revoke("worker-a")
+    assert not registry.authenticate("worker-a", "token-v1", now=2)
+    registry.rotate("worker-a", "token-v2", expires_at=3)
+    assert registry.authenticate("worker-a", "token-v2", now=2)
+    assert not registry.authenticate("worker-a", "token-v2", now=3)
+    registry.rotate("worker-a", "token-v3", expires_at=100)
+    assert not registry.authenticate("worker-a", "token-v2", now=4)
+    assert registry.authenticate("worker-a", "token-v3", now=4)
+    checks.append("credential revoke, expiry and rotation lifecycle")
     return checks
 
 

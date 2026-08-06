@@ -5,7 +5,7 @@ from failover_simulation import FailoverSimulation, run_all
 
 class FailoverSimulationTests(unittest.TestCase):
     def test_required_scenarios_pass(self):
-        self.assertEqual(len(run_all()), 5)
+        self.assertEqual(len(run_all()), 6)
 
     def test_reconnect_cannot_finalize_fenced_attempt(self):
         sim = FailoverSimulation()
