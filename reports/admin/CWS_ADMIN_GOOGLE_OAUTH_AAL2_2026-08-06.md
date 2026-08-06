@@ -59,7 +59,7 @@ PASS is claimed until those external steps are evidenced.
 
 ## Deployment follow-up — 2026-08-06
 
-- Vercel project `cws-portal`: deployment `dpl_4WznTivJZDLsR6zRjezt2zFspt6R` is `READY`, production, branch `main`, commit `7b0496e`.
+- Vercel project `cws-portal`: deployment `dpl_8aeGEzjYUv6TGBMXchpKcAXuD5UZ` is `READY`, production, branch `main`, commit `da6c16a`.
 - Live Vercel asset `index-Cart5-Q4.js` contains `/staff/mfa-status`, Google staff-login text, and `mfa.enroll`; it does not contain `cws_staff_token`.
 - Supabase Google authorize initiation returned HTTP `302` to Google with the Supabase callback and production `https://cws-portal.vercel.app/#admin` redirect target. This is initiation evidence only; no account was used.
 - Render `/staff/mfa-status` returned HTTP `404 Cannot GET /staff/mfa-status`, while `/health` returned HTTP `200`. Backend deployment is therefore stale or miswired; Admin API/AAL2 runtime verification cannot proceed.

@@ -20,7 +20,8 @@ was introduced.
 - `jobs.controller.spec.ts`: 3/3 PASS.
 - Covered cases: AAL2 admin → `listAll(null)`, customer → `listAll(customerId)`,
   anonymous → `UnauthorizedException` and no repository call.
-- Full backend test/build and frontend checks are required before commit.
+- Full backend Jest: 132/132 PASS; backend build PASS. Frontend tests: 8/8
+  PASS; lint PASS; Vite build PASS (existing large-chunk warning only).
 
 ## Remaining runtime gate
 
