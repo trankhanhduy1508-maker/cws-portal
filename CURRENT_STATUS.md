@@ -17,7 +17,7 @@
 - Founder product scope 2026-08-06: `/#admin` has separate Fleet + Customer CRM areas; `/` owns customer render → preview → payment → download. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md` and `reports/product/CWS_CUSTOMER_CRM_MVP_2026-08-06.md`.
 
 - 2026-08-06 production audit: Vercel root/Admin return HTTP 200; served bundle points to Render backend, contains fleet/CRM and `Bắt đầu render` markers, and no old pre-render payment CTA. Render `/health` is 200, CORS is exact-origin 204, `/staff/mfa-status` is 401 without credentials. Full physical Worker → Preview → Payment → Download runtime remains unverified.
-- 2026-08-06 CRM deployment audit: Vercel deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for `5e20211`, but Render `/customers/crm` is HTTP 404 while `/fleet/workers` is HTTP 401. CRM backend deployment/runtime remains blocked; no CRM data PASS is claimed.
+- 2026-08-06 CRM deployment audit: Vercel deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for `5e20211`; Render auto-deployed the backend and `/customers/crm` now returns HTTP 401 without credentials while `/health` is 200. Route protection is runtime verified; authenticated CRM data remains unverified pending Admin AAL2.
 
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.

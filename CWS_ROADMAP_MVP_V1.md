@@ -180,7 +180,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - 2026-08-06 Render crash evidence: backend fails closed at boot because the effective CORS environment input is `*`; set `CORS_ORIGINS=https://cws-portal.vercel.app` and remove any legacy `CORS_ORIGIN=*` before redeploy. See `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
 - Historical pre-fix probe: `/health` HTTP 200, CORS preflight exposed `*`, and `/staff/mfa-status` was HTTP 404; this was resolved by the Founder Render configuration update above.
 - 2026-08-06 CRM implementation: `GET /customers/crm` reads existing customer profiles, render orders, and paid payment rows; no duplicate schema or secrets. Backend/frontend tests and builds pass; real CRM data requires an Admin AAL2 session.
-- 2026-08-06 production evidence: Vercel CRM UI deployment is READY, but Render `/customers/crm` remains HTTP 404 while protected `/fleet/workers` is HTTP 401; backend CRM deployment and Admin AAL2 data verification remain NEEDS_VERIFICATION.
+- 2026-08-06 production evidence: Vercel CRM UI deployment is READY; Render `/customers/crm` now returns HTTP 401 without credentials and `/health` 200 after auto-deploy. Route protection is verified; Admin AAL2 CRM data read remains NEEDS_VERIFICATION.
 
 # Definition of Done
 
