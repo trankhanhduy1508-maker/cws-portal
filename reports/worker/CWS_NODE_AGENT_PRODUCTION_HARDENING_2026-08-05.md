@@ -24,9 +24,9 @@ The state machine and staging runtime remain **REAL RUNTIME VERIFIED** by the ex
 ## BLOCKED / UNVERIFIED
 
 - The Agent is not yet a Windows Service managed by SCM. Service recovery, crash-loop reset, startup ordering, and rollback are therefore deployment gates, not proven runtime properties.
-- `tick()` invokes heartbeat synchronously. A 20-second Supabase timeout can delay the loop; it is caught, but not non-blocking.
+- The 2026-08-06 follow-up adds explicit single-flight non-blocking heartbeat dispatch; it is code/unit verified and staging callers opt in. Existing default compatibility mode remains synchronous until deployment opts in.
 - Retry backoff jitter is now available as a bounded opt-in ratio with injectable randomness; the default remains unchanged. The focused Node Agent suite covers the calculation and validation.
-- The Job Object POC verifies timeout/process-tree cleanup but is not wired into the production Worker launcher. A Job Object is supervision, not a complete filesystem/network sandbox.
+- The Job Object wrapper is now wired into `BlenderCliRenderer` behind an explicit staging opt-in and covered by unit tests. Live Windows renderer integration is still unverified; a Job Object is supervision, not a complete filesystem/network sandbox.
 - Disk/RAM/VRAM quotas, log rotation, update hash verification, duplicate machine identity, and rollback compatibility need host-level tests.
 
 ## Recommended gate sequence

@@ -6,11 +6,12 @@
 - P0 host: SCM Node Agent and Job Object POCs have real runtime evidence; production integration and Session 0/user-session GPU split remain gates.
 - P1 optimization: analyzer → working-copy plan/apply exists; ArchViz profiles are policy data only and require benchmark evidence before customer use.
 - Remaining P0 gates: Owner secret rotation, production RPC change approval, Admin AAL2 runtime, and Nest 11 canary. No new Blender tradeoff optimization is in scope.
+- 2026-08-06: Node Agent heartbeat remote I/O is **CODE/UNIT VERIFIED** with bounded single-flight dispatch; staging launchers opt in. Generic Worker Job Object ownership is **CODE/UNIT VERIFIED** behind an explicit flag. Live Windows renderer, hostile sandbox, SCM deployment and rollback remain gates. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
 
 ## Total review gates — 2026-08-05
 
 - Security: staging admin RPC hardening is verified; production privilege migration, secret rotation, dependency upgrade and explicit CORS remain gates.
-- Node Agent: staging runtime is verified; SCM service, non-blocking I/O, Job Object integration, quotas, update verification and rollback need evidence.
+- Node Agent: staging runtime is verified; non-blocking heartbeat and Job Object ownership are code/unit verified, while SCM deployment, live Windows renderer, hostile isolation, quotas, update verification and rollback need evidence.
 - Blender/ArchViz: read-only analyzer is verified on harmless staging input; optimization profiles are proposals until benchmarked.
 - Production rollout remains **NO-GO** until security, Admin AAL2, isolation, observability, rollback and canary gates pass.
 

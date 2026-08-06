@@ -9,6 +9,8 @@ lightweight, not suspended.
 from dataclasses import dataclass
 from enum import Enum
 import random
+import queue
+import threading
 from typing import Callable, Optional, Any
 
 from node_agent_runtime_policy import RuntimePolicy
@@ -35,6 +37,56 @@ class WorkerResult:
     reason: str = ""
 
 
+class _NonBlockingHeartbeat:
+    """Single-flight daemon worker for a potentially blocking heartbeat call."""
+
+    def __init__(self, heartbeat: Callable[[], None]):
+        self._heartbeat = heartbeat
+        self._work: queue.Queue[object] = queue.Queue(maxsize=1)
+        self._errors: queue.Queue[str] = queue.Queue(maxsize=1)
+        self._stop = object()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="cws-node-agent-heartbeat",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def submit(self) -> bool:
+        """Queue at most one heartbeat and return immediately."""
+        try:
+            self._work.put_nowait(None)
+            return True
+        except queue.Full:
+            return False
+
+    def pop_error(self) -> Optional[str]:
+        try:
+            return self._errors.get_nowait()
+        except queue.Empty:
+            return None
+
+    def close(self) -> None:
+        try:
+            self._work.put_nowait(self._stop)
+        except queue.Full:
+            # The daemon worker will finish its current call before observing stop.
+            pass
+
+    def _run(self) -> None:
+        while True:
+            work = self._work.get()
+            if work is self._stop:
+                return
+            try:
+                self._heartbeat()
+            except Exception as exc:  # report on a later non-blocking tick
+                try:
+                    self._errors.put_nowait(str(exc)[:240])
+                except queue.Full:
+                    pass
+
+
 class NodeAgent:
     """Deterministic state machine; all I/O is supplied as callbacks."""
 
@@ -53,6 +105,7 @@ class NodeAgent:
         retry_jitter_ratio: float = 0.0,
         random_value: Callable[[], float] = random.random,
         runtime_policy: Optional[RuntimePolicy] = None,
+        non_blocking_heartbeat: bool = False,
     ):
         if heartbeat_interval <= 0:
             raise ValueError("heartbeat_interval must be positive")
@@ -84,6 +137,9 @@ class NodeAgent:
         self.last_heartbeat_at: Optional[float] = None
         self.last_heartbeat_error: Optional[str] = None
         self.retry_ready_at = 0.0
+        self._heartbeat_runner = (
+            _NonBlockingHeartbeat(heartbeat) if non_blocking_heartbeat else None
+        )
 
     def tick(self) -> NodeState:
         """Advance one small event-loop step; never blocks or sleeps."""
@@ -153,6 +209,15 @@ class NodeAgent:
 
     def _heartbeat_if_due(self) -> None:
         current = self.now()
+        if self._heartbeat_runner is not None:
+            error = self._heartbeat_runner.pop_error()
+            if error is not None:
+                self.last_heartbeat_error = error
+            if self.last_heartbeat_at is not None and current - self.last_heartbeat_at < self.heartbeat_interval:
+                return
+            if self._heartbeat_runner.submit():
+                self.last_heartbeat_at = current
+            return
         if self.last_heartbeat_at is not None and current - self.last_heartbeat_at < self.heartbeat_interval:
             return
         try:
@@ -166,5 +231,10 @@ class NodeAgent:
     def _require_job(self) -> None:
         if self.job is None:
             raise RuntimeError(f"state {self.state} requires a job")
+
+    def close(self) -> None:
+        """Request shutdown of the optional daemon heartbeat worker."""
+        if self._heartbeat_runner is not None:
+            self._heartbeat_runner.close()
 
 

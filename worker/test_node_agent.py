@@ -1,4 +1,6 @@
 import unittest
+import threading
+import time
 
 from node_agent import Job, NodeAgent, NodeState, WorkerResult
 
@@ -96,6 +98,56 @@ class NodeAgentTests(unittest.TestCase):
         )
         self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)
         self.assertEqual(agent.last_heartbeat_error, "network")
+
+    def test_non_blocking_heartbeat_does_not_hold_tick(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def heartbeat():
+            calls.append("started")
+            started.set()
+            release.wait(2)
+
+        agent = NodeAgent(
+            poll_job=lambda: None, heartbeat=heartbeat, prepare_job=lambda _: None,
+            launch_worker=lambda _: None, inspect_worker=lambda _: WorkerResult(),
+            cleanup_job=lambda *_: None, now=time.monotonic,
+            non_blocking_heartbeat=True,
+        )
+        began = time.monotonic()
+        self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)
+        elapsed = time.monotonic() - began
+        self.assertLess(elapsed, 0.25)
+        self.assertTrue(started.wait(1))
+        self.assertEqual(calls, ["started"])
+        agent.tick()
+        self.assertEqual(calls, ["started"])
+        release.set()
+        agent.close()
+
+    def test_non_blocking_heartbeat_reports_error_on_later_tick(self):
+        done = threading.Event()
+
+        def heartbeat():
+            done.set()
+            raise RuntimeError("remote timeout")
+
+        agent = NodeAgent(
+            poll_job=lambda: None, heartbeat=heartbeat, prepare_job=lambda _: None,
+            launch_worker=lambda _: None, inspect_worker=lambda _: WorkerResult(),
+            cleanup_job=lambda *_: None, now=time.monotonic,
+            non_blocking_heartbeat=True,
+        )
+        agent.tick()
+        self.assertTrue(done.wait(1))
+        for _ in range(20):
+            agent.tick()
+            if agent.last_heartbeat_error:
+                break
+            time.sleep(0.01)
+        self.assertEqual(agent.last_heartbeat_error, "remote timeout")
+        agent.close()
 
 
 if __name__ == "__main__":

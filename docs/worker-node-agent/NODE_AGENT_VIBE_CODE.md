@@ -3,14 +3,27 @@
 ## Remediation continuation — 2026-08-05
 
 - Native SCM service PoC is **REAL RUNTIME VERIFIED** for lifecycle/heartbeat/restart; no Blender launch is attempted from Session 0.
-- Job Object process-tree cleanup is **REAL RUNTIME VERIFIED** as a POC, not yet integrated.
+- Job Object process-tree cleanup is **REAL RUNTIME VERIFIED** as a POC; renderer ownership integration is now **CODE/UNIT VERIFIED** behind a staging opt-in.
 - Production Node Agent remains **UNVERIFIED/BLOCKED** until service account, user-session GPU helper, update/rollback and real staging backend reconnect evidence exist.
 
 ## Total review — 2026-08-05
 
 - Existing state loop, Full E2E and failover remain **REAL RUNTIME VERIFIED** and are not repeated here.
-- Bounded retry/cleanup is present and power-management APIs are absent; synchronous remote I/O and lack of SCM/Job Object integration keep production hardening **UNVERIFIED/BLOCKED**.
+- Bounded retry/cleanup is present and power-management APIs are absent; production SCM/session boundaries and host isolation keep production hardening **UNVERIFIED/BLOCKED**.
 - Retry backoff now supports bounded, deterministic jitter through `retry_jitter_ratio` and an injected RNG; default `0.0` preserves existing timing until a production caller opts in.
+
+## Non-blocking I/O and process ownership — 2026-08-06
+
+- `NodeAgent` has an explicit single-flight daemon heartbeat mode; slow remote
+  heartbeat calls do not hold `tick()`, and delayed errors are reported on a
+  later tick. Local and credential-gated staging parents opt in; the default
+  remains compatibility-preserving synchronous mode.
+- `BlenderCliRenderer` can attach its owned process tree to a Windows Job Object
+  with kill-on-close. Staging launchers opt in. This is process supervision,
+  not a filesystem/network sandbox, and is **CODE/UNIT VERIFIED** only here.
+- Verification: Python compile PASS; worker offline suite **35/35 PASS**;
+  no production/staging mutation. Evidence:
+  `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
 
 ## Mục tiêu
 

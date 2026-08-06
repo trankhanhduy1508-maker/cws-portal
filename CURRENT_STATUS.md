@@ -8,18 +8,20 @@
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
 - Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.
 - Windows SCM: Node Agent service PoC **REAL RUNTIME VERIFIED** for install/start/heartbeat/stop/restart/remove; GPU Worker remains a user-session helper boundary.
-- Job Object: timeout/child cleanup **REAL RUNTIME VERIFIED**; integration into Generic Worker remains **UNVERIFIED**.
+- Job Object: timeout/child cleanup **REAL RUNTIME VERIFIED**; Generic Worker renderer ownership is **CODE/UNIT VERIFIED** behind staging opt-in, while live Windows integration and full sandbox boundary remain **UNVERIFIED**.
 - Path boundary: symlink rejection **CODE/UNIT VERIFIED**; junction/reparse disposable-host matrix remains **UNVERIFIED**.
 - Blender optimizer: working-copy-only plan/apply harness **REAL RUNTIME VERIFIED** on harmless EEVEE plan; no speedup claimed. ArchViz profiles are **CODE/UNIT VERIFIED** only.
 - Dependency audit: clean-install backend reports 5 High / 0 Critical production vulnerabilities; safe override experiment was rejected and removed. Nest 11 requires a separate canary.
 - Decision: **PRODUCTION NO-GO**. Evidence: `reports/CWS_PRODUCTION_NO_GO_REMEDIATION_2026-08-05.md`.
 
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
+- 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.
+- 2026-08-06: Job Object ownership is **CODE/UNIT VERIFIED** in `BlenderCliRenderer` behind an explicit staging opt-in; live Windows renderer integration and complete sandbox boundary remain **UNVERIFIED**. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
 
 ## Total review — 2026-08-05
 
 - Security: current-tree credential fallback removed, Admin token URL exposure fixed, and staging admin RPC client EXECUTE revoked. Historical credentials require rotation. See `reports/security/CWS_FULL_SECURITY_AUDIT_2026-08-05.md`.
-- Node Agent: prior Full E2E and multi-node evidence remains **REAL RUNTIME VERIFIED**; SCM service, non-blocking I/O, host isolation, quotas and rollback are **UNVERIFIED/BLOCKED**.
+- Node Agent: prior Full E2E and multi-node evidence remains **REAL RUNTIME VERIFIED**; non-blocking heartbeat and Job Object ownership are **CODE/UNIT VERIFIED**, while SCM deployment, host isolation, quotas and rollback are **UNVERIFIED/BLOCKED**.
 - Blender/ArchViz analyzer: **CODE VERIFIED** and harmless staging execution **REAL RUNTIME VERIFIED**; customer optimization remains **UNVERIFIED**.
 - Production readiness: **NO-GO** pending production RPC migration, dependency canary, explicit CORS, host isolation, Admin AAL2 runtime, observability and rollback evidence.
 

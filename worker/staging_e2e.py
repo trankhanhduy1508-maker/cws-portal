@@ -98,7 +98,8 @@ def run_child(args: argparse.Namespace) -> int:
         workspace_root=args.root / "work",
         downloader=StagingProjectDownloader(),
         preflight=BasicPreflight({"vram_mb": args.vram_mb, "ram_mb": args.ram_mb}),
-        renderer=BlenderCliRenderer(args.blender, timeout_seconds=args.timeout),
+        renderer=BlenderCliRenderer(args.blender, timeout_seconds=args.timeout,
+                                     use_job_object=True),
         checkpoints=B2StagingCheckpointStore(config),
         validator=OutputIntegrityValidator(),
         reporter=StagingReporter(rpc),
@@ -153,7 +154,8 @@ def run_parent(args: argparse.Namespace) -> int:
 
     agent = NodeAgent(poll_job, heartbeat, prepare_job, launch_worker,
                       inspect_worker, cleanup_job, time.monotonic,
-                      heartbeat_interval=args.heartbeat_interval, max_retries=0)
+                      heartbeat_interval=args.heartbeat_interval, max_retries=0,
+                      non_blocking_heartbeat=True)
     deadline = time.monotonic() + args.max_seconds
     while time.monotonic() < deadline:
         agent.tick()

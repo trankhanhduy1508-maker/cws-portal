@@ -73,7 +73,8 @@ def run_child(args: argparse.Namespace) -> int:
         workspace_root=args.root / "work",
         downloader=LocalDownloader(args.project),
         preflight=BasicPreflight({"vram_mb": args.vram_mb, "ram_mb": args.ram_mb}),
-        renderer=BlenderCliRenderer(args.blender, timeout_seconds=args.timeout),
+        renderer=BlenderCliRenderer(args.blender, timeout_seconds=args.timeout,
+                                     use_job_object=True),
         checkpoints=FilesystemCheckpointStore(args.root / "checkpoints"),
         validator=OutputIntegrityValidator(),
         reporter=LocalReporter(args.events),
@@ -127,7 +128,8 @@ def run_parent(args: argparse.Namespace) -> int:
 
     agent = NodeAgent(poll_job, heartbeat, prepare_job, launch_worker,
                       inspect_worker, cleanup_job, time.monotonic,
-                      heartbeat_interval=0.01, max_retries=1 if args.crash_once else 0)
+                      heartbeat_interval=0.01, max_retries=1 if args.crash_once else 0,
+                      non_blocking_heartbeat=True)
     deadline = time.monotonic() + args.max_seconds
     last_state = None
     while time.monotonic() < deadline:

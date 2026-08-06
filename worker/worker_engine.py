@@ -21,6 +21,8 @@ import tempfile
 from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
+
+from job_object import WindowsJobObject
 from typing import Any, Mapping, Protocol, Sequence
 
 from path_boundary import reject_reparse_points
@@ -304,9 +306,11 @@ class OutputIntegrityValidator(BasicOutputValidator):
 class BlenderCliRenderer:
     """Render one frame with customer auto-execution disabled."""
 
-    def __init__(self, executable: Path, timeout_seconds: int = 3600):
+    def __init__(self, executable: Path, timeout_seconds: int = 3600,
+                 use_job_object: bool = False):
         self.executable = executable.resolve()
         self.timeout_seconds = timeout_seconds
+        self.use_job_object = use_job_object
 
     @staticmethod
     def _terminate_tree(process: subprocess.Popen[str]) -> None:
@@ -338,11 +342,21 @@ class BlenderCliRenderer:
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True, creationflags=creationflags)
+        job_object = None
         try:
+            if self.use_job_object:
+                job_object = WindowsJobObject()
+                job_object.assign(process)
             stdout, stderr = process.communicate(timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
             self._terminate_tree(process)
             raise RetryableWorkerError("Blender render timed out") from exc
+        except Exception as exc:
+            self._terminate_tree(process)
+            raise RetryableWorkerError("could not attach Blender process to Job Object") from exc
+        finally:
+            if job_object is not None:
+                job_object.close()
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
         if result.returncode != 0:
             category = classify_blender_failure(result.returncode, f"{result.stdout}\n{result.stderr}")

@@ -75,6 +75,34 @@ def spec(**overrides):
 
 
 class WorkerEngineTests(unittest.TestCase):
+    def test_blender_renderer_attaches_owned_process_to_job_object(self):
+        class CompletedProcess:
+            pid = 12345
+            _handle = 67890
+            returncode = 0
+
+            def communicate(self, timeout):
+                output.write_bytes(b"rendered")
+                return "", ""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            executable = Path(tmp) / "blender.exe"
+            executable.write_bytes(b"fixture")
+            project = Path(tmp) / "project.blend"
+            project.write_bytes(b"safe blend")
+            output = Path(tmp) / "frame_0001.png"
+            process = CompletedProcess()
+            with (
+                patch("worker_engine.subprocess.Popen", return_value=process),
+                patch("worker_engine.WindowsJobObject") as job_type,
+            ):
+                result = BlenderCliRenderer(executable, use_job_object=True).render(
+                    spec(), project, 1, output
+                )
+            job_type.return_value.assign.assert_called_once_with(process)
+            job_type.return_value.close.assert_called_once_with()
+            self.assertEqual(result, output)
+
     def test_blender_timeout_cleans_owned_process_tree_and_is_retryable(self):
         class TimedOutProcess:
             pid = 12345
