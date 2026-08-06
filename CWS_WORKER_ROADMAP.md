@@ -995,3 +995,10 @@ The isolated staging path is now verified end-to-end: assignment/fencing generat
 - Local scale simulation covers heartbeat/failure bursts only; Supabase/B2, physical Worker, and production capacity remain unverified.
 - Next Worker scale gate is isolated staging load with 100/1,000 synthetic identities before any 1,000/10,000 redesign.
 - Synthetic heartbeat jitter, reconnect storm and bounded failover simulation are included in `tests/scaling/cws_capacity_simulation.py`; no Supabase write capacity is claimed.
+
+## Generic Worker hardening follow-up - 2026-08-06
+
+- `worker_engine.py` streams filesystem checkpoint copies in bounded chunks and removes temporary files on interrupted writes.
+- Attempt fencing is checked immediately before checkpoint storage writes, in addition to the post-checkpoint verification guard.
+- Verification: `python -m unittest discover -s worker -p 'test_*.py'` - **49/49 PASS**.
+- Remaining gate: authenticated staging/physical Worker runtime with real lease revocation and B2 behavior.

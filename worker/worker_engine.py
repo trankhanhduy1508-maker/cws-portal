@@ -212,15 +212,35 @@ class FilesystemCheckpointStore:
         record = CheckpointRecord(spec.job_id, spec.task_id, frame,
                                   output.stat().st_size, digest,
                                   spec.attempt_id, spec.lease_generation)
-        with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as temp:
-            temp.write(output.read_bytes())
-            temp_path = Path(temp.name)
-        os.replace(temp_path, destination)
-        with tempfile.NamedTemporaryFile(dir=metadata.parent, mode="w", encoding="utf-8", delete=False) as temp:
-            json.dump(record.__dict__, temp, sort_keys=True)
-            temp.write("\n")
-            metadata_temp = Path(temp.name)
-        os.replace(metadata_temp, metadata)
+        temp_path: Path | None = None
+        metadata_temp: Path | None = None
+        try:
+            # Keep memory bounded for large render outputs.  The previous
+            # read_bytes() implementation scaled worker RAM with frame size.
+            with output.open("rb") as source, tempfile.NamedTemporaryFile(
+                dir=destination.parent, delete=False
+            ) as temp:
+                shutil.copyfileobj(source, temp, length=1024 * 1024)
+                temp.flush()
+                os.fsync(temp.fileno())
+                temp_path = Path(temp.name)
+            os.replace(temp_path, destination)
+            temp_path = None
+            with tempfile.NamedTemporaryFile(
+                dir=metadata.parent, mode="w", encoding="utf-8", delete=False
+            ) as temp:
+                json.dump(record.__dict__, temp, sort_keys=True)
+                temp.write("\n")
+                temp.flush()
+                os.fsync(temp.fileno())
+                metadata_temp = Path(temp.name)
+            os.replace(metadata_temp, metadata)
+            metadata_temp = None
+        finally:
+            if temp_path is not None:
+                Path(temp_path).unlink(missing_ok=True)
+            if metadata_temp is not None:
+                Path(metadata_temp).unlink(missing_ok=True)
 
     def verify(self, spec: JobSpec, frame: int, output: Path) -> None:
         if not self._read_verified(spec, frame):
@@ -427,6 +447,9 @@ class WorkerEngine:
                 rendered = self.renderer.render(spec, project, frame, output)
                 self.validator.validate(rendered)
                 self.reporter.stage(spec, "UPLOADING")
+                # Fence immediately before the side effect.  A stale attempt
+                # must not upload a newly rendered frame after reassignment.
+                self._guard(spec, "UPLOADING")
                 self.checkpoints.put(spec, frame, rendered)
                 self.reporter.stage(spec, "VERIFYING")
                 self.checkpoints.verify(spec, frame, rendered)

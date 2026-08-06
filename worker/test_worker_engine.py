@@ -241,6 +241,29 @@ class WorkerEngineTests(unittest.TestCase):
                              Checkpoints(), BasicOutputValidator(10), Reporter(), rejected).run(spec(frame_end=1))
             self.assertFalse((Path(tmp) / "task-1").exists())
 
+    def test_lease_guard_is_checked_before_checkpoint_upload(self):
+        class RejectBeforeUpload(Guard):
+            def __init__(self):
+                super().__init__()
+                self.assertions = 0
+
+            def assert_active(self, current_spec):
+                self.assertions += 1
+                if self.assertions >= 3:
+                    raise PermanentWorkerError("stale fencing generation")
+
+        class CheckpointsThatMustNotWrite(Checkpoints):
+            def put(self, current_spec, frame, output):
+                raise AssertionError("stale attempt reached checkpoint storage")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            guard = RejectBeforeUpload()
+            with self.assertRaises(PermanentWorkerError):
+                WorkerEngine(Path(tmp), Downloader(), BasicPreflight(), Renderer(),
+                             CheckpointsThatMustNotWrite(), BasicOutputValidator(10),
+                             Reporter(), guard).run(spec(frame_end=1))
+            self.assertFalse((Path(tmp) / "task-1").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

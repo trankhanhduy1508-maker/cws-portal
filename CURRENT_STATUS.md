@@ -497,3 +497,10 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Re-ran backend production audit: 17 findings remain (5 High, 12 Moderate, 0 Critical). Dry-run/dedupe produced no safe non-breaking remediation; the Nest 11 canary remains required.
 - Hardened B2 upload object naming: only a bounded safe basename is included in the generated key; path separators/control characters cannot shape the object path. Regression test and backend build pass.
 - Evidence: `reports/security/CWS_DEPENDENCY_AUDIT_2026-08-06.md`.
+
+## Generic Worker fencing/memory hardening - 2026-08-06
+
+- Checkpoint writes now use bounded 1 MiB disk streaming with atomic replacement and temporary-file cleanup; frame size no longer forces a full `read_bytes()` allocation.
+- Generic Worker checks the attempt lease immediately before checkpoint/output side effects, reducing stale-attempt writes after failover fencing.
+- Worker suite: **49/49 PASS**. This is code/local evidence only; authenticated physical Worker and production E2E remain unverified.
+- Evidence: `reports/worker/CWS_GENERIC_WORKER_FENCING_MEMORY_HARDENING_2026-08-06.md`.
