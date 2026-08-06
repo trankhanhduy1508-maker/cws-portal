@@ -198,6 +198,18 @@ tổng payment đã `paid` đáng tin cậy, job gần nhất và lifecycle `new
 password/token/secret, và chỉ Admin/Host qua `RoleGuard` + AAL2 được đọc.
 Không thêm campaign, sales pipeline hay marketing automation.
 
+## Worker production identity/RPC — 2026-08-06
+
+**[PROPOSED — Founder approval required]** Production Workers use one random
+per-worker credential, stored only as a SHA-256 hash by the backend. Requests
+use HTTPS, `Authorization: Worker`, worker id, timestamp, unique nonce and
+HMAC-SHA256 over the method/path/raw-body hash. Backend checks lifecycle,
+expiry, revocation and nonce uniqueness, then calls only an allowlisted RPC
+with the authenticated worker id injected server-side. Node Agent stores the
+credential in user-scoped Windows DPAPI under a dedicated least-privilege
+account. Worker id alone is never authentication and no fleet-wide shared
+secret is used. Full contract/evidence: `reports/security/CWS_WORKER_PRODUCTION_IDENTITY_RPC_CONTRACT_2026-08-06.md`.
+
 ## Admin job authorization hardening — 2026-08-06
 
 **[ACTIVE]** Shared `x-admin-key`/`?adminKey=` is not an Admin identity and is

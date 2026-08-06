@@ -158,3 +158,15 @@ Worker, Node Agent and Security are **PARTIAL / NO-GO for production rollout**.
 The safe code-level P1 SSRF/redirect issue in the staging harness is fixed and
 verified. Remaining P0/P1 rollout gates require identity credentials,
 physical Windows/GPU isolation, or real payment/storage operations.
+
+## Identity contract follow-up — 2026-08-06
+
+The production Worker identity/RPC contract is now prepared in code/unit
+scope: per-worker credential hash, HMAC request proof, timestamp/nonce replay
+cache, DPAPI client store and a backend allowlisted RPC gateway. Negative tests
+cover impersonation, body tampering, stale/expired/revoked credentials,
+duplicate nonce and worker-id injection.
+
+This is not production runtime verification. Migration 020, credential
+provisioning, Windows account/ACL setup and live heartbeat/claim/revocation
+tests remain Founder approval/runtime gates.

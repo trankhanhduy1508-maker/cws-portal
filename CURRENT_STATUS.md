@@ -11,6 +11,11 @@
   credential or database mutation was performed.
 - Secret rotation readiness: **CODE/UNIT VERIFIED**; legacy helper fallback removed and rotation order documented without values. Actual production rotation remains **BLOCKED** on Owner action.
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
+- 2026-08-06 Worker identity contract: recommended per-worker bearer token +
+  HMAC proof, timestamp/nonce replay defense, DPAPI storage and backend
+  allowlisted RPC gateway are **CODE/UNIT VERIFIED**. Migration 020 and real
+  credential/Windows/runtime verification remain Founder gates. Evidence:
+  `reports/security/CWS_WORKER_PRODUCTION_IDENTITY_RPC_CONTRACT_2026-08-06.md`.
 - Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.
 - Admin authentication update 2026-08-06: Google OAuth + Supabase TOTP flow is **CODE/UNIT VERIFIED**; backend pre-MFA staff check is non-sensitive and all Admin data routes still require role + `aal2`. Current Render `/staff/mfa-status` returns HTTP 401 without credentials, confirming the route is live; real Google/TOTP/AAL2 session remains unverified.
 - Windows SCM: Node Agent service PoC **REAL RUNTIME VERIFIED** for install/start/heartbeat/stop/restart/remove; GPU Worker remains a user-session helper boundary.
