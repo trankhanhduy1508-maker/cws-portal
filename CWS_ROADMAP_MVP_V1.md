@@ -211,6 +211,14 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - 100/1,000 and 1,000/10,000 capacity remain unmeasured in real infrastructure. Evidence: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`.
 - Upload memory bottleneck is mitigated in code with disk-backed streaming and cleanup; scheduler task reads are batched at 200 Job IDs per query. Runtime capacity remains NEEDS_VERIFICATION in isolated staging.
 
+# Functional/security verification follow-up — 2026-08-06
+
+- Local functional verification is green: frontend 9/9, backend 160/160 plus E2E `/health` 1/1, Worker 48/48, builds and lint pass.
+- TestSprite CLI integration was attempted; cloud execution is blocked only by missing `TESTSPRITE_API_KEY` and target configuration.
+- Strix execution is blocked on this machine by missing Docker/runtime and approved LLM credential; no third-party security PASS is claimed.
+- Fixed the backend E2E harness and CommonJS/ESM `archiver` packaging boundary. Details: `reports/security/CWS_TESTSPRITE_STRIX_FUNCTIONAL_SECURITY_AUDIT_2026-08-06.md`.
+- Backend dependency audit remains a release risk: 5 high and 12 moderate findings, with breaking upgrade path; do not use `npm audit fix --force`.
+
 # Definition of Done
 
 ``` text

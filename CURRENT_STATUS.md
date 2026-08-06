@@ -482,3 +482,12 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Scheduler now batch-reads task state in groups of 200 Job IDs in addition to the one presence snapshot and tick mutex.
 - Synthetic heartbeat jitter/reconnect/failure storm harness expanded for both scale scenarios; infrastructure capacity remains unverified.
 - Payment guard renamed to `backend/migrations/017_payment_one_intent_per_job.sql` because sequence 016 is already Google OAuth; no migration applied to production.
+
+## Functional/E2E and security-tool audit — 2026-08-06
+
+- TestSprite CLI was executed and `doctor --output json` confirmed the real blocker: no `TESTSPRITE_API_KEY`; no cloud TestSprite result is claimed.
+- Strix could not run on this machine because Docker/Bash/Python/Pip and an approved LLM credential are absent; no Strix severity counts are claimed.
+- Fixed backend E2E harness defects: CommonJS-compatible `supertest` import, canonical `/health` assertion, app cleanup, and test-only non-secret environment setup.
+- Fixed a real backend packaging compatibility issue: dynamically load the named ESM `ZipArchive` export from CommonJS output. Runtime ZIP smoke passed.
+- Verification: frontend 9/9 + lint/build PASS; backend 160/160 + E2E 1/1 + build PASS; Worker 48/48 PASS; root audit 0 vulnerabilities. Backend production audit remains 17 vulnerabilities (12 moderate, 5 high), with breaking upgrade path documented and no force upgrade applied.
+- Evidence: `reports/security/CWS_TESTSPRITE_STRIX_FUNCTIONAL_SECURITY_AUDIT_2026-08-06.md`.

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ZipArchive } from 'archiver';
+import type { ZipArchive } from 'archiver';
 import { PassThrough } from 'stream';
 import { B2StorageService } from '../files/b2-storage.service';
 import { VideoAssemblyService } from './video-assembly.service';
@@ -10,6 +10,19 @@ import { VideoAssemblyService } from './video-assembly.service';
  * đánh đổi CHẤP NHẬN ĐƯỢC ở quy mô MVP, không phải giải pháp streaming
  * hoàn chỉnh cho render hàng chục nghìn frame (cải tiến sau nếu cần). */
 const FRAME_FETCH_CONCURRENCY = 8;
+
+type ArchiverModule = {
+  ZipArchive?: new (options: { zlib: { level: number } }) => ZipArchive;
+};
+
+// archiver is ESM-only in the current lockfile while Nest compiles the backend
+// to CommonJS. A real dynamic import keeps production startup compatible with
+// both module systems; a static import would make `dist/main.js` fail before
+// the app can serve health checks.
+const importEsm = new Function(
+  'specifier',
+  'return import(specifier)',
+) as (specifier: string) => Promise<ArchiverModule>;
 
 /**
  * Đóng gói kết quả render thành file cuối khách tải về. Ưu tiên ghép
@@ -101,6 +114,11 @@ export class PackagingService {
     frames: { key: string; buffer: Buffer }[],
     renderOrderId: string,
   ): Promise<{ downloadUrl: string; resultSizeBytes: number }> {
+    const archiverModule = await importEsm('archiver');
+    const ZipArchive = archiverModule.ZipArchive;
+    if (!ZipArchive) {
+      throw new Error('Không thể tải ZipArchive từ archiver ESM module');
+    }
     const archive = new ZipArchive({ zlib: { level: 6 } });
     const chunks: Buffer[] = [];
     const passthrough = new PassThrough();
