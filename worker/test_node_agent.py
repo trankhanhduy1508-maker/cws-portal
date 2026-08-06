@@ -59,6 +59,33 @@ class NodeAgentTests(unittest.TestCase):
         self.assertEqual(events.count("launch:job-1"), 1)
         self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)
 
+    def test_retry_jitter_is_bounded_and_deterministic(self):
+        jobs = iter([Job("job-1", {})])
+        agent, _, clock = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("retryable", "timeout"))
+        agent.retry_backoff_seconds = 10
+        agent.retry_jitter_ratio = 0.25
+        agent.random_value = lambda: 0.5
+
+        for _ in range(5):
+            agent.tick()
+
+        self.assertEqual(agent.state, NodeState.PREPARING)
+        self.assertEqual(agent.retry_ready_at, 11.25)
+        self.assertEqual(clock[0], 0.0)
+
+    def test_retry_jitter_ratio_must_be_bounded(self):
+        with self.assertRaises(ValueError):
+            NodeAgent(
+                poll_job=lambda: None,
+                heartbeat=lambda: None,
+                prepare_job=lambda _: None,
+                launch_worker=lambda _: None,
+                inspect_worker=lambda _: WorkerResult(),
+                cleanup_job=lambda *_: None,
+                now=lambda: 0.0,
+                retry_jitter_ratio=1.1,
+            )
+
     def test_heartbeat_error_degrades_but_does_not_crash(self):
         jobs = iter([None])
         agent = NodeAgent(
@@ -74,3 +101,4 @@ class NodeAgentTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+

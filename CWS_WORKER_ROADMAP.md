@@ -1,55 +1,55 @@
 # CWS WORKER ROADMAP
 
-## Remediation continuation — 2026-08-05
+## Remediation continuation â€” 2026-08-05
 
 - P0 security: explicit CORS and staging RPC privilege hardening are verified; production Worker node authentication, secret rotation and Nest dependency canary remain gates.
 - P0 host: SCM Node Agent and Job Object POCs have real runtime evidence; production integration and Session 0/user-session GPU split remain gates.
-- P1 optimization: analyzer → working-copy plan/apply exists; ArchViz profiles are policy data only and require benchmark evidence before customer use.
+- P1 optimization: analyzer â†’ working-copy plan/apply exists; ArchViz profiles are policy data only and require benchmark evidence before customer use.
 - Remaining P0 gates: Owner secret rotation, production RPC change approval, Admin AAL2 runtime, and Nest 11 canary. No new Blender tradeoff optimization is in scope.
 
-## Total review gates — 2026-08-05
+## Total review gates â€” 2026-08-05
 
 - Security: staging admin RPC hardening is verified; production privilege migration, secret rotation, dependency upgrade and explicit CORS remain gates.
 - Node Agent: staging runtime is verified; SCM service, non-blocking I/O, Job Object integration, quotas, update verification and rollback need evidence.
 - Blender/ArchViz: read-only analyzer is verified on harmless staging input; optimization profiles are proposals until benchmarked.
 - Production rollout remains **NO-GO** until security, Admin AAL2, isolation, observability, rollback and canary gates pass.
 
-**Tên tài liệu:** `CWS_WORKER_ROADMAP.md`  
-**Dự án:** Computer Workspace — CWS  
-**Mục tiêu:** Hoàn thiện kiến trúc Worker sau khi MVP hoàn tất, bảo đảm tương thích cao với hệ thống hiện tại, có khả năng quan sát, phục hồi, điều phối lại công việc và thống kê thời gian thuê chính xác.
+**TÃªn tÃ i liá»‡u:** `CWS_WORKER_ROADMAP.md`  
+**Dá»± Ã¡n:** Computer Workspace â€” CWS  
+**Má»¥c tiÃªu:** HoÃ n thiá»‡n kiáº¿n trÃºc Worker sau khi MVP hoÃ n táº¥t, báº£o Ä‘áº£m tÆ°Æ¡ng thÃ­ch cao vá»›i há»‡ thá»‘ng hiá»‡n táº¡i, cÃ³ kháº£ nÄƒng quan sÃ¡t, phá»¥c há»“i, Ä‘iá»u phá»‘i láº¡i cÃ´ng viá»‡c vÃ  thá»‘ng kÃª thá»i gian thuÃª chÃ­nh xÃ¡c.
 
 ---
 
 
 
-> **Architecture correction 2026-08-05:** Job mới là dữ liệu JobSpec/TaskSpec. Canonical implementation direction là `worker/worker_engine.py` + `worker-engine.bat` + manifest. Các đoạn lịch sử nhắc artifact legacy không phải hướng dẫn triển khai mới.
+> **Architecture correction 2026-08-05:** Job má»›i lÃ  dá»¯ liá»‡u JobSpec/TaskSpec. Canonical implementation direction lÃ  `worker/worker_engine.py` + `worker-engine.bat` + manifest. CÃ¡c Ä‘oáº¡n lá»‹ch sá»­ nháº¯c artifact legacy khÃ´ng pháº£i hÆ°á»›ng dáº«n triá»ƒn khai má»›i.
 
-# 1. NGUYÊN TẮC BẮT BUỘC
+# 1. NGUYÃŠN Táº®C Báº®T BUá»˜C
 
-1. Chỉ triển khai roadmap Worker sau khi MVP hiện tại đã hoàn thành, build ổn định và các luồng chính đã được kiểm thử.
-2. Không viết lại toàn bộ Worker từ đầu.
-3. Không tạo repository hoặc worktree mới trên Windows.
-4. Mọi thay đổi phải bám:
+1. Chá»‰ triá»ƒn khai roadmap Worker sau khi MVP hiá»‡n táº¡i Ä‘Ã£ hoÃ n thÃ nh, build á»•n Ä‘á»‹nh vÃ  cÃ¡c luá»“ng chÃ­nh Ä‘Ã£ Ä‘Æ°á»£c kiá»ƒm thá»­.
+2. KhÃ´ng viáº¿t láº¡i toÃ n bá»™ Worker tá»« Ä‘áº§u.
+3. KhÃ´ng táº¡o repository hoáº·c worktree má»›i trÃªn Windows.
+4. Má»i thay Ä‘á»•i pháº£i bÃ¡m:
    - `AGENTS.md`
    - `CWS_ROADMAP_MVP_V1.md`
    - `CWS_MVP_WORKFLOW_FINAL.md`
    - `CWS_DATABASE_SCHEMA.md`
-   - roadmap chính thức mới nhất nếu tồn tại
-5. Ưu tiên số một là tương thích với generic Worker Engine và Node Agent contract hiện tại.
-6. Legacy `cws_worker_full.py`/`cws_worker.bat` chỉ là knowledge/evidence đã salvage; không restore, copy hoặc dùng làm dependency.
-7. Không tạo Worker source mới cho từng JobSpec. Generic Engine được cài một lần; Node Agent là supervisor duy nhất.
-8. `cws_auto_ghep_video.bat` chỉ là legacy evidence; output merge mới phải là capability/adapter của Engine khi có correctness evidence.
-8. Không triển khai Sleep, Hibernate, Wake-on-LAN, MQTT, GPU power limit hoặc viết lại Worker bằng Go/Rust trong giai đoạn này.
-9. Mọi thay đổi phải có feature flag, test, rollback, log và migration tương thích nếu có thay đổi database.
-10. Không được lưu secret thật trong source hoặc báo cáo.
+   - roadmap chÃ­nh thá»©c má»›i nháº¥t náº¿u tá»“n táº¡i
+5. Æ¯u tiÃªn sá»‘ má»™t lÃ  tÆ°Æ¡ng thÃ­ch vá»›i generic Worker Engine vÃ  Node Agent contract hiá»‡n táº¡i.
+6. Legacy `cws_worker_full.py`/`cws_worker.bat` chá»‰ lÃ  knowledge/evidence Ä‘Ã£ salvage; khÃ´ng restore, copy hoáº·c dÃ¹ng lÃ m dependency.
+7. KhÃ´ng táº¡o Worker source má»›i cho tá»«ng JobSpec. Generic Engine Ä‘Æ°á»£c cÃ i má»™t láº§n; Node Agent lÃ  supervisor duy nháº¥t.
+8. `cws_auto_ghep_video.bat` chá»‰ lÃ  legacy evidence; output merge má»›i pháº£i lÃ  capability/adapter cá»§a Engine khi cÃ³ correctness evidence.
+8. KhÃ´ng triá»ƒn khai Sleep, Hibernate, Wake-on-LAN, MQTT, GPU power limit hoáº·c viáº¿t láº¡i Worker báº±ng Go/Rust trong giai Ä‘oáº¡n nÃ y.
+9. Má»i thay Ä‘á»•i pháº£i cÃ³ feature flag, test, rollback, log vÃ  migration tÆ°Æ¡ng thÃ­ch náº¿u cÃ³ thay Ä‘á»•i database.
+10. KhÃ´ng Ä‘Æ°á»£c lÆ°u secret tháº­t trong source hoáº·c bÃ¡o cÃ¡o.
 
 ---
 
-# 2. BA FILE WORKER BẮT BUỘC PHẢI ĐỌC
+# 2. BA FILE WORKER Báº®T BUá»˜C PHáº¢I Äá»ŒC
 
 ## 2.1. `cws_worker_full.py`
 
-Phải xác định:
+Pháº£i xÃ¡c Ä‘á»‹nh:
 
 - entrypoint
 - main loop
@@ -57,7 +57,7 @@ Phải xác định:
 - heartbeat
 - polling
 - claim task
-- generation, lease hoặc stale protection
+- generation, lease hoáº·c stale protection
 - download
 - scene analysis
 - optimization
@@ -73,72 +73,72 @@ Phải xác định:
 - error recovery
 - logging
 - credential
-- quan hệ với các file `.bat`
+- quan há»‡ vá»›i cÃ¡c file `.bat`
 
 ## 2.2. `cws_worker.bat`
 
-Phải xác định:
+Pháº£i xÃ¡c Ä‘á»‹nh:
 
-- có phải entrypoint production hay không
-- có gọi portable Python hay không
-- có vòng lặp restart hay không
-- có xử lý exit code hay không
-- có ghi log hay không
-- có thiết lập environment/path hay không
-- có chống chạy nhiều instance hay không
-- có đang đóng vai trò supervisor hay không
+- cÃ³ pháº£i entrypoint production hay khÃ´ng
+- cÃ³ gá»i portable Python hay khÃ´ng
+- cÃ³ vÃ²ng láº·p restart hay khÃ´ng
+- cÃ³ xá»­ lÃ½ exit code hay khÃ´ng
+- cÃ³ ghi log hay khÃ´ng
+- cÃ³ thiáº¿t láº­p environment/path hay khÃ´ng
+- cÃ³ chá»‘ng cháº¡y nhiá»u instance hay khÃ´ng
+- cÃ³ Ä‘ang Ä‘Ã³ng vai trÃ² supervisor hay khÃ´ng
 
 ## 2.3. `cws_auto_ghep_video.bat`
 
-Phải xác định:
+Pháº£i xÃ¡c Ä‘á»‹nh:
 
-- công cụ ghép video
+- cÃ´ng cá»¥ ghÃ©p video
 - input/output
 - frame order
 - FPS
 - codec
 - audio
-- cách xử lý file trung gian
+- cÃ¡ch xá»­ lÃ½ file trung gian
 - exit code
 - timeout
-- lỗi
-- điều kiện thành công
+- lá»—i
+- Ä‘iá»u kiá»‡n thÃ nh cÃ´ng
 - cleanup
 
 ---
 
-# 3. PHASE 0 — HOÀN THÀNH MVP TRƯỚC
+# 3. PHASE 0 â€” HOÃ€N THÃ€NH MVP TRÆ¯á»šC
 
-## Mục tiêu
+## Má»¥c tiÃªu
 
-Xác minh MVP đã hoàn thành thực sự, không chỉ dựa trên tên file hoặc commit.
+XÃ¡c minh MVP Ä‘Ã£ hoÃ n thÃ nh thá»±c sá»±, khÃ´ng chá»‰ dá»±a trÃªn tÃªn file hoáº·c commit.
 
-## Việc cần làm
+## Viá»‡c cáº§n lÃ m
 
-- Đọc roadmap và tài liệu chính thức.
-- Kiểm tra frontend, backend, database, upload, payment, notification, scheduler và dashboard.
-- Chạy build.
-- Chạy test liên quan.
-- Kiểm tra luồng nghiệp vụ chính.
-- Liệt kê phần MVP còn thiếu.
-- Hoàn thành MVP trước khi sửa Worker.
+- Äá»c roadmap vÃ  tÃ i liá»‡u chÃ­nh thá»©c.
+- Kiá»ƒm tra frontend, backend, database, upload, payment, notification, scheduler vÃ  dashboard.
+- Cháº¡y build.
+- Cháº¡y test liÃªn quan.
+- Kiá»ƒm tra luá»“ng nghiá»‡p vá»¥ chÃ­nh.
+- Liá»‡t kÃª pháº§n MVP cÃ²n thiáº¿u.
+- HoÃ n thÃ nh MVP trÆ°á»›c khi sá»­a Worker.
 
-## Điều kiện qua phase
+## Äiá»u kiá»‡n qua phase
 
 - Build pass.
-- Luồng MVP chính hoạt động.
-- Không còn hạng mục MVP P0/P1 đang dang dở.
-- Có báo cáo xác nhận MVP hoàn tất.
+- Luá»“ng MVP chÃ­nh hoáº¡t Ä‘á»™ng.
+- KhÃ´ng cÃ²n háº¡ng má»¥c MVP P0/P1 Ä‘ang dang dá»Ÿ.
+- CÃ³ bÃ¡o cÃ¡o xÃ¡c nháº­n MVP hoÃ n táº¥t.
 
 ---
 
-# 4. PHASE 1 — AUDIT TOÀN BỘ HỆ SINH THÁI WORKER
+# 4. PHASE 1 â€” AUDIT TOÃ€N Bá»˜ Há»† SINH THÃI WORKER
 
-## Mục tiêu
+## Má»¥c tiÃªu
 
-Hiểu đầy đủ Worker hiện tại trước khi sửa.
+Hiá»ƒu Ä‘áº§y Ä‘á»§ Worker hiá»‡n táº¡i trÆ°á»›c khi sá»­a.
 
-## Phạm vi tìm kiếm
+## Pháº¡m vi tÃ¬m kiáº¿m
 
 - worker registration
 - heartbeat
@@ -166,53 +166,53 @@ Hiểu đầy đủ Worker hiện tại trước khi sửa.
 - cleanup
 - notification
 
-## Báo cáo bắt buộc trước commit đầu tiên
+## BÃ¡o cÃ¡o báº¯t buá»™c trÆ°á»›c commit Ä‘áº§u tiÃªn
 
-1. Trạng thái MVP.
-2. Vai trò của ba file Worker.
+1. Tráº¡ng thÃ¡i MVP.
+2. Vai trÃ² cá»§a ba file Worker.
 3. Entry point production.
-4. Supervisor hiện tại.
+4. Supervisor hiá»‡n táº¡i.
 5. Call graph.
 6. Dependency map.
-7. Luồng nhận job đến hoàn thành.
-8. Luồng heartbeat.
-9. Luồng generation/requeue.
-10. Luồng ghép video.
-11. Database và RPC liên quan.
-12. File sẽ sửa.
-13. File có thể bị ảnh hưởng.
-14. Rủi ro tương thích.
-15. Kế hoạch rollback.
+7. Luá»“ng nháº­n job Ä‘áº¿n hoÃ n thÃ nh.
+8. Luá»“ng heartbeat.
+9. Luá»“ng generation/requeue.
+10. Luá»“ng ghÃ©p video.
+11. Database vÃ  RPC liÃªn quan.
+12. File sáº½ sá»­a.
+13. File cÃ³ thá»ƒ bá»‹ áº£nh hÆ°á»Ÿng.
+14. Rá»§i ro tÆ°Æ¡ng thÃ­ch.
+15. Káº¿ hoáº¡ch rollback.
 
 ---
 
-# 5. PHASE 2 — TÍCH HỢP GHÉP VIDEO
+# 5. PHASE 2 â€” TÃCH Há»¢P GHÃ‰P VIDEO
 
-## Mục tiêu
+## Má»¥c tiÃªu
 
-Đưa chức năng của `cws_auto_ghep_video.bat` vào `cws_worker_full.py` hoặc module Python riêng.
+ÄÆ°a chá»©c nÄƒng cá»§a `cws_auto_ghep_video.bat` vÃ o `cws_worker_full.py` hoáº·c module Python riÃªng.
 
-## Yêu cầu
+## YÃªu cáº§u
 
-- Không sao chép mù lệnh BAT.
-- Giữ output tương thích.
-- Có timeout.
-- Có kiểm tra exit code.
-- Có stdout/stderr log.
-- Có xác minh input/output.
-- Có retry phù hợp.
-- Không complete task khi merge thất bại.
-- Chỉ merge với job cần merge.
-- Giữ BAT làm fallback trong giai đoạn chuyển tiếp.
+- KhÃ´ng sao chÃ©p mÃ¹ lá»‡nh BAT.
+- Giá»¯ output tÆ°Æ¡ng thÃ­ch.
+- CÃ³ timeout.
+- CÃ³ kiá»ƒm tra exit code.
+- CÃ³ stdout/stderr log.
+- CÃ³ xÃ¡c minh input/output.
+- CÃ³ retry phÃ¹ há»£p.
+- KhÃ´ng complete task khi merge tháº¥t báº¡i.
+- Chá»‰ merge vá»›i job cáº§n merge.
+- Giá»¯ BAT lÃ m fallback trong giai Ä‘oáº¡n chuyá»ƒn tiáº¿p.
 
-## Luồng
+## Luá»“ng
 
 ```text
 RENDERING
-→ MERGING nếu cần
-→ UPLOADING
-→ VERIFYING
-→ COMPLETE
+â†’ MERGING náº¿u cáº§n
+â†’ UPLOADING
+â†’ VERIFYING
+â†’ COMPLETE
 ```
 
 ## Feature flags
@@ -222,36 +222,36 @@ CWS_ENABLE_INTEGRATED_VIDEO_MERGE=true
 CWS_ENABLE_LEGACY_VIDEO_MERGE_FALLBACK=true
 ```
 
-## Test tối thiểu
+## Test tá»‘i thiá»ƒu
 
-- merge thành công
-- thiếu frame
-- sai thứ tự frame
-- thiếu công cụ merge
+- merge thÃ nh cÃ´ng
+- thiáº¿u frame
+- sai thá»© tá»± frame
+- thiáº¿u cÃ´ng cá»¥ merge
 - timeout
-- exit code lỗi
-- output rỗng
+- exit code lá»—i
+- output rá»—ng
 - fallback BAT
-- job không cần merge
+- job khÃ´ng cáº§n merge
 
 ---
 
-# 6. PHASE 3 — STATE MACHINE WORKER
+# 6. PHASE 3 â€” STATE MACHINE WORKER
 
-## Mục tiêu
+## Má»¥c tiÃªu
 
-Chuẩn hóa trạng thái Worker và tránh race condition.
+Chuáº©n hÃ³a tráº¡ng thÃ¡i Worker vÃ  trÃ¡nh race condition.
 
-## Nguyên tắc
+## NguyÃªn táº¯c
 
-Tách:
+TÃ¡ch:
 
-- `desired_state`: backend/scheduler yêu cầu
-- `observed_state`: Worker/Agent báo thực tế
+- `desired_state`: backend/scheduler yÃªu cáº§u
+- `observed_state`: Worker/Agent bÃ¡o thá»±c táº¿
 
-Không để hai bên tranh ghi một cột `status`.
+KhÃ´ng Ä‘á»ƒ hai bÃªn tranh ghi má»™t cá»™t `status`.
 
-## Trạng thái chính
+## Tráº¡ng thÃ¡i chÃ­nh
 
 ```text
 OFFLINE
@@ -272,7 +272,7 @@ QUARANTINED
 ERROR
 ```
 
-## Dữ liệu transition
+## Dá»¯ liá»‡u transition
 
 - worker_id
 - host_id
@@ -285,46 +285,46 @@ ERROR
 - reason
 - error_code
 
-## Luồng chuẩn
+## Luá»“ng chuáº©n
 
 ```text
 BOOTING
-→ HEALTH_CHECK
-→ IDLE_WAITING_JOB
-→ RESERVED
-→ PREPARING
-→ RENDERING
-→ MERGING nếu cần
-→ UPLOADING
-→ VERIFYING
-→ COOLDOWN
-→ IDLE_WAITING_JOB
+â†’ HEALTH_CHECK
+â†’ IDLE_WAITING_JOB
+â†’ RESERVED
+â†’ PREPARING
+â†’ RENDERING
+â†’ MERGING náº¿u cáº§n
+â†’ UPLOADING
+â†’ VERIFYING
+â†’ COOLDOWN
+â†’ IDLE_WAITING_JOB
 ```
 
 ---
 
-# 7. PHASE 4 — ACTIVE IDLE POWER MANAGEMENT
+# 7. PHASE 4 â€” ACTIVE IDLE POWER MANAGEMENT
 
-## Khi máy rảnh
+## Khi mÃ¡y ráº£nh
 
-- dừng Blender và tiến trình nặng
-- tắt màn hình một lần
-- tiếp tục heartbeat
-- tiếp tục nhận job
-- để Windows và GPU tự idle
-- không gọi tắt màn hình lặp lại trong mỗi vòng poll
+- dá»«ng Blender vÃ  tiáº¿n trÃ¬nh náº·ng
+- táº¯t mÃ n hÃ¬nh má»™t láº§n
+- tiáº¿p tá»¥c heartbeat
+- tiáº¿p tá»¥c nháº­n job
+- Ä‘á»ƒ Windows vÃ  GPU tá»± idle
+- khÃ´ng gá»i táº¯t mÃ n hÃ¬nh láº·p láº¡i trong má»—i vÃ²ng poll
 
-## Khi có job
+## Khi cÃ³ job
 
-- ngăn Windows sleep
-- không bắt buộc bật màn hình
-- giữ heartbeat xuyên suốt
-- không thay GPU clock
-- không thay GPU voltage
-- không thay GPU power limit
-- không cưỡng chế Ultimate Performance
+- ngÄƒn Windows sleep
+- khÃ´ng báº¯t buá»™c báº­t mÃ n hÃ¬nh
+- giá»¯ heartbeat xuyÃªn suá»‘t
+- khÃ´ng thay GPU clock
+- khÃ´ng thay GPU voltage
+- khÃ´ng thay GPU power limit
+- khÃ´ng cÆ°á»¡ng cháº¿ Ultimate Performance
 
-## Chưa làm
+## ChÆ°a lÃ m
 
 - Sleep
 - Hibernate
@@ -333,37 +333,37 @@ BOOTING
 - MQTT
 - EMQX
 - Redis
-- vô hiệu hóa Windows Update
+- vÃ´ hiá»‡u hÃ³a Windows Update
 
 ---
 
-# 8. PHASE 5 — ADMIN DASHBOARD CHO WORKER
+# 8. PHASE 5 â€” ADMIN DASHBOARD CHO WORKER
 
-## Dữ liệu máy
+## Dá»¯ liá»‡u mÃ¡y
 
 - worker ID
-- host/quán net
-- tên máy
-- khu vực
+- host/quÃ¡n net
+- tÃªn mÃ¡y
+- khu vá»±c
 - CPU
 - GPU
 - VRAM
 - RAM
-- disk trống
+- disk trá»‘ng
 - Agent version
 - Worker version
 - Blender version
 - observed state
 - desired state
 - health state
-- task hiện tại
-- heartbeat cuối
-- state transition cuối
-- task thành công/thất bại
+- task hiá»‡n táº¡i
+- heartbeat cuá»‘i
+- state transition cuá»‘i
+- task thÃ nh cÃ´ng/tháº¥t báº¡i
 - crash count
-- lý do DEGRADED/QUARANTINED
+- lÃ½ do DEGRADED/QUARANTINED
 
-## Trạng thái hiển thị
+## Tráº¡ng thÃ¡i hiá»ƒn thá»‹
 
 ```text
 ONLINE_AVAILABLE
@@ -386,20 +386,20 @@ QUARANTINED
 MAINTENANCE
 ```
 
-## Nguyên tắc cập nhật
+## NguyÃªn táº¯c cáº­p nháº­t
 
-- database là nguồn sự thật
-- realtime chỉ là tín hiệu
-- polling là fallback
-- heartbeat phải nhẹ
-- telemetry nặng gửi chậm hơn hoặc khi có thay đổi/lỗi
-- không tạo log DB cho từng heartbeat
+- database lÃ  nguá»“n sá»± tháº­t
+- realtime chá»‰ lÃ  tÃ­n hiá»‡u
+- polling lÃ  fallback
+- heartbeat pháº£i nháº¹
+- telemetry náº·ng gá»­i cháº­m hÆ¡n hoáº·c khi cÃ³ thay Ä‘á»•i/lá»—i
+- khÃ´ng táº¡o log DB cho tá»«ng heartbeat
 
 ---
 
-# 9. PHASE 6 — INCIDENT VÀ LỖI
+# 9. PHASE 6 â€” INCIDENT VÃ€ Lá»–I
 
-## Dữ liệu incident
+## Dá»¯ liá»‡u incident
 
 ```text
 event_id
@@ -419,16 +419,16 @@ resolved_at
 resolution
 ```
 
-## Lỗi tối thiểu
+## Lá»—i tá»‘i thiá»ƒu
 
 - Worker crash
-- mất heartbeat
+- máº¥t heartbeat
 - Blender crash
 - Blender treo
 - GPU driver reset
-- GPU quá nhiệt
-- CPU quá nhiệt
-- thiếu RAM
+- GPU quÃ¡ nhiá»‡t
+- CPU quÃ¡ nhiá»‡t
+- thiáº¿u RAM
 - disk full
 - download fail
 - upload fail
@@ -440,50 +440,50 @@ resolution
 - lease expired
 - duplicate Worker
 - auto-update fail
-- config thiếu
-- file khách hàng lỗi
-- thiếu renderer/plugin
+- config thiáº¿u
+- file khÃ¡ch hÃ ng lá»—i
+- thiáº¿u renderer/plugin
 
-## Admin dashboard cần
+## Admin dashboard cáº§n
 
-- lọc theo host
-- lọc theo Worker
-- lọc theo task
-- lọc theo severity
-- lọc theo thời gian
-- số lỗi chưa xử lý
-- lần xảy ra gần nhất
-- hành động retry/requeue/quarantine/drain
-- audit log hành động admin
+- lá»c theo host
+- lá»c theo Worker
+- lá»c theo task
+- lá»c theo severity
+- lá»c theo thá»i gian
+- sá»‘ lá»—i chÆ°a xá»­ lÃ½
+- láº§n xáº£y ra gáº§n nháº¥t
+- hÃ nh Ä‘á»™ng retry/requeue/quarantine/drain
+- audit log hÃ nh Ä‘á»™ng admin
 
 ---
 
-# 10. PHASE 7 — MẤT ĐIỆN VÀ TỰ ĐIỀU PHỐI
+# 10. PHASE 7 â€” Máº¤T ÄIá»†N VÃ€ Tá»° ÄIá»€U PHá»I
 
-## Luồng phát hiện
+## Luá»“ng phÃ¡t hiá»‡n
 
 ```text
 RENDERING
-→ mất heartbeat
-→ SUSPECTED_OFFLINE
-→ hết grace/lease
-→ OFFLINE_UNRESPONSIVE hoặc POWER_LOSS_SUSPECTED
-→ fencing attempt cũ
-→ requeue phần chưa hoàn thành
-→ chọn máy khác
+â†’ máº¥t heartbeat
+â†’ SUSPECTED_OFFLINE
+â†’ háº¿t grace/lease
+â†’ OFFLINE_UNRESPONSIVE hoáº·c POWER_LOSS_SUSPECTED
+â†’ fencing attempt cÅ©
+â†’ requeue pháº§n chÆ°a hoÃ n thÃ nh
+â†’ chá»n mÃ¡y khÃ¡c
 ```
 
-## Thứ tự ưu tiên máy thay thế
+## Thá»© tá»± Æ°u tiÃªn mÃ¡y thay tháº¿
 
 1. `IDLE_WAITING_JOB`
 2. `ONLINE_AVAILABLE`
-3. đúng GPU/RAM/VRAM/software/plugin
-4. đủ disk
-5. không DEGRADED/QUARANTINED
-6. cùng khu vực hoặc mạng phù hợp
-7. có thể resume từ checkpoint
+3. Ä‘Ãºng GPU/RAM/VRAM/software/plugin
+4. Ä‘á»§ disk
+5. khÃ´ng DEGRADED/QUARANTINED
+6. cÃ¹ng khu vá»±c hoáº·c máº¡ng phÃ¹ há»£p
+7. cÃ³ thá»ƒ resume tá»« checkpoint
 
-## Chống zombie/split-brain
+## Chá»‘ng zombie/split-brain
 
 ```text
 task_id
@@ -496,19 +496,19 @@ worker_id
 
 Khi requeue:
 
-- tăng generation
-- token cũ không được complete
-- output cũ bị từ chối hoặc cách ly
-- không tính tiền hai lần
-- chỉ dùng checkpoint đã xác minh trên storage
+- tÄƒng generation
+- token cÅ© khÃ´ng Ä‘Æ°á»£c complete
+- output cÅ© bá»‹ tá»« chá»‘i hoáº·c cÃ¡ch ly
+- khÃ´ng tÃ­nh tiá»n hai láº§n
+- chá»‰ dÃ¹ng checkpoint Ä‘Ã£ xÃ¡c minh trÃªn storage
 
-Không kết luận chắc chắn cúp điện ngay khi mất heartbeat; có thể là mất mạng.
+KhÃ´ng káº¿t luáº­n cháº¯c cháº¯n cÃºp Ä‘iá»‡n ngay khi máº¥t heartbeat; cÃ³ thá»ƒ lÃ  máº¥t máº¡ng.
 
 ---
 
-# 11. PHASE 8 — THỐNG KÊ THỜI GIAN THUÊ HOST
+# 11. PHASE 8 â€” THá»NG KÃŠ THá»œI GIAN THUÃŠ HOST
 
-## Mốc thời gian cần lưu
+## Má»‘c thá»i gian cáº§n lÆ°u
 
 ```text
 reservation_started_at
@@ -523,34 +523,34 @@ verification_completed_at
 billable_ended_at
 ```
 
-## Quy tắc 7 phút
+## Quy táº¯c 7 phÃºt
 
 ```text
 startup_grace_seconds = 420
 ```
 
-Bảy phút khởi động:
+Báº£y phÃºt khá»Ÿi Ä‘á»™ng:
 
-- được lưu để thống kê
-- không tính billable
-- không tính doanh thu host
-- không tính chi phí khách hàng
+- Ä‘Æ°á»£c lÆ°u Ä‘á»ƒ thá»‘ng kÃª
+- khÃ´ng tÃ­nh billable
+- khÃ´ng tÃ­nh doanh thu host
+- khÃ´ng tÃ­nh chi phÃ­ khÃ¡ch hÃ ng
 
-Nếu máy đã `IDLE_WAITING_JOB`, không tạo thêm 7 phút startup.
+Náº¿u mÃ¡y Ä‘Ã£ `IDLE_WAITING_JOB`, khÃ´ng táº¡o thÃªm 7 phÃºt startup.
 
-Nếu máy vừa khởi động cho job, loại trừ tối đa 420 giây đầu.
+Náº¿u mÃ¡y vá»«a khá»Ÿi Ä‘á»™ng cho job, loáº¡i trá»« tá»‘i Ä‘a 420 giÃ¢y Ä‘áº§u.
 
-Phần khởi động vượt quá 7 phút:
+Pháº§n khá»Ÿi Ä‘á»™ng vÆ°á»£t quÃ¡ 7 phÃºt:
 
-- chưa tự động tính tiền
-- đánh dấu `DECISION_REQUIRED` nếu roadmap chưa quy định
+- chÆ°a tá»± Ä‘á»™ng tÃ­nh tiá»n
+- Ä‘Ã¡nh dáº¥u `DECISION_REQUIRED` náº¿u roadmap chÆ°a quy Ä‘á»‹nh
 
 ## Dashboard host
 
-- máy
+- mÃ¡y
 - task/order
 - startup time
-- 7 phút miễn tính
+- 7 phÃºt miá»…n tÃ­nh
 - waiting time
 - render time
 - merge time
@@ -559,18 +559,18 @@ Phần khởi động vượt quá 7 phút:
 - billable time
 - non-billable time
 - interruption/requeue
-- đơn giá
-- doanh thu dự kiến
-- doanh thu cuối
-- trạng thái thanh toán
+- Ä‘Æ¡n giÃ¡
+- doanh thu dá»± kiáº¿n
+- doanh thu cuá»‘i
+- tráº¡ng thÃ¡i thanh toÃ¡n
 
-Backend tính thời gian và số tiền; Worker không được tự quyết định billing.
+Backend tÃ­nh thá»i gian vÃ  sá»‘ tiá»n; Worker khÃ´ng Ä‘Æ°á»£c tá»± quyáº¿t Ä‘á»‹nh billing.
 
 ---
 
-# 12. DATABASE DỰ KIẾN
+# 12. DATABASE Dá»° KIáº¾N
 
-Kiểm tra schema hiện tại trước khi tạo mới.
+Kiá»ƒm tra schema hiá»‡n táº¡i trÆ°á»›c khi táº¡o má»›i.
 
 ## `workers`
 
@@ -666,26 +666,26 @@ Kiểm tra schema hiện tại trước khi tạo mới.
 - final_amount
 - status
 
-## Yêu cầu migration
+## YÃªu cáº§u migration
 
 - backward-compatible
-- có index
-- không mất dữ liệu
-- có rollback
+- cÃ³ index
+- khÃ´ng máº¥t dá»¯ liá»‡u
+- cÃ³ rollback
 - timestamp server-side
-- Worker không ghi số tiền cuối cùng
+- Worker khÃ´ng ghi sá»‘ tiá»n cuá»‘i cÃ¹ng
 
 ---
 
 # 13. SECURITY
 
-- Không commit Supabase key, B2 key, token hoặc password.
-- Chuyển secret sang environment/config an toàn.
-- Tạo `.env.example` chỉ có placeholder.
-- Không log secret.
-- Ghi chú rotate secret từng xuất hiện trong Git.
-- Complete/fail/upload phải kiểm tra attempt, generation và fencing token.
-- Worker không có quyền quyết định thanh toán cuối cùng.
+- KhÃ´ng commit Supabase key, B2 key, token hoáº·c password.
+- Chuyá»ƒn secret sang environment/config an toÃ n.
+- Táº¡o `.env.example` chá»‰ cÃ³ placeholder.
+- KhÃ´ng log secret.
+- Ghi chÃº rotate secret tá»«ng xuáº¥t hiá»‡n trong Git.
+- Complete/fail/upload pháº£i kiá»ƒm tra attempt, generation vÃ  fencing token.
+- Worker khÃ´ng cÃ³ quyá»n quyáº¿t Ä‘á»‹nh thanh toÃ¡n cuá»‘i cÃ¹ng.
 
 ---
 
@@ -708,7 +708,7 @@ CWS_ENABLE_POWER_PLAN_SWITCH=false
 
 ---
 
-# 15. THỨ TỰ COMMIT ĐỀ XUẤT
+# 15. THá»¨ Tá»° COMMIT Äá»€ XUáº¤T
 
 1. `docs(worker): audit current worker architecture`
 2. `refactor(worker): isolate video merge lifecycle`
@@ -723,125 +723,125 @@ CWS_ENABLE_POWER_PLAN_SWITCH=false
 11. `security(worker): move runtime secrets to environment`
 12. `refactor(agent): add disabled process guardian skeleton`
 
-Sau mỗi commit:
+Sau má»—i commit:
 
-- chạy test liên quan
+- cháº¡y test liÃªn quan
 - syntax/import check
-- lint/type check nếu có
-- build phần bị ảnh hưởng
-- kiểm tra migration
-- ghi kết quả ngắn
+- lint/type check náº¿u cÃ³
+- build pháº§n bá»‹ áº£nh hÆ°á»Ÿng
+- kiá»ƒm tra migration
+- ghi káº¿t quáº£ ngáº¯n
 
-Chạy full test trước khi kết thúc.
+Cháº¡y full test trÆ°á»›c khi káº¿t thÃºc.
 
 ---
 
-# 16. TIÊU CHÍ HOÀN THÀNH
+# 16. TIÃŠU CHÃ HOÃ€N THÃ€NH
 
-- MVP hoàn tất trước Worker.
-- Đọc đầy đủ ba file Worker.
-- Phân biệt đúng launcher, supervisor và Worker logic.
-- Ghép video tích hợp và còn fallback.
-- Không double-spawn.
-- Heartbeat sống khi render/merge/upload.
-- Admin thấy trạng thái máy và sự cố.
-- Mất heartbeat được requeue an toàn.
-- Worker cũ không complete attempt mới.
-- Host thấy thời gian thuê.
-- 420 giây startup không tính billable.
-- Không tính trùng giữa attempt.
-- Không có secret thật trong diff.
+- MVP hoÃ n táº¥t trÆ°á»›c Worker.
+- Äá»c Ä‘áº§y Ä‘á»§ ba file Worker.
+- PhÃ¢n biá»‡t Ä‘Ãºng launcher, supervisor vÃ  Worker logic.
+- GhÃ©p video tÃ­ch há»£p vÃ  cÃ²n fallback.
+- KhÃ´ng double-spawn.
+- Heartbeat sá»‘ng khi render/merge/upload.
+- Admin tháº¥y tráº¡ng thÃ¡i mÃ¡y vÃ  sá»± cá»‘.
+- Máº¥t heartbeat Ä‘Æ°á»£c requeue an toÃ n.
+- Worker cÅ© khÃ´ng complete attempt má»›i.
+- Host tháº¥y thá»i gian thuÃª.
+- 420 giÃ¢y startup khÃ´ng tÃ­nh billable.
+- KhÃ´ng tÃ­nh trÃ¹ng giá»¯a attempt.
+- KhÃ´ng cÃ³ secret tháº­t trong diff.
 - Test pass.
 - Build pass.
-- Migration có rollback.
-- Có commit hash, branch và trạng thái push/PR.
+- Migration cÃ³ rollback.
+- CÃ³ commit hash, branch vÃ  tráº¡ng thÃ¡i push/PR.
 
 ---
 
-# 17. PROMPT TIẾT KIỆM TOKEN DÙNG CHO CLAUDE CODE
+# 17. PROMPT TIáº¾T KIá»†M TOKEN DÃ™NG CHO CLAUDE CODE
 
-> Luôn dùng prompt này khi giao nhiệm vụ từ roadmap. Không dán lại toàn bộ roadmap nếu Claude đã có file này trong repository.
+> LuÃ´n dÃ¹ng prompt nÃ y khi giao nhiá»‡m vá»¥ tá»« roadmap. KhÃ´ng dÃ¡n láº¡i toÃ n bá»™ roadmap náº¿u Claude Ä‘Ã£ cÃ³ file nÃ y trong repository.
 
 ```md
-Đọc `CWS_WORKER_ROADMAP.md` và thực hiện đúng phase được giao.
+Äá»c `CWS_WORKER_ROADMAP.md` vÃ  thá»±c hiá»‡n Ä‘Ãºng phase Ä‘Æ°á»£c giao.
 
-Quy tắc:
-- Báo cáo bằng tiếng Việt; code dùng tiếng Anh.
-- Không tạo repo/worktree/thư mục dự án mới.
-- Chỉ đọc file liên quan bằng search/grep, không đọc lại toàn repo.
-- Không in toàn bộ code dài trong phản hồi.
-- Ưu tiên tương thích với `cws_worker.bat`, `cws_worker_full.py` và `cws_auto_ghep_video.bat`.
-- Không tạo supervisor mới nếu `cws_worker.bat` đã restart Worker.
-- Không chuyển MQTT, Sleep/Hibernate, Wake-on-LAN, GPU power control hoặc viết lại Go/Rust.
-- Chia commit nhỏ, test sau mỗi commit.
-- Không đoán schema hoặc luồng; phải tìm code/RPC/migration liên quan.
-- Nếu phase phụ thuộc MVP chưa hoàn tất thì hoàn thành MVP trước.
-- Cuối nhiệm vụ chỉ báo:
-  1. việc đã làm
-  2. file/migration đã sửa
-  3. test/build và kết quả
-  4. rủi ro còn lại
-  5. việc chưa làm
+Quy táº¯c:
+- BÃ¡o cÃ¡o báº±ng tiáº¿ng Viá»‡t; code dÃ¹ng tiáº¿ng Anh.
+- KhÃ´ng táº¡o repo/worktree/thÆ° má»¥c dá»± Ã¡n má»›i.
+- Chá»‰ Ä‘á»c file liÃªn quan báº±ng search/grep, khÃ´ng Ä‘á»c láº¡i toÃ n repo.
+- KhÃ´ng in toÃ n bá»™ code dÃ i trong pháº£n há»“i.
+- Æ¯u tiÃªn tÆ°Æ¡ng thÃ­ch vá»›i `cws_worker.bat`, `cws_worker_full.py` vÃ  `cws_auto_ghep_video.bat`.
+- KhÃ´ng táº¡o supervisor má»›i náº¿u `cws_worker.bat` Ä‘Ã£ restart Worker.
+- KhÃ´ng chuyá»ƒn MQTT, Sleep/Hibernate, Wake-on-LAN, GPU power control hoáº·c viáº¿t láº¡i Go/Rust.
+- Chia commit nhá», test sau má»—i commit.
+- KhÃ´ng Ä‘oÃ¡n schema hoáº·c luá»“ng; pháº£i tÃ¬m code/RPC/migration liÃªn quan.
+- Náº¿u phase phá»¥ thuá»™c MVP chÆ°a hoÃ n táº¥t thÃ¬ hoÃ n thÃ nh MVP trÆ°á»›c.
+- Cuá»‘i nhiá»‡m vá»¥ chá»‰ bÃ¡o:
+  1. viá»‡c Ä‘Ã£ lÃ m
+  2. file/migration Ä‘Ã£ sá»­a
+  3. test/build vÃ  káº¿t quáº£
+  4. rá»§i ro cÃ²n láº¡i
+  5. viá»‡c chÆ°a lÃ m
   6. commit hash, branch, push/PR
 
-Nhiệm vụ hiện tại:
-[CHỈ GHI PHASE HOẶC CÔNG VIỆC CỤ THỂ Ở ĐÂY]
+Nhiá»‡m vá»¥ hiá»‡n táº¡i:
+[CHá»ˆ GHI PHASE HOáº¶C CÃ”NG VIá»†C Cá»¤ THá»‚ á»ž ÄÃ‚Y]
 ```
 
 ---
 
-# 18. CÁCH CHỌN MODEL ĐỂ TIẾT KIỆM CHI PHÍ
+# 18. CÃCH CHá»ŒN MODEL Äá»‚ TIáº¾T KIá»†M CHI PHÃ
 
-- Dùng model code tầm trung cho:
+- DÃ¹ng model code táº§m trung cho:
   - audit
   - search code
   - refactor module
   - UI dashboard
-  - migration đơn giản
+  - migration Ä‘Æ¡n giáº£n
   - test
   - documentation
-- Chỉ dùng model mạnh hơn khi gặp:
-  - race condition khó
+- Chá»‰ dÃ¹ng model máº¡nh hÆ¡n khi gáº·p:
+  - race condition khÃ³
   - split-brain
   - fencing token
-  - migration production phức tạp
-  - lỗi lặp lại sau hai lần sửa
-  - thay đổi ảnh hưởng nhiều module
+  - migration production phá»©c táº¡p
+  - lá»—i láº·p láº¡i sau hai láº§n sá»­a
+  - thay Ä‘á»•i áº£nh hÆ°á»Ÿng nhiá»u module
 
-Nên chia thành các phiên:
+NÃªn chia thÃ nh cÃ¡c phiÃªn:
 
 1. Audit Worker.
-2. Tích hợp video merge.
-3. State machine và database.
+2. TÃ­ch há»£p video merge.
+3. State machine vÃ  database.
 4. Dashboard admin.
-5. Requeue và fencing.
+5. Requeue vÃ  fencing.
 6. Host usage.
-7. Security và review cuối.
+7. Security vÃ  review cuá»‘i.
 
-Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
+KhÃ´ng giao toÃ n bá»™ roadmap trong má»™t phiÃªn náº¿u khÃ´ng cáº§n thiáº¿t.
 
 
 ---
 
-# Node Agent / ACTIVE_IDLE — 2026-08-05
+# Node Agent / ACTIVE_IDLE â€” 2026-08-05
 
-- `worker/node_agent.py` implements the first side-effect-free state machine: `ACTIVE_IDLE → PREPARING → WORKER_START → WORKER_RUNNING → RECOVERY/CLEANUP → ACTIVE_IDLE`.
+- `worker/node_agent.py` implements the first side-effect-free state machine: `ACTIVE_IDLE â†’ PREPARING â†’ WORKER_START â†’ WORKER_RUNNING â†’ RECOVERY/CLEANUP â†’ ACTIVE_IDLE`.
 - `worker/test_node_agent.py` verifies 6 offline contracts on Windows; evidence: `reports/worker/CWS_NODE_AGENT_STATE_MACHINE_2026-08-05.md`.
 - This is UNIT VERIFIED only. It does not claim real Backend lease/heartbeat, Blender, B2, Windows isolation, physical multi-node failover or power management.
 - ACTIVE_IDLE explicitly does not call Sleep/Hibernate/shutdown/logoff; the PC remains online. Production adapters must be injected and tested against the canonical Worker artifact before enabling them.
 
 
-# 19. Worker + Node Agent VIBE loop — 2026-08-05
+# 19. Worker + Node Agent VIBE loop â€” 2026-08-05
 
-- Canonical source trên main: `cws_worker_full.py` + `cws_worker.bat`; không dùng tên artifact cũ nếu không có ref tương ứng.
-- `worker/canonical_worker_launcher.py` validate manifest version, direct-child paths và SHA-256 rồi mới gọi `cws_worker.bat`; không thêm supervisor, pip bootstrap hoặc power API.
+- Canonical source trÃªn main: `cws_worker_full.py` + `cws_worker.bat`; khÃ´ng dÃ¹ng tÃªn artifact cÅ© náº¿u khÃ´ng cÃ³ ref tÆ°Æ¡ng á»©ng.
+- `worker/canonical_worker_launcher.py` validate manifest version, direct-child paths vÃ  SHA-256 rá»“i má»›i gá»i `cws_worker.bat`; khÃ´ng thÃªm supervisor, pip bootstrap hoáº·c power API.
 - Node Agent state machine + pinned launcher offline suite: **9/9 PASS**, py_compile PASS. Evidence: `reports/worker/CWS_WORKER_NODE_AGENT_LOOP_2026-08-05.md`.
 - Staging procedure: `reports/worker/CWS_WORKER_STAGING_PROCEDURE_1_18_0.md`.
-- Chưa gọi PASS: Blender/B2 runtime, real claim/heartbeat, Windows ACL/service identity/Defender/process isolation, timeout/crash/retry runtime và multi-node failover.
-- P0 tiếp theo: Owner chạy staging procedure trên Windows staging với B2 staging credential scoped và scene vô hại; sau đó mới xem xét rollout/failover.
+- ChÆ°a gá»i PASS: Blender/B2 runtime, real claim/heartbeat, Windows ACL/service identity/Defender/process isolation, timeout/crash/retry runtime vÃ  multi-node failover.
+- P0 tiáº¿p theo: Owner cháº¡y staging procedure trÃªn Windows staging vá»›i B2 staging credential scoped vÃ  scene vÃ´ háº¡i; sau Ä‘Ã³ má»›i xem xÃ©t rollout/failover.
 
 
-# 20. Node Agent → Supabase → Admin visibility — 2026-08-05
+# 20. Node Agent â†’ Supabase â†’ Admin visibility â€” 2026-08-05
 
 - `worker-fleet-state.ts` is the backend mapping boundary for PC state. Heartbeat freshness, not Worker process existence, determines ONLINE/OFFLINE.
 - Fresh heartbeat with Worker STOPPED/idle maps to ACTIVE_IDLE; stale heartbeat over 180 seconds maps to OFFLINE.
@@ -850,7 +850,7 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - Evidence: `reports/worker/CWS_NODE_AGENT_ADMIN_FLEET_VISIBILITY_2026-08-05.md`.
 
 
-# 20A. Node Agent lifecycle hardening — 2026-08-05
+# 20A. Node Agent lifecycle hardening â€” 2026-08-05
 
 - `worker/node_agent.py` now has explicit transition reasons, injected runtime policy, bounded non-blocking exponential retry backoff and retry reset after cleanup.
 - `worker/node_agent_runtime_policy.py` emits monitor-off/on boundary hooks once; it does not call power APIs or sleep the PC.
@@ -858,58 +858,58 @@ Không giao toàn bộ roadmap trong một phiên nếu không cần thiết.
 - Evidence: `reports/worker/CWS_NODE_AGENT_LIFECYCLE_HARDENING_2026-08-05.md`.
 - Runtime process supervision, Blender/B2 staging, real heartbeat/lease, Windows isolation, failover and production deployment remain UNVERIFIED/BLOCKED.
 
-# 20B. Windows staging verification — 2026-08-05
+# 20B. Windows staging verification â€” 2026-08-05
 
 - Python 3.12.7 and Blender 5.2.0 LTS safe CLI render with disable-autoexec: REAL RUNTIME VERIFIED.
 - Supabase connectivity only: REAL RUNTIME VERIFIED at HTTP reachability; authenticated staging heartbeat not attempted.
 - Canonical Worker 1.18.0 spawn: BLOCKED because current Windows checkout lacks cws_worker_full.py and manifest is not canonical.
 - B2 read-only: BLOCKED with HTTP 401; no write/delete.
-- Node Agent → heartbeat → Worker → B2 → cleanup remains BLOCKED/UNVERIFIED.
+- Node Agent â†’ heartbeat â†’ Worker â†’ B2 â†’ cleanup remains BLOCKED/UNVERIFIED.
 - Evidence: reports/worker/CWS_WINDOWS_STAGING_VERIFICATION_2026-08-05.md.
 
 
-# 20C. Generic Worker Engine correction — 2026-08-05
+# 20C. Generic Worker Engine correction â€” 2026-08-05
 
-- Legacy cws_worker_full.py đã được đọc để salvage knowledge; không restore/copy và không còn là kiến trúc đích.
-- Added worker/worker_engine.py và worker/test_worker_engine.py.
-- Job mới chỉ truyền JobSpec/TaskSpec động; không hard-code job/customer/frame/B2 object.
+- Legacy cws_worker_full.py Ä‘Ã£ Ä‘Æ°á»£c Ä‘á»c Ä‘á»ƒ salvage knowledge; khÃ´ng restore/copy vÃ  khÃ´ng cÃ²n lÃ  kiáº¿n trÃºc Ä‘Ã­ch.
+- Added worker/worker_engine.py vÃ  worker/test_worker_engine.py.
+- Job má»›i chá»‰ truyá»n JobSpec/TaskSpec Ä‘á»™ng; khÃ´ng hard-code job/customer/frame/B2 object.
 - Node Agent owns PC lifecycle/supervision; Backend owns assignment/lease/priority/retry/billing; Worker owns one execution attempt.
 - Engine test: 4/4 PASS; CODE/UNIT VERIFIED.
 - Legacy salvage matrix: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
 
 
-## P0 status update — 2026-08-05
+## P0 status update â€” 2026-08-05
 
 Output integrity is implemented in the generic Worker Engine. PNG outputs are structurally checked before checkpoint/upload; tests are 22/22 PASS. Full B2/production runtime verification remains blocked by staging integration credentials/endpoints.
 
 
-## P0 status update — timeout cleanup (2026-08-05)
+## P0 status update â€” timeout cleanup (2026-08-05)
 
 Blender subprocess timeout now cleans up the owned process tree on Windows and preserves retry classification. Compile + combined suite 22/22 PASS; live timed-out Blender verification remains unverified.
 
 
-## P0 status update — capability preflight (2026-08-05)
+## P0 status update â€” capability preflight (2026-08-05)
 
 Generic Worker preflight now enforces dynamic minimum VRAM/RAM requirements from JobSpec against the Node-provided capability profile. Tests: 24/24 PASS; physical capability discovery remains unverified.
 
 
-## Runtime integration status — 2026-08-05
+## Runtime integration status â€” 2026-08-05
 
-Windows safe staging has verified the local Node Agent → Generic Worker → Blender → validation → checkpoint → cleanup → ACTIVE_IDLE loop, including crash recovery and timeout cleanup. Supabase/B2 integration remains blocked by absent staging-safe credentials/endpoints. Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
+Windows safe staging has verified the local Node Agent â†’ Generic Worker â†’ Blender â†’ validation â†’ checkpoint â†’ cleanup â†’ ACTIVE_IDLE loop, including crash recovery and timeout cleanup. Supabase/B2 integration remains blocked by absent staging-safe credentials/endpoints. Evidence: `reports/worker/CWS_WORKER_WINDOWS_RUNTIME_INTEGRATION_2026-08-05.md`.
 
 
-## Staging E2E integration update — 2026-08-05
+## Staging E2E integration update â€” 2026-08-05
 
 Credential-gated Supabase/B2 adapters are prepared with no production fallback or destructive capability. Full E2E remains blocked by missing staging credentials and complete assignment JobSpec contract.
 
-## Staging blocker audit — 2026-08-05
+## Staging blocker audit â€” 2026-08-05
 
 Machine-safe env inspection found no staging values. Supabase connector exposes no separate staging project; the existing claim RPC contract is incomplete for a dynamic JobSpec. B2 staging endpoint/bucket/key are also absent. Owner inputs and exact assignment alternatives: `reports/worker/CWS_STAGING_BLOCKER_AUDIT_2026-08-05.md`.
 
-## FULL staging E2E — REAL RUNTIME VERIFIED — 2026-08-05
+## FULL staging E2E â€” REAL RUNTIME VERIFIED â€” 2026-08-05
 
-The isolated staging path is now verified end-to-end: assignment/fencing generation → Node Agent child Generic Worker → real Blender render → integrity/checkpoint → B2 staging HEAD+SHA-256 verification → Supabase completion → cleanup → `ACTIVE_IDLE`. Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
-## P0 follow-up — 2026-08-05
+The isolated staging path is now verified end-to-end: assignment/fencing generation â†’ Node Agent child Generic Worker â†’ real Blender render â†’ integrity/checkpoint â†’ B2 staging HEAD+SHA-256 verification â†’ Supabase completion â†’ cleanup â†’ `ACTIVE_IDLE`. Evidence: `reports/worker/CWS_STAGING_FULL_E2E_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
+## P0 follow-up â€” 2026-08-05
 
 - Multi-node/failover: **REAL RUNTIME VERIFIED** in staging, including stale takeover and generation fencing. Evidence: `reports/worker/CWS_MULTI_NODE_FAILOVER_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
 - Admin Fleet real runtime: **BLOCKED/UNVERIFIED** pending staging staff-role/AAL2 setup and deployed route verification.
@@ -917,3 +917,12 @@ The isolated staging path is now verified end-to-end: assignment/fencing generat
 - Production rollout readiness: **NO-GO**. Evidence/checklist: `reports/worker/CWS_PRODUCTION_ROLLOUT_READINESS_2026-08-05.md`.
 - Admin RBAC staging schema is applied and verified; real Admin UI remains **BLOCKED/UNVERIFIED** pending Owner Auth/MFA setup. Evidence: `reports/worker/CWS_ADMIN_FLEET_STAGING_AUTH_BLOCKER_2026-08-05.md`.
 - Isolation POC has partial Job Object runtime evidence, but filesystem/network boundary is **UNVERIFIED/BLOCKED**; production remains **NO-GO**.
+
+## P1 reliability follow-up â€” 2026-08-06
+
+- Node Agent retry backoff now supports bounded opt-in jitter with deterministic
+  tests; default timing is unchanged. Evidence:
+  `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
+- Synchronous remote I/O, production SCM/Job Object integration, isolation,
+  observability, rollback, and production authentication remain open gates.
+

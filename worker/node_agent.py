@@ -8,6 +8,7 @@ lightweight, not suspended.
 
 from dataclasses import dataclass
 from enum import Enum
+import random
 from typing import Callable, Optional, Any
 
 from node_agent_runtime_policy import RuntimePolicy
@@ -49,6 +50,8 @@ class NodeAgent:
         heartbeat_interval: float = 20.0,
         max_retries: int = 2,
         retry_backoff_seconds: float = 0.0,
+        retry_jitter_ratio: float = 0.0,
+        random_value: Callable[[], float] = random.random,
         runtime_policy: Optional[RuntimePolicy] = None,
     ):
         if heartbeat_interval <= 0:
@@ -57,6 +60,8 @@ class NodeAgent:
             raise ValueError("max_retries must be non-negative")
         if retry_backoff_seconds < 0:
             raise ValueError("retry_backoff_seconds must be non-negative")
+        if not 0 <= retry_jitter_ratio <= 1:
+            raise ValueError("retry_jitter_ratio must be between 0 and 1")
         self.poll_job = poll_job
         self.heartbeat = heartbeat
         self.prepare_job = prepare_job
@@ -67,6 +72,8 @@ class NodeAgent:
         self.heartbeat_interval = heartbeat_interval
         self.max_retries = max_retries
         self.retry_backoff_seconds = retry_backoff_seconds
+        self.retry_jitter_ratio = retry_jitter_ratio
+        self.random_value = random_value
         self.runtime_policy = runtime_policy or RuntimePolicy()
         self.state = NodeState.ACTIVE_IDLE
         self.runtime_policy.on_state(self.state)
@@ -123,7 +130,9 @@ class NodeAgent:
             if self.retry_count < self.max_retries and self.last_result.status == "retryable":
                 self.retry_count += 1
                 self.handle = None
-                self.retry_ready_at = self.now() + (self.retry_backoff_seconds * (2 ** (self.retry_count - 1)))
+                base_delay = self.retry_backoff_seconds * (2 ** (self.retry_count - 1))
+                jitter = base_delay * self.retry_jitter_ratio * self.random_value()
+                self.retry_ready_at = self.now() + base_delay + jitter
                 self._transition(NodeState.PREPARING, "retry")
             else:
                 self._transition(NodeState.CLEANUP, "retry_exhausted")
@@ -159,3 +168,4 @@ class NodeAgent:
             raise RuntimeError(f"state {self.state} requires a job")
 
 
+
