@@ -25,7 +25,7 @@ export const API_CONFIG = {
     REQUEST_CHANGES_JOB: (jobId) => `/jobs/${jobId}/request-changes`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
-    // Admin (Giai đoạn 7) — cần header x-admin-key, xem services/adminApi.js.
+    // Admin MVP — fleet status only; cần Bearer token staff AAL2.
     ADMIN_LIST_CUSTOMERS: '/customers',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',

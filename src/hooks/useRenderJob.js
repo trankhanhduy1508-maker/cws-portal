@@ -5,8 +5,9 @@ import {
 import { JOB_STATUS, STAGE_SEQUENCE } from '../constants/renderConstants';
 
 /**
- * Hook điều phối vòng đời render TỪ SAU KHI job đã được tạo (sau thanh
- * toán). Khác biệt quan trọng so với thiết kế trước: job KHÔNG chạy
+ * Hook điều phối vòng đời render từ lúc customer tạo job sau upload/profile.
+ * Render chạy trước thanh toán; payment chỉ được tạo sau preview approval.
+ * Khác biệt quan trọng so với thiết kế trước: job KHÔNG chạy
  * "trong" hook này — job chạy phía RenderService (mock hoặc Backend
  * thật), hook chỉ subscribe để nhận cập nhật. Nếu Component unmount
  * rồi mount lại (vd chuyển màn hình rồi quay lại), job vẫn tiếp tục

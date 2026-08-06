@@ -39,6 +39,24 @@ lý TOTP secret và không dùng thư viện TOTP bên thứ ba. Backend chỉ m
 data routes khi token hợp lệ, role đúng và claim `aal2`; pre-MFA status route
 chỉ xác nhận staff identity để hoàn tất onboarding, không trả dữ liệu Admin.
 
+## Founder product scope — 2026-08-06
+
+**[ACTIVE]** Admin MVP (`/#admin`) chỉ là Worker Fleet Status Dashboard. Chỉ
+hiển thị tổng số Worker, Online, Offline và `ACTIVE_IDLE` với nhãn
+"Đang chờ / Idle Saver". `ACTIVE_IDLE` là state đã có trong Node Agent/Worker
+contract: máy vẫn online, không render, giữ control channel/heartbeat và áp
+dụng policy idle an toàn; không tạo state mới và không thực hiện Sleep,
+Hibernate, shutdown hoặc thay đổi power policy ngoài contract. Admin không
+hiển thị customer jobs, render progress, preview, payment hay download.
+
+**[ACTIVE]** Customer portal (`/`) là flow render độc lập:
+submit/upload → job → render/progress → render hoàn tất → preview → customer
+approve → tính và hiển thị số tiền thanh toán runtime → payment → webhook
+verified/PAID → unlock/download output. Không tạo payment, không yêu cầu
+payment và không hiển thị số tiền cần thanh toán trước khi render hoàn tất.
+Backend `JobsService.approve()` là boundary tạo payment sau `REVIEW_READY`;
+`finalizeDelivery()` chỉ đóng gói/mở download sau `PAID`.
+
 **[SUPERSEDED — thay thế bởi quyết định MFA 2026-08-02 ở trên]** Bảo vệ
 Admin Portal chỉ bằng 1 shared secret tĩnh (`x-admin-key`) không gắn
 với tài khoản/MFA cụ thể nào — nhánh này đã bị GỠ KHỎI `RoleGuard` (vẫn

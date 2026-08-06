@@ -203,6 +203,16 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
   });
 
+  it('approve() không tạo payment lần hai khi job đã chờ thanh toán', async () => {
+    mockRepository.findById.mockResolvedValue(
+      baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-existing' }),
+    );
+
+    await expect(service.approve('job-1')).rejects.toThrow(BadRequestException);
+    expect(mockPricingService.computeFinalPriceVnd).not.toHaveBeenCalled();
+    expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
+  });
+
   it('approve() sinh payment với giá THẬT (PricingService), KHÔNG dùng estimate.costVnd', async () => {
     const order = baseOrder();
     mockRepository.findById.mockResolvedValue(order);

@@ -38,7 +38,7 @@ export default function RenderProfileScreen({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Button icon={ArrowRight} disabled={!selectedProfileId} onClick={onContinue}>
-          Tiếp tục thanh toán
+          Bắt đầu render
         </Button>
         <button
           onClick={onBack}

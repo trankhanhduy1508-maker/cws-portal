@@ -14,6 +14,7 @@
 - Blender optimizer: working-copy-only plan/apply harness **REAL RUNTIME VERIFIED** on harmless EEVEE plan; no speedup claimed. ArchViz profiles are **CODE/UNIT VERIFIED** only.
 - Dependency audit: clean-install backend reports 5 High / 0 Critical production vulnerabilities; safe override experiment was rejected and removed. Nest 11 requires a separate canary.
 - Decision: **PRODUCTION NO-GO**. Evidence: `reports/CWS_PRODUCTION_NO_GO_REMEDIATION_2026-08-05.md`.
+- Founder product scope 2026-08-06: `/#admin` is fleet-only (total/Online/Offline/ACTIVE_IDLE Idle Saver); `/` owns customer render → preview → payment → download. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
 
 - 2026-08-06 production audit: root and `/#admin` return HTTP 200, but live bundle `index-C1D453Oa.js` contains `signInWithPassword` and `cws_staff_token`; Google staff OAuth is not deployed. Backend `/staff/me` returns HTTP 401 without credentials. Customer MVP flow remains code/evidence-backed but full physical Worker → Preview → Payment → Download runtime is still not verified. Evidence: `reports/admin/CWS_ADMIN_GOOGLE_OAUTH_AAL2_2026-08-06.md`.
 
@@ -21,6 +22,7 @@
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.
 - 2026-08-06: Job Object ownership is **CODE/UNIT VERIFIED** in `BlenderCliRenderer` behind an explicit staging opt-in; live Windows renderer integration and complete sandbox boundary remain **UNVERIFIED**. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
 - 2026-08-06: Admin `GET /jobs` scope bug fixed: AAL2 staff receives all jobs, customers remain tenant-scoped, anonymous access is denied. Evidence: `reports/security/CWS_ADMIN_JOB_LIST_SCOPE_FIX_2026-08-06.md`.
+- 2026-08-06: Admin UI narrowed to fleet-only and pre-render customer UI no longer shows price or payment CTA; backend payment boundary remains `REVIEW_READY → approve → AWAITING_PAYMENT → PAID`. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
 
 ## Total review — 2026-08-05
 

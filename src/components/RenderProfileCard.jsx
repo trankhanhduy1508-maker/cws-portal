@@ -1,4 +1,4 @@
-import { formatEtaDuration, formatPriceVnd } from '../utils/timeUtils';
+import { formatEtaDuration } from '../utils/timeUtils';
 import './RenderProfileCard.css';
 
 export default function RenderProfileCard({ profile, estimate, isSelected, isLoading, onSelect }) {
@@ -19,12 +19,6 @@ export default function RenderProfileCard({ profile, estimate, isSelected, isLoa
           <span className="profile-card__stat-label">Thời gian</span>
           {isLoading ? <span className="profile-card__skeleton" /> : (
             <span className="profile-card__stat-value">{formatEtaDuration(estimate?.etaSeconds)}</span>
-          )}
-        </div>
-        <div className="profile-card__stat">
-          <span className="profile-card__stat-label">Giá</span>
-          {isLoading ? <span className="profile-card__skeleton" /> : (
-            <span className="profile-card__stat-value">{formatPriceVnd(estimate?.costVnd)}</span>
           )}
         </div>
         {estimate?.queueSeconds > 0 && (

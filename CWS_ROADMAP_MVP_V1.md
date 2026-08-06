@@ -123,13 +123,11 @@ Audit lại `AdminScreen.jsx` (689 dòng) 2026-08-02: nội dung dashboard đã
 đầy đủ, không cần viết lại — chỉ thiếu lớp xác thực đúng chuẩn (đã bổ
 sung, xem dưới).
 
--   Danh sách khách hàng — DONE (`adminListCustomers`, bảng + tìm kiếm theo tên/email/id)
--   Danh sách Job — DONE (`adminListJobs`, bảng `visibleJobs` với status/tiến độ)
--   Tiến độ — DONE (cột status trong bảng Job, cùng dữ liệu `stageProgress` đã verify ở Giai đoạn 3)
--   Thanh toán — DONE (`GET /payments/devices`, `GET /payments/by-code/:paymentCode`, tra cứu Payment Code trên UI)
--   Preview — DONE (`handleOpenPreview`/`adminGetJobPreview`, modal hiển thị ảnh watermark)
--   File cuối — DONE (link `adminGetDownloadUrl` trong bảng Job, qua route đã audit ở Giai đoạn 6)
--   Tìm kiếm theo Customer / Storage Code / Payment Code — DONE (3 ô tìm kiếm riêng, đều hoạt động qua route thật)
+-   Tổng số Worker — IN_PROGRESS (`GET /fleet/workers`, dữ liệu thật; UI fleet-only đang được reconcile theo Founder product scope)
+-   Worker Online — IN_PROGRESS (backend derives từ heartbeat freshness ≤180s)
+-   Worker Offline — IN_PROGRESS (backend derives từ heartbeat stale >180s)
+-   Đang chờ / Idle Saver — IN_PROGRESS (`nodeState === ACTIVE_IDLE`, state có trong Node Agent contract)
+-   Customer jobs/render/payment UI trong `/#admin` — SUPERSEDED bởi quyết định Founder 2026-08-06; xem customer flow ở `/`
 
 **Authentication + Authorization + MFA (2026-08-06, CODE/UNIT VERIFIED; production runtime pending, xem `reports/admin/CWS_ADMIN_GOOGLE_OAUTH_AAL2_2026-08-06.md`):**
 - Bỏ hoàn toàn nhánh `x-admin-key` làm bypass trong `RoleGuard` (route Admin Portal chính) — theo đúng yêu cầu "Không tạo bypass".
@@ -175,7 +173,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Supabase Google authorize initiation: HTTP 302 to Google with production callback/redirect target.
 - Render `/staff/mfa-status`: HTTP 404 while `/health`: HTTP 200. Backend deployment remains stale/miswired; Admin Google → staff_roles → TOTP → aal2 → Admin API is not runtime verified.
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
-- Admin job-list authorization scope is CODE/UNIT VERIFIED: AAL2 staff sees all jobs, customer history remains scoped, anonymous access is denied. Production runtime awaits the Render deployment repair.
+- Admin Fleet UI scope is CODE/UNIT VERIFIED: chỉ gọi `GET /fleet/workers` và map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
 
 # Definition of Done
 
