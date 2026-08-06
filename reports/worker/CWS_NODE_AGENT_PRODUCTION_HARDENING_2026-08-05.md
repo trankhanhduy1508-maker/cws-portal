@@ -1,4 +1,4 @@
-# CWS Node Agent Production Hardening â€” 2026-08-05
+# CWS Node Agent Production Hardening — 2026-08-05
 
 ## Follow-up runtime evidence
 
@@ -18,7 +18,7 @@ The state machine and staging runtime remain **REAL RUNTIME VERIFIED** by the ex
 
 ## REAL RUNTIME VERIFIED
 
-- Node Agent â†’ Generic Worker â†’ Blender â†’ Supabase/B2 staging completion.
+- Node Agent → Generic Worker → Blender → Supabase/B2 staging completion.
 - Two-node assignment/fencing/takeover and cleanup evidence already exists in `CWS_MULTI_NODE_FAILOVER_REAL_RUNTIME_VERIFIED_2026-08-05.md`.
 
 ## BLOCKED / UNVERIFIED
