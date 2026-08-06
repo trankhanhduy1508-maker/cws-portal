@@ -1,5 +1,16 @@
 # Current Status
 
+## Failover automation preparation — 2026-08-06
+
+- Preflight, lock/timeout guard, `NOT VALID` compatibility check, rollback
+  runbook, DPAPI+ACL provisioning wrapper and offline failover simulation are
+  prepared.
+- Production Worker self-registration was removed; constant-time credential
+  hash verification is in place.
+- CODE/UNIT VERIFIED; migration application, credentials, physical two-Worker
+  smoke and production runtime remain unverified.
+- Evidence: `reports/worker/CWS_FAILOVER_AUTOMATION_PREPARATION_2026-08-06.md`.
+
 ## Worker identity and automatic failover preparation — 2026-08-06
 
 - Added additive migration `worker_migrations/021_production_failover_reassign_contract.sql`:

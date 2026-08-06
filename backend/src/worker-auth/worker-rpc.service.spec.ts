@@ -26,6 +26,20 @@ describe('WorkerRpcService', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it('does not expose self-registration through the production Worker gateway', async () => {
+    const rpc = jest.fn();
+    const service = new WorkerRpcService({
+      getClient: () => ({ rpc }),
+    } as never);
+    await expect(
+      service.call('register_worker', 'worker-a', {
+        p_fleet_id: 1,
+        p_vram_mb: 999999,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('rejects malformed task/generation payloads', async () => {
     const service = new WorkerRpcService({
       getClient: () => ({ rpc: jest.fn() }),

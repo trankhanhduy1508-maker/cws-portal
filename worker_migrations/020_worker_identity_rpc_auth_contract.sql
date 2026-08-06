@@ -1,6 +1,9 @@
 -- Production Worker identity/authentication contract.
 -- Founder provisions one random credential per worker out of band. Only its
 -- SHA-256 hash is stored here; the bearer secret never enters Supabase.
+-- Fail closed if a busy production table cannot acquire a short DDL lock.
+set lock_timeout = '5s';
+set statement_timeout = '30s';
 create table if not exists public.worker_identities (
   worker_id text primary key references public.workers(worker_id) on delete cascade,
   credential_hash text not null check (credential_hash ~ '^[0-9a-f]{64}$'),

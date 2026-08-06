@@ -29,7 +29,6 @@ key versions.
 The new `/worker/rpc/:operation` backend gateway is protected by
 `WorkerAuthGuard` and accepts only:
 
-- `register_worker`
 - `worker_ping`
 - `claim_next_task`
 - `report_heartbeat`
@@ -39,8 +38,10 @@ The new `/worker/rpc/:operation` backend gateway is protected by
 - `report_worker_state_transition`
 
 The gateway overwrites any caller-supplied `p_worker_id` with the authenticated
-identity and rejects unknown operation names or malformed task/generation
-arguments. Existing legacy/staging Supabase publishable RPC access remains a
+identity and rejects self-registration, unknown operation names or malformed
+task/generation arguments. Worker rows/fleet/capabilities are provisioned out
+of band; a Worker cannot self-report elevated capability through production
+RPC. Existing legacy/staging Supabase publishable RPC access remains a
 staging-only path and must not be enabled for production.
 
 ## Threat decisions

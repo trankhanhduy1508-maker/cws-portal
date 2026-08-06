@@ -1,5 +1,16 @@
 # Official Decisions
 
+## Failover preflight and Worker provisioning — 2026-08-06
+
+**[ACTIVE]** Migration 020/021 is applied only after the read-only preflight.
+DDL fails closed on a busy table (`lock_timeout=5s`); the retry constraint is
+additive `NOT VALID` and existing rows are not silently rewritten. Worker
+identity/audit rows are retained on rollback; revoke is preferred to deletion.
+
+**[ACTIVE]** Production Worker fleet membership and capability are provisioned
+out-of-band. `register_worker` is not exposed through the authenticated Worker
+gateway. Rotation replaces the hash; revocation marks the identity revoked.
+
 ## Worker failover/reassign contract — 2026-08-06
 
 **[ACTIVE — implementation prepared; production apply requires approval]**

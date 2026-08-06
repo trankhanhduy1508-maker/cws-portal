@@ -8,7 +8,6 @@ import { SupabaseService } from '../supabase/supabase.service';
 type WorkerRpcBody = Record<string, unknown>;
 
 const RPC_NAMES = new Set([
-  'register_worker',
   'worker_ping',
   'claim_next_task',
   'claim_next_resilient_task',
@@ -61,17 +60,6 @@ export class WorkerRpcService {
           body.p_worker_vram_mb,
           'p_worker_vram_mb',
         ),
-      };
-    }
-    if (operation === 'register_worker') {
-      return {
-        p_worker_id: workerId,
-        p_fleet_id: this.integer(body.p_fleet_id, 'p_fleet_id'),
-        p_gpu_name:
-          typeof body.p_gpu_name === 'string'
-            ? body.p_gpu_name.slice(0, 200)
-            : null,
-        p_vram_mb: this.integer(body.p_vram_mb, 'p_vram_mb'),
       };
     }
     if (

@@ -1,5 +1,14 @@
 # CWS WORKER ROADMAP
 
+## Failover automation preparation — 2026-08-06
+
+- Preflight: `worker_migrations/020_021_preflight_check.sql` (read-only).
+- Rollback: `worker_migrations/020_021_rollback_runbook.md`.
+- Provisioning: DPAPI helper plus explicit Windows least-privilege ACL wrapper.
+- Offline simulator covers stale heartbeat, crash/reconnect, retry budget,
+  fencing, duplicate completion, unhealthy replacement, no-capable-Worker and
+  Idle Saver recovery. Evidence is code/unit only until physical staging.
+
 ## Worker identity and bounded failover — 2026-08-06
 
 - Identity default is per-Worker DPAPI plus backend hash/HMAC/nonce

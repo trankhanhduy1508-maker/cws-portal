@@ -4,15 +4,25 @@
 -- The existing tasks.generation remains the fencing token. A stale attempt
 -- can be requeued, but it can never complete or update progress afterwards.
 
+-- Fail closed rather than waiting behind a long-running production query.
+set lock_timeout = '5s';
+set statement_timeout = '30s';
+
 alter table public.jobs
   add column if not exists max_retry_attempts integer not null default 3;
 
-alter table public.jobs
-  drop constraint if exists jobs_max_retry_attempts_check;
-
-alter table public.jobs
-  add constraint jobs_max_retry_attempts_check
-  check (max_retry_attempts between 1 and 10);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint c
+    where c.conrelid = 'public.jobs'::regclass
+      and c.conname = 'jobs_max_retry_attempts_check'
+  ) then
+    alter table public.jobs
+      add constraint jobs_max_retry_attempts_check
+      check (max_retry_attempts between 1 and 10) not valid;
+  end if;
+end $$;
 
 create index if not exists idx_tasks_failover_queue
   on public.tasks (status, retry_count, id)
@@ -185,6 +195,6 @@ comment on function public.requeue_stale_tasks() is
 
 -- Rollback (manual, only after reviewing live dependencies):
 -- drop function if exists public.claim_next_resilient_task(text, integer);
--- restore the previous report_heartbeat/requeue_stale_tasks definitions;
+-- rerun the prior canonical definitions from migrations 000/005/006;
 -- alter table public.jobs drop constraint if exists jobs_max_retry_attempts_check;
 -- alter table public.jobs drop column if exists max_retry_attempts;

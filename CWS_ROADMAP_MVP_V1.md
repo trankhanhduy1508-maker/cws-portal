@@ -1,5 +1,15 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Worker failover readiness — 2026-08-06
+
+- **IN_PROGRESS**: production identity/failover implementation and offline
+  rehearsal are complete at code/unit level.
+- **NEEDS_VERIFICATION**: apply migrations 020/021 in isolated staging,
+  provision two physical Workers, run authenticated heartbeat/claim/reassign/
+  revoke/expiry/rotation smoke, then verify production rollout.
+- Payment remains downstream of final render/preview; failover recovery must
+  not create or expose payment before `REVIEW_READY`.
+
 # Computer Workspace (CWS)
 
 ## MVP Roadmap V1
