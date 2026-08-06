@@ -1,5 +1,19 @@
 # CWS WORKER ROADMAP
 
+## Worker identity and bounded failover — 2026-08-06
+
+- Identity default is per-Worker DPAPI plus backend hash/HMAC/nonce
+  verification; no Worker id credential and no shared fleet secret.
+- Migration `021_production_failover_reassign_contract.sql` is prepared but
+  not applied to production. It adds canonical resilient claim and bounded
+  stale-lease reassign with `tasks.generation` fencing and `task_attempts`
+  history.
+- Staging provisioning/smoke procedure:
+  `reports/worker/CWS_WORKER_PROVISIONING_FAILOVER_2026-08-06.md`.
+- Production enablement remains gated on Founder approval, migration,
+  per-Worker credential provisioning, Windows service/ACL setup and real
+  staging/runtime verification.
+
 ## Remediation continuation — 2026-08-05
 
 - P0 security: explicit CORS and staging RPC privilege hardening are verified; production Worker node authentication, secret rotation and Nest dependency canary remain gates.

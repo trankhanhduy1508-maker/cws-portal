@@ -1,5 +1,17 @@
 # Current Status
 
+## Worker identity and automatic failover preparation — 2026-08-06
+
+- Added additive migration `worker_migrations/021_production_failover_reassign_contract.sql`:
+  healthy/capability-aware claim, attempt creation, generation fencing,
+  stale-heartbeat failover, failed-Worker avoidance and bounded retry
+  (`jobs.max_retry_attempts`, default 3, maximum 10).
+- Added offline DPAPI provisioning and staging identity smoke tooling. Backend
+  and provisioning tests pass; migration application, real credentials,
+  Windows ACL/DPAPI, physical Worker and production RPC runtime remain
+  unverified. Production remains NO-GO.
+- Evidence: `reports/worker/CWS_WORKER_PROVISIONING_FAILOVER_2026-08-06.md`.
+
 ## Production NO-GO remediation continuation — 2026-08-05
 
 - CORS: **REAL RUNTIME VERIFIED** after Founder set `CORS_ORIGINS=https://cws-portal.vercel.app`; `/health` 200 and production preflight 204 with exact allow-origin, no credential grant. Evidence: `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.

@@ -1,5 +1,20 @@
 # Official Decisions
 
+## Worker failover/reassign contract — 2026-08-06
+
+**[ACTIVE — implementation prepared; production apply requires approval]**
+Automatic recovery uses the existing pull scheduler and `tasks.generation` as
+the fencing token. A Worker is eligible only when its presence is fresh, its
+health/desired state permits work, and its capability matches the task. A
+stale active lease is superseded and requeued to another eligible Worker;
+`failed_by` prevents immediate reassignment to the failed Worker. Each Job
+has bounded `max_retry_attempts` (default 3, bounded 1–10); exhaustion becomes
+an explicit task failure. Old attempts cannot heartbeat, complete or finalize
+after generation changes. Partial frame checkpointing remains
+renderer/storage-dependent; the MVP restarts an unresumable task rather than
+claiming false resume. Evidence:
+`reports/worker/CWS_WORKER_PROVISIONING_FAILOVER_2026-08-06.md`.
+
 ## Remediation decisions — 2026-08-05
 
 **[ACTIVE]** Production CORS is an explicit canonical-origin allowlist with `credentials: false`; wildcard origins are rejected. Staging/local origins are tested only through non-production configuration.
