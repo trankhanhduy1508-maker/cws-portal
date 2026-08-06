@@ -196,7 +196,7 @@ export class JobsService {
    * job của người khác (IDOR). Job KHÔNG có chủ (tạo lúc chưa đăng nhập,
    * customerId=null) vẫn mở cho bất kỳ ai biết id — giữ đúng hành vi cũ
    * cho luồng khách vãng lai (chưa ép đăng nhập được, xem jwt-auth.guard.ts).
-   * `isAdmin=true` (x-admin-key hợp lệ, xem jobs.controller.ts) bỏ qua
+   * `isAdmin=true` (chỉ Bearer + AAL2 đã được xác thực ở controller) bỏ qua
    * kiểm tra — Admin Dashboard cần xem/thao tác job của MỌI khách.
    */
   private assertOwnership(

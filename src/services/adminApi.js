@@ -43,65 +43,65 @@ async function adminPost(path, staffToken, body) {
 }
 
 /** CRM summary server-side từ customer_profiles/render_orders/payments. */
-export function adminListCustomers(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, adminKey);
+export function adminListCustomers(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, staffToken);
 }
 
 /** Danh sách toàn bộ job của mọi khách hàng. */
-export function adminListJobs(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_JOBS, adminKey);
+export function adminListJobs(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_JOBS, staffToken);
 }
 
 /** Trạng thái Worker Fleet (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
  * "Worker") — chỉ đọc, không can thiệp. */
-export function adminListWorkers(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, adminKey);
+export function adminListWorkers(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_WORKERS, staffToken);
 }
 
 /** Sự cố Worker Fleet (Phase 6 CWS_WORKER_ROADMAP.md) — chỉ đọc. Hành
  * động retry/requeue/quarantine/drain xem 4 hàm `adminRetryTask`/
  * `adminRequeueTask`/`adminSetWorkerQuarantine`/`adminSetWorkerDrain` bên dưới. */
-export function adminListIncidents(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, adminKey);
+export function adminListIncidents(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_INCIDENTS, staffToken);
 }
 
 /** Đưa 1 task đang status=failed (permanent) về lại queued để thử lại. */
-export function adminRetryTask(taskId, adminKey) {
-  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_RETRY_TASK(taskId), adminKey);
+export function adminRetryTask(taskId, staffToken) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_RETRY_TASK(taskId), staffToken);
 }
 
 /** Ép 1 task đang active về queued ngay (không đợi requeue_stale_tasks() tự động sau 240s). */
-export function adminRequeueTask(taskId, adminKey) {
-  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_REQUEUE_TASK(taskId), adminKey);
+export function adminRequeueTask(taskId, staffToken) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_REQUEUE_TASK(taskId), staffToken);
 }
 
 /** Bật/tắt quarantine 1 worker — worker bị quarantine sẽ KHÔNG claim được task mới (thực thi thật qua claim_task(), không chỉ là nhãn). */
-export function adminSetWorkerQuarantine(workerId, quarantined, reason, adminKey) {
-  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_QUARANTINE_WORKER(workerId), adminKey, { quarantined, reason });
+export function adminSetWorkerQuarantine(workerId, quarantined, reason, staffToken) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_QUARANTINE_WORKER(workerId), staffToken, { quarantined, reason });
 }
 
 /** Bật/tắt drain 1 worker — worker đang drain sẽ hoàn tất task hiện tại nhưng KHÔNG claim task mới. */
-export function adminSetWorkerDrain(workerId, draining, reason, adminKey) {
-  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_DRAIN_WORKER(workerId), adminKey, { draining, reason });
+export function adminSetWorkerDrain(workerId, draining, reason, staffToken) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_DRAIN_WORKER(workerId), staffToken, { draining, reason });
 }
 
 /** Xác nhận final_amount cho 1 phiên host_usage_sessions (Phase 8) — hành
  * động DUY NHẤT ghi số tiền cuối cùng, Worker/hệ thống tự động không tự quyết định. */
-export function adminConfirmHostUsageFinalAmount(sessionId, finalAmount, adminKey) {
-  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_CONFIRM_FINAL_AMOUNT(sessionId), adminKey, { finalAmount });
+export function adminConfirmHostUsageFinalAmount(sessionId, finalAmount, staffToken) {
+  return adminPost(API_CONFIG.ENDPOINTS.ADMIN_CONFIRM_FINAL_AMOUNT(sessionId), staffToken, { finalAmount });
 }
 
 /** Thống kê thời gian/tiền thuê host (Phase 8 CWS_WORKER_ROADMAP.md) —
  * chỉ đọc, tính bởi RPC compute_host_usage_sessions() (cron), không phải
  * Backend/Frontend tự tính. */
-export function adminListHostUsageSessions(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_HOST_USAGE, adminKey);
+export function adminListHostUsageSessions(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_HOST_USAGE, staffToken);
 }
 
 /** Danh sách thiết bị Android gửi payment notification (MBBank Notification
  * Listener MVP) — chỉ đọc, xem payment-devices.repository.ts. */
-export function adminListPaymentDevices(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_DEVICES, adminKey);
+export function adminListPaymentDevices(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_DEVICES, staffToken);
 }
 
 /** Payment/refund safety net (2026-08-03, DECISIONS.md "Payment
@@ -109,12 +109,12 @@ export function adminListPaymentDevices(adminKey) {
  * khỏi bảng payments thật, webhook kẹt 'processing', đã thanh toán thật
  * nhưng chưa nhận file) — chỉ đọc, xem
  * worker_migrations/015_payment_reconciliation_view.sql. */
-export function adminListPaymentAnomalies(adminKey) {
-  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_ANOMALIES, adminKey);
+export function adminListPaymentAnomalies(staffToken) {
+  return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_PAYMENT_ANOMALIES, staffToken);
 }
 
 /** Ảnh preview của 1 job (CWS_MVP_WORKFLOW_FINAL.md, mục Admin —
- * "Preview") — cần x-admin-key nếu job đã có chủ (khách đăng nhập),
+ * "Preview") — cần Bearer staff token + AAL2 nếu job đã có chủ (khách đăng nhập),
  * xem JobsService.assertOwnership() trong Backend (trước đây route này
  * mở công khai theo jobId, không kiểm tra chủ sở hữu — đã sửa lỗ hổng
  * IDOR, xem docs/MVP_GAP_REPORT.md). */
@@ -147,9 +147,7 @@ export async function adminGetJobLogs(jobId, staffToken) {
 
 /** URL tải file kết quả cho link `<a href>` trong bảng Job — dùng thẳng
  * làm href (không phải fetch()) nên phải đính token qua query string
- * `?staffToken=` thay vì header Authorization (điều hướng trình duyệt
- * thường không set được custom header, xem staff-auth.util.ts —
- * Backend đọc cả header lẫn query cho đúng use-case này). */
+ * header Authorization. Hàm này dùng fetch để gửi header an toàn. */
 export async function adminDownloadJob(jobId, staffToken) {
   if (!IS_BACKEND_CONFIGURED) throw new Error('Chưa cấu hình Backend thật.');
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}`, {

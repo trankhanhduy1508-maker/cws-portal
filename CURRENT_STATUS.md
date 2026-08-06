@@ -4,6 +4,11 @@
 
 - CORS: **REAL RUNTIME VERIFIED** after Founder set `CORS_ORIGINS=https://cws-portal.vercel.app`; `/health` 200 and production preflight 204 with exact allow-origin, no credential grant. Evidence: `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
 - CORS request-origin callback: **CODE/UNIT + PRODUCTION VERIFIED** for canonical allow; negative-origin matrix remains code/unit verified.
+- 2026-08-06 Admin job authorization hardening: removed the remaining
+  `JobsController` shared-key ownership path. Cross-customer Admin job access
+  now requires server-verified Supabase Bearer + `staff_roles` + `aal2`;
+  legacy `x-admin-key`/`?adminKey=` regression is denied. No production
+  credential or database mutation was performed.
 - Secret rotation readiness: **CODE/UNIT VERIFIED**; legacy helper fallback removed and rotation order documented without values. Actual production rotation remains **BLOCKED** on Owner action.
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
 - Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.

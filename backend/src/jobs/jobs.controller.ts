@@ -17,29 +17,18 @@ import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
-import { isValidAdminKey } from '../common/guards/admin-key.guard';
 import { RoleGuard } from '../common/guards/role.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
-import { ConfigService } from '@nestjs/config';
-import { AppConfig } from '../config/configuration';
 
 @Controller('jobs')
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
-
-  /** x-admin-key HOẶC Bearer token Admin thật đã hoàn tất MFA hợp lệ ->
-   * bỏ qua kiểm tra chủ sở hữu job (Admin Dashboard cần xem/thao tác job
-   * của MỌI khách, xem JobsService.assertOwnership()). Giữ x-admin-key
-   * cho khả năng tương thích ngược (route này đã chấp nhận key từ
-   * trước khi có yêu cầu MFA, không phải bypass MỚI phát sinh — xem
-   * staff-auth.util.ts). */
+  /** Chỉ Bearer token Admin thật đã hoàn tất MFA hợp lệ mới bỏ qua kiểm tra
+   * chủ sở hữu job. Shared x-admin-key legacy không còn được chấp nhận. */
   private async isAdminRequest(req: Request): Promise<boolean> {
-    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    if (isValidAdminKey(req, adminApiKey)) return true;
     return isAuthenticatedMfaAdmin(req, this.supabaseService);
   }
 
@@ -58,9 +47,8 @@ export class JobsController {
     return this.jobsService.estimate(dto);
   }
 
-  /** Khách đã đăng nhập: chỉ thấy job của mình. Khách CHƯA đăng nhập:
-   * phải có x-admin-key mới xem được TOÀN BỘ job của mọi khách — trước
-   * đây route này công khai hoàn toàn, ai gọi cũng thấy hết. */
+  /** Khách đã đăng nhập chỉ thấy job của mình; Admin/Host dùng Bearer + AAL2.
+   * Anonymous không được liệt kê toàn bộ job. */
   @Get()
   async listAll(@Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -124,8 +112,8 @@ export class JobsController {
     return { ok: true };
   }
 
-  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt (hoặc
-   * Admin Dashboard xem qua x-admin-key, xem adminApi.js). */
+  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt; Admin
+   * Dashboard đọc qua Bearer + AAL2. */
   @Get(':id/preview')
   async getPreview(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -194,7 +182,7 @@ export class JobsController {
     res.redirect(302, url);
   }
 
-  /** Admin xem log Worker (báo lỗi render) — cần x-admin-key nếu job có chủ. */
+  /** Admin xem log Worker (báo lỗi render) qua Bearer + AAL2. */
   @Get(':id/logs')
   async getLogs(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);

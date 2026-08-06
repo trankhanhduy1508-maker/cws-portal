@@ -5,20 +5,12 @@ import { getAuthenticatorAssuranceLevel } from './jwt-claims.util';
 /**
  * Xác thực "đây có phải 1 tài khoản Admin THẬT đã hoàn tất MFA hay
  * không" — dùng CHUNG cho `RoleGuard` (route Admin Portal chính) VÀ
- * `JobsController#isAdminRequest()` (3 route legacy: preview/logs/
- * download — trước đây CHỈ chấp nhận `x-admin-key`, xem migration
- * 2026-08-02 "Không tạo bypass": thay vì giữ x-admin-key làm đường tắt
- * bỏ qua MFA, các route này giờ CŨNG chấp nhận Bearer token thật đã
- * MFA làm cách chứng minh tương đương, ngoài x-admin-key cho khả năng
- * tương thích ngược đã có từ trước (không phải lỗ hổng MỚI phát sinh
- * từ việc thêm MFA — x-admin-key vốn đã hợp lệ ở CHÍNH 3 route này từ
- * trước khi có yêu cầu MFA, phạm vi yêu cầu MFA lần này là Admin Portal
- * chính, không bắt buộc phải xoá nốt các lối cũ ở nhóm route ngoài
- * phạm vi đó).
+ * `JobsController#isAdminRequest()` — các route job đều dùng Bearer token
+ * thật đã hoàn tất MFA; shared `x-admin-key` legacy không còn là danh tính
+ * Admin.
  *
- * Đọc Bearer token từ header HOẶC query string `?staffToken=` (cần cho
- * link tải trực tiếp `<a href>` không set được custom header, cùng lý
- * do `isValidAdminKey` đã hỗ trợ `?adminKey=`).
+ * Chỉ đọc Bearer token từ header. Query token bị loại bỏ để tránh làm lộ
+ * session trong URL, lịch sử trình duyệt và referrer.
  */
 export async function isAuthenticatedMfaAdmin(
   req: Request,

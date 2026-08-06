@@ -34,12 +34,10 @@ describe('JobsController.listAll authorization', () => {
         })),
       }),
     };
-    const configService = { get: jest.fn().mockReturnValue(null) };
     return {
       controller: new JobsController(
         jobsService as never,
         supabaseService as never,
-        configService as never,
       ),
       listAll: jobsService.listAll,
     };
@@ -67,6 +65,18 @@ describe('JobsController.listAll authorization', () => {
     await expect(controller.listAll({ headers: {}, query: {} } as never)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+    expect(listAll).not.toHaveBeenCalled();
+  });
+
+  it('does not treat the legacy shared admin key as an Admin/AAL2 identity', async () => {
+    const { controller, listAll } = makeController(null, null);
+
+    await expect(
+      controller.listAll({
+        headers: { 'x-admin-key': 'legacy-secret' },
+        query: { adminKey: 'legacy-secret' },
+      } as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(listAll).not.toHaveBeenCalled();
   });
 });

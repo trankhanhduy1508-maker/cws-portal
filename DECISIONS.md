@@ -197,3 +197,10 @@ tổng payment đã `paid` đáng tin cậy, job gần nhất và lifecycle `new
 `rendered`/`returning`. Không tạo schema CRM trùng lặp, không lưu
 password/token/secret, và chỉ Admin/Host qua `RoleGuard` + AAL2 được đọc.
 Không thêm campaign, sales pipeline hay marketing automation.
+
+## Admin job authorization hardening — 2026-08-06
+
+**[ACTIVE]** Shared `x-admin-key`/`?adminKey=` is not an Admin identity and is
+not accepted by `JobsController`. Cross-customer job access requires a valid
+Supabase Bearer token, an authorized `staff_roles` row, and server-side
+`aal2`. Customer ownership checks remain unchanged.

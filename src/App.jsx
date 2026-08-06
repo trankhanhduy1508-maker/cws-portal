@@ -54,7 +54,7 @@ export default function App() {
   // Admin Dashboard (Giai đoạn 7) — hoàn toàn tách biệt khỏi luồng
   // khách hàng, chỉ vào được qua URL kèm #admin (không có nút/link nào
   // dẫn tới từ giao diện khách hàng). Bảo vệ ở tầng Backend qua
-  // x-admin-key (xem AdminScreen.jsx), không phải qua ẩn URL. Tách
+  // Bearer + AAL2 (xem AdminScreen.jsx), không phải qua ẩn URL. Tách
   // thành nhánh riêng ở NGOÀI CustomerPortalApp (không phải early
   // return bên trong nó) để không vi phạm Rules of Hooks — App() ở
   // đây không gọi hook nào, chỉ CustomerPortalApp() mới gọi.
