@@ -21,6 +21,7 @@ export function useRenderJob() {
   const [error, setError] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const unsubscribeRef = useRef(null);
+  const idempotencyKeyRef = useRef(null);
   const paymentFetchedForRef = useRef(null); // paymentId đã fetch chi tiết, tránh gọi lại mỗi lần onUpdate
 
   /** Dùng chung cho cả start() (job mới) lẫn attach() (mở lại job cũ):
@@ -67,7 +68,14 @@ export function useRenderJob() {
     paymentFetchedForRef.current = null;
 
     try {
-      const { jobId: newJobId } = await createJob({ input, profileId });
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = globalThis.crypto.randomUUID();
+      }
+      const { jobId: newJobId } = await createJob({
+        input,
+        profileId,
+        idempotencyKey: idempotencyKeyRef.current,
+      });
       setJobId(newJobId);
       unsubscribeRef.current = await subscribeToJobUpdates(newJobId, makeHandlers());
     } catch (err) {
@@ -84,6 +92,7 @@ export function useRenderJob() {
     setError(null);
     setResult(null);
     setPaymentInfo(null);
+    idempotencyKeyRef.current = null;
     paymentFetchedForRef.current = null;
 
     unsubscribeRef.current = await subscribeToJobUpdates(existingJobId, makeHandlers());

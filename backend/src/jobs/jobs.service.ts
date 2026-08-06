@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import {
   IRenderOrdersRepository,
   RENDER_ORDERS_REPOSITORY,
@@ -104,9 +104,44 @@ export class JobsService {
   async createOrder(
     dto: CreateJobDto,
     customerId: string | null = null,
+    idempotencyKey?: string,
   ): Promise<{ jobId: string }> {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
+    }
+
+    if (!idempotencyKey || !/^[A-Za-z0-9._~-]{16,128}$/.test(idempotencyKey)) {
+      throw new BadRequestException(
+        'Thiếu hoặc sai Idempotency-Key (16-128 ký tự an toàn)',
+      );
+    }
+
+    const requestFingerprint = createHash('sha256')
+      .update(
+        JSON.stringify({
+          customerId,
+          fileRef: dto.fileRef ?? null,
+          driveLink: dto.driveLink ?? null,
+          fileName: dto.fileName ?? null,
+          fileSizeBytes: dto.fileSizeBytes ?? null,
+          software: dto.software ?? null,
+          softwareVersion: dto.softwareVersion ?? null,
+          notes: dto.notes ?? null,
+          profileId: dto.profileId,
+        }),
+      )
+      .digest('hex');
+
+    const existing = this.ordersRepository.findByIdempotencyKey
+      ? await this.ordersRepository.findByIdempotencyKey(idempotencyKey)
+      : null;
+    if (existing) {
+      if (existing.requestFingerprint !== requestFingerprint) {
+        throw new ForbiddenException(
+          'Idempotency-Key đã được dùng cho request khác',
+        );
+      }
+      return { jobId: existing.id };
     }
 
     const estimate = await this.estimate({
@@ -153,9 +188,26 @@ export class JobsService {
       durationSec: null,
       resultSizeBytes: null,
       isPlaceholder: false,
+      idempotencyKey,
+      requestFingerprint,
     };
 
-    await this.ordersRepository.create(order);
+    try {
+      await this.ordersRepository.create(order);
+    } catch (error) {
+      // A concurrent retry may win the unique database insert. Re-read the
+      // durable row and return it instead of creating/dispatching a duplicate.
+      const raced = await this.ordersRepository.findByIdempotencyKey(
+        idempotencyKey,
+      );
+      if (!raced) throw error;
+      if (raced.requestFingerprint !== requestFingerprint) {
+        throw new ForbiddenException(
+          'Idempotency-Key đã được dùng cho request khác',
+        );
+      }
+      return { jobId: raced.id };
+    }
 
     // Dispatch cho Worker Fleet ngay (Model 1) — SchedulerService (chạy
     // định kỳ) sẽ tiếp tục theo dõi và xử lý Model 2 nếu cần Wake.

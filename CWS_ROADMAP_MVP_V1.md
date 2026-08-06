@@ -259,3 +259,13 @@ Google Login
 - Read-only UI/backend/CORS checks pass; physical Worker → Blender → B2 → real
   payment → download remains `NEEDS_VERIFICATION`.
 - Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
+
+# Job retry correctness - 2026-08-06
+
+- `POST /jobs` idempotency contract is **CODE/UNIT VERIFIED** with additive
+  migration 018, frontend key propagation, concurrent conflict handling and
+  10/25/50/100 load-harness regression.
+- Staging/production migration application and runtime verification remain
+  **NEEDS_VERIFICATION**.
+- Isolated capacity test is **BLOCKED** in the current session because no
+  staging Supabase/B2/Worker credentials or staging DB tool is available.

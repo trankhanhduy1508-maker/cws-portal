@@ -11,6 +11,7 @@ export const RENDER_ORDERS_REPOSITORY = Symbol('RENDER_ORDERS_REPOSITORY');
 
 export interface IRenderOrdersRepository {
   create(order: RenderOrder): Promise<RenderOrder>;
+  findByIdempotencyKey(key: string): Promise<RenderOrder | null>;
   findById(id: string): Promise<RenderOrder | null>;
   findByStorageCode(storageCode: string): Promise<RenderOrder | null>;
   findAll(): Promise<RenderOrder[]>;

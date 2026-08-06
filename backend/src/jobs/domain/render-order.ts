@@ -64,6 +64,11 @@ export interface RenderOrder {
   durationSec: number | null;
   resultSizeBytes: number | null;
   isPlaceholder: boolean;
+
+  /** Opaque client retry key; never exposed as a credential. */
+  idempotencyKey?: string | null;
+  /** Server-generated request fingerprint used to reject key reuse with a different payload. */
+  requestFingerprint?: string | null;
 }
 
 /** Input để tạo 1 RenderOrder mới — khớp shape Portal gửi lên qua POST /jobs.

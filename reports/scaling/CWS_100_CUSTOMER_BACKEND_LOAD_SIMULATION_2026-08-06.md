@@ -34,14 +34,12 @@ worker shortage, one timeout/disconnect/reconnect failover, generation-fenced
 stale completion rejection, and bounded completion. All ramp-up requests
 returned successfully.
 
-## Duplicate submission finding
+## Duplicate submission finding at baseline
 
-Two simultaneous identical `POST /jobs` requests created two different jobs.
-This is the observed current contract: there is no idempotency-key field or
-unique submission key in the current MVP API/schema. It is **not** counted as a
-duplicate Worker claim, but it remains a P1 abuse/retry risk for real clients
-that retry after an uncertain network response. No schema or production change
-was made in this load run.
+The original baseline run, before the idempotency contract was implemented,
+showed two simultaneous identical `POST /jobs` requests creating two jobs. It
+was not counted as a duplicate Worker claim. The follow-up fixed this with
+`Idempotency-Key`; see `CWS_JOB_CREATE_IDEMPOTENCY_2026-08-06.md`.
 
 ## Capacity conclusion
 

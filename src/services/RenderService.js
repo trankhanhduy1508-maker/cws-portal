@@ -138,13 +138,14 @@ export async function getPaymentDetails(paymentId) {
  * chỉ diễn ra sau khi khách duyệt preview, xem approveJob()).
  * @returns {Promise<{ jobId: string }>}
  */
-export async function createJob({ input, profileId }) {
+export async function createJob({ input, profileId, idempotencyKey }) {
   if (IS_BACKEND_CONFIGURED) {
     const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ ...input, profileId }),

@@ -37,6 +37,8 @@ interface RenderOrderRow {
   duration_sec: number | null;
   result_size_bytes: number | null;
   is_placeholder: boolean;
+  idempotency_key: string | null;
+  request_fingerprint: string | null;
 }
 
 function rowToDomain(row: RenderOrderRow): RenderOrder {
@@ -69,10 +71,14 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
     durationSec: row.duration_sec,
     resultSizeBytes: row.result_size_bytes,
     isPlaceholder: row.is_placeholder,
+    idempotencyKey: row.idempotency_key,
+    requestFingerprint: row.request_fingerprint,
   };
 }
 
-function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at'> {
+function domainToInsertRow(
+  order: RenderOrder,
+): Omit<RenderOrderRow, 'created_at'> {
   return {
     id: order.id,
     project_name: order.projectName,
@@ -99,6 +105,8 @@ function domainToInsertRow(order: RenderOrder): Omit<RenderOrderRow, 'created_at
     duration_sec: order.durationSec,
     result_size_bytes: order.resultSizeBytes,
     is_placeholder: order.isPlaceholder,
+    idempotency_key: order.idempotencyKey ?? null,
+    request_fingerprint: order.requestFingerprint ?? null,
   };
 }
 
@@ -138,6 +146,20 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
 
+  async findByIdempotencyKey(key: string): Promise<RenderOrder | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .eq('idempotency_key', key)
+      .maybeSingle();
+    if (error) {
+      this.logger.error(`findByIdempotencyKey() thất bại: ${error.message}`);
+      throw new Error(`Không đọc được idempotency key: ${error.message}`);
+    }
+    return data ? rowToDomain(data as RenderOrderRow) : null;
+  }
+
   async findAll(): Promise<RenderOrder[]> {
     const { data, error } = await this.supabaseService
       .getClient()
@@ -147,7 +169,9 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
 
     if (error) {
       this.logger.error(`findAll() thất bại: ${error.message}`);
-      throw new Error(`Không đọc được danh sách render order: ${error.message}`);
+      throw new Error(
+        `Không đọc được danh sách render order: ${error.message}`,
+      );
     }
     return (data as RenderOrderRow[]).map(rowToDomain);
   }
@@ -167,7 +191,9 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
 
     if (error) {
       this.logger.error(`updateStatus(${id}) thất bại: ${error.message}`);
-      throw new Error(`Không cập nhật được trạng thái render order: ${error.message}`);
+      throw new Error(
+        `Không cập nhật được trạng thái render order: ${error.message}`,
+      );
     }
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
@@ -198,7 +224,9 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
 
     if (error) {
       this.logger.error(`updateResult(${id}) thất bại: ${error.message}`);
-      throw new Error(`Không cập nhật được kết quả render order: ${error.message}`);
+      throw new Error(
+        `Không cập nhật được kết quả render order: ${error.message}`,
+      );
     }
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
@@ -227,7 +255,9 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
       .eq('id', id);
 
     if (error) {
-      this.logger.error(`attachInternalJobId(${id}) thất bại: ${error.message}`);
+      this.logger.error(
+        `attachInternalJobId(${id}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không gắn được internal_job_id: ${error.message}`);
     }
   }
@@ -257,7 +287,9 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
 
     if (error) {
       this.logger.error(`attachPayment(${id}) thất bại: ${error.message}`);
-      throw new Error(`Không gắn được payment vào render order: ${error.message}`);
+      throw new Error(
+        `Không gắn được payment vào render order: ${error.message}`,
+      );
     }
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
@@ -284,8 +316,12 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
       .maybeSingle();
 
     if (error) {
-      this.logger.error(`findByStorageCode(${storageCode}) thất bại: ${error.message}`);
-      throw new Error(`Không đọc được render order theo storage code: ${error.message}`);
+      this.logger.error(
+        `findByStorageCode(${storageCode}) thất bại: ${error.message}`,
+      );
+      throw new Error(
+        `Không đọc được render order theo storage code: ${error.message}`,
+      );
     }
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
@@ -295,11 +331,17 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
       .getClient()
       .from(TABLE)
       .select('*')
-      .not('status', 'in', `(${JobStatus.FINISHED},${JobStatus.ERROR},${JobStatus.CANCELLED})`);
+      .not(
+        'status',
+        'in',
+        `(${JobStatus.FINISHED},${JobStatus.ERROR},${JobStatus.CANCELLED})`,
+      );
 
     if (error) {
       this.logger.error(`findActiveOrders() thất bại: ${error.message}`);
-      throw new Error(`Không đọc được danh sách order đang xử lý: ${error.message}`);
+      throw new Error(
+        `Không đọc được danh sách order đang xử lý: ${error.message}`,
+      );
     }
     return (data as RenderOrderRow[]).map(rowToDomain);
   }
@@ -313,8 +355,12 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
       .order('created_at', { ascending: false });
 
     if (error) {
-      this.logger.error(`findByCustomerId(${customerId}) thất bại: ${error.message}`);
-      throw new Error(`Không đọc được danh sách render order theo customer: ${error.message}`);
+      this.logger.error(
+        `findByCustomerId(${customerId}) thất bại: ${error.message}`,
+      );
+      throw new Error(
+        `Không đọc được danh sách render order theo customer: ${error.message}`,
+      );
     }
     return (data as RenderOrderRow[]).map(rowToDomain);
   }

@@ -542,3 +542,14 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - One-job physical E2E remains `NEEDS_VERIFICATION` pending quota reset,
   authenticated customer, physical Worker/Blender, B2 and payment.
 - Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
+
+## Job create idempotency - 2026-08-06
+
+- `POST /jobs` now requires a bounded `Idempotency-Key`; same-key retries
+  return one durable `jobId`, payload/key reuse is rejected, and concurrent
+  insert races are fenced by a unique index.
+- Code/tests verified: backend 165/165 + E2E 2/2, frontend 9/9, lint/build
+  PASS. Migration 018 is not applied to staging/production.
+- Staging capacity remains `NOT VERIFIED`: no staging endpoint, CLI or
+  credential is available in this session. Evidence:
+  `reports/scaling/CWS_JOB_CREATE_IDEMPOTENCY_2026-08-06.md`.

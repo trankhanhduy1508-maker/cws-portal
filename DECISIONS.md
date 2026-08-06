@@ -276,3 +276,13 @@ ephemeral presence TTL, scheduler locks/cache and transient progress; it must
 have a safe PostgreSQL fallback and never own payment or financial state.
 
 Evidence: `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
+
+## Job create idempotency - 2026-08-06
+
+**[ACTIVE]** `POST /jobs` uses a client-supplied opaque `Idempotency-Key`.
+The key is globally unique in `render_orders`, bounded and paired with a
+server-generated request fingerprint. Same-key/same-payload retries return the
+original Job; same-key/different-payload requests are rejected. PostgreSQL's
+unique index is the correctness boundary for concurrent retries. The key is
+not a credential and is never logged as a secret. Migration 018 must pass
+isolated staging preflight before production application.

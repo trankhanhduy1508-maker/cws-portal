@@ -38,7 +38,8 @@ export class JobsController {
     // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
     // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    return this.jobsService.createOrder(dto, customerId);
+    const idempotencyKey = req.header('Idempotency-Key');
+    return this.jobsService.createOrder(dto, customerId, idempotencyKey);
   }
 
   @Post('estimate')
@@ -108,7 +109,11 @@ export class JobsController {
   @HttpCode(200)
   async cancelViaPost(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
+    await this.jobsService.cancel(
+      id,
+      customerId,
+      await this.isAdminRequest(req),
+    );
     return { ok: true };
   }
 
@@ -212,7 +217,11 @@ export class JobsController {
   @HttpCode(200)
   async cancelViaDelete(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
+    await this.jobsService.cancel(
+      id,
+      customerId,
+      await this.isAdminRequest(req),
+    );
     return { ok: true };
   }
 }

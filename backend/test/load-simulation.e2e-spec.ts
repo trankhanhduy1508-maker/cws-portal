@@ -25,8 +25,23 @@ class LoadOrdersRepository implements IRenderOrdersRepository {
   readonly orders = new Map<string, RenderOrder>();
 
   async create(order: RenderOrder): Promise<RenderOrder> {
+    if (
+      order.idempotencyKey &&
+      [...this.orders.values()].some(
+        (item) => item.idempotencyKey === order.idempotencyKey,
+      )
+    ) {
+      throw new Error('duplicate idempotency key');
+    }
     this.orders.set(order.id, structuredClone(order));
     return structuredClone(order);
+  }
+
+  async findByIdempotencyKey(key: string): Promise<RenderOrder | null> {
+    const order = [...this.orders.values()].find(
+      (item) => item.idempotencyKey === key,
+    );
+    return order ? structuredClone(order) : null;
   }
 
   async findById(id: string): Promise<RenderOrder | null> {
@@ -279,7 +294,10 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
         [0, 1].map(() =>
           fetch(`${baseUrl}/jobs`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              'Idempotency-Key': `load-duplicate-key-${customers.toString().padStart(3, '0')}`,
+            },
             body: JSON.stringify(duplicatePayload),
           }).then(async (response) => ({
             status: response.status,
@@ -287,11 +305,9 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
           })),
         ),
       );
-      const duplicateCreated =
+      const duplicateReturnedSameJob =
         duplicateResponses.every((response) => response.status === 201) &&
-        new Set(duplicateResponses.map((response) => response.body.jobId)).size === 2;
-      // The current MVP has no idempotency-key contract; record the observed
-      // behavior and reset the synthetic store before the measured scenario.
+        new Set(duplicateResponses.map((response) => response.body.jobId)).size === 1;
       orders.orders.clear();
       workers.tasks.clear();
       const submissionLatencies: number[] = [];
@@ -306,7 +322,10 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
             const started = performance.now();
             const response = await fetch(`${baseUrl}/jobs`, {
               method: 'POST',
-              headers: { 'content-type': 'application/json' },
+              headers: {
+                'content-type': 'application/json',
+                'Idempotency-Key': `load-${customers}-${index.toString().padStart(3, '0')}-key-x`,
+              },
               body: JSON.stringify({
                 fileRef: `load-test/input-${customers}-${index}.blend`,
                 fileName: `load-test-${customers}-${index}.blend`,
@@ -380,7 +399,7 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
         rampUpRequests: rampLatencies.length,
         rampUpErrors: rampErrors,
         rampUpP95Ms: Number(percentile(rampLatencies, 0.95).toFixed(2)),
-        duplicateSubmissionCreatedTwoJobs: duplicateCreated,
+        duplicateSubmissionReturnedSameJob: duplicateReturnedSameJob,
         p50SubmissionMs: Number(percentile(submissionLatencies, 0.5).toFixed(2)),
         p95SubmissionMs: Number(percentile(submissionLatencies, 0.95).toFixed(2)),
         p99SubmissionMs: Number(percentile(submissionLatencies, 0.99).toFixed(2)),
