@@ -21,6 +21,9 @@ No duplicate CRM schema or sensitive credential storage was added.
 
 - Backend: 22 suites / 136 tests PASS; build PASS.
 - Frontend: 3 files / 8 tests PASS; lint PASS; build PASS.
-- Production bundle contains fleet/CRM endpoint markers and the production
-  backend URL. Authenticated CRM data is not claimed without a real Admin AAL2
-  session.
+- Vercel production deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for
+  commit `5e20211`; its bundle contains fleet/CRM endpoint markers and the
+  production backend URL. Render `/customers/crm` currently returns HTTP 404
+  while `/fleet/workers` returns HTTP 401, proving the backend service has not
+  yet served the CRM revision. Authenticated CRM data is not claimed without
+  both the backend revision and a real Admin AAL2 session.
