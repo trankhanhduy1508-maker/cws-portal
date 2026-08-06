@@ -3,7 +3,7 @@ import {
   CUSTOMER_PROFILES_REPOSITORY,
   ICustomerProfilesRepository,
 } from './repositories/customer-profiles.repository.interface';
-import { CustomerProfile } from './domain/customer-profile';
+import { CustomerCrmSummary, CustomerProfile } from './domain/customer-profile';
 
 @Injectable()
 export class CustomersService {
@@ -21,5 +21,9 @@ export class CustomersService {
   /** Admin xem "Danh sách khách hàng" (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   async listAll(): Promise<CustomerProfile[]> {
     return this.repository.findAll();
+  }
+
+  async listCrmSummaries(): Promise<CustomerCrmSummary[]> {
+    return this.repository.findAllCrmSummaries();
   }
 }

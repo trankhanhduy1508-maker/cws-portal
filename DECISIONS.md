@@ -41,7 +41,7 @@ chỉ xác nhận staff identity để hoàn tất onboarding, không trả dữ
 
 ## Founder product scope — 2026-08-06
 
-**[ACTIVE]** Admin MVP (`/#admin`) chỉ là Worker Fleet Status Dashboard. Chỉ
+**[SUPERSEDED — thay thế bởi Founder Admin Fleet + Customer CRM 2026-08-06]** Admin MVP (`/#admin`) chỉ là Worker Fleet Status Dashboard. Chỉ
 hiển thị tổng số Worker, Online, Offline và `ACTIVE_IDLE` với nhãn
 "Đang chờ / Idle Saver". `ACTIVE_IDLE` là state đã có trong Node Agent/Worker
 contract: máy vẫn online, không render, giữ control channel/heartbeat và áp
@@ -185,3 +185,15 @@ Worker Auto Update
 Owner xác nhận cws_worker_full.py là legacy Worker. Quyết định: không restore/copy/để Worker mới phụ thuộc artifact cũ. Worker fleet cài Engine một lần; mỗi JobSpec/TaskSpec mới là dữ liệu động từ Backend/Scheduler. Node Agent quản lý presence/lifecycle/supervision; Backend quản lý assignment/lease/priority/retry/billing; Worker chỉ thực thi một attempt render và thoát.
 
 Evidence: reports/worker/CWS_WORKER_LEGACY_SALVAGE_MATRIX_2026-08-05.md.
+
+## Founder Admin Fleet + Customer CRM — 2026-08-06
+
+**[ACTIVE]** Admin MVP (`/#admin`) có hai khu vực tách biệt: Worker Fleet gồm
+Tổng Worker, Online, Offline, `ACTIVE_IDLE`/Idle Saver và `BUSY`/Đang Render,
+map trực tiếp từ `GET /fleet/workers`; Customer CRM tối giản đọc từ các bảng
+đã có `customer_profiles`, `render_orders` và `payments`. CRM chỉ hiển thị
+email, tên Google nếu có, mốc đăng ký/hoạt động, tổng job, job hoàn thành,
+tổng payment đã `paid` đáng tin cậy, job gần nhất và lifecycle `new`/
+`rendered`/`returning`. Không tạo schema CRM trùng lặp, không lưu
+password/token/secret, và chỉ Admin/Host qua `RoleGuard` + AAL2 được đọc.
+Không thêm campaign, sales pipeline hay marketing automation.

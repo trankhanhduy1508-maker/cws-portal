@@ -53,3 +53,23 @@ After redeploy, verify `/health` is HTTP 200 and a request from
 `Access-Control-Allow-Origin`. Verify an unlisted origin is denied. Until
 those checks pass, Render production remains blocked and no runtime PASS is
 claimed.
+
+## Follow-up read-only check before Founder fix — 2026-08-06
+
+- Workspace has no Render CLI, Render API token, Render service config, deploy
+  hook, or GitHub workflow capable of changing the Render service.
+- Current public endpoint responds `/health` HTTP 200, but CORS preflight from
+  `https://cws-portal.vercel.app` still returns `Access-Control-Allow-Origin: *`.
+- `/staff/mfa-status` still returns HTTP 404.
+
+This is evidence of a currently served stale/permissive revision or another
+deployment path; it is not evidence that the requested explicit CORS config is
+active. No Render mutation was attempted without authorized credentials.
+
+## Resolution evidence — 2026-08-06
+
+After Founder configured the Render production environment, read-only probes
+returned `/health` HTTP 200 and CORS preflight HTTP 204 with
+`Access-Control-Allow-Origin: https://cws-portal.vercel.app` and no
+`Access-Control-Allow-Credentials` header. `/staff/mfa-status` returned HTTP
+401 without credentials, confirming the route is live and protected.

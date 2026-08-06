@@ -2,8 +2,8 @@
 
 ## Production NO-GO remediation continuation — 2026-08-05
 
-- CORS: **CODE/UNIT VERIFIED; PRODUCTION BLOCKED**. Render boot runtime confirmed effective input `*` and failed closed in `parseCorsOrigins`; canonical origin is `https://cws-portal.vercel.app`. The stack trace cannot distinguish `CORS_ORIGINS` from legacy `CORS_ORIGIN` because `main.ts` uses nullish precedence. Evidence: `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
-- CORS request-origin callback: **CODE/UNIT VERIFIED** for canonical allow, same-origin/no-origin, and denied origin. Deployment verification is blocked until Render environment configuration is corrected and redeployed.
+- CORS: **REAL RUNTIME VERIFIED** after Founder set `CORS_ORIGINS=https://cws-portal.vercel.app`; `/health` 200 and production preflight 204 with exact allow-origin, no credential grant. Evidence: `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
+- CORS request-origin callback: **CODE/UNIT + PRODUCTION VERIFIED** for canonical allow; negative-origin matrix remains code/unit verified.
 - Secret rotation readiness: **CODE/UNIT VERIFIED**; legacy helper fallback removed and rotation order documented without values. Actual production rotation remains **BLOCKED** on Owner action.
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
 - Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.
@@ -14,9 +14,9 @@
 - Blender optimizer: working-copy-only plan/apply harness **REAL RUNTIME VERIFIED** on harmless EEVEE plan; no speedup claimed. ArchViz profiles are **CODE/UNIT VERIFIED** only.
 - Dependency audit: clean-install backend reports 5 High / 0 Critical production vulnerabilities; safe override experiment was rejected and removed. Nest 11 requires a separate canary.
 - Decision: **PRODUCTION NO-GO**. Evidence: `reports/CWS_PRODUCTION_NO_GO_REMEDIATION_2026-08-05.md`.
-- Founder product scope 2026-08-06: `/#admin` is fleet-only (total/Online/Offline/ACTIVE_IDLE Idle Saver); `/` owns customer render → preview → payment → download. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
+- Founder product scope 2026-08-06: `/#admin` has separate Fleet + Customer CRM areas; `/` owns customer render → preview → payment → download. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md` and `reports/product/CWS_CUSTOMER_CRM_MVP_2026-08-06.md`.
 
-- 2026-08-06 production audit: root returns HTTP 200, but the currently served bundle still contains the old `Tiếp tục thanh toán` Render Profile CTA; the `83fdff7` fleet-only Admin/customer-flow patch is not yet observed in production. Render `/health` returns HTTP 200 while `/staff/mfa-status` returns HTTP 404. Customer MVP flow remains code/evidence-backed but full physical Worker → Preview → Payment → Download runtime is still not verified. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
+- 2026-08-06 production audit: Vercel root/Admin return HTTP 200; served bundle points to Render backend, contains fleet/CRM and `Bắt đầu render` markers, and no old pre-render payment CTA. Render `/health` is 200, CORS is exact-origin 204, `/staff/mfa-status` is 401 without credentials. Full physical Worker → Preview → Payment → Download runtime remains unverified.
 
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.

@@ -26,7 +26,7 @@ export const API_CONFIG = {
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
     // Admin MVP — fleet status only; cần Bearer token staff AAL2.
-    ADMIN_LIST_CUSTOMERS: '/customers',
+    ADMIN_LIST_CUSTOMERS: '/customers/crm',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',
     ADMIN_LIST_HOST_USAGE: '/fleet/host-usage',

@@ -42,7 +42,7 @@ async function adminPost(path, staffToken, body) {
   return res.json();
 }
 
-/** Danh sách toàn bộ khách hàng (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
+/** CRM summary server-side từ customer_profiles/render_orders/payments. */
 export function adminListCustomers(adminKey) {
   return adminFetch(API_CONFIG.ENDPOINTS.ADMIN_LIST_CUSTOMERS, adminKey);
 }

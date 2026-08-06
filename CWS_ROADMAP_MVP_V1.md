@@ -123,11 +123,13 @@ Audit lại `AdminScreen.jsx` (689 dòng) 2026-08-02: nội dung dashboard đã
 đầy đủ, không cần viết lại — chỉ thiếu lớp xác thực đúng chuẩn (đã bổ
 sung, xem dưới).
 
--   Tổng số Worker — IN_PROGRESS (`GET /fleet/workers`, dữ liệu thật; UI fleet-only đang được reconcile theo Founder product scope)
--   Worker Online — IN_PROGRESS (backend derives từ heartbeat freshness ≤180s)
--   Worker Offline — IN_PROGRESS (backend derives từ heartbeat stale >180s)
--   Đang chờ / Idle Saver — IN_PROGRESS (`nodeState === ACTIVE_IDLE`, state có trong Node Agent contract)
--   Customer jobs/render/payment UI trong `/#admin` — SUPERSEDED bởi quyết định Founder 2026-08-06; xem customer flow ở `/`
+-   Tổng số Worker — CODE/UNIT VERIFIED (`GET /fleet/workers`, dữ liệu thật)
+-   Worker Online — CODE/UNIT VERIFIED (backend derives từ heartbeat freshness ≤180s)
+-   Worker Offline — CODE/UNIT VERIFIED (backend derives từ heartbeat stale >180s)
+-   Đang chờ / Idle Saver — CODE/UNIT VERIFIED (`nodeState === ACTIVE_IDLE`, state có trong Node Agent contract)
+-   Đang Render — CODE/UNIT VERIFIED (`nodeState === BUSY`, backend map từ Worker state contract)
+-   Customer CRM — CODE/UNIT VERIFIED (`GET /customers/crm`, aggregate server-side từ `customer_profiles`, `render_orders`, `payments`; production AAL2 session pending)
+-   Customer jobs/render/payment UI trong `/#admin` — SUPERSEDED; CRM là khu vực chăm sóc khách riêng, customer render flow vẫn ở `/`
 
 **Authentication + Authorization + MFA (2026-08-06, CODE/UNIT VERIFIED; production runtime pending, xem `reports/admin/CWS_ADMIN_GOOGLE_OAUTH_AAL2_2026-08-06.md`):**
 - Bỏ hoàn toàn nhánh `x-admin-key` làm bypass trong `RoleGuard` (route Admin Portal chính) — theo đúng yêu cầu "Không tạo bypass".
@@ -169,13 +171,15 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 
 # Production verification follow-up — 2026-08-06
 
-- Vercel latest observed READY production deployment remains commit `33dc578` (`dpl_4qKLiPHdub6vPb93seejXPDYCCYf`); commit `83fdff7` is pushed to `main` but is not yet observed deployed.
+- Production after Founder CORS fix: Render `/health` HTTP 200; CORS preflight from `https://cws-portal.vercel.app` returns HTTP 204 with matching allow-origin and no credentials grant. Vercel bundle serves the fleet/CRM patch markers and points to `https://cws-portal.onrender.com`.
 - Supabase Google authorize initiation: HTTP 302 to Google with production callback/redirect target.
-- Render `/staff/mfa-status`: HTTP 404 while `/health`: HTTP 200. Backend deployment remains stale/miswired; Admin Google → staff_roles → TOTP → aal2 → Admin API is not runtime verified.
+- Render `/staff/mfa-status`: HTTP 401 without credentials, confirming the route is live and protected. Real Google → staff_roles → TOTP → aal2 → Admin API remains human verification pending.
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
 - Admin Fleet UI scope is CODE/UNIT VERIFIED: chỉ gọi `GET /fleet/workers` và map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
 - Fresh read-only probes: Vercel public bundle still contains the old `Tiếp tục thanh toán` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 404. No production PASS is claimed.
 - 2026-08-06 Render crash evidence: backend fails closed at boot because the effective CORS environment input is `*`; set `CORS_ORIGINS=https://cws-portal.vercel.app` and remove any legacy `CORS_ORIGIN=*` before redeploy. See `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
+- Historical pre-fix probe: `/health` HTTP 200, CORS preflight exposed `*`, and `/staff/mfa-status` was HTTP 404; this was resolved by the Founder Render configuration update above.
+- 2026-08-06 CRM implementation: `GET /customers/crm` reads existing customer profiles, render orders, and paid payment rows; no duplicate schema or secrets. Backend/frontend tests and builds pass; real CRM data requires an Admin AAL2 session.
 
 # Definition of Done
 

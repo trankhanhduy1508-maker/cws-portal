@@ -8,6 +8,12 @@ import { RoleGuard } from '../common/guards/role.guard';
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
+  @Get('crm')
+  @UseGuards(RoleGuard)
+  async listCrmSummaries() {
+    return this.customersService.listCrmSummaries();
+  }
+
   @Get()
   @UseGuards(RoleGuard)
   async listAll() {

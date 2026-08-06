@@ -15,3 +15,20 @@ export interface CustomerProfile {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface CustomerCrmSummary {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  registeredAt: number;
+  lastActiveAt: number;
+  totalJobs: number;
+  completedJobs: number;
+  totalPaidVnd: number;
+  latestJob: {
+    id: string;
+    status: string;
+    createdAt: number;
+  } | null;
+  lifecycleStatus: 'new' | 'rendered' | 'returning';
+}
