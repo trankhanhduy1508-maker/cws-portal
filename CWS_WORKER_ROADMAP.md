@@ -1,5 +1,15 @@
 # CWS WORKER ROADMAP
 
+## Eevee stress benchmark — 2026-08-06
+
+- **CODE/UNIT VERIFIED**: bounded unoptimized architectural Eevee scene
+  generator, heavy-single/heavy-animation profiles, timeout runner and local
+  metrics/report output are prepared.
+- **REAL RUNTIME VERIFIED locally**: Blender 5.2.0 Eevee rendered heavy-single
+  and 48-frame heavy-animation profiles. **UNVERIFIED/BLOCKED**: Worker A/B
+  flow and failover stress still require authenticated staging hosts.
+- Evidence: `reports/worker/CWS_BLENDER_UNOPTIMIZED_EEVEE_STRESS_TEST_2026-08-06.md`.
+
 ## Staging identity/failover gate — 2026-08-06
 
 - **BLOCKED** at staging DB preflight: no Supabase CLI/psql/MCP/endpoint or

@@ -1,5 +1,15 @@
 # Current Status
 
+## Eevee stress benchmark — 2026-08-06
+
+- Added bounded intentionally-unoptimized architecture scene generator and
+  local Eevee/Eevee Next render runner under `tests/blender/`.
+- Static contract: **2/2 PASS**; Worker suite: **48/48 PASS**.
+- Local Blender 5.2.0 Eevee render is **REAL RUNTIME VERIFIED**: heavy-single
+  1 frame/8.5s and heavy-animation 48 frames/153.281s. Worker, staging, B2
+  and production flow were not contacted.
+- Evidence: `reports/worker/CWS_BLENDER_UNOPTIMIZED_EEVEE_STRESS_TEST_2026-08-06.md`.
+
 ## Staging preflight blocked — 2026-08-06
 
 - No Supabase CLI, `psql`, `.mcp.json`, staging endpoint or staging

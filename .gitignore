@@ -37,3 +37,6 @@ dist-ssr
 # khong can commit)
 __pycache__/
 *.pyc
+
+# Local Blender stress-render artifacts; keep the reproducible scene/script.
+/tests/artifacts/
