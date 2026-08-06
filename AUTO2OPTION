@@ -2,26 +2,30 @@ $wshell = New-Object -ComObject WScript.Shell
 
 # === CAU HINH ===
 $SEND_INTERVAL = 3
+$MAX_DURATION_MINUTES = 60  # Tối đa 1 giờ
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  AUTO CODEX - KHONG DUNG AppActivate" -ForegroundColor Cyan
 Write-Host "  HAY CLICK CHUOT VAO CUA SO CODEX TRUOC!" -ForegroundColor Yellow
 Write-Host "  Sau do dung tay - dung cham vao may" -ForegroundColor Yellow
-Write-Host "  Chay VO HAN - Nhan Ctrl+C de dung" -ForegroundColor Red
+Write-Host "  Chay TOI DA 1 TIENG - Nhan Ctrl+C de dung som hon" -ForegroundColor Red
 Write-Host "========================================" -ForegroundColor Cyan
 
 $startTime = Get-Date
+$endTime = $startTime.AddMinutes($MAX_DURATION_MINUTES)
 
 Write-Host "`nBat dau: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green
-Write-Host "Chay VO HAN - Nhan Ctrl+C de dung" -ForegroundColor Red
+Write-Host "Tu dong dung luc: $(Get-Date $endTime -Format 'HH:mm:ss')" -ForegroundColor Yellow
+Write-Host "Nhan Ctrl+C de dung som hon" -ForegroundColor Red
 
 try {
-    while ($true) {
+    while ((Get-Date) -lt $endTime) {
         
         $elapsed = (New-TimeSpan -Start $startTime).ToString('hh\:mm\:ss')
+        $remaining = (New-TimeSpan -Start (Get-Date) -End $endTime).ToString('hh\:mm\:ss')
         
         if ((Get-Date).Second -eq 0) {
-            Write-Host "`r[$elapsed] Dang chay...    " -NoNewline -ForegroundColor DarkGray
+            Write-Host "`r[$elapsed] Dang chay... Con lai: $remaining    " -NoNewline -ForegroundColor DarkGray
         }
         
         # KHONG goi AppActivate - chi gui phim thoi
@@ -36,6 +40,8 @@ try {
         
         Start-Sleep -Seconds $SEND_INTERVAL
     }
+    
+    Write-Host "`n`n[✓] Da chay du 1 tieng - Tu dong dung!" -ForegroundColor Green
     
 } catch {
     Write-Host "`n`n[!] Bi dung: $_" -ForegroundColor Red
