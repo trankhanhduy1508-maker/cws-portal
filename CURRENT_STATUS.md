@@ -1,5 +1,13 @@
 # Current Status
 
+## Staging preflight blocked — 2026-08-06
+
+- No Supabase CLI, `psql`, `.mcp.json`, staging endpoint or staging
+  environment variable is available in the current machine/session.
+- Therefore migrations 020/021 were not applied anywhere. Offline simulation
+  and full tests/builds pass; staging runtime is not claimed.
+- Evidence: `reports/worker/CWS_STAGING_IDENTITY_FAILOVER_PREFLIGHT_BLOCKER_2026-08-06.md`.
+
 ## Failover automation preparation — 2026-08-06
 
 - Preflight, lock/timeout guard, `NOT VALID` compatibility check, rollback

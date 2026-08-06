@@ -1,5 +1,14 @@
 # CWS WORKER ROADMAP
 
+## Staging identity/failover gate — 2026-08-06
+
+- **BLOCKED** at staging DB preflight: no Supabase CLI/psql/MCP/endpoint or
+  credential is available in this session.
+- Ready order and exact command file:
+  `reports/worker/CWS_STAGING_IDENTITY_FAILOVER_PREFLIGHT_BLOCKER_2026-08-06.md`.
+- Offline simulation and automated tests are complete; physical two-Worker
+  smoke remains pending staging access.
+
 ## Failover automation preparation — 2026-08-06
 
 - Preflight: `worker_migrations/020_021_preflight_check.sql` (read-only).

@@ -1,5 +1,12 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Staging identity/failover gate — 2026-08-06
+
+- **BLOCKED**: staging preflight cannot run in the current session because no
+  staging DB tool, endpoint or credential is available.
+- Migrations 020/021 remain unapplied; production is untouched.
+- Offline rehearsal remains **CODE/UNIT VERIFIED**, not staging runtime PASS.
+
 ## Worker failover readiness — 2026-08-06
 
 - **IN_PROGRESS**: production identity/failover implementation and offline
