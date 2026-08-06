@@ -512,3 +512,22 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - CORS preflight from `https://cws-portal.vercel.app`: HTTP **204**, `Access-Control-Allow-Origin` matches exactly.
 - This verifies deployment wiring/health only. Customer → physical Worker → Blender → B2 → real payment → download remains **NOT E2E PASS**.
 - Evidence: `reports/evidence/CWS_READ_ONLY_PRODUCTION_WIRING_PROBE_2026-08-06.md`.
+
+## 100-customer backend load simulation - 2026-08-06
+
+- Real Nest HTTP/application simulation: 10/25/50/100 submissions, ramp-up,
+  status refresh, worker shortage, timeout/disconnect/reconnect failover and
+  stale fencing: **PASS** at simulated level.
+- 100 case: 100/100 jobs reached `REVIEW_READY`, duplicate Worker claims 0,
+  p95 submit 59.14 ms, p99 59.27 ms, scheduler tick 1.44 ms locally.
+- Duplicate identical `POST /jobs` currently creates two distinct jobs because
+  no idempotency-key contract exists; recorded as a P1 risk, not changed
+  without a schema/product decision.
+- This does not verify Supabase/RLS/B2/Blender/payment/physical Worker or
+  production capacity. Evidence: `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
+
+## SQL/Redis MVP boundary - 2026-08-06
+
+- No Redis client or deployment exists in the repository. PostgreSQL/Supabase
+  remains source of truth for durable state and atomic Worker leases; Redis is
+  deferred until isolated staging proves a real heartbeat/presence bottleneck.

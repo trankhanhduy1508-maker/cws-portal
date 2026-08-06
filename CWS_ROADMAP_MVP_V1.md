@@ -238,3 +238,15 @@ Google Login
 → Khách tải file
 → COMPLETED
 ```
+
+# Load and persistence boundary follow-up - 2026-08-06
+
+- `backend/test/load-simulation.e2e-spec.ts`: simulated real-Nest HTTP flow
+  passes 10/25/50/100 customers with worker shortage and one bounded
+  failover/fencing scenario per applicable run.
+- This is **simulated load**, not production/staging capacity evidence.
+- MVP persistence decision: Supabase/PostgreSQL remains durable source of
+  truth; no Redis is added until isolated staging measures a real bottleneck.
+- Remaining scale gate: isolated staging with Supabase/RLS/B2/physical Worker
+  and connection/latency metrics. Evidence:
+  `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.

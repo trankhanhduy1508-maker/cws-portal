@@ -262,3 +262,17 @@ scale claim.
 bounded multipart limits and cleanup; B2 receives a read stream. Scheduler
 task reads use batches of 200 Job IDs. Direct-to-B2 multipart and broker/queue
 infrastructure remain deferred until staging metrics prove they are needed.
+
+## SQL source of truth and Redis boundary - 2026-08-06
+
+**[ACTIVE]** CWS MVP keeps PostgreSQL/Supabase as the source of truth for
+users, Worker registry, jobs/tasks, leases/generations, pricing, payments,
+render results and audit/history. The current heartbeat contract updates
+presence/lease atomically in PostgreSQL and does not create a history row for
+every heartbeat. Redis is not added to MVP because the repository has no Redis
+client/deployment and no isolated staging evidence of a DB presence bottleneck.
+If a measured bottleneck appears later, Redis may be introduced only for
+ephemeral presence TTL, scheduler locks/cache and transient progress; it must
+have a safe PostgreSQL fallback and never own payment or financial state.
+
+Evidence: `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
