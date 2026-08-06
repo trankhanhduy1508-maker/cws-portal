@@ -250,3 +250,12 @@ Google Login
 - Remaining scale gate: isolated staging with Supabase/RLS/B2/physical Worker
   and connection/latency metrics. Evidence:
   `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
+
+# Production one-job E2E gate - 2026-08-06
+
+- Canonical `main` is ready at `b630987`; Vercel production currently points to
+  older `95abec7`. Redeploy is blocked by Vercel daily API quota, not by code
+  or build failure.
+- Read-only UI/backend/CORS checks pass; physical Worker → Blender → B2 → real
+  payment → download remains `NEEDS_VERIFICATION`.
+- Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.

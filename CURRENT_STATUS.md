@@ -531,3 +531,14 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - No Redis client or deployment exists in the repository. PostgreSQL/Supabase
   remains source of truth for durable state and atomic Worker leases; Redis is
   deferred until isolated staging proves a real heartbeat/presence bottleneck.
+
+## Production deployment/E2E readiness - 2026-08-06
+
+- Canonical `main` is `b630987`; Vercel production is older `95abec7`. A safe
+  deploy attempt was rejected by Vercel daily API quota (`payment_required`,
+  remaining 0); no production mutation occurred.
+- Read-only production wiring passes: Vercel 200, UI flow markers correct,
+  Render `/health` 200, CORS preflight 204, anonymous protected routes 401.
+- One-job physical E2E remains `NEEDS_VERIFICATION` pending quota reset,
+  authenticated customer, physical Worker/Blender, B2 and payment.
+- Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
