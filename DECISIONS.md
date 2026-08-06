@@ -300,3 +300,11 @@ and client-controlled state transitions.
 upload, Drive resolve, job and payment-detail routes, plus strict DTO bounds and
 global whitelist rejection. A shared edge limiter may be added only after
 staging evidence or deployment configuration requires it.
+
+## NestJS major upgrade gate - 2026-08-07
+
+**[ACTIVE]** NestJS 11 is evaluated only in an isolated canary. The canary
+passed 172/172 tests and build, and `js-yaml` 5.2.3 removed its remaining audit
+finding. Production stays on Nest 10 until the canary is validated against
+isolated Supabase/B2/Worker/payment staging and the major-upgrade regression
+gate is explicitly cleared. No `npm audit fix --force` is allowed.

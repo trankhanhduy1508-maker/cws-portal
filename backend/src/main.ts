@@ -23,7 +23,10 @@ async function bootstrap() {
     process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN,
   );
   app.enableCors({
-    origin: (requestOrigin, callback) =>
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) =>
       callback(null, isAllowedCorsOrigin(requestOrigin, allowedCorsOrigins)),
     credentials: false,
   });

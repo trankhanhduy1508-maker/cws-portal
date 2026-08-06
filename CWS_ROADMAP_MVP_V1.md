@@ -280,3 +280,15 @@ Google Login
 - Authenticated Supabase/RLS, B2, live webhook, physical Worker and deployment
   runtime remain **NEEDS_VERIFICATION**.
 - Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.
+
+# NestJS 11 dependency canary - 2026-08-07
+
+- Isolated Nest 11.1.28 canary: **TEST/BUILD VERIFIED** (172/172); no
+  production package or lockfile change.
+- Canary `js-yaml` 5.2.3 override: **AUDIT VERIFIED** (0 findings). Production
+  remains on Nest 10 with 5 High + 12 Moderate until isolated staging and
+  major-upgrade approval are complete.
+- Canary lint remains **NEEDS_VERIFICATION** because of existing repo-wide
+  Prettier violations, not a Nest runtime/build failure.
+- Authenticated staging E2E remains **BLOCKED** by missing staging credentials,
+  database tooling, B2 and physical Worker/payment access.

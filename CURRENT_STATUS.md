@@ -565,3 +565,14 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
   breaking-upgrade canary. Production authenticated runtime remains
   `NEEDS_VERIFICATION`.
 - Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.
+
+## NestJS 11 isolated canary - 2026-08-07
+
+- Ephemeral canary upgraded Nest runtime/toolchain to 11.1.28 and schedule to
+  6.1.3; 172/172 tests and build PASS.
+- `js-yaml` 5.2.3 override reduced canary audit to 0 findings. Production
+  dependency tree was not changed because Nest 11 is a major upgrade.
+- Canary lint is NOT PASS due 1,972 pre-existing Prettier violations; no bulk
+  formatting was applied. Staging authenticated E2E remains BLOCKED: no
+  staging env, DB CLI, B2, payment or Worker credentials are available.
+- Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.

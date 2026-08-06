@@ -70,6 +70,24 @@ Evidence from this run:
 
 ## Remaining findings / not verified
 
+## NestJS 11 isolated canary — 2026-08-07
+
+- Canary was built in an ephemeral copy outside the repository; production
+  `package.json`, lockfile and `node_modules` were not changed.
+- Upgraded the Nest runtime/toolchain to `@nestjs/*` 11.1.28,
+  `@nestjs/schedule` 6.1.3, `@nestjs/swagger` 11.4.6 and matching testing/CLI
+  packages. The initial install correctly exposed a peer dependency break until
+  `@nestjs/testing` was upgraded to 11 as well.
+- After one compatibility annotation in `main.ts`, canary tests **172/172
+  PASS** and build **PASS**. Canary lint is **NOT PASS** only because the
+  repository's existing Prettier configuration reports 1,972 baseline errors;
+  no bulk formatting was applied.
+- An isolated `overrides.js-yaml=5.2.3` trial reduced the canary audit to
+  **0 vulnerabilities**; this override was not copied to production.
+- Production dependencies remain Nest 10 with the measured 17 advisories.
+  Nest 11 is a major upgrade and still requires a dedicated staging/canary
+  deployment approval before merge.
+
 ### P1 — dependency vulnerabilities
 
 The installed tree reports 5 high and 12 moderate advisories involving the
@@ -93,8 +111,8 @@ production deployment of this commit were not performed in this session.
 
 ## Priority next actions
 
-1. Run the isolated Nest 11 dependency canary and update only after full tests,
-   build and staging regression pass.
+1. Review the prepared Nest 11 + `js-yaml` 5.2.3 canary and run it against
+   isolated staging before any production dependency change.
 2. Run authenticated staging tests against Supabase/RLS, B2 and two physical
    Workers.
 3. Deploy this commit when the Vercel/Render deployment authority is available,
