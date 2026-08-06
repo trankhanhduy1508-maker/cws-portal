@@ -59,6 +59,6 @@ and the latest customer/payment/fleet evidence.
   `33dc578919a6d6fa013575ab593e8d4accc6e404`. The public bundle still contains
   the old `Tiếp tục thanh toán` Render Profile CTA, so the new UI is not
   production-verified or claimed live.
-- Render read-only probes: `/health` HTTP 200; `/staff/mfa-status` HTTP 404.
+- Current Render read-only probes: `/health` HTTP 200; `/staff/mfa-status` HTTP 401 without credentials. The route is live and protected; real AAL2 session remains unverified.
 - Full physical Worker → render → preview → live payment → download remains
   NEEDS_VERIFICATION; no production PASS is claimed.

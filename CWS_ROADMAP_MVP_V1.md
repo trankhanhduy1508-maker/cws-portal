@@ -139,10 +139,9 @@ sung, xem dưới).
 - Frontend: `StaffMfaLogin.jsx` — Google OAuth → kiểm tra staff role → tự động enroll (QR do Supabase sinh) nếu chưa có factor, hoặc challenge mã 6 số nếu đã có; bearer token chỉ giữ trong memory.
 - Backend: `GET /staff/mfa-status` chỉ xác nhận staff identity trước MFA; mọi Admin/Host data route vẫn qua `RoleGuard` và bắt buộc `aal2`. Không có `x-admin-key` bypass.
 
-**PRODUCTION_VERIFICATION_PENDING**: production bundle hiện vẫn là deployment
-cũ chứa email/password staff flow; patch Google OAuth này chưa được deploy.
-Cần Owner bật Google provider/redirect allowlist nếu chưa có và hoàn tất một
-lần đăng nhập Google + TOTP thật trên production.
+**PRODUCTION_VERIFICATION_PENDING**: production route and bundle are live;
+real Google provider → staff role → TOTP → AAL2 session still requires a human
+Admin account and has not been claimed.
 
 **HUMAN_VERIFICATION_PENDING**: chưa có tài khoản Admin/Host thật nào
 được Owner tạo qua Supabase Dashboard (`staff_roles`) để tự chạy thử
@@ -176,7 +175,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Render `/staff/mfa-status`: HTTP 401 without credentials, confirming the route is live and protected. Real Google → staff_roles → TOTP → aal2 → Admin API remains human verification pending.
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
 - Admin Fleet UI scope is CODE/UNIT VERIFIED: chỉ gọi `GET /fleet/workers` và map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
-- Fresh read-only probes: Vercel public bundle still contains the old `Tiếp tục thanh toán` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 404. No production PASS is claimed.
+- Fresh read-only probes: Vercel public bundle contains fleet/CRM markers and no old `Tiếp tục thanh toán` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 401 without credentials. No authenticated Admin PASS is claimed.
 - 2026-08-06 Render crash evidence: backend fails closed at boot because the effective CORS environment input is `*`; set `CORS_ORIGINS=https://cws-portal.vercel.app` and remove any legacy `CORS_ORIGIN=*` before redeploy. See `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
 - Historical pre-fix probe: `/health` HTTP 200, CORS preflight exposed `*`, and `/staff/mfa-status` was HTTP 404; this was resolved by the Founder Render configuration update above.
 - 2026-08-06 CRM implementation: `GET /customers/crm` reads existing customer profiles, render orders, and paid payment rows; no duplicate schema or secrets. Backend/frontend tests and builds pass; real CRM data requires an Admin AAL2 session.
