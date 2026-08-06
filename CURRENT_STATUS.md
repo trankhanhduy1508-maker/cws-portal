@@ -2,8 +2,8 @@
 
 ## Production NO-GO remediation continuation — 2026-08-05
 
-- CORS: **CODE/UNIT VERIFIED**; canonical `https://cws-portal.vercel.app` allowlist, production fail-closed, no wildcard credentials. Owner must set `CORS_ORIGINS` on Render.
-- CORS request-origin callback: **CODE/UNIT VERIFIED** for canonical allow, same-origin/no-origin, and denied origin. Deployment verification remains pending Owner configuration.
+- CORS: **CODE/UNIT VERIFIED; PRODUCTION BLOCKED**. Render boot runtime confirmed effective input `*` and failed closed in `parseCorsOrigins`; canonical origin is `https://cws-portal.vercel.app`. The stack trace cannot distinguish `CORS_ORIGINS` from legacy `CORS_ORIGIN` because `main.ts` uses nullish precedence. Evidence: `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
+- CORS request-origin callback: **CODE/UNIT VERIFIED** for canonical allow, same-origin/no-origin, and denied origin. Deployment verification is blocked until Render environment configuration is corrected and redeployed.
 - Secret rotation readiness: **CODE/UNIT VERIFIED**; legacy helper fallback removed and rotation order documented without values. Actual production rotation remains **BLOCKED** on Owner action.
 - Production RPC: migration 019 is idempotent and **CODE/UNIT VERIFIED** on staging; production remains unchanged. Worker publishable RPC identity/authentication remains **BLOCKED** for production.
 - Admin AAL2: staging schema/RLS/RPC metadata **CODE/UNIT VERIFIED**; real Admin identity/TOTP and state matrix remain **BLOCKED** pending Owner enrollment.

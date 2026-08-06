@@ -175,6 +175,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
 - Admin Fleet UI scope is CODE/UNIT VERIFIED: chỉ gọi `GET /fleet/workers` và map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
 - Fresh read-only probes: Vercel public bundle still contains the old `Tiếp tục thanh toán` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 404. No production PASS is claimed.
+- 2026-08-06 Render crash evidence: backend fails closed at boot because the effective CORS environment input is `*`; set `CORS_ORIGINS=https://cws-portal.vercel.app` and remove any legacy `CORS_ORIGIN=*` before redeploy. See `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
 
 # Definition of Done
 
