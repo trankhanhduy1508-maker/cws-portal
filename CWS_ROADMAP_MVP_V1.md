@@ -180,7 +180,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Historical pre-fix probe: `/health` HTTP 200, CORS preflight exposed `*`, and `/staff/mfa-status` was HTTP 404; this was resolved by the Founder Render configuration update above.
 - 2026-08-06 CRM implementation: `GET /customers/crm` reads existing customer profiles, render orders, and paid payment rows; no duplicate schema or secrets. Backend/frontend tests and builds pass; real CRM data requires an Admin AAL2 session.
 - 2026-08-06 production evidence: Vercel CRM UI deployment is READY; Render `/customers/crm` now returns HTTP 401 without credentials and `/health` 200 after auto-deploy. Route protection is verified; Admin AAL2 CRM data read remains NEEDS_VERIFICATION.
-- 2026-08-06 counter/aggregate hardening: Fleet `ACTIVE_IDLE/BUSY/OFFLINE` counters use a canonical frontend helper with tests; CRM paid/non-paid/orphan/latest-job/lifecycle aggregation has direct unit coverage. Backend 137/137 and frontend 9/9 pass.
+- 2026-08-06 counter/aggregate hardening: Fleet `ACTIVE_IDLE/BUSY/OFFLINE` counters use a canonical frontend helper with tests; CRM paid/non-paid/orphan/latest-job/lifecycle aggregation has direct unit coverage. Backend 141/141 and frontend 9/9 pass.
 - 2026-08-06 Scheduler hardening: state-order regression coverage confirms render completion stops at `REVIEW_READY` and payment finalization is gated by `AWAITING_PAYMENT`; backend 141/141 PASS. Physical Worker runtime remains NEEDS_VERIFICATION.
 
 # Definition of Done

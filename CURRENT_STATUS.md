@@ -18,14 +18,14 @@
 
 - 2026-08-06 production audit: Vercel root/Admin return HTTP 200; served bundle points to Render backend, contains fleet/CRM and `Bắt đầu render` markers, and no old pre-render payment CTA. Render `/health` is 200, CORS is exact-origin 204, `/staff/mfa-status` is 401 without credentials. Full physical Worker → Preview → Payment → Download runtime remains unverified.
 - 2026-08-06 CRM deployment audit: Vercel deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for `5e20211`; Render auto-deployed the backend and `/customers/crm` now returns HTTP 401 without credentials while `/health` is 200. Route protection is runtime verified; authenticated CRM data remains unverified pending Admin AAL2.
-- 2026-08-06 fresh loop audit: production `/health` 200; anonymous `/jobs`, `/fleet/workers`, `/customers/crm`, and `/payments/reconciliation-anomalies` all return 401. Vercel bundle points to Render, contains CRM/Fleet markers, and has no pre-render payment CTA. Fleet counters and CRM aggregation are now separately unit-tested; backend 137/137 and frontend 9/9 pass.
+- 2026-08-06 fresh loop audit: production `/health` 200; anonymous `/jobs`, `/fleet/workers`, `/customers/crm`, and `/payments/reconciliation-anomalies` all return 401. Vercel bundle points to Render, contains CRM/Fleet markers, and has no pre-render payment CTA. Fleet counters and CRM aggregation are now separately unit-tested; backend 141/141 and frontend 9/9 pass.
 - 2026-08-06 Scheduler state-order audit: queued/active/all-done/AWAITING_PAYMENT boundaries are covered by 4 new regression tests; backend 24 suites / 141 tests PASS. Evidence: `reports/product/CWS_SCHEDULER_STATE_ORDER_2026-08-06.md`.
 
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.
 - 2026-08-06: Job Object ownership is **CODE/UNIT VERIFIED** in `BlenderCliRenderer` behind an explicit staging opt-in; live Windows renderer integration and complete sandbox boundary remain **UNVERIFIED**. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
 - 2026-08-06: Admin `GET /jobs` scope bug fixed: AAL2 staff receives all jobs, customers remain tenant-scoped, anonymous access is denied. Evidence: `reports/security/CWS_ADMIN_JOB_LIST_SCOPE_FIX_2026-08-06.md`.
-- 2026-08-06: Admin UI narrowed to fleet-only and pre-render customer UI no longer shows price or payment CTA; backend payment boundary remains `REVIEW_READY → approve → AWAITING_PAYMENT → PAID`. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
+- 2026-08-06: Admin UI keeps Fleet and Customer CRM as separate MVP areas; pre-render customer UI no longer shows price or payment CTA. Backend payment boundary remains `REVIEW_READY → approve → AWAITING_PAYMENT → PAID`. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md`.
 
 ## Total review — 2026-08-05
 
