@@ -242,3 +242,18 @@ secret is used. Full contract/evidence: `reports/security/CWS_WORKER_PRODUCTION_
 not accepted by `JobsController`. Cross-customer job access requires a valid
 Supabase Bearer token, an authorized `staff_roles` row, and server-side
 `aal2`. Customer ownership checks remain unchanged.
+
+## Capacity guardrails — 2026-08-06
+
+**[ACTIVE]** Scheduler ticks must not overlap and must reuse one fleet-presence
+snapshot within each tick; this reduces query amplification without changing
+Worker assignment ownership.
+
+**[ACTIVE]** A Job may have at most one payment intent.
+`backend/migrations/016_payment_one_intent_per_job.sql` is the additive database
+race guard; preflight and isolated staging application are required before
+production. No duplicate payment rows are deleted automatically.
+
+**[ACTIVE]** Capacity claims require measured isolated staging evidence. Local
+simulation results are algorithmic only and never authorize a production
+scale claim.

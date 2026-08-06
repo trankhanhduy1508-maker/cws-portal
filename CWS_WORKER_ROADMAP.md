@@ -988,3 +988,9 @@ The isolated staging path is now verified end-to-end: assignment/fencing generat
 
 - Node Agent retry backoff now supports bounded opt-in jitter with deterministic tests; default timing is unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - Synchronous remote I/O, production SCM/Job Object integration, isolation, observability, rollback, and production authentication remain open gates.
+
+## Capacity/concurrency follow-up — 2026-08-06
+
+- Worker pull-claim remains database-serialized with `FOR UPDATE SKIP LOCKED`, capability checks, bounded retry, and generation fencing.
+- Local scale simulation covers heartbeat/failure bursts only; Supabase/B2, physical Worker, and production capacity remain unverified.
+- Next Worker scale gate is isolated staging load with 100/1,000 synthetic identities before any 1,000/10,000 redesign.

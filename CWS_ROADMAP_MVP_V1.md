@@ -204,6 +204,12 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
   legacy shared admin key for cross-customer job access; Bearer + staff role +
   `aal2` is the only Admin path. Regression test added.
 
+# Scale audit follow-up — 2026-08-06
+
+- Scheduler now prevents overlapping ticks and reuses one fleet presence snapshot per tick.
+- Payment one-intent-per-Job migration is prepared but requires duplicate preflight in isolated staging before application.
+- 100/1,000 and 1,000/10,000 capacity remain unmeasured in real infrastructure. Evidence: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`.
+
 # Definition of Done
 
 ``` text

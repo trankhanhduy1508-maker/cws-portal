@@ -35,6 +35,7 @@ const TASK_EXPANSION_CHUNK_SIZE = 10;
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
   private readonly lastWakeAttemptAt = new Map<string, number>();
+  private tickInFlight = false;
   private static readonly WAKE_RETRY_COOLDOWN_MS = 5 * 60 * 1000; // không thử Wake lại quá dày
 
   constructor(
@@ -49,26 +50,49 @@ export class SchedulerService {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async tick(): Promise<void> {
+    // A slow Supabase/API tick must not overlap the next cron invocation.
+    // Overlap would multiply reads and status writes exactly when the system
+    // is already under pressure.
+    if (this.tickInFlight) {
+      this.logger.warn('Bỏ qua scheduler tick chồng nhau');
+      return;
+    }
+    this.tickInFlight = true;
+
     let activeOrders: RenderOrder[];
     try {
       activeOrders = await this.ordersRepository.findActiveOrders();
     } catch (err) {
       this.logger.error(`Không đọc được danh sách order đang xử lý: ${String(err)}`);
+      this.tickInFlight = false;
       return;
     }
 
-    for (const order of activeOrders) {
-      try {
-        await this.processOrder(order);
-      } catch (err) {
-        // 1 order lỗi không được làm hỏng cả tick — log và tiếp tục
-        // với order khác (đúng tinh thần "không làm gián đoạn hệ thống").
-        this.logger.error(`processOrder(${order.id}) lỗi: ${String(err)}`);
+    try {
+      // This value is a fleet-wide snapshot for state narration. Reading it
+      // once per tick avoids one identical workers query per active order.
+      const onlineWorkers = activeOrders.some((order) => order.internalJobId)
+        ? await this.workerFleetGateway.countOnlineWorkers()
+        : 0;
+
+      for (const order of activeOrders) {
+        try {
+          await this.processOrder(order, onlineWorkers);
+        } catch (err) {
+          // 1 order lỗi không được làm hỏng cả tick — log và tiếp tục
+          // với order khác (đúng tinh thần "không làm gián đoạn hệ thống").
+          this.logger.error(`processOrder(${order.id}) lỗi: ${String(err)}`);
+        }
       }
+    } finally {
+      this.tickInFlight = false;
     }
   }
 
-  private async processOrder(order: RenderOrder): Promise<void> {
+  private async processOrder(
+    order: RenderOrder,
+    onlineWorkersSnapshot?: number,
+  ): Promise<void> {
     if (!order.internalJobId) {
       this.logger.warn(`Order ${order.id} chưa có internalJobId — bỏ qua tick này`);
       return;
@@ -92,7 +116,8 @@ export class SchedulerService {
 
     const internalJobId = order.internalJobId;
     const tasks = await this.workerFleetGateway.getTasks(internalJobId);
-    const onlineWorkers = await this.workerFleetGateway.countOnlineWorkers();
+    const onlineWorkers =
+      onlineWorkersSnapshot ?? (await this.workerFleetGateway.countOnlineWorkers());
 
     // Bước 1: nếu probe task (frame 1-1) đã "done" và total_frames đã
     // biết, mà vẫn CHỈ có 1 task duy nhất — tự động tạo các task còn

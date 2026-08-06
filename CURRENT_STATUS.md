@@ -467,3 +467,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Staging Admin RBAC migration `017_staging_admin_rbac_contract.sql`: **REAL STAGING SCHEMA VERIFIED**; exact application contract, RLS enabled, no client policies.
 - Admin Fleet through real UI: **BLOCKED/UNVERIFIED** pending Owner-created staging Auth identity, MFA enrollment/AAL2 session, and server-only staging backend configuration. Evidence: `reports/worker/CWS_ADMIN_FLEET_STAGING_AUTH_BLOCKER_2026-08-05.md`.
 - Isolation alternative: **PARTIAL REAL RUNTIME VERIFIED** for Job Object timeout/child cleanup; filesystem boundary and network restriction remain **UNVERIFIED/BLOCKED**. Evidence: `reports/worker/CWS_HOSTILE_BLEND_ISOLATION_POC_2026-08-05.md`.
+
+## Capacity/concurrency audit — 2026-08-06
+
+- Safe local pull-claim/heartbeat/failure simulation completed for 100 jobs/1,000 Workers and 1,000 jobs/10,000 Workers; algorithmic evidence only, not production capacity.
+- Scheduler hardening applied: one fleet online snapshot per tick and no overlapping cron ticks; regression tests pass.
+- Payment concurrency guard prepared: `backend/migrations/016_payment_one_intent_per_job.sql` adds a non-destructive preflight plus unique partial index; not applied to production.
+- First scale risks: upload memory buffering, per-order scheduler task reads, single in-process poller, and unmeasured Supabase/B2/realtime limits.
+- Full report: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`. Scenario A/B remain **PARTIAL / UNMEASURED**; no capacity PASS claimed.

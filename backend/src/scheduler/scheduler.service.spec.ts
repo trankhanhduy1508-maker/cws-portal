@@ -65,4 +65,37 @@ describe('SchedulerService MVP state transitions', () => {
     expect(workerFleetGateway.getTasks).not.toHaveBeenCalled();
     expect(storageService.notify).toHaveBeenCalled();
   });
+
+  it('takes one fleet snapshot per tick instead of one count query per order', async () => {
+    const { service, workerFleetGateway, ordersRepository } = makeService();
+    ordersRepository.findActiveOrders.mockResolvedValue([
+      order(),
+      { ...order(), id: 'order-2', internalJobId: 'internal-2' },
+    ]);
+    workerFleetGateway.countOnlineWorkers.mockResolvedValue(2);
+    workerFleetGateway.getTasks.mockResolvedValue([{ status: 'queued' }]);
+
+    await service.tick();
+
+    expect(workerFleetGateway.countOnlineWorkers).toHaveBeenCalledTimes(1);
+    expect(workerFleetGateway.getTasks).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not overlap a slow tick with the next cron invocation', async () => {
+    const { service, ordersRepository, workerFleetGateway } = makeService();
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    ordersRepository.findActiveOrders.mockImplementationOnce(async () => {
+      await blocked;
+      return [];
+    });
+
+    const first = service.tick();
+    await service.tick();
+    expect(ordersRepository.findActiveOrders).toHaveBeenCalledTimes(1);
+
+    release();
+    await first;
+    expect(workerFleetGateway.countOnlineWorkers).not.toHaveBeenCalled();
+  });
 });

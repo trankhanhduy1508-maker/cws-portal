@@ -250,6 +250,8 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
         worker_runtime_seconds: workerRuntimeSeconds,
       })
       .eq('id', id)
+      .eq('status', JobStatus.REVIEW_READY)
+      .is('payment_id', null)
       .select()
       .maybeSingle();
 
