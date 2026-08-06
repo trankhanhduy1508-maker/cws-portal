@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,16 @@ from worker_engine import (BasicPreflight, BlenderCliRenderer, JobSpec,
 
 
 class StagingProjectDownloader:
+    def __init__(self, allowed_hosts: set[str] | None = None):
+        configured = allowed_hosts
+        if configured is None:
+            configured = {
+                item.strip().lower()
+                for item in os.environ.get("CWS_STAGING_PROJECT_HOSTS", "").split(",")
+                if item.strip()
+            }
+        self.allowed_hosts = frozenset(configured)
+
     def download(self, spec: JobSpec, destination: Path) -> Path:
         destination.mkdir(parents=True, exist_ok=True)
         target = destination / "project.blend"
@@ -43,14 +54,34 @@ class StagingProjectDownloader:
                 raise PermanentWorkerError("staging project file is unavailable")
             shutil.copy2(source, target)
             return target
-        if not (uri.startswith("https://") or uri.startswith("http://")):
-            raise PermanentWorkerError("staging project_uri must be file:// or https://")
+        parsed = urlsplit(uri)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise PermanentWorkerError("staging remote project_uri must use https://")
+        if parsed.username or parsed.password or parsed.port:
+            raise PermanentWorkerError("staging project_uri must not contain credentials or a custom port")
+        if not self.allowed_hosts:
+            raise PermanentWorkerError(
+                "CWS_STAGING_PROJECT_HOSTS must explicitly allow the project host"
+            )
+        if parsed.hostname.lower() not in self.allowed_hosts:
+            raise PermanentWorkerError("staging project host is not allowlisted")
         try:
-            with urllib.request.urlopen(uri, timeout=60) as response, target.open("wb") as stream:
+            request = urllib.request.Request(uri, method="GET")
+            opener = urllib.request.build_opener(_NoRedirectHandler())
+            with opener.open(request, timeout=60) as response, target.open("wb") as stream:
                 shutil.copyfileobj(response, stream)
+        except PermanentWorkerError:
+            raise
         except Exception as exc:
             raise RetryableWorkerError("staging project download failed") from exc
         return target
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Do not let an allowlisted source redirect to another host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise PermanentWorkerError("staging project download redirects are disabled")
 
 
 class StagingReporter:

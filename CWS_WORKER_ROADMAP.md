@@ -7,6 +7,7 @@
 - P1 optimization: analyzer → working-copy plan/apply exists; ArchViz profiles are policy data only and require benchmark evidence before customer use.
 - Remaining P0 gates: Owner secret rotation, production RPC change approval, Admin AAL2 runtime, and Nest 11 canary. No new Blender tradeoff optimization is in scope.
 - 2026-08-06: Node Agent heartbeat remote I/O is **CODE/UNIT VERIFIED** with bounded single-flight dispatch; staging launchers opt in. Generic Worker Job Object ownership is **CODE/UNIT VERIFIED** behind an explicit flag. Live Windows renderer, hostile sandbox, SCM deployment and rollback remain gates. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
+- 2026-08-06 full security audit: staging project downloads now require HTTPS, an explicit host allowlist, and no redirects; Worker offline suite is 38/38 PASS. Production Worker identity/RPC authentication, hostile Blend isolation, and physical Windows/GPU verification remain NO-GO gates. Evidence: `reports/security/CWS_FULL_WORKER_NODE_AGENT_SECURITY_AUDIT_2026-08-06.md`.
 
 ## Total review gates — 2026-08-05
 

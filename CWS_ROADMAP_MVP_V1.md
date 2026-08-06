@@ -182,6 +182,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - 2026-08-06 production evidence: Vercel CRM UI deployment is READY; Render `/customers/crm` now returns HTTP 401 without credentials and `/health` 200 after auto-deploy. Route protection is verified; Admin AAL2 CRM data read remains NEEDS_VERIFICATION.
 - 2026-08-06 counter/aggregate hardening: Fleet `ACTIVE_IDLE/BUSY/OFFLINE` counters use a canonical frontend helper with tests; CRM paid/non-paid/orphan/latest-job/lifecycle aggregation has direct unit coverage. Backend 141/141 and frontend 9/9 pass.
 - 2026-08-06 Scheduler hardening: state-order regression coverage confirms render completion stops at `REVIEW_READY` and payment finalization is gated by `AWAITING_PAYMENT`; backend 141/141 PASS. Physical Worker runtime remains NEEDS_VERIFICATION.
+- 2026-08-06 Worker/Security audit: staging project download now has HTTPS + explicit host allowlist + redirect rejection with Worker 38/38 PASS. This does not change the production NO-GO decision: Worker identity/RPC authentication, hostile Blend isolation, and physical Windows/GPU E2E remain blocked.
 
 # Definition of Done
 

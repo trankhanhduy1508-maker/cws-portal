@@ -12,7 +12,7 @@
 - Job Object: timeout/child cleanup **REAL RUNTIME VERIFIED**; Generic Worker renderer ownership is **CODE/UNIT VERIFIED** behind staging opt-in, while live Windows integration and full sandbox boundary remain **UNVERIFIED**.
 - Path boundary: symlink rejection **CODE/UNIT VERIFIED**; junction/reparse disposable-host matrix remains **UNVERIFIED**.
 - Blender optimizer: working-copy-only plan/apply harness **REAL RUNTIME VERIFIED** on harmless EEVEE plan; no speedup claimed. ArchViz profiles are **CODE/UNIT VERIFIED** only.
-- Dependency audit: clean-install backend reports 5 High / 0 Critical production vulnerabilities; safe override experiment was rejected and removed. Nest 11 requires a separate canary.
+- Dependency audit: current backend `npm audit --omit=dev` reports 17 production vulnerabilities (5 High, 12 Moderate, 0 Critical); safe override experiment was rejected and removed. Nest 11 requires a separate canary.
 - Decision: **PRODUCTION NO-GO**. Evidence: `reports/CWS_PRODUCTION_NO_GO_REMEDIATION_2026-08-05.md`.
 - Founder product scope 2026-08-06: `/#admin` has separate Fleet + Customer CRM areas; `/` owns customer render → preview → payment → download. Evidence: `reports/product/CWS_FOUNDER_PRODUCT_FLOW_RECONCILIATION_2026-08-06.md` and `reports/product/CWS_CUSTOMER_CRM_MVP_2026-08-06.md`.
 
@@ -20,6 +20,7 @@
 - 2026-08-06 CRM deployment audit: Vercel deployment `dpl_6q4819cGaS3Hfv1y4xqtcQ62iREQ` is READY for `5e20211`; Render auto-deployed the backend and `/customers/crm` now returns HTTP 401 without credentials while `/health` is 200. Route protection is runtime verified; authenticated CRM data remains unverified pending Admin AAL2.
 - 2026-08-06 fresh loop audit: production `/health` 200; anonymous `/jobs`, `/fleet/workers`, `/customers/crm`, and `/payments/reconciliation-anomalies` all return 401. Vercel bundle points to Render, contains CRM/Fleet markers, and has no pre-render payment CTA. Fleet counters and CRM aggregation are now separately unit-tested; backend 141/141 and frontend 9/9 pass.
 - 2026-08-06 Scheduler state-order audit: queued/active/all-done/AWAITING_PAYMENT boundaries are covered by 4 new regression tests; backend 24 suites / 141 tests PASS. Evidence: `reports/product/CWS_SCHEDULER_STATE_ORDER_2026-08-06.md`.
+- 2026-08-06 Worker/Node Agent/Security audit: staging downloader SSRF/redirect hardening is CODE/UNIT VERIFIED; Worker offline suite 38/38 PASS. Production Worker identity/RPC authentication, hostile Blend isolation, and physical Windows/GPU evidence remain NO-GO/BLOCKED. Evidence: `reports/security/CWS_FULL_WORKER_NODE_AGENT_SECURITY_AUDIT_2026-08-06.md`.
 
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.
