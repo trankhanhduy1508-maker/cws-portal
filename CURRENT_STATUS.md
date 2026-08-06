@@ -20,6 +20,7 @@
 - 2026-08-06: Node Agent retry backoff jitter is **CODE/UNIT VERIFIED** (32/32 worker offline tests); default remains unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - 2026-08-06: Node Agent non-blocking heartbeat is **CODE/UNIT VERIFIED**; single-flight daemon dispatch prevents remote heartbeat latency from blocking `tick()`. Worker offline suite is **35/35 PASS**.
 - 2026-08-06: Job Object ownership is **CODE/UNIT VERIFIED** in `BlenderCliRenderer` behind an explicit staging opt-in; live Windows renderer integration and complete sandbox boundary remain **UNVERIFIED**. Evidence: `reports/worker/CWS_NODE_AGENT_NONBLOCKING_IO_JOB_OBJECT_2026-08-06.md`.
+- 2026-08-06: Admin `GET /jobs` scope bug fixed: AAL2 staff receives all jobs, customers remain tenant-scoped, anonymous access is denied. Evidence: `reports/security/CWS_ADMIN_JOB_LIST_SCOPE_FIX_2026-08-06.md`.
 
 ## Total review — 2026-08-05
 

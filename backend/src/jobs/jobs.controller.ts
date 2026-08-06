@@ -64,19 +64,17 @@ export class JobsController {
   @Get()
   async listAll(@Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    if (await this.isAdminRequest(req)) {
+      const orders = await this.jobsService.listAll(null);
+      return orders.map(toPublicJson);
+    }
+
     if (customerId) {
       const orders = await this.jobsService.listAll(customerId);
       return orders.map(toPublicJson);
     }
 
-    const adminApiKey = this.configService.get('adminApiKey', { infer: true });
-    if (!isValidAdminKey(req, adminApiKey)) {
-      throw new UnauthorizedException(
-        'Cần đăng nhập hoặc x-admin-key để xem danh sách job',
-      );
-    }
-    const orders = await this.jobsService.listAll(null);
-    return orders.map(toPublicJson);
+    throw new UnauthorizedException('Cần đăng nhập để xem danh sách job');
   }
 
   /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */

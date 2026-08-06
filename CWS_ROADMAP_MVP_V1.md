@@ -175,6 +175,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Supabase Google authorize initiation: HTTP 302 to Google with production callback/redirect target.
 - Render `/staff/mfa-status`: HTTP 404 while `/health`: HTTP 200. Backend deployment remains stale/miswired; Admin Google → staff_roles → TOTP → aal2 → Admin API is not runtime verified.
 - Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker → Render → Preview → Payment → Download remains NEEDS_VERIFICATION.
+- Admin job-list authorization scope is CODE/UNIT VERIFIED: AAL2 staff sees all jobs, customer history remains scoped, anonymous access is denied. Production runtime awaits the Render deployment repair.
 
 # Definition of Done
 
