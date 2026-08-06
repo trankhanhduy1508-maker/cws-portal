@@ -19,6 +19,14 @@
   B2, Admin and Customer runtime remain **BLOCKED/UNVERIFIED**.
 - Evidence: `reports/worker/CWS_WORKER_EEVEE_STRESS_FLOW_2026-08-06.md`.
 
+## Authenticated staging Eevee preparation — 2026-08-06
+
+- Exact committed Eevee 48-frame scene manifest, staging preflight and
+  migration/runtime matrix are prepared.
+- Scene SHA-256 and Blender 5.2.0 preflight PASS; authenticated staging is
+  **BLOCKED** because all required `CWS_STAGING_*` values are absent.
+- Evidence: `reports/worker/CWS_STAGING_EEVEE_AUTHENTICATED_RUNTIME_PREP_2026-08-06.md`.
+
 ## Staging preflight blocked — 2026-08-06
 
 - No Supabase CLI, `psql`, `.mcp.json`, staging endpoint or staging

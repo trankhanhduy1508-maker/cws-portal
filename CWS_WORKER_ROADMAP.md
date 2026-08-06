@@ -19,6 +19,14 @@
   B2 finalize, Admin state and Customer recovery require isolated staging.
 - Evidence: `reports/worker/CWS_WORKER_EEVEE_STRESS_FLOW_2026-08-06.md`.
 
+## Authenticated staging Eevee gate — 2026-08-06
+
+- **IN_PROGRESS; CODE/UNIT VERIFIED**: exact scene manifest, read-only preflight,
+  migration order and A/B authenticated runtime matrix.
+- **BLOCKED**: staging Supabase/B2 configuration and two physical Worker
+  identities are absent; no RPC, Admin or Customer runtime PASS is claimed.
+- Evidence: `reports/worker/CWS_STAGING_EEVEE_AUTHENTICATED_RUNTIME_PREP_2026-08-06.md`.
+
 ## Staging identity/failover gate — 2026-08-06
 
 - **BLOCKED** at staging DB preflight: no Supabase CLI/psql/MCP/endpoint or

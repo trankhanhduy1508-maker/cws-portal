@@ -1,0 +1,17 @@
+{
+  "expected_engine": "BLENDER_EEVEE",
+  "expected_frames": [1, 48],
+  "expected_resolution": "1280x720",
+  "output_format": "png",
+  "autoexec": false,
+  "scene_relative_path": "tests/assets/cws_blender_unoptimized_eevee_stress.blend",
+  "scene_sha256": "8ae22d0aa2a4131789c6d3e618266bd0ecfc4688d8363e4fa2c868ccd0f14ca0",
+  "expected_output_prefix": "cws-staging/eevee-stress/cws-eevee-stress-task-48f/",
+  "expected_final_frame_count": 48,
+  "required_staging_migrations": [
+    "worker_migrations/016_staging_job_assignment_contract.sql",
+    "worker_migrations/020_worker_identity_rpc_auth_contract.sql",
+    "worker_migrations/021_production_failover_reassign_contract.sql"
+  ],
+  "staging_runtime_ready": false
+}
