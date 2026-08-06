@@ -472,6 +472,13 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 
 - Safe local pull-claim/heartbeat/failure simulation completed for 100 jobs/1,000 Workers and 1,000 jobs/10,000 Workers; algorithmic evidence only, not production capacity.
 - Scheduler hardening applied: one fleet online snapshot per tick and no overlapping cron ticks; regression tests pass.
-- Payment concurrency guard prepared: `backend/migrations/016_payment_one_intent_per_job.sql` adds a non-destructive preflight plus unique partial index; not applied to production.
+- Payment concurrency guard prepared: `backend/migrations/017_payment_one_intent_per_job.sql` adds a non-destructive preflight plus unique partial index; not applied to production. Sequence 016 is reserved by Google OAuth.
 - First scale risks: upload memory buffering, per-order scheduler task reads, single in-process poller, and unmeasured Supabase/B2/realtime limits.
 - Full report: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`. Scenario A/B remain **PARTIAL / UNMEASURED**; no capacity PASS claimed.
+
+## Scale bottleneck remediation — 2026-08-06
+
+- Upload path now uses disk-backed streaming with B2 read-stream, request limits, timeout, and abort/error cleanup; focused upload tests pass.
+- Scheduler now batch-reads task state in groups of 200 Job IDs in addition to the one presence snapshot and tick mutex.
+- Synthetic heartbeat jitter/reconnect/failure storm harness expanded for both scale scenarios; infrastructure capacity remains unverified.
+- Payment guard renamed to `backend/migrations/017_payment_one_intent_per_job.sql` because sequence 016 is already Google OAuth; no migration applied to production.

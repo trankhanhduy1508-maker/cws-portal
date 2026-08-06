@@ -1,4 +1,7 @@
 import { ConfigService } from '@nestjs/config';
+import { promises as fsPromises } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 import { B2StorageService } from './b2-storage.service';
 import { AppConfig } from '../config/configuration';
 
@@ -36,5 +39,26 @@ describe('B2StorageService.extractKeyFromPublicUrl()', () => {
     const url = 'https://evil.example.com/other-bucket/results/abc-123.zip';
 
     expect(() => service.extractKeyFromPublicUrl(url)).toThrow();
+  });
+});
+
+describe('B2StorageService.uploadFile()', () => {
+  it('cleans the streamed temporary file when storage fails', async () => {
+    const service = makeService();
+    const path = join(tmpdir(), `cws-upload-test-${Date.now()}`);
+    await fsPromises.writeFile(path, 'blend-data');
+    (service as any).s3 = {
+      send: jest.fn().mockRejectedValue(new Error('storage unavailable')),
+    };
+
+    await expect(
+      service.uploadFile({
+        path,
+        size: 10,
+        originalname: 'scene.blend',
+        mimetype: 'application/octet-stream',
+      } as Express.Multer.File),
+    ).rejects.toThrow('Upload file lên B2 thất bại');
+    await expect(fsPromises.access(path)).rejects.toThrow();
   });
 });

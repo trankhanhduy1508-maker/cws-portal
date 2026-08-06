@@ -11,7 +11,7 @@ capacity claim is made.
 
 | Step | Implementation | Concurrency notes |
 |---|---|---|
-| Upload/Drive | `POST /files/upload`, `POST /drive/resolve` | `.blend` only; Multer memory storage with 2 GB limit. Concurrent large uploads can exhaust backend RAM. |
+| Upload/Drive | `POST /files/upload`, `POST /drive/resolve` | `.blend` only; upload is now disk-streamed with 2 GB limit. Disk/B2 concurrency remains unmeasured. |
 | Job create | `POST /jobs` → `JobsService.createOrder()` → `render_orders`, `jobs`, probe `tasks` | Supabase is the durable boundary; no broker/queue. |
 | Scheduler | `SchedulerService` every 10 s | Reads all active orders and tasks; narration/state sync, not the claim lock. |
 | Claim | `claim_next_*` RPC | `FOR UPDATE SKIP LOCKED`, capability/health/fresh heartbeat checks, generation/attempt fencing. |
@@ -28,7 +28,7 @@ capacity claim is made.
 Before this audit, `approve()` could create two intents concurrently before
 `attachPayment()` updated the order. `attachPayment()` now requires
 `status=REVIEW_READY` and `payment_id IS NULL`. The additive migration
-`backend/migrations/016_payment_one_intent_per_job.sql` adds a partial unique
+`backend/migrations/017_payment_one_intent_per_job.sql` adds a partial unique
 index on `payments(job_id)` and aborts without data mutation if historical
 duplicates exist. Production is not claimed fixed until this migration passes
 duplicate preflight in isolated staging.
@@ -40,12 +40,20 @@ could overlap the next tick. The scheduler now takes one fleet presence
 snapshot per tick and skips overlapping ticks. Regression tests cover both.
 Per-order task reads remain the next staging optimization target.
 
-### P1 — upload memory pressure
+### P1 — upload memory pressure (fixed in code)
 
-`FileInterceptor` uses memory storage and B2 upload consumes `file.buffer`.
-This is the first obvious resource risk for 100 simultaneous large uploads.
-The 2 GB limit is a safety bound, not a capacity guarantee. Direct-to-B2
-multipart or streamed backpressure needs isolated staging measurement.
+`FileInterceptor` previously used memory storage and B2 consumed `file.buffer`.
+It now writes through a disk-backed stream, B2 reads with `createReadStream`,
+and success/error/client-abort cleanup is covered by tests. The 2 GB limit is
+still a safety bound, not a capacity guarantee; disk space, B2 bandwidth and
+true concurrent upload behavior remain staging measurements.
+
+### P1 — scheduler query amplification (further reduced)
+
+The scheduler now batch-reads task state in groups of 200 Job IDs, in addition
+to its one presence snapshot and tick mutex. Task reads are now approximately
+`ceil(active_jobs/200)` per tick; Worker claim locking is unchanged. Staging
+must still measure large batches and total task-row volume.
 
 ### P1/P2 — scheduler and horizontal scale
 
@@ -69,10 +77,10 @@ Command: `python tests/scaling/cws_capacity_simulation.py`
 The simulation is in-memory only and excludes network, Postgres/RLS, B2,
 Blender, payment provider, and Render limits. Results:
 
-| Scenario | Claimed | Duplicate claims | Claim loop | Heartbeat events |
-|---|---:|---:|---:|---:|
-| 100 jobs / 1,000 workers | 100 | 0 | 0.028 ms | 1,000 |
-| 1,000 jobs / 10,000 workers | 1,000 | 0 | 0.204 ms | 10,000 |
+| Scenario | Claimed | Duplicate claims | Claim loop | Heartbeat events | Max heartbeat/s | Max reconnect/s |
+|---|---:|---:|---:|---:|---:|---:|
+| 100 jobs / 1,000 workers | 100 | 0 | 0.028 ms | 1,000 | 179 | 62 |
+| 1,000 jobs / 10,000 workers | 1,000 | 0 | 0.250 ms | 10,000 | 1,719 | 62 |
 
 These are algorithmic measurements, not capacity numbers.
 

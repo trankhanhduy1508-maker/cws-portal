@@ -994,3 +994,4 @@ The isolated staging path is now verified end-to-end: assignment/fencing generat
 - Worker pull-claim remains database-serialized with `FOR UPDATE SKIP LOCKED`, capability checks, bounded retry, and generation fencing.
 - Local scale simulation covers heartbeat/failure bursts only; Supabase/B2, physical Worker, and production capacity remain unverified.
 - Next Worker scale gate is isolated staging load with 100/1,000 synthetic identities before any 1,000/10,000 redesign.
+- Synthetic heartbeat jitter, reconnect storm and bounded failover simulation are included in `tests/scaling/cws_capacity_simulation.py`; no Supabase write capacity is claimed.

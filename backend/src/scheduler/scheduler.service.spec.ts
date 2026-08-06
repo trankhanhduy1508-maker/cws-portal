@@ -17,6 +17,7 @@ function makeService() {
   const ordersRepository = { findActiveOrders: jest.fn(), updateStatus: jest.fn().mockResolvedValue(undefined) };
   const workerFleetGateway = {
     getTasks: jest.fn(), countOnlineWorkers: jest.fn(), getTotalFrames: jest.fn(),
+    getTasksForJobs: jest.fn().mockResolvedValue(new Map()),
     createRemainingTasks: jest.fn(),
   };
   const jobsService = { finalizeDelivery: jest.fn() };
@@ -73,12 +74,19 @@ describe('SchedulerService MVP state transitions', () => {
       { ...order(), id: 'order-2', internalJobId: 'internal-2' },
     ]);
     workerFleetGateway.countOnlineWorkers.mockResolvedValue(2);
+    workerFleetGateway.getTasksForJobs.mockResolvedValue(
+      new Map([
+        ['internal-1', [{ status: 'queued' }]],
+        ['internal-2', [{ status: 'queued' }]],
+      ]),
+    );
     workerFleetGateway.getTasks.mockResolvedValue([{ status: 'queued' }]);
 
     await service.tick();
 
     expect(workerFleetGateway.countOnlineWorkers).toHaveBeenCalledTimes(1);
-    expect(workerFleetGateway.getTasks).toHaveBeenCalledTimes(2);
+    expect(workerFleetGateway.getTasksForJobs).toHaveBeenCalledTimes(1);
+    expect(workerFleetGateway.getTasks).not.toHaveBeenCalled();
   });
 
   it('does not overlap a slow tick with the next cron invocation', async () => {
@@ -97,5 +105,22 @@ describe('SchedulerService MVP state transitions', () => {
     release();
     await first;
     expect(workerFleetGateway.countOnlineWorkers).not.toHaveBeenCalled();
+  });
+
+  it('falls back to per-order task reads when a batch snapshot fails', async () => {
+    const { service, ordersRepository, workerFleetGateway } = makeService();
+    ordersRepository.findActiveOrders.mockResolvedValue([order()]);
+    workerFleetGateway.countOnlineWorkers.mockResolvedValue(1);
+    workerFleetGateway.getTasksForJobs.mockRejectedValue(new Error('temporary API limit'));
+    workerFleetGateway.getTasks.mockResolvedValue([{ status: 'queued' }]);
+
+    await service.tick();
+
+    expect(workerFleetGateway.getTasks).toHaveBeenCalledWith('internal-1');
+    expect(ordersRepository.updateStatus).toHaveBeenCalledWith(
+      'order-1',
+      JobStatus.ALLOCATING_WORKERS,
+      0,
+    );
   });
 });

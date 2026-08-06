@@ -209,6 +209,7 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 - Scheduler now prevents overlapping ticks and reuses one fleet presence snapshot per tick.
 - Payment one-intent-per-Job migration is prepared but requires duplicate preflight in isolated staging before application.
 - 100/1,000 and 1,000/10,000 capacity remain unmeasured in real infrastructure. Evidence: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`.
+- Upload memory bottleneck is mitigated in code with disk-backed streaming and cleanup; scheduler task reads are batched at 200 Job IDs per query. Runtime capacity remains NEEDS_VERIFICATION in isolated staging.
 
 # Definition of Done
 

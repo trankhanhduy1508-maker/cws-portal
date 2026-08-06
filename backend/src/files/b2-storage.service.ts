@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createReadStream } from 'fs';
+import { promises as fsPromises } from 'fs';
 import {
   S3Client,
   PutObjectCommand,
@@ -72,13 +74,19 @@ export class B2StorageService {
     file: Express.Multer.File,
   ): Promise<{ key: string; url: string }> {
     const key = `uploads/${randomUUID()}-${file.originalname}`;
+    const uploadStream = file.path ? createReadStream(file.path) : null;
+    // Keep a listener attached even when the S3 client fails before it starts
+    // consuming the stream; otherwise a late open/read error becomes an
+    // unhandled process error during cleanup.
+    uploadStream?.on('error', () => undefined);
 
     try {
       await this.s3.send(
         new PutObjectCommand({
           Bucket: this.bucketName,
           Key: key,
-          Body: file.buffer,
+          Body: uploadStream ?? file.buffer,
+          ContentLength: file.size,
           ContentType: file.mimetype || 'application/octet-stream',
         }),
       );
@@ -86,6 +94,16 @@ export class B2StorageService {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Upload B2 thất bại cho key ${key}: ${message}`);
       throw new Error(`Upload file lên B2 thất bại: ${message}`);
+    } finally {
+      if (file.path) {
+        try {
+          await fsPromises.unlink(file.path);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            this.logger.warn(`Không cleanup được file tạm upload: ${(error as Error).message}`);
+          }
+        }
+      }
     }
 
     const url = `https://${this.endpoint}/${this.bucketName}/${key}`;

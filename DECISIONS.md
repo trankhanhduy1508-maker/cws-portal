@@ -250,10 +250,15 @@ snapshot within each tick; this reduces query amplification without changing
 Worker assignment ownership.
 
 **[ACTIVE]** A Job may have at most one payment intent.
-`backend/migrations/016_payment_one_intent_per_job.sql` is the additive database
+`backend/migrations/017_payment_one_intent_per_job.sql` is the additive database
 race guard; preflight and isolated staging application are required before
 production. No duplicate payment rows are deleted automatically.
 
 **[ACTIVE]** Capacity claims require measured isolated staging evidence. Local
 simulation results are algorithmic only and never authorize a production
 scale claim.
+
+**[ACTIVE]** MVP upload uses disk-backed streaming temporary storage with
+bounded multipart limits and cleanup; B2 receives a read stream. Scheduler
+task reads use batches of 200 Job IDs. Direct-to-B2 multipart and broker/queue
+infrastructure remain deferred until staging metrics prove they are needed.

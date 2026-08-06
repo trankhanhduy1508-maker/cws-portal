@@ -60,15 +60,36 @@ def run_pull_claim(customers: int, workers: int) -> dict[str, float | int]:
 def run_heartbeat_burst(workers: int) -> dict[str, float | int]:
     started = time.perf_counter()
     # The production RPC updates presence/lease atomically. Here we only
-    # measure the number of logical heartbeat events, not database capacity.
+    # measure event distribution, not database capacity. Jitter keeps
+    # reconnects from landing in one synthetic second.
+    rng = random.Random(workers)
     heartbeat_events = workers
+    buckets: dict[int, int] = {}
+    for _ in range(heartbeat_events):
+        second = int(15 + rng.uniform(-3, 3))
+        buckets[second] = buckets.get(second, 0) + 1
     last_seen = {worker_id: time.monotonic() for worker_id in range(workers)}
     elapsed_ms = (time.perf_counter() - started) * 1_000
     return {
         "workers": workers,
         "heartbeat_events": heartbeat_events,
         "tracked_presence": len(last_seen),
+        "jitter_window_seconds": 6,
+        "max_events_in_one_second": max(buckets.values()),
         "elapsed_ms": round(elapsed_ms, 3),
+    }
+
+
+def run_reconnect_storm(reconnects: int) -> dict[str, int]:
+    rng = random.Random(reconnects)
+    buckets: dict[int, int] = {}
+    for _ in range(reconnects):
+        second = int(rng.uniform(0, 10))
+        buckets[second] = buckets.get(second, 0) + 1
+    return {
+        "reconnects": reconnects,
+        "jitter_window_seconds": 10,
+        "max_reconnects_in_one_second": max(buckets.values()),
     }
 
 
@@ -96,6 +117,7 @@ def main() -> None:
                 "scenario": f"{customers}_customers_{workers}_workers",
                 "pull_claim": run_pull_claim(customers, workers),
                 "heartbeat_burst": run_heartbeat_burst(workers),
+                "reconnect_storm": run_reconnect_storm(min(500, workers)),
                 "failure_storm": run_failure_storm(customers, workers),
             }
         )

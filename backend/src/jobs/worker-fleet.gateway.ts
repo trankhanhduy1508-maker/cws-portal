@@ -328,6 +328,68 @@ export class WorkerFleetGateway {
     }));
   }
 
+  /** Batch variant for SchedulerService: avoids one tasks query per order
+   * while keeping the result shape and state machine unchanged. Queries are
+   * chunked so a future large fleet does not create an enormous `IN` clause. */
+  async getTasksForJobs(internalJobIds: string[]): Promise<
+    Map<
+      string,
+      {
+        frameStart: number;
+        frameEnd: number;
+        status: string;
+        lastLog: string | null;
+        workerId: string | null;
+      }[]
+    >
+  > {
+    const result = new Map<string, {
+      frameStart: number;
+      frameEnd: number;
+      status: string;
+      lastLog: string | null;
+      workerId: string | null;
+    }[]>();
+    const uniqueIds = [...new Set(internalJobIds)];
+    const batchSize = 200;
+
+    for (let offset = 0; offset < uniqueIds.length; offset += batchSize) {
+      const batch = uniqueIds.slice(offset, offset + batchSize);
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('tasks')
+        .select('job_id, frame_start, frame_end, status, last_log, worker_id')
+        .in('job_id', batch);
+
+      if (error) {
+        this.logger.error(
+          `getTasksForJobs(batch=${batch.length}) thất bại: ${error.message}`,
+        );
+        throw new Error(`Không đọc được task theo batch: ${error.message}`);
+      }
+
+      for (const row of (data ?? []) as {
+        job_id: string;
+        frame_start: number;
+        frame_end: number;
+        status: string;
+        last_log: string | null;
+        worker_id: string | null;
+      }[]) {
+        const tasks = result.get(row.job_id) ?? [];
+        tasks.push({
+          frameStart: row.frame_start,
+          frameEnd: row.frame_end,
+          status: row.status,
+          lastLog: row.last_log,
+          workerId: row.worker_id,
+        });
+        result.set(row.job_id, tasks);
+      }
+    }
+    return result;
+  }
+
   /**
    * Tạo các task còn lại (frame [from, totalFrames]) sau khi probe task
    * đã cho biết total_frames — chia theo chunkSize để nhiều Worker có

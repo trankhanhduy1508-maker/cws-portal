@@ -74,10 +74,35 @@ export class SchedulerService {
       const onlineWorkers = activeOrders.some((order) => order.internalJobId)
         ? await this.workerFleetGateway.countOnlineWorkers()
         : 0;
+      let taskSnapshots: Map<string, {
+        frameStart: number;
+        frameEnd: number;
+        status: string;
+        lastLog: string | null;
+        workerId: string | null;
+      }[]> | null = null;
+      try {
+        taskSnapshots = await this.workerFleetGateway.getTasksForJobs(
+          activeOrders
+            .map((order) => order.internalJobId)
+            .filter((id): id is string => Boolean(id)),
+        );
+      } catch (err) {
+        // Keep the pre-batch per-order path available if a large batch query
+        // hits a transient API/URL limit; one bad batch must not hide every
+        // order's state transition.
+        this.logger.error(`Batch task snapshot lỗi, fallback per order: ${String(err)}`);
+      }
 
       for (const order of activeOrders) {
         try {
-          await this.processOrder(order, onlineWorkers);
+          await this.processOrder(
+            order,
+            onlineWorkers,
+            order.internalJobId && taskSnapshots
+              ? taskSnapshots.get(order.internalJobId)
+              : undefined,
+          );
         } catch (err) {
           // 1 order lỗi không được làm hỏng cả tick — log và tiếp tục
           // với order khác (đúng tinh thần "không làm gián đoạn hệ thống").
@@ -92,6 +117,13 @@ export class SchedulerService {
   private async processOrder(
     order: RenderOrder,
     onlineWorkersSnapshot?: number,
+    taskSnapshot?: {
+      frameStart: number;
+      frameEnd: number;
+      status: string;
+      lastLog: string | null;
+      workerId: string | null;
+    }[],
   ): Promise<void> {
     if (!order.internalJobId) {
       this.logger.warn(`Order ${order.id} chưa có internalJobId — bỏ qua tick này`);
@@ -115,7 +147,7 @@ export class SchedulerService {
     }
 
     const internalJobId = order.internalJobId;
-    const tasks = await this.workerFleetGateway.getTasks(internalJobId);
+    const tasks = taskSnapshot ?? (await this.workerFleetGateway.getTasks(internalJobId));
     const onlineWorkers =
       onlineWorkersSnapshot ?? (await this.workerFleetGateway.countOnlineWorkers());
 

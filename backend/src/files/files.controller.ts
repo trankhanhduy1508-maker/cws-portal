@@ -3,13 +3,17 @@ import {
   Body,
   Controller,
   Post,
+  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { B2StorageService } from './b2-storage.service';
 import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
+import { CwsTempUploadStorage } from './temp-upload.storage';
+import { UploadTimeoutInterceptor } from './upload-timeout.interceptor';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -37,9 +41,28 @@ export class FilesController {
    */
   @Post('files/upload')
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+    UploadTimeoutInterceptor,
+    FileInterceptor('file', {
+      storage: new CwsTempUploadStorage(),
+      limits: {
+        fileSize: MAX_FILE_SIZE_BYTES,
+        files: 1,
+        fields: 8,
+        parts: 12,
+      },
+      fileFilter: (_request, file, callback) => {
+        const ext = file.originalname
+          .slice(file.originalname.lastIndexOf('.'))
+          .toLowerCase();
+        callback(null, ACCEPTED_EXTENSIONS.includes(ext));
+      },
+    }),
   )
-  async upload(@UploadedFile() file?: Express.Multer.File) {
+  async upload(
+    @Req() request: Request,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    request.setTimeout(30 * 60 * 1000);
     if (!file)
       throw new BadRequestException('Thiếu file trong request (field "file")');
 
