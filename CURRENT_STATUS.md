@@ -10,6 +10,15 @@
   and production flow were not contacted.
 - Evidence: `reports/worker/CWS_BLENDER_UNOPTIMIZED_EEVEE_STRESS_TEST_2026-08-06.md`.
 
+## Eevee stress through local WorkerEngine — 2026-08-06
+
+- Existing 48-frame scene ran through local WorkerEngine: A verified frames
+  1–24, simulated interruption, B skipped those checkpoints and verified
+  frames 1–48 with one completion.
+- **REAL RUNTIME VERIFIED locally**; backend Scheduler/RPC heartbeat fencing,
+  B2, Admin and Customer runtime remain **BLOCKED/UNVERIFIED**.
+- Evidence: `reports/worker/CWS_WORKER_EEVEE_STRESS_FLOW_2026-08-06.md`.
+
 ## Staging preflight blocked — 2026-08-06
 
 - No Supabase CLI, `psql`, `.mcp.json`, staging endpoint or staging

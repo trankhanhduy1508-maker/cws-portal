@@ -10,6 +10,15 @@
   flow and failover stress still require authenticated staging hosts.
 - Evidence: `reports/worker/CWS_BLENDER_UNOPTIMIZED_EEVEE_STRESS_TEST_2026-08-06.md`.
 
+## Eevee stress WorkerEngine rehearsal — 2026-08-06
+
+- **REAL RUNTIME VERIFIED locally**: same 48-frame scene completed Worker A
+  checkpoint interruption and Worker B frame-level recovery with integrity
+  checks and one local completion.
+- **BLOCKED/UNVERIFIED**: authenticated Scheduler reassign, stale RPC fencing,
+  B2 finalize, Admin state and Customer recovery require isolated staging.
+- Evidence: `reports/worker/CWS_WORKER_EEVEE_STRESS_FLOW_2026-08-06.md`.
+
 ## Staging identity/failover gate — 2026-08-06
 
 - **BLOCKED** at staging DB preflight: no Supabase CLI/psql/MCP/endpoint or

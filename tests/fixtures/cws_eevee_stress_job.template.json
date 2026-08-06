@@ -1,0 +1,14 @@
+{
+  "job_id": "cws-eevee-stress-job-20260806",
+  "task_id": "cws-eevee-stress-task-48f",
+  "attempt_id": "<attempt-id>",
+  "lease_generation": 1,
+  "project_uri": "<scene-file-uri>",
+  "frame_start": 1,
+  "frame_end": 48,
+  "output_prefix": "cws-staging/eevee-stress/",
+  "output_format": "png",
+  "autoexec": false,
+  "required_vram_mb": 8192,
+  "required_ram_mb": 16384
+}
