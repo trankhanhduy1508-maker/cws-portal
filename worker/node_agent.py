@@ -1,170 +1,22 @@
-"""Small, side-effect-free CWS Node Agent state machine.
-
-The production adapters (heartbeat, lease polling and the pinned Worker
-launcher) are injected by the caller. This module deliberately never calls
-Windows power APIs and never sleeps the PC: ACTIVE_IDLE means online and
-lightweight, not suspended.
-"""
-
-from dataclasses import dataclass
+"""Small, side-effect-free CWS Node Agent state machine.\n\nThe production adapters (heartbeat, lease polling and the pinned Worker\nlauncher) are injected by the caller. This module deliberately never calls\nWindows power APIs and never sleeps the PC: ACTIVE_IDLE means online and\nlightweight, not suspended.\n"""\n\nfrom dataclasses import dataclass
 from enum import Enum
 import random
 from typing import Callable, Optional, Any
-
-from node_agent_runtime_policy import RuntimePolicy
-
-
-class NodeState(str, Enum):
-    ACTIVE_IDLE = "ACTIVE_IDLE"
-    PREPARING = "PREPARING"
-    WORKER_START = "WORKER_START"
-    WORKER_RUNNING = "WORKER_RUNNING"
-    RECOVERY = "RECOVERY"
-    CLEANUP = "CLEANUP"
-
-
-@dataclass(frozen=True)
-class Job:
-    job_id: str
-    payload: Any
-
-
-@dataclass
-class WorkerResult:
-    status: str = "running"  # running | completed | failed | retryable
-    reason: str = ""
-
-
-class NodeAgent:
-    """Deterministic state machine; all I/O is supplied as callbacks."""
-
-    def __init__(
-        self,
-        poll_job: Callable[[], Optional[Job]],
-        heartbeat: Callable[[], None],
-        prepare_job: Callable[[Job], None],
-        launch_worker: Callable[[Job], Any],
-        inspect_worker: Callable[[Any], WorkerResult],
-        cleanup_job: Callable[[Job, WorkerResult], None],
-        now: Callable[[], float],
-        heartbeat_interval: float = 20.0,
-        max_retries: int = 2,
+\nfrom node_agent_runtime_policy import RuntimePolicy\n\n\nclass NodeState(str, Enum):\n    ACTIVE_IDLE = "ACTIVE_IDLE"\n    PREPARING = "PREPARING"\n    WORKER_START = "WORKER_START"\n    WORKER_RUNNING = "WORKER_RUNNING"\n    RECOVERY = "RECOVERY"\n    CLEANUP = "CLEANUP"\n\n\n@dataclass(frozen=True)\nclass Job:\n    job_id: str\n    payload: Any\n\n\n@dataclass\nclass WorkerResult:\n    status: str = "running"  # running | completed | failed | retryable\n    reason: str = ""\n\n\nclass NodeAgent:\n    """Deterministic state machine; all I/O is supplied as callbacks."""\n\n    def __init__(\n        self,\n        poll_job: Callable[[], Optional[Job]],\n        heartbeat: Callable[[], None],\n        prepare_job: Callable[[Job], None],\n        launch_worker: Callable[[Job], Any],\n        inspect_worker: Callable[[Any], WorkerResult],\n        cleanup_job: Callable[[Job, WorkerResult], None],\n        now: Callable[[], float],\n        heartbeat_interval: float = 20.0,\n        max_retries: int = 2,
         retry_backoff_seconds: float = 0.0,
         retry_jitter_ratio: float = 0.0,
         random_value: Callable[[], float] = random.random,
         runtime_policy: Optional[RuntimePolicy] = None,
-    ):
-        if heartbeat_interval <= 0:
-            raise ValueError("heartbeat_interval must be positive")
-        if max_retries < 0:
-            raise ValueError("max_retries must be non-negative")
-        if retry_backoff_seconds < 0:
+    ):\n        if heartbeat_interval <= 0:\n            raise ValueError("heartbeat_interval must be positive")\n        if max_retries < 0:\n            raise ValueError("max_retries must be non-negative")\n        if retry_backoff_seconds < 0:
             raise ValueError("retry_backoff_seconds must be non-negative")
         if not 0 <= retry_jitter_ratio <= 1:
             raise ValueError("retry_jitter_ratio must be between 0 and 1")
-        self.poll_job = poll_job
-        self.heartbeat = heartbeat
-        self.prepare_job = prepare_job
-        self.launch_worker = launch_worker
-        self.inspect_worker = inspect_worker
-        self.cleanup_job = cleanup_job
-        self.now = now
-        self.heartbeat_interval = heartbeat_interval
-        self.max_retries = max_retries
-        self.retry_backoff_seconds = retry_backoff_seconds
+        self.poll_job = poll_job\n        self.heartbeat = heartbeat\n        self.prepare_job = prepare_job\n        self.launch_worker = launch_worker\n        self.inspect_worker = inspect_worker\n        self.cleanup_job = cleanup_job\n        self.now = now\n        self.heartbeat_interval = heartbeat_interval\n        self.max_retries = max_retries\n        self.retry_backoff_seconds = retry_backoff_seconds
         self.retry_jitter_ratio = retry_jitter_ratio
         self.random_value = random_value
-        self.runtime_policy = runtime_policy or RuntimePolicy()
-        self.state = NodeState.ACTIVE_IDLE
-        self.runtime_policy.on_state(self.state)
-        self.job: Optional[Job] = None
-        self.handle: Any = None
-        self.last_result = WorkerResult()
-        self.retry_count = 0
-        self.last_heartbeat_at: Optional[float] = None
-        self.last_heartbeat_error: Optional[str] = None
-        self.retry_ready_at = 0.0
-
-    def tick(self) -> NodeState:
-        """Advance one small event-loop step; never blocks or sleeps."""
-        self._heartbeat_if_due()
-
-        if self.state is NodeState.ACTIVE_IDLE:
-            candidate = self.poll_job()
-            if candidate is not None:
-                if not candidate.job_id:
-                    raise ValueError("job_id is required")
-                self.job = candidate
-                self.retry_count = 0
-                self.retry_ready_at = 0.0
-                self._transition(NodeState.PREPARING, "job_available")
-
-        elif self.state is NodeState.PREPARING:
-            self._require_job()
-            self.prepare_job(self.job)
-            self._transition(NodeState.WORKER_START, "prepared")
-
-        elif self.state is NodeState.WORKER_START:
-            self._require_job()
-            if self.handle is not None:
-                raise RuntimeError("duplicate Worker launch prevented")
-            self.handle = self.launch_worker(self.job)
-            self._transition(NodeState.WORKER_RUNNING, "worker_started")
-
-        elif self.state is NodeState.WORKER_RUNNING:
-            self._require_job()
-            result = self.inspect_worker(self.handle)
-            self.last_result = result
-            if result.status == "running":
-                return self.state
-            if result.status in {"retryable", "failed"}:
-                self._transition(NodeState.RECOVERY, result.reason or result.status)
-            elif result.status == "completed":
-                self._transition(NodeState.CLEANUP, result.reason or result.status)
-            else:
-                raise ValueError(f"unknown Worker status: {result.status}")
-
-        elif self.state is NodeState.RECOVERY:
-            if self.now() < self.retry_ready_at:
-                return self.state
-            if self.retry_count < self.max_retries and self.last_result.status == "retryable":
-                self.retry_count += 1
+        self.runtime_policy = runtime_policy or RuntimePolicy()\n        self.state = NodeState.ACTIVE_IDLE\n        self.runtime_policy.on_state(self.state)\n        self.job: Optional[Job] = None\n        self.handle: Any = None\n        self.last_result = WorkerResult()\n        self.retry_count = 0\n        self.last_heartbeat_at: Optional[float] = None\n        self.last_heartbeat_error: Optional[str] = None\n        self.retry_ready_at = 0.0\n\n    def tick(self) -> NodeState:\n        """Advance one small event-loop step; never blocks or sleeps."""\n        self._heartbeat_if_due()\n\n        if self.state is NodeState.ACTIVE_IDLE:\n            candidate = self.poll_job()\n            if candidate is not None:\n                if not candidate.job_id:\n                    raise ValueError("job_id is required")\n                self.job = candidate\n                self.retry_count = 0\n                self.retry_ready_at = 0.0\n                self._transition(NodeState.PREPARING, "job_available")\n\n        elif self.state is NodeState.PREPARING:\n            self._require_job()\n            self.prepare_job(self.job)\n            self._transition(NodeState.WORKER_START, "prepared")\n\n        elif self.state is NodeState.WORKER_START:\n            self._require_job()\n            if self.handle is not None:\n                raise RuntimeError("duplicate Worker launch prevented")\n            self.handle = self.launch_worker(self.job)\n            self._transition(NodeState.WORKER_RUNNING, "worker_started")\n\n        elif self.state is NodeState.WORKER_RUNNING:\n            self._require_job()\n            result = self.inspect_worker(self.handle)\n            self.last_result = result\n            if result.status == "running":\n                return self.state\n            if result.status in {"retryable", "failed"}:\n                self._transition(NodeState.RECOVERY, result.reason or result.status)\n            elif result.status == "completed":\n                self._transition(NodeState.CLEANUP, result.reason or result.status)\n            else:\n                raise ValueError(f"unknown Worker status: {result.status}")\n\n        elif self.state is NodeState.RECOVERY:\n            if self.now() < self.retry_ready_at:\n                return self.state\n            if self.retry_count < self.max_retries and self.last_result.status == "retryable":\n                self.retry_count += 1
                 self.handle = None
                 base_delay = self.retry_backoff_seconds * (2 ** (self.retry_count - 1))
                 jitter = base_delay * self.retry_jitter_ratio * self.random_value()
                 self.retry_ready_at = self.now() + base_delay + jitter
-                self._transition(NodeState.PREPARING, "retry")
-            else:
-                self._transition(NodeState.CLEANUP, "retry_exhausted")
-
-        elif self.state is NodeState.CLEANUP:
-            self._require_job()
-            self.cleanup_job(self.job, self.last_result)
-            self.job = None
-            self.handle = None
-            self.retry_ready_at = 0.0
-            self._transition(NodeState.ACTIVE_IDLE, "cleanup_complete")
-
-        return self.state
-
-    def _transition(self, state: NodeState, reason: str) -> None:
-        self.state = state
-        self.runtime_policy.on_state(state)
-
-    def _heartbeat_if_due(self) -> None:
-        current = self.now()
-        if self.last_heartbeat_at is not None and current - self.last_heartbeat_at < self.heartbeat_interval:
-            return
-        try:
-            self.heartbeat()
-            self.last_heartbeat_error = None
-        except Exception as exc:  # heartbeat degradation must not kill the agent
-            self.last_heartbeat_error = str(exc)[:240]
-        finally:
-            self.last_heartbeat_at = current
-
-    def _require_job(self) -> None:
-        if self.job is None:
-            raise RuntimeError(f"state {self.state} requires a job")
-
-
+                self._transition(NodeState.PREPARING, "retry")\n            else:\n                self._transition(NodeState.CLEANUP, "retry_exhausted")\n\n        elif self.state is NodeState.CLEANUP:\n            self._require_job()\n            self.cleanup_job(self.job, self.last_result)\n            self.job = None\n            self.handle = None\n            self.retry_ready_at = 0.0\n            self._transition(NodeState.ACTIVE_IDLE, "cleanup_complete")\n\n        return self.state\n\n    def _transition(self, state: NodeState, reason: str) -> None:\n        self.state = state\n        self.runtime_policy.on_state(state)\n\n    def _heartbeat_if_due(self) -> None:\n        current = self.now()\n        if self.last_heartbeat_at is not None and current - self.last_heartbeat_at < self.heartbeat_interval:\n            return\n        try:\n            self.heartbeat()\n            self.last_heartbeat_error = None\n        except Exception as exc:  # heartbeat degradation must not kill the agent\n            self.last_heartbeat_error = str(exc)[:240]\n        finally:\n            self.last_heartbeat_at = current\n\n    def _require_job(self) -> None:\n        if self.job is None:\n            raise RuntimeError(f"state {self.state} requires a job")\n\n\n

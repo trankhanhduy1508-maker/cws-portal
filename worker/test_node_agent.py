@@ -1,62 +1,5 @@
-import unittest
-
-from node_agent import Job, NodeAgent, NodeState, WorkerResult
-
-
-class NodeAgentTests(unittest.TestCase):
-    def make_agent(self, poll, inspect, max_retries=2):
-        events = []
-        clock = [0.0]
-        agent = NodeAgent(
-            poll_job=poll,
-            heartbeat=lambda: events.append("heartbeat"),
-            prepare_job=lambda job: events.append(f"prepare:{job.job_id}"),
-            launch_worker=lambda job: events.append(f"launch:{job.job_id}") or f"worker:{job.job_id}",
-            inspect_worker=inspect,
-            cleanup_job=lambda job, result: events.append(f"cleanup:{result.status}"),
-            now=lambda: clock[0],
-            heartbeat_interval=20,
-            max_retries=max_retries,
-        )
-        return agent, events, clock
-
-    def test_idle_does_not_spawn_or_sleep(self):
-        agent, events, _ = self.make_agent(lambda: None, lambda _: WorkerResult())
-        self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)
-        self.assertEqual(events, ["heartbeat"])
-
-    def test_complete_lifecycle_returns_to_active_idle(self):
-        jobs = iter([Job("job-1", {})])
-        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("completed"))
-        for _ in range(5):
-            agent.tick()
-        self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)
-        self.assertEqual(events[1:], ["prepare:job-1", "launch:job-1", "cleanup:completed"])
-
-    def test_running_worker_is_not_spawned_twice(self):
-        jobs = iter([Job("job-1", {})])
-        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("running"))
-        for _ in range(5):
-            agent.tick()
-        self.assertEqual(events.count("launch:job-1"), 1)
-        self.assertEqual(agent.state, NodeState.WORKER_RUNNING)
-
-    def test_retry_is_bounded_then_cleanup(self):
-        jobs = iter([Job("job-1", {})])
-        results = iter([WorkerResult("retryable", "timeout")] * 3)
-        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: next(results), max_retries=2)
-        for _ in range(20):
-            agent.tick()
-        self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)
-        self.assertEqual(events.count("launch:job-1"), 3)
-        self.assertEqual(events[-1], "cleanup:retryable")
-
-    def test_non_retryable_failure_is_not_retried(self):
-        jobs = iter([Job("job-1", {})])
-        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("failed", "bad input"))
-        for _ in range(6):
-            agent.tick()
-        self.assertEqual(events.count("launch:job-1"), 1)
+import unittest\n\nfrom node_agent import Job, NodeAgent, NodeState, WorkerResult\n\n\nclass NodeAgentTests(unittest.TestCase):\n    def make_agent(self, poll, inspect, max_retries=2):\n        events = []\n        clock = [0.0]\n        agent = NodeAgent(\n            poll_job=poll,\n            heartbeat=lambda: events.append("heartbeat"),\n            prepare_job=lambda job: events.append(f"prepare:{job.job_id}"),\n            launch_worker=lambda job: events.append(f"launch:{job.job_id}") or f"worker:{job.job_id}",\n            inspect_worker=inspect,\n            cleanup_job=lambda job, result: events.append(f"cleanup:{result.status}"),\n            now=lambda: clock[0],\n            heartbeat_interval=20,\n            max_retries=max_retries,\n        )\n        return agent, events, clock\n\n    def test_idle_does_not_spawn_or_sleep(self):\n        agent, events, _ = self.make_agent(lambda: None, lambda _: WorkerResult())\n        self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)\n        self.assertEqual(events, ["heartbeat"])\n\n    def test_complete_lifecycle_returns_to_active_idle(self):\n        jobs = iter([Job("job-1", {})])\n        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("completed"))\n        for _ in range(5):\n            agent.tick()\n        self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)\n        self.assertEqual(events[1:], ["prepare:job-1", "launch:job-1", "cleanup:completed"])\n\n    def test_running_worker_is_not_spawned_twice(self):\n        jobs = iter([Job("job-1", {})])\n        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("running"))\n        for _ in range(5):\n            agent.tick()\n        self.assertEqual(events.count("launch:job-1"), 1)\n        self.assertEqual(agent.state, NodeState.WORKER_RUNNING)\n\n    def test_retry_is_bounded_then_cleanup(self):\n        jobs = iter([Job("job-1", {})])\n        results = iter([WorkerResult("retryable", "timeout")] * 3)\n        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: next(results), max_retries=2)\n        for _ in range(20):\n            agent.tick()\n        self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)\n        self.assertEqual(events.count("launch:job-1"), 3)\n        self.assertEqual(events[-1], "cleanup:retryable")\n\n    def test_non_retryable_failure_is_not_retried(self):
+        jobs = iter([Job("job-1", {})])\n        agent, events, _ = self.make_agent(lambda: next(jobs, None), lambda _: WorkerResult("failed", "bad input"))\n        for _ in range(6):\n            agent.tick()\n        self.assertEqual(events.count("launch:job-1"), 1)
         self.assertEqual(agent.state, NodeState.ACTIVE_IDLE)
 
     def test_retry_jitter_is_bounded_and_deterministic(self):
@@ -85,19 +28,4 @@ class NodeAgentTests(unittest.TestCase):
                 now=lambda: 0.0,
                 retry_jitter_ratio=1.1,
             )
-
-    def test_heartbeat_error_degrades_but_does_not_crash(self):
-        jobs = iter([None])
-        agent = NodeAgent(
-            poll_job=lambda: next(jobs, None), heartbeat=lambda: (_ for _ in ()).throw(RuntimeError("network")),
-            prepare_job=lambda _: None, launch_worker=lambda _: None,
-            inspect_worker=lambda _: WorkerResult("completed"), cleanup_job=lambda *_: None,
-            now=lambda: 0.0,
-        )
-        self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)
-        self.assertEqual(agent.last_heartbeat_error, "network")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
+\n    def test_heartbeat_error_degrades_but_does_not_crash(self):\n        jobs = iter([None])\n        agent = NodeAgent(\n            poll_job=lambda: next(jobs, None), heartbeat=lambda: (_ for _ in ()).throw(RuntimeError("network")),\n            prepare_job=lambda _: None, launch_worker=lambda _: None,\n            inspect_worker=lambda _: WorkerResult("completed"), cleanup_job=lambda *_: None,\n            now=lambda: 0.0,\n        )\n        self.assertEqual(agent.tick(), NodeState.ACTIVE_IDLE)\n        self.assertEqual(agent.last_heartbeat_error, "network")\n\n\nif __name__ == "__main__":\n    unittest.main()\n\n
