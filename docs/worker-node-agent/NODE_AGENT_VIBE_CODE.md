@@ -156,4 +156,3 @@ PC luôn ON. ACTIVE_IDLE không được gọi Sleep, Hibernate, shutdown, logof
 
 - Native SCM PoC remains **REAL RUNTIME VERIFIED** for lifecycle and heartbeat. The service now bounds its JSONL event log with one explicit rotated file; user-session Worker/Blender launching remains a separate boundary.
 - Do not claim production service readiness until service-account policy, update/rollback, GPU session behavior, and real Admin AAL2 fleet evidence are complete.
-

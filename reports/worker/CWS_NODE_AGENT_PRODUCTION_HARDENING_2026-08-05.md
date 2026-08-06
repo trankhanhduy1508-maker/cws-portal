@@ -38,4 +38,3 @@ The state machine and staging runtime remain **REAL RUNTIME VERIFIED** by the ex
 5. Run a staging soak/chaos matrix without rebooting the host.
 
 Official basis: [Windows Service Control Manager](https://learn.microsoft.com/en-us/windows/win32/services/about-services), [service recovery guidance](https://learn.microsoft.com/en-us/windows/win32/rstmgr/guidelines-for-services), and [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
-

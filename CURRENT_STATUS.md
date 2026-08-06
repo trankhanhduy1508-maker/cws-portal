@@ -387,4 +387,3 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Staging Admin RBAC migration `017_staging_admin_rbac_contract.sql`: **REAL STAGING SCHEMA VERIFIED**; exact application contract, RLS enabled, no client policies.
 - Admin Fleet through real UI: **BLOCKED/UNVERIFIED** pending Owner-created staging Auth identity, MFA enrollment/AAL2 session, and server-only staging backend configuration. Evidence: `reports/worker/CWS_ADMIN_FLEET_STAGING_AUTH_BLOCKER_2026-08-05.md`.
 - Isolation alternative: **PARTIAL REAL RUNTIME VERIFIED** for Job Object timeout/child cleanup; filesystem boundary and network restriction remain **UNVERIFIED/BLOCKED**. Evidence: `reports/worker/CWS_HOSTILE_BLEND_ISOLATION_POC_2026-08-05.md`.
-

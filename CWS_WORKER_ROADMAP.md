@@ -922,4 +922,3 @@ The isolated staging path is now verified end-to-end: assignment/fencing generat
 
 - Node Agent retry backoff now supports bounded opt-in jitter with deterministic tests; default timing is unchanged. Evidence: `reports/worker/CWS_NODE_AGENT_JITTER_HARDENING_2026-08-06.md`.
 - Synchronous remote I/O, production SCM/Job Object integration, isolation, observability, rollback, and production authentication remain open gates.
-
