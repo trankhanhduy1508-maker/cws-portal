@@ -45,7 +45,7 @@ OAuth credentials, MFA secret, or deployment setting was changed by this task.
 - Frontend Vitest: **8/8 PASS**.
 - Frontend lint: **PASS**.
 - Frontend Vite build: **PASS** (existing large-chunk warning only).
-- Backend Jest: **125/125 PASS**.
+- Backend Jest: **129/129 PASS**.
 - Backend Nest build: **PASS**.
 - New security tests cover anonymous, customer, staff pre-MFA onboarding and
   `x-admin-key` rejection; existing RoleGuard tests continue to cover AAL2.
