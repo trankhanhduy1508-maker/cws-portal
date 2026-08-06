@@ -566,6 +566,16 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
   `NEEDS_VERIFICATION`.
 - Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.
 
+## Premium dark UI refresh - 2026-08-07
+
+- Customer presentation layer now uses a restrained dark responsive theme with
+  a lightweight CSS 3D CWS mark and reduced-motion fallback.
+- No customer state/API/payment logic changed; amount/payment remain gated
+  behind render completion and the existing review workflow.
+- Frontend tests 9/9, lint and production build PASS. Local browser visual
+  verification was not available because `agent-browser` is not installed.
+- Evidence: `reports/product/CWS_UI_PREMIUM_DARK_REFRESH_2026-08-07.md`.
+
 ## NestJS 11 isolated canary - 2026-08-07
 
 - Ephemeral canary upgraded Nest runtime/toolchain to 11.1.28 and schedule to

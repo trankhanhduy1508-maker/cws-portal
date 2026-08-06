@@ -292,3 +292,11 @@ Google Login
   Prettier violations, not a Nest runtime/build failure.
 - Authenticated staging E2E remains **BLOCKED** by missing staging credentials,
   database tooling, B2 and physical Worker/payment access.
+
+# Premium dark UI refresh - 2026-08-07
+
+- Customer shell and core MVP screens received a presentation-only dark
+  responsive theme and lightweight CSS 3D CWS mark.
+- Render-before-payment business logic was preserved. Frontend tests 9/9,
+  lint and build PASS; browser/production visual verification remains open.
+- Evidence: `reports/product/CWS_UI_PREMIUM_DARK_REFRESH_2026-08-07.md`.

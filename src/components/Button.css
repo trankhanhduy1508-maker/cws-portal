@@ -26,32 +26,32 @@
 }
 
 .btn--primary {
-  background: #3B5BFF;
+  background: linear-gradient(135deg, #557fff, #7e9fff);
   color: #FFFFFF;
   box-shadow: 0 8px 24px rgba(59, 91, 255, 0.24);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: #2540CC;
+  background: linear-gradient(135deg, #6b91ff, #9ab5ff);
 }
 
 .btn--secondary {
-  background: #FFFFFF;
-  color: #1C1C1E;
-  border: 1.5px solid #E8E8EA;
+  background: rgba(255,255,255,0.055);
+  color: #e9eef8;
+  border: 1.5px solid rgba(157, 177, 216, 0.2);
 }
 
 .btn--secondary:hover:not(:disabled) {
-  border-color: #D4D4D8;
+  border-color: rgba(157, 177, 216, 0.5);
 }
 
 .btn--ghost {
   background: transparent;
-  color: #3B5BFF;
+  color: #9cb7ff;
   min-height: 44px;
   padding: 12px 16px;
 }
 
 .btn--ghost:hover:not(:disabled) {
-  background: #EEF0FF;
+  background: rgba(93,127,255,0.14);
 }

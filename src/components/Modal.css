@@ -1,7 +1,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(28, 28, 30, 0.4);
+  background: rgba(0, 0, 0, 0.72);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -17,7 +17,8 @@
 .modal-dialog {
   width: 100%;
   max-width: 420px;
-  background: #FFFFFF;
+  background: #101624;
+  border: 1px solid rgba(157,177,216,0.18);
   border-radius: 24px 24px 0 0;
   padding: 20px;
   animation: sheetUp 0.28s cubic-bezier(0.4, 0, 0.2, 1);
@@ -39,7 +40,7 @@
   font-family: 'Space Grotesk', sans-serif;
   font-size: 17px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .modal-dialog__close {
@@ -49,11 +50,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B6B70;
+  color: #9aa6ba;
 }
 
 .modal-dialog__close:hover {
-  background: #F0F0F1;
+  background: rgba(255,255,255,0.08);
 }
 
 @media (min-width: 640px) {

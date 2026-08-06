@@ -3,8 +3,8 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px;
-  background: #FFFFFF;
-  border: 1.5px solid #E8E8EA;
+  background: rgba(255,255,255,0.035);
+  border: 1.5px solid rgba(157,177,216,0.2);
   border-radius: 18px;
   text-align: left;
   position: relative;
@@ -12,12 +12,12 @@
 }
 
 .profile-card:hover {
-  border-color: #D4D4D8;
+  border-color: rgba(157,177,216,0.5);
 }
 
 .profile-card.is-selected {
-  border-color: #3B5BFF;
-  background: #EEF0FF;
+  border-color: #7ea7ff;
+  background: rgba(93,127,255,0.14);
 }
 
 .profile-card__badge {
@@ -27,7 +27,7 @@
   font-size: 10.5px;
   font-weight: 700;
   color: #FFFFFF;
-  background: #3B5BFF;
+  background: #7ea7ff;
   padding: 3px 9px;
   border-radius: 999px;
 }
@@ -36,12 +36,12 @@
   font-family: 'Space Grotesk', sans-serif;
   font-size: 16px;
   font-weight: 700;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .profile-card__tagline {
   font-size: 12.5px;
-  color: #6B6B70;
+  color: #9aa6ba;
   line-height: 1.4;
 }
 
@@ -50,7 +50,7 @@
   flex-direction: column;
   gap: 4px;
   padding-top: 8px;
-  border-top: 1px solid #F0F0F1;
+  border-top: 1px solid rgba(157,177,216,0.14);
 }
 
 .profile-card__stat {
@@ -60,18 +60,18 @@
 }
 
 .profile-card__stat-label {
-  color: #B0B0B5;
+  color: #8b97ab;
 }
 
 .profile-card__stat-value {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .profile-card__skeleton {
   height: 12px;
   width: 60px;
-  background: #F0F0F1;
+  background: rgba(255,255,255,0.08);
   border-radius: 6px;
 }

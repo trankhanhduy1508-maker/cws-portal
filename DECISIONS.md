@@ -308,3 +308,10 @@ passed 172/172 tests and build, and `js-yaml` 5.2.3 removed its remaining audit
 finding. Production stays on Nest 10 until the canary is validated against
 isolated Supabase/B2/Worker/payment staging and the major-upgrade regression
 gate is explicitly cleared. No `npm audit fix --force` is allowed.
+
+## Premium UI implementation boundary - 2026-08-07
+
+**[ACTIVE]** The MVP presentation layer uses a dark responsive theme and a
+lightweight CSS 3D CWS mark. Three.js is intentionally not added before MVP
+runtime verification: the effect is decorative, while the existing customer
+state machine and render-before-payment gate remain unchanged.

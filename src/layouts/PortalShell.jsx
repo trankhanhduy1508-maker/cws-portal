@@ -6,8 +6,11 @@ export default function PortalShell({ children, onOpenHistory, isAuthenticated, 
     <div className="portal-shell">
       <header className="portal-shell__header">
         <div className="portal-shell__logo">
-          <span className="portal-shell__logo-mark" />
-          CWS
+          <span className="portal-shell__logo-mark" aria-hidden="true">
+            <span className="portal-shell__logo-plane portal-shell__logo-plane--one" />
+            <span className="portal-shell__logo-plane portal-shell__logo-plane--two" />
+          </span>
+          <span className="portal-shell__logo-word">CWS</span>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {onOpenHistory && (

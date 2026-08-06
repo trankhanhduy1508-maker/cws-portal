@@ -8,24 +8,24 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  background: #FFFFFF;
+  background: rgba(255,255,255,0.035);
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .upload-zone:hover {
   border-color: #3B5BFF;
-  background: #EEF0FF;
+  background: rgba(93,127,255,0.14);
 }
 
 .upload-zone.is-dragging {
   border-color: #3B5BFF;
-  background: #EEF0FF;
+  background: rgba(93,127,255,0.14);
   border-style: solid;
 }
 
 .upload-zone__icon {
-  color: #3B5BFF;
+  color: #9cb7ff;
   margin-bottom: 4px;
 }
 
@@ -33,12 +33,12 @@
   font-family: 'Space Grotesk', sans-serif;
   font-size: 17px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .upload-zone__subtitle {
   font-size: 14px;
-  color: #6B6B70;
+  color: #9aa6ba;
 }
 
 /* Signature element: scan-line quét ngang khi kéo file vào, ẩn dụ
@@ -70,14 +70,14 @@
   padding: 20px 24px;
   cursor: default;
   border-style: solid;
-  border-color: #E8E8EA;
+  border-color: rgba(157,177,216,0.2);
   text-align: left;
   gap: 16px;
 }
 
 .upload-zone--filled:hover {
-  background: #FFFFFF;
-  border-color: #E8E8EA;
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(157,177,216,0.2);
 }
 
 .upload-zone__file-icon {
@@ -85,8 +85,8 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: #EEF0FF;
-  color: #3B5BFF;
+  background: rgba(93,127,255,0.14);
+  color: #9cb7ff;
   display: flex;
   align-items: center;
   justify-content: center;

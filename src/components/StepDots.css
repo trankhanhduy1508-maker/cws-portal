@@ -9,16 +9,16 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #E8E8EA;
+  background: rgba(157,177,216,0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .step-dot.is-done {
-  background: #3B5BFF;
+  background: #7ea7ff;
   width: 8px;
 }
 
 .step-dot.is-active {
-  background: #3B5BFF;
+  background: #7ea7ff;
   width: 24px;
 }

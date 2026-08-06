@@ -12,10 +12,17 @@ html, body, #root {
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #FAFAF9;
-  color: #1C1C1E;
+  background:
+    radial-gradient(circle at 50% -18%, rgba(74, 113, 255, 0.16), transparent 34rem),
+    #07090f;
+  color: #f4f7fb;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(91, 130, 255, 0.7);
 }
 
 button {
@@ -28,9 +35,16 @@ button {
 button:focus-visible,
 [tabindex]:focus-visible,
 input:focus-visible {
-  outline: 2px solid #3B5BFF;
+  outline: 2px solid #7ea7ff;
   outline-offset: 2px;
 }
+
+/* Existing inline copy is retained for compatibility with the MVP screens;
+   these rules keep it legible on the dark presentation layer. */
+[style*="#1C1C1E"], [style*="#1c1c1e"] { color: #f4f7fb !important; }
+[style*="#6B6B70"], [style*="#6b6b70"], [style*="#B0B0B5"], [style*="#b0b0b5"] { color: #9aa6ba !important; }
+[style*="#F7F7F8"], [style*="#f7f7f8"] { background: rgba(255,255,255,0.055) !important; }
+[style*="#EEF0FF"], [style*="#eef0ff"] { background: rgba(93,127,255,0.14) !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

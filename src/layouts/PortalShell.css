@@ -5,7 +5,7 @@
 }
 
 .portal-shell__header {
-  padding: 20px 24px;
+  padding: 22px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -18,30 +18,65 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B6B70;
+  color: #8e9ab0;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .portal-shell__history-btn:hover {
-  background: #F0F0F1;
-  color: #1C1C1E;
+  background: rgba(255,255,255,0.08);
+  color: #f4f7fb;
 }
 
 .portal-shell__logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: #1C1C1E;
-  letter-spacing: 0.02em;
+  color: #f4f7fb;
+  letter-spacing: 0.16em;
 }
 
 .portal-shell__logo-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #3B5BFF, #6B8AFF);
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(151, 181, 255, 0.62);
+  border-radius: 8px;
+  position: relative;
+  transform: perspective(90px) rotateX(12deg) rotateZ(-18deg);
+  box-shadow: 0 0 22px rgba(73, 113, 255, 0.32), inset 0 0 14px rgba(130, 164, 255, 0.18);
+  animation: cws-logo-float 5s ease-in-out infinite;
+}
+
+.portal-shell__logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(194, 211, 255, 0.72);
+  border-radius: 4px;
+  transform: translateZ(6px);
+}
+
+.portal-shell__logo-plane {
+  position: absolute;
+  width: 13px;
+  height: 2px;
+  left: 5px;
+  background: linear-gradient(90deg, transparent, #b5caff, transparent);
+  box-shadow: 0 0 8px rgba(142, 177, 255, 0.9);
+}
+
+.portal-shell__logo-plane--one { top: 8px; transform: rotate(38deg); }
+.portal-shell__logo-plane--two { top: 14px; transform: rotate(-38deg); }
+
+.portal-shell__logo-word {
+  transform: translateY(1px);
+}
+
+@keyframes cws-logo-float {
+  0%, 100% { transform: perspective(90px) rotateX(12deg) rotateZ(-18deg) translateY(0); }
+  50% { transform: perspective(90px) rotateX(18deg) rotateZ(-14deg) translateY(-2px); }
 }
 
 .portal-shell__main {
@@ -57,4 +92,8 @@
   .portal-shell__header {
     padding: 28px 40px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-shell__logo-mark { animation: none; }
 }

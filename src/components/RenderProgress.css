@@ -19,7 +19,7 @@
 
 .render-progress__ring-track {
   fill: none;
-  stroke: #E8E8EA;
+  stroke: rgba(157,177,216,0.2);
   stroke-width: 8;
 }
 
@@ -42,14 +42,14 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 26px;
   font-weight: 500;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .render-progress__stage-label {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 17px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: #f4f7fb;
 }
 
 .render-progress__list {
@@ -66,16 +66,16 @@
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #B0B0B5;
+  color: #8b97ab;
   transition: color 0.3s ease;
 }
 
 .render-progress__item.is-done {
-  color: #6B6B70;
+  color: #9aa6ba;
 }
 
 .render-progress__item.is-active {
-  color: #1C1C1E;
+  color: #f4f7fb;
   font-weight: 600;
 }
 
@@ -87,17 +87,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F0F0F1;
-  color: #B0B0B5;
+  background: rgba(255,255,255,0.08);
+  color: #8b97ab;
 }
 
 .render-progress__item.is-done .render-progress__item-icon {
-  background: #2AB673;
+  background: #39c78a;
   color: #FFFFFF;
 }
 
 .render-progress__item.is-active .render-progress__item-icon {
-  background: #3B5BFF;
+  background: #7ea7ff;
 }
 
 .render-progress__item-dot {
@@ -108,5 +108,5 @@
 }
 
 .render-progress__item.is-active .render-progress__item-dot {
-  background: #FFFFFF;
+  background: #0c111d;
 }
