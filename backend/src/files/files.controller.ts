@@ -6,6 +6,7 @@ import {
   Req,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
@@ -14,6 +15,7 @@ import { GoogleDriveService } from './google-drive.service';
 import { ResolveDriveDto } from './dto/resolve-drive.dto';
 import { CwsTempUploadStorage } from './temp-upload.storage';
 import { UploadTimeoutInterceptor } from './upload-timeout.interceptor';
+import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -40,6 +42,7 @@ export class FilesController {
    * Render.com free/starter tier.
    */
   @Post('files/upload')
+  @UseGuards(MvpRateLimitGuard)
   @UseInterceptors(
     UploadTimeoutInterceptor,
     FileInterceptor('file', {
@@ -84,6 +87,7 @@ export class FilesController {
   }
 
   @Post('drive/resolve')
+  @UseGuards(MvpRateLimitGuard)
   async resolveDrive(@Body() dto: ResolveDriveDto) {
     const result = await this.googleDriveService.resolve(dto.driveLink);
     return { driveLink: dto.driveLink, ...result };

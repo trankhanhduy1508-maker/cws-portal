@@ -269,3 +269,14 @@ Google Login
   **NEEDS_VERIFICATION**.
 - Isolated capacity test is **BLOCKED** in the current session because no
   staging Supabase/B2/Worker credentials or staging DB tool is available.
+
+# API security hardening - 2026-08-06
+
+- Payment detail BOLA protection, Admin-AAL2-only direct payment mutation,
+  bounded abuse limits, strict DTO bounds, Google API timeout/redirect
+  rejection and API security headers are **CODE/UNIT VERIFIED**.
+- Dependency remediation remains **BLOCKED/NEEDS_VERIFICATION** pending an
+  isolated Nest 11 canary; no breaking or forced upgrade was applied.
+- Authenticated Supabase/RLS, B2, live webhook, physical Worker and deployment
+  runtime remain **NEEDS_VERIFICATION**.
+- Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.

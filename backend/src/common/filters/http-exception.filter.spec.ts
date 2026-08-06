@@ -38,4 +38,13 @@ describe('HttpExceptionFilter', () => {
 
     expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
   });
+
+  it('does not expose internal error messages for unexpected 500s', () => {
+    const filter = new HttpExceptionFilter();
+    const { host, response } = makeHost();
+    filter.catch(new Error('postgres password / filesystem path'), host);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Lỗi máy chủ nội bộ' }),
+    );
+  });
 });

@@ -21,9 +21,12 @@ interface ReconciliationAnomalyRow {
   amount_vnd: number | null;
 }
 
-function anomalyRowToDomain(row: ReconciliationAnomalyRow): PaymentReconciliationAnomaly {
+function anomalyRowToDomain(
+  row: ReconciliationAnomalyRow,
+): PaymentReconciliationAnomaly {
   return {
-    anomalyType: row.anomaly_type as PaymentReconciliationAnomaly['anomalyType'],
+    anomalyType:
+      row.anomaly_type as PaymentReconciliationAnomaly['anomalyType'],
     orderId: row.order_id,
     storageCode: row.storage_code,
     orderStatus: row.order_status,
@@ -122,26 +125,34 @@ export class PaymentsRepository {
       .maybeSingle();
 
     if (error) {
-      this.logger.error(`findByPaymentCode(${paymentCode}) thất bại: ${error.message}`);
+      this.logger.error(
+        `findByPaymentCode(${paymentCode}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không đọc được payment theo mã: ${error.message}`);
     }
     return data ? rowToDomain(data as PaymentRow) : null;
   }
 
-  async updateStatus(paymentId: string, status: PaymentStatus): Promise<PaymentRecord | null> {
+  async updateStatus(
+    paymentId: string,
+    status: PaymentStatus,
+  ): Promise<PaymentRecord | null> {
     const { data, error } = await this.supabaseService
       .getClient()
       .from(TABLE)
       .update({
         status,
-        confirmed_at: status === PaymentStatus.PAID ? new Date().toISOString() : null,
+        confirmed_at:
+          status === PaymentStatus.PAID ? new Date().toISOString() : null,
       })
       .eq('id', paymentId)
       .select()
       .maybeSingle();
 
     if (error) {
-      this.logger.error(`updateStatus(${paymentId}) thất bại: ${error.message}`);
+      this.logger.error(
+        `updateStatus(${paymentId}) thất bại: ${error.message}`,
+      );
       throw new Error(`Không cập nhật được payment: ${error.message}`);
     }
     return data ? rowToDomain(data as PaymentRow) : null;
@@ -160,6 +171,24 @@ export class PaymentsRepository {
       throw new Error(`Không đọc được payment: ${error.message}`);
     }
     return data ? rowToDomain(data as PaymentRow) : null;
+  }
+
+  async isOwnedByCustomer(
+    paymentId: string,
+    customerId: string,
+  ): Promise<boolean> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('render_orders')
+      .select('id')
+      .eq('payment_id', paymentId)
+      .eq('customer_id', customerId)
+      .maybeSingle();
+    if (error) {
+      this.logger.error(`isOwnedByCustomer(${paymentId}) failed: ${error.message}`);
+      throw new Error('Không kiểm tra được quyền truy cập payment');
+    }
+    return Boolean(data);
   }
 
   /** Ghi 1 dòng payment_notifications với status='processing' NGAY LẬP
@@ -237,7 +266,11 @@ export class PaymentsRepository {
 
   async markNotificationOutcome(
     id: number,
-    outcome: { status: 'processed' | 'rejected'; rejectReason?: string; paymentId?: string },
+    outcome: {
+      status: 'processed' | 'rejected';
+      rejectReason?: string;
+      paymentId?: string;
+    },
   ): Promise<void> {
     const { error } = await this.supabaseService
       .getClient()
@@ -250,8 +283,12 @@ export class PaymentsRepository {
       .eq('id', id);
 
     if (error) {
-      this.logger.error(`markNotificationOutcome(${id}) thất bại: ${error.message}`);
-      throw new Error(`Không cập nhật được payment_notifications: ${error.message}`);
+      this.logger.error(
+        `markNotificationOutcome(${id}) thất bại: ${error.message}`,
+      );
+      throw new Error(
+        `Không cập nhật được payment_notifications: ${error.message}`,
+      );
     }
   }
 
@@ -269,8 +306,12 @@ export class PaymentsRepository {
       .order('reference_time', { ascending: false });
 
     if (error) {
-      this.logger.error(`listReconciliationAnomalies() thất bại: ${error.message}`);
-      throw new Error(`Không đọc được payment_reconciliation_anomalies: ${error.message}`);
+      this.logger.error(
+        `listReconciliationAnomalies() thất bại: ${error.message}`,
+      );
+      throw new Error(
+        `Không đọc được payment_reconciliation_anomalies: ${error.message}`,
+      );
     }
     return (data as ReconciliationAnomalyRow[]).map(anomalyRowToDomain);
   }

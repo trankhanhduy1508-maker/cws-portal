@@ -286,3 +286,17 @@ original Job; same-key/different-payload requests are rejected. PostgreSQL's
 unique index is the correctness boundary for concurrent retries. The key is
 not a credential and is never logged as a secret. Migration 018 must pass
 isolated staging preflight before production application.
+
+## API security boundary - 2026-08-06
+
+**[ACTIVE]** Payment details are customer-owned data: `GET /payments/:id`
+requires the linked job owner or a server-verified Admin AAL2 session. Direct
+payment creation/confirmation endpoints are Admin AAL2-only; customer payment
+creation remains exclusively inside `JobsService.approve()` after
+`REVIEW_READY`. This prevents public payment spam, payment existence leakage
+and client-controlled state transitions.
+
+**[ACTIVE]** MVP abuse protection uses bounded in-process limits on expensive
+upload, Drive resolve, job and payment-detail routes, plus strict DTO bounds and
+global whitelist rejection. A shared edge limiter may be added only after
+staging evidence or deployment configuration requires it.

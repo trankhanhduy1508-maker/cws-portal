@@ -520,9 +520,9 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
   stale fencing: **PASS** at simulated level.
 - 100 case: 100/100 jobs reached `REVIEW_READY`, duplicate Worker claims 0,
   p95 submit 59.14 ms, p99 59.27 ms, scheduler tick 1.44 ms locally.
-- Duplicate identical `POST /jobs` currently creates two distinct jobs because
-  no idempotency-key contract exists; recorded as a P1 risk, not changed
-  without a schema/product decision.
+- Duplicate identical `POST /jobs` is now protected by the committed
+  Idempotency-Key contract; staging/production migration application remains
+  unverified.
 - This does not verify Supabase/RLS/B2/Blender/payment/physical Worker or
   production capacity. Evidence: `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
 
@@ -553,3 +553,15 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Staging capacity remains `NOT VERIFIED`: no staging endpoint, CLI or
   credential is available in this session. Evidence:
   `reports/scaling/CWS_JOB_CREATE_IDEMPOTENCY_2026-08-06.md`.
+
+## API security hardening - 2026-08-06
+
+- Payment detail access is now ownership/Admin-AAL2 checked; direct payment
+  create/confirm routes are Admin-AAL2-only.
+- Added bounded upload/job/Drive/payment rate limits, stricter DTO bounds,
+  whitelist rejection, Google API timeout/redirect rejection and API security
+  headers. Backend 172/172, frontend 9/9 and Worker 49/49 pass with builds.
+- Dependency audit remains 5 High + 12 Moderate and requires a separate
+  breaking-upgrade canary. Production authenticated runtime remains
+  `NEEDS_VERIFICATION`.
+- Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.

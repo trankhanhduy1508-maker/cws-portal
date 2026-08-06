@@ -38,12 +38,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : exception instanceof Error
-          ? exception.message
-          : 'Lỗi không xác định';
+    const message = exception instanceof HttpException
+      ? exception.getResponse()
+      : 'Lỗi máy chủ nội bộ';
 
     if (status >= 500) {
       this.logger.error(

@@ -5,8 +5,10 @@ import {
   HttpCode,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { PaymentDevicesRepository } from './payment-devices.repository';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -16,12 +18,17 @@ import { RoleGuard } from '../common/guards/role.guard';
 import { WebhookSecretGuard } from '../common/guards/webhook-secret.guard';
 import { SepayWebhookGuard } from '../common/guards/sepay-webhook.guard';
 import { SepayWebhookTestGuard } from '../common/guards/sepay-webhook-test.guard';
+import { getOptionalCustomerId } from '../common/optional-auth.util';
+import { SupabaseService } from '../supabase/supabase.service';
+import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
+import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly paymentDevicesRepository: PaymentDevicesRepository,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   /** Admin Dashboard (Phần 2.5) — danh sách thiết bị Android gửi payment
@@ -45,6 +52,7 @@ export class PaymentsController {
   }
 
   @Post()
+  @UseGuards(RoleGuard)
   async create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.createIntent(dto);
   }
@@ -57,12 +65,19 @@ export class PaymentsController {
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    return this.paymentsService.getPublicDetails(id);
+  @UseGuards(MvpRateLimitGuard)
+  async getById(@Param('id') id: string, @Req() req: Request) {
+    const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    return this.paymentsService.getPublicDetails(
+      id,
+      customerId,
+      await isAuthenticatedMfaAdmin(req, this.supabaseService),
+    );
   }
 
   @Post(':id/confirm')
   @HttpCode(200)
+  @UseGuards(RoleGuard)
   async confirm(@Param('id') id: string) {
     return this.paymentsService.confirm(id);
   }

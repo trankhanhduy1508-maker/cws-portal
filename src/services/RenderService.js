@@ -122,7 +122,10 @@ export async function estimateJob(input, profileId) {
  */
 export async function getPaymentDetails(paymentId) {
   if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`);
+    const token = await getAccessToken();
+    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     if (!res.ok) throw new Error('Không lấy được thông tin thanh toán');
     return res.json();
   }

@@ -31,7 +31,9 @@ export class GoogleDriveService {
     if (fileMatch) return fileMatch[1];
     const idMatch = OPEN_ID_PATTERN.exec(driveLink);
     if (idMatch) return idMatch[1];
-    throw new BadRequestException('Không nhận diện được file ID từ link Google Drive này.');
+    throw new BadRequestException(
+      'Không nhận diện được file ID từ link Google Drive này.',
+    );
   }
 
   /**
@@ -42,9 +44,13 @@ export class GoogleDriveService {
    * này, nhưng CHƯA có tích hợp API thật để lấy tên/dung lượng file —
    * trả null thay vì bịa, giống đúng nguyên tắc đã áp dụng cho Drive).
    */
-  async resolve(driveLink: string): Promise<{ fileName: string | null; fileSizeBytes: number | null }> {
+  async resolve(
+    driveLink: string,
+  ): Promise<{ fileName: string | null; fileSizeBytes: number | null }> {
     if (!GOOGLE_DRIVE_HOST_PATTERN.test(driveLink)) {
-      this.logger.warn('Link không phải Google Drive (OneDrive/Dropbox) — chưa có API thật để resolve.');
+      this.logger.warn(
+        'Link không phải Google Drive (OneDrive/Dropbox) — chưa có API thật để resolve.',
+      );
       return { fileName: null, fileSizeBytes: null };
     }
 
@@ -58,8 +64,15 @@ export class GoogleDriveService {
       return { fileName: null, fileSizeBytes: null };
     }
 
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${apiKey}&fields=name,size`;
-    const res = await fetch(url);
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${encodeURIComponent(apiKey)}&fields=name,size`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let res: Response;
+    try {
+      res = await fetch(url, { redirect: 'error', signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!res.ok) {
       if (res.status === 404) {
@@ -67,7 +80,9 @@ export class GoogleDriveService {
           'Không tìm thấy file — kiểm tra lại quyền chia sẻ (chọn "Bất kỳ ai có link") hoặc link đã đúng chưa.',
         );
       }
-      this.logger.error(`Google Drive API trả lỗi ${res.status} cho fileId=${fileId}`);
+      this.logger.error(
+        `Google Drive API trả lỗi ${res.status} cho fileId=${fileId}`,
+      );
       return { fileName: null, fileSizeBytes: null };
     }
 

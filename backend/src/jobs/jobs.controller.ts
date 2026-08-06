@@ -19,6 +19,8 @@ import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RoleGuard } from '../common/guards/role.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
+import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
+import { RequestChangesDto } from './dto/request-changes.dto';
 
 @Controller('jobs')
 export class JobsController {
@@ -33,6 +35,7 @@ export class JobsController {
   }
 
   @Post()
+  @UseGuards(MvpRateLimitGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
     // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
     // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
@@ -44,6 +47,7 @@ export class JobsController {
 
   @Post('estimate')
   @HttpCode(200)
+  @UseGuards(MvpRateLimitGuard)
   async estimate(@Body() dto: EstimateJobDto) {
     return this.jobsService.estimate(dto);
   }
@@ -150,7 +154,7 @@ export class JobsController {
   @HttpCode(200)
   async requestChanges(
     @Param('id') id: string,
-    @Body() body: { note?: string },
+    @Body() body: RequestChangesDto,
     @Req() req: Request,
   ) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);

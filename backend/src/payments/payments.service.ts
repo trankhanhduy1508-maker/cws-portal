@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PaymentsRepository } from './payments.repository';
 import { PaymentDevicesRepository } from './payment-devices.repository';
@@ -52,8 +57,18 @@ export class PaymentsService {
       );
     }
 
-    const { providerRef, status, paymentCode, transferContent, qrImageUrl, bankName, accountNumber } =
-      await provider.createIntent(dto.amountVnd, jobContext?.storageCode ?? null);
+    const {
+      providerRef,
+      status,
+      paymentCode,
+      transferContent,
+      qrImageUrl,
+      bankName,
+      accountNumber,
+    } = await provider.createIntent(
+      dto.amountVnd,
+      jobContext?.storageCode ?? null,
+    );
     const paymentId = randomUUID();
 
     const record: PaymentRecord = {
@@ -77,18 +92,30 @@ export class PaymentsService {
     // đơn giản hoá: dùng chính paymentId làm khóa tra cứu, providerRef giữ
     // nội bộ provider (qr-*) đủ để suy luận lại provider nào xử lý.
     void providerRef;
-    return { paymentId, status, paymentCode, transferContent, amountVnd: dto.amountVnd, qrImageUrl };
+    return {
+      paymentId,
+      status,
+      paymentCode,
+      transferContent,
+      amountVnd: dto.amountVnd,
+      qrImageUrl,
+    };
   }
 
   async getStatus(paymentId: string): Promise<PaymentStatus> {
     const record = await this.paymentsRepository.findById(paymentId);
-    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    if (!record)
+      throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
     return record.status;
   }
 
   /** Chi tiết đầy đủ cho Portal hiển thị lại QR/nội dung chuyển khoản
    * (vd khách tải lại trang lúc đang chờ thanh toán) — không chỉ status. */
-  async getPublicDetails(paymentId: string): Promise<{
+  async getPublicDetails(
+    paymentId: string,
+    customerId: string | null,
+    isAdmin = false,
+  ): Promise<{
     paymentId: string;
     status: PaymentStatus;
     paymentCode: string | null;
@@ -97,7 +124,13 @@ export class PaymentsService {
     qrImageUrl: string | null;
   }> {
     const record = await this.paymentsRepository.findById(paymentId);
-    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    if (!record)
+      throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    if (!isAdmin) {
+      if (!customerId || !(await this.paymentsRepository.isOwnedByCustomer(paymentId, customerId))) {
+        throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+      }
+    }
     return {
       paymentId: record.paymentId,
       status: record.status,
@@ -110,8 +143,13 @@ export class PaymentsService {
 
   /** Admin tra cứu theo Payment Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   async getByPaymentCode(paymentCode: string): Promise<PaymentRecord> {
-    const record = await this.paymentsRepository.findByPaymentCode(paymentCode.toUpperCase());
-    if (!record) throw new NotFoundException(`Không tìm thấy payment với mã ${paymentCode}`);
+    const record = await this.paymentsRepository.findByPaymentCode(
+      paymentCode.toUpperCase(),
+    );
+    if (!record)
+      throw new NotFoundException(
+        `Không tìm thấy payment với mã ${paymentCode}`,
+      );
     return record;
   }
 
@@ -120,13 +158,18 @@ export class PaymentsService {
     return this.paymentsRepository.listReconciliationAnomalies();
   }
 
-  async confirm(paymentId: string): Promise<{ paymentId: string; status: PaymentStatus }> {
+  async confirm(
+    paymentId: string,
+  ): Promise<{ paymentId: string; status: PaymentStatus }> {
     const record = await this.paymentsRepository.findById(paymentId);
-    if (!record) throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
+    if (!record)
+      throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
 
     const provider = this.providers[record.method];
     if (!provider) {
-      throw new BadRequestException(`Phương thức thanh toán "${record.method}" chưa được hỗ trợ`);
+      throw new BadRequestException(
+        `Phương thức thanh toán "${record.method}" chưa được hỗ trợ`,
+      );
     }
 
     const { status } = await provider.confirm(paymentId);
@@ -146,7 +189,9 @@ export class PaymentsService {
    * storage_code để đối chiếu, webhook cho payment đó luôn bị từ chối
    * (không phải luồng thật của MVP nên chấp nhận giới hạn này).
    */
-  async confirmViaWebhook(dto: WebhookPaymentDto): Promise<{ paymentId: string; status: PaymentStatus }> {
+  async confirmViaWebhook(
+    dto: WebhookPaymentDto,
+  ): Promise<{ paymentId: string; status: PaymentStatus }> {
     return this.matchAndConfirm(dto.transferContent, dto.amountVnd);
   }
 
@@ -172,12 +217,17 @@ export class PaymentsService {
 
     const record = await this.paymentsRepository.findByPaymentCode(paymentCode);
     if (!record) {
-      throw new NotFoundException(`Không tìm thấy payment với mã ${paymentCode}`);
+      throw new NotFoundException(
+        `Không tìm thấy payment với mã ${paymentCode}`,
+      );
     }
     if (record.status === PaymentStatus.PAID) {
       return { paymentId: record.paymentId, status: record.status }; // đã xử lý trước đó, tránh double-confirm
     }
-    if (!record.storageCode || record.storageCode.toUpperCase() !== storageCode) {
+    if (
+      !record.storageCode ||
+      record.storageCode.toUpperCase() !== storageCode
+    ) {
       throw new BadRequestException(
         `Storage code không khớp cho payment ${record.paymentId}: kỳ vọng ${record.storageCode ?? '(không có)'}, nhận ${storageCode}`,
       );
@@ -188,8 +238,12 @@ export class PaymentsService {
       );
     }
 
-    const updated = await this.paymentsRepository.updateStatus(record.paymentId, PaymentStatus.PAID);
-    if (!updated) throw new NotFoundException(`Không tìm thấy payment ${record.paymentId}`);
+    const updated = await this.paymentsRepository.updateStatus(
+      record.paymentId,
+      PaymentStatus.PAID,
+    );
+    if (!updated)
+      throw new NotFoundException(`Không tìm thấy payment ${record.paymentId}`);
     return { paymentId: updated.paymentId, status: updated.status };
   }
 
@@ -213,7 +267,11 @@ export class PaymentsService {
   async confirmViaMbbankNotification(
     dto: MbbankNotificationDto,
     deviceId: string,
-  ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean }> {
+  ): Promise<{
+    paymentId: string | null;
+    status: PaymentStatus | null;
+    duplicate: boolean;
+  }> {
     const inserted = await this.paymentsRepository.insertNotificationProcessing(
       {
         transactionId: dto.transaction_id,
@@ -229,9 +287,10 @@ export class PaymentsService {
     );
 
     if (!inserted) {
-      const existing = await this.paymentsRepository.findNotificationByTransactionId(
-        dto.transaction_id,
-      );
+      const existing =
+        await this.paymentsRepository.findNotificationByTransactionId(
+          dto.transaction_id,
+        );
       if (!existing) {
         throw new BadRequestException(
           `transaction_id ${dto.transaction_id} bị trùng nhưng không đọc lại được — thử lại sau`,
@@ -239,7 +298,8 @@ export class PaymentsService {
       }
       if (existing.status === 'rejected') {
         throw new BadRequestException(
-          existing.reject_reason ?? `transaction_id ${dto.transaction_id} đã bị từ chối trước đó`,
+          existing.reject_reason ??
+            `transaction_id ${dto.transaction_id} đã bị từ chối trước đó`,
         );
       }
       const payment = existing.payment_id
@@ -248,11 +308,18 @@ export class PaymentsService {
       this.logger.warn(
         `confirmViaMbbankNotification: transaction_id ${dto.transaction_id} đã xử lý trước đó — trả lại kết quả cũ (replay/retry)`,
       );
-      return { paymentId: existing.payment_id, status: payment?.status ?? null, duplicate: true };
+      return {
+        paymentId: existing.payment_id,
+        status: payment?.status ?? null,
+        duplicate: true,
+      };
     }
 
     try {
-      const result = await this.matchAndConfirm(dto.transfer_content, dto.amount);
+      const result = await this.matchAndConfirm(
+        dto.transfer_content,
+        dto.amount,
+      );
       await this.paymentsRepository.markNotificationOutcome(inserted.id, {
         status: 'processed',
         paymentId: result.paymentId,
@@ -279,11 +346,16 @@ export class PaymentsService {
    * type = "Both" trên SePay Dashboard — bỏ qua AN TOÀN (không throw, vì
    * đây là hành vi hợp lệ tuỳ cấu hình phía SePay), chỉ xử lý 'in'.
    */
-  async confirmViaSepayWebhook(
-    dto: SepayWebhookDto,
-  ): Promise<{ paymentId: string | null; status: PaymentStatus | null; duplicate: boolean; ignored: boolean }> {
+  async confirmViaSepayWebhook(dto: SepayWebhookDto): Promise<{
+    paymentId: string | null;
+    status: PaymentStatus | null;
+    duplicate: boolean;
+    ignored: boolean;
+  }> {
     if (dto.transferType !== 'in') {
-      this.logger.warn(`confirmViaSepayWebhook: bỏ qua giao dịch transferType=${dto.transferType} (id=${dto.id})`);
+      this.logger.warn(
+        `confirmViaSepayWebhook: bỏ qua giao dịch transferType=${dto.transferType} (id=${dto.id})`,
+      );
       return { paymentId: null, status: null, duplicate: false, ignored: true };
     }
 
@@ -301,7 +373,10 @@ export class PaymentsService {
     );
 
     if (!inserted) {
-      const existing = await this.paymentsRepository.findNotificationByTransactionId(transactionId);
+      const existing =
+        await this.paymentsRepository.findNotificationByTransactionId(
+          transactionId,
+        );
       if (!existing) {
         throw new BadRequestException(
           `transaction_id ${transactionId} bị trùng nhưng không đọc lại được — thử lại sau`,
@@ -309,7 +384,8 @@ export class PaymentsService {
       }
       if (existing.status === 'rejected') {
         throw new BadRequestException(
-          existing.reject_reason ?? `transaction_id ${transactionId} đã bị từ chối trước đó`,
+          existing.reject_reason ??
+            `transaction_id ${transactionId} đã bị từ chối trước đó`,
         );
       }
       const payment = existing.payment_id
@@ -318,11 +394,19 @@ export class PaymentsService {
       this.logger.warn(
         `confirmViaSepayWebhook: transaction_id ${transactionId} đã xử lý trước đó — trả lại kết quả cũ (replay/retry)`,
       );
-      return { paymentId: existing.payment_id, status: payment?.status ?? null, duplicate: true, ignored: false };
+      return {
+        paymentId: existing.payment_id,
+        status: payment?.status ?? null,
+        duplicate: true,
+        ignored: false,
+      };
     }
 
     try {
-      const result = await this.matchAndConfirm(dto.content, dto.transferAmount);
+      const result = await this.matchAndConfirm(
+        dto.content,
+        dto.transferAmount,
+      );
       await this.paymentsRepository.markNotificationOutcome(inserted.id, {
         status: 'processed',
         paymentId: result.paymentId,
