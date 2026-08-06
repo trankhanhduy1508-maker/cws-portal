@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fsPromises } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { B2StorageService } from './b2-storage.service';
+import { B2StorageService, sanitizeUploadObjectName } from './b2-storage.service';
 import { AppConfig } from '../config/configuration';
 
 function makeService(): B2StorageService {
@@ -43,6 +43,12 @@ describe('B2StorageService.extractKeyFromPublicUrl()', () => {
 });
 
 describe('B2StorageService.uploadFile()', () => {
+  it('does not place path separators or control characters in the B2 object key', () => {
+    expect(sanitizeUploadObjectName('..\\..\\unsafe folder/scene\u0000.blend')).toBe(
+      'scene_.blend',
+    );
+  });
+
   it('cleans the streamed temporary file when storage fails', async () => {
     const service = makeService();
     const path = join(tmpdir(), `cws-upload-test-${Date.now()}`);

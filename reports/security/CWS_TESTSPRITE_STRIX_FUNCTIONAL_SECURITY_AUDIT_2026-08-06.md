@@ -64,7 +64,7 @@ Official references:
 | Frontend lint | PASS |
 | Frontend build | PASS; Vite emitted only a bundle-size warning |
 | Backend lint (`eslint --no-fix`) | FAIL on pre-existing repo-wide CRLF/Prettier formatting violations; no bulk format applied |
-| Backend Jest | 28 suites, 160 tests PASS |
+| Backend Jest | 28 suites, 161 tests PASS |
 | Backend E2E | 1 suite, 1 test PASS (`GET /health`) |
 | Backend build | PASS |
 | Worker Python suite | 48 tests PASS |

@@ -10,7 +10,14 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import { basename } from 'path';
 import { AppConfig } from '../config/configuration';
+
+export function sanitizeUploadObjectName(originalName: string): string {
+  const baseName = basename(originalName.replace(/\\/g, '/'));
+  const safeName = baseName.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 180);
+  return safeName || 'upload.blend';
+}
 
 @Injectable()
 export class B2StorageService {
@@ -73,7 +80,7 @@ export class B2StorageService {
   async uploadFile(
     file: Express.Multer.File,
   ): Promise<{ key: string; url: string }> {
-    const key = `uploads/${randomUUID()}-${file.originalname}`;
+    const key = `uploads/${randomUUID()}-${sanitizeUploadObjectName(file.originalname)}`;
     const uploadStream = file.path ? createReadStream(file.path) : null;
     // Keep a listener attached even when the S3 client fails before it starts
     // consuming the stream; otherwise a late open/read error becomes an

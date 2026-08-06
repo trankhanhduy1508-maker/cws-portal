@@ -489,5 +489,11 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
 - Strix could not run on this machine because Docker/Bash/Python/Pip and an approved LLM credential are absent; no Strix severity counts are claimed.
 - Fixed backend E2E harness defects: CommonJS-compatible `supertest` import, canonical `/health` assertion, app cleanup, and test-only non-secret environment setup.
 - Fixed a real backend packaging compatibility issue: dynamically load the named ESM `ZipArchive` export from CommonJS output. Runtime ZIP smoke passed.
-- Verification: frontend 9/9 + frontend lint/build PASS; backend 160/160 + E2E 1/1 + build PASS; Worker 48/48 PASS; root audit 0 vulnerabilities. Backend lint remains blocked by pre-existing repo-wide CRLF/Prettier violations; no bulk format was applied. Backend production audit remains 17 vulnerabilities (12 moderate, 5 high), with breaking upgrade path documented and no force upgrade applied.
+- Verification: frontend 9/9 + frontend lint/build PASS; backend 161/161 + E2E 1/1 + build PASS; Worker 48/48 PASS; root audit 0 vulnerabilities. Backend lint remains blocked by pre-existing repo-wide CRLF/Prettier violations; no bulk format was applied. Backend production audit remains 17 vulnerabilities (12 moderate, 5 high), with breaking upgrade path documented and no force upgrade applied.
 - Evidence: `reports/security/CWS_TESTSPRITE_STRIX_FUNCTIONAL_SECURITY_AUDIT_2026-08-06.md`.
+
+## Dependency and upload hardening follow-up — 2026-08-06
+
+- Re-ran backend production audit: 17 findings remain (5 High, 12 Moderate, 0 Critical). Dry-run/dedupe produced no safe non-breaking remediation; the Nest 11 canary remains required.
+- Hardened B2 upload object naming: only a bounded safe basename is included in the generated key; path separators/control characters cannot shape the object path. Regression test and backend build pass.
+- Evidence: `reports/security/CWS_DEPENDENCY_AUDIT_2026-08-06.md`.

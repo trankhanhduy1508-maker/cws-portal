@@ -213,11 +213,12 @@ bằng 1 lần đăng nhập thật**. Đây là bước duy nhất cần Owner,
 
 # Functional/security verification follow-up — 2026-08-06
 
-- Local functional verification is green: frontend 9/9, backend 160/160 plus E2E `/health` 1/1, Worker 48/48, builds pass and frontend lint passes. Backend lint remains blocked by pre-existing repo-wide CRLF/Prettier violations; no bulk format was applied.
+- Local functional verification is green: frontend 9/9, backend 161/161 plus E2E `/health` 1/1, Worker 48/48, builds pass and frontend lint passes. Backend lint remains blocked by pre-existing repo-wide CRLF/Prettier violations; no bulk format was applied.
 - TestSprite CLI integration was attempted; cloud execution is blocked only by missing `TESTSPRITE_API_KEY` and target configuration.
 - Strix execution is blocked on this machine by missing Docker/runtime and approved LLM credential; no third-party security PASS is claimed.
 - Fixed the backend E2E harness and CommonJS/ESM `archiver` packaging boundary. Details: `reports/security/CWS_TESTSPRITE_STRIX_FUNCTIONAL_SECURITY_AUDIT_2026-08-06.md`.
 - Backend dependency audit remains a release risk: 5 high and 12 moderate findings, with breaking upgrade path; do not use `npm audit fix --force`.
+- Upload object-key path/control-character hardening is code/unit verified; dependency remediation remains blocked on an isolated Nest 11 canary.
 
 # Definition of Done
 
