@@ -424,3 +424,16 @@ Google Login
   `2f1215a3c55e233c2cbc7d3533f0cf0d32d8f8b4`; root web smoke returned HTTP
   200. Authenticated customer/Admin, Worker, B2 and live payment remain
   runtime gates.
+
+# Vercel project consolidation audit — 2026-08-07
+
+- Canonical production remains the existing `cws-portal` project serving
+  `https://cws-portal.vercel.app`.
+- Six duplicate CWS projects were observed in the same Vercel team. Repo and
+  GitHub Actions audit found no project-creation automation; live metadata is
+  consistent with repeated Dashboard Git imports of the same `main` repo.
+- Deletion/disconnect is **BLOCKED** in this session because Vercel write
+  access and encrypted environment comparison are unavailable. Do not create
+  another project; an authorized operator must compare env/Git settings and
+  remove only confirmed unused duplicates.
+- Evidence: `reports/deployment/CWS_VERCEL_PROJECT_CONSOLIDATION_AUDIT_2026-08-07.md`.

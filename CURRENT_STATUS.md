@@ -1,5 +1,18 @@
 # Current Status
 
+## Vercel project consolidation audit — 2026-08-07
+
+- Live lookup confirms canonical project `cws-portal`
+  (`prj_oEEqu24zYqTq1p9FJhzkUake0pEi`) is the only project with alias
+  `https://cws-portal.vercel.app`; six other CWS-named projects have separate
+  `.vercel.app` domains.
+- Repo/history audit found no Vercel project-creation script, `vercel.json`,
+  committed `.vercel` link, or GitHub Actions deploy step. Deployment metadata
+  shows duplicate projects Git-integrated to the same repo/main under the
+  Vercel account. No deletion was attempted because this session has no
+  Vercel write token/API and cannot compare encrypted env vars safely.
+- Evidence: `reports/deployment/CWS_VERCEL_PROJECT_CONSOLIDATION_AUDIT_2026-08-07.md`.
+
 ## Worker/Node Agent production-path hardening — 2026-08-07
 
 - **FIXED/CODE VERIFIED**: extension-neutral Drive download detection now

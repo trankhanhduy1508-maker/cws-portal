@@ -185,6 +185,13 @@ Hosting
 
 **[ACTIVE]** Vercel.
 
+**[ACTIVE]** CWS has exactly one canonical Vercel production project:
+`cws-portal` serving `https://cws-portal.vercel.app`. Normal deployment is a
+push to `main` through that existing Git Integration. Agents must not import
+the repository into a new Vercel project or run project-creation automation.
+Duplicate projects require environment/domain comparison before an authorized
+Vercel operator disconnects or deletes them.
+
 ---
 
 Database
