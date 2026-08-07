@@ -18,6 +18,13 @@
   verified Blender signature and SHA-256.
 - **NEEDS_VERIFICATION**: real production Worker/B2/backend/customer E2E.
 
+## Windows host readiness — 2026-08-07
+
+- **REAL LOCAL RUNTIME VERIFIED**: official Blender fixture rendered with
+  Blender 5.2.0 LTS on the Windows host.
+- **NEEDS_VERIFICATION/BLOCKED**: production claim, B2 upload, completion and
+  customer download require the missing authenticated Worker configuration.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **CODE/UNIT VERIFIED**: credential-gated Node Agent loop now connects the

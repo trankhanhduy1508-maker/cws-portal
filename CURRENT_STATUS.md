@@ -23,6 +23,16 @@
   backend completion and customer download still require production access.
 - Evidence: `reports/worker/CWS_OFFICIAL_BLENDER_FIXTURE_VERIFICATION_2026-08-07.md`.
 
+## Windows host render verification — 2026-08-07
+
+- **REAL LOCAL RUNTIME VERIFIED**: Blender 5.2.0 LTS was installed from the
+  official archive with verified SHA-256 and rendered the official fixture on
+  this Windows host using a real Blender process/PID and EEVEE output.
+- **PRODUCTION E2E BLOCKED**: no `CWS_*` production configuration or DPAPI
+  Worker credential exists on this host, and the Desktop package lacks the
+  canonical production Node Agent. No production job was created.
+- Evidence: `reports/worker/CWS_PHYSICAL_WORKER_PRODUCTION_E2E_BLOCKER_2026-08-07.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the

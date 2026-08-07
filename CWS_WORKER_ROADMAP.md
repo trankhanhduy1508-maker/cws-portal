@@ -19,6 +19,13 @@
   recorded in the worker evidence report.
 - **BLOCKED**: physical Worker/B2/backend E2E remains unverified.
 
+## Windows host readiness — 2026-08-07
+
+- **REAL LOCAL RUNTIME VERIFIED**: official Blender 5.2.0 portable runtime
+  opened and rendered the verified fixture on this Windows host.
+- **BLOCKED**: authenticated production Node Agent, Worker identity, B2 and
+  backend lease/completion are absent from the host.
+
 ## Production Node Agent / generic Worker audit — 2026-08-07
 
 - **CODE VERIFIED**: canonical package is Node Agent → dynamic JobSpec/TaskSpec
