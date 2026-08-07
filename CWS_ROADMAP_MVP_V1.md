@@ -382,6 +382,15 @@ Google Login
 - **BLOCKED/NEEDS_VERIFICATION**: production has no `worker_identities`, no fresh heartbeat and no lease, so Blender/B2 physical E2E cannot start.
 - Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07_ADDENDUM.md`.
 
+# Physical Worker readiness — 2026-08-07
+
+- **CODE/LOCAL VERIFIED**: MAY083 package contains the canonical Node Agent,
+  generic Worker Engine and Blender 5.2.0; production claim/heartbeat/spec and
+  completion RPCs exist.
+- **BLOCKED/NEEDS_VERIFICATION**: no production worker identity, DPAPI store,
+  B2/Drive runtime configuration or fresh heartbeat exists on the host.
+- Evidence: `reports/evidence/CWS_PRODUCTION_PHYSICAL_WORKER_READINESS_AUDIT_2026-08-07.md`.
+
 # Job retry correctness - 2026-08-06
 
 - `POST /jobs` idempotency contract is **CODE/UNIT VERIFIED** with additive

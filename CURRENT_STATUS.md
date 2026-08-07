@@ -2,10 +2,20 @@
 
 ## Current production real-path audit — 2026-08-07
 
-- **READ-ONLY VERIFIED**: canonical Vercel production is `cws-portal`, READY on `main` commit `f9633b6`; live bundle calls the real Render backend and real WebSocket, with Supabase auth enabled and development mock auth disabled.
+- **READ-ONLY VERIFIED**: canonical Vercel production is `cws-portal`, READY on `main` commit `7ce643d`; live bundle calls the real Render backend and real WebSocket, with Supabase auth enabled and development mock auth disabled.
 - **CODE VERIFIED**: upload/Drive → `POST /jobs` → durable `render_orders` + Worker Fleet task → server WebSocket status/result; no active fake progress path was found in production.
 - **BLOCKED/NOT VERIFIED**: production Supabase has 0 `worker_identities`, 0 fresh heartbeats, 0 leases and 247 open tasks. No physical Worker claim, Blender process, B2 output or customer download was produced.
 - Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07_ADDENDUM.md`.
+
+## Physical Worker readiness audit — 2026-08-07
+
+- **CODE/LOCAL VERIFIED**: MAY083 has the canonical Node Agent package and
+  Blender 5.2.0; production RPC routines required for claim/heartbeat/spec and
+  completion exist in Supabase.
+- **BLOCKED BEFORE HEARTBEAT**: production has 0 worker identities and 0 fresh
+  workers; MAY083 has no `CWS_*` runtime configuration, DPAPI credential or B2
+  Python dependency. No job mutation was performed.
+- Evidence: `reports/evidence/CWS_PRODUCTION_PHYSICAL_WORKER_READINESS_AUDIT_2026-08-07.md`.
 
 ## Vercel project consolidation audit — 2026-08-07
 
