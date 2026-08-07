@@ -1,5 +1,12 @@
 # Current Status
 
+## B2-only Worker input path — 2026-08-07
+
+- **FIXED/CODE VERIFIED**: B2-backed JobSpecs no longer require
+  `CWS_GOOGLE_DRIVE_API_KEY`; Drive input still fails closed when its key is
+  absent.
+- Evidence: `reports/worker/CWS_B2_ONLY_INPUT_PATH_2026-08-07.md`.
+
 ## Current production real-path audit — 2026-08-07
 
 - **READ-ONLY VERIFIED**: canonical Vercel production is `cws-portal`, READY on `main` commit `7444797`; live bundle calls the real Render backend and real WebSocket, with Supabase auth enabled and development mock auth disabled.

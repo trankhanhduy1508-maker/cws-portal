@@ -38,6 +38,43 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         with self.assertRaises(PermanentWorkerError):
             ProductionConfig.from_env({})
 
+    def test_b2_only_config_does_not_require_drive_api_key(self):
+        config = ProductionConfig.from_env(
+            {
+                "CWS_BACKEND_URL": "https://backend.example",
+                "CWS_WORKER_ID": "worker-a",
+                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+                "CWS_WORKSPACE": "C:/CWS/work",
+                "CWS_B2_ENDPOINT": "s3.us-west-004.backblazeb2.com",
+                "CWS_B2_BUCKET": "cws-prod",
+                "CWS_B2_KEY_ID": "key-id",
+                "CWS_B2_APP_KEY": "app-key",
+                "CWS_B2_OUTPUT_PREFIX": "renders",
+            }
+        )
+        self.assertIsNone(config.google_drive_api_key)
+
+    def test_drive_input_fails_closed_without_drive_api_key(self):
+        config = ProductionConfig.from_env(
+            {
+                "CWS_BACKEND_URL": "https://backend.example",
+                "CWS_WORKER_ID": "worker-a",
+                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+                "CWS_WORKSPACE": "C:/CWS/work",
+                "CWS_B2_ENDPOINT": "s3.us-west-004.backblazeb2.com",
+                "CWS_B2_BUCKET": "cws-prod",
+                "CWS_B2_KEY_ID": "key-id",
+                "CWS_B2_APP_KEY": "app-key",
+                "CWS_B2_OUTPUT_PREFIX": "renders",
+            }
+        )
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaisesRegex(PermanentWorkerError, "GOOGLE_DRIVE_API_KEY"):
+                DriveOrB2Downloader(config)._download_http(
+                    "https://drive.google.com/file/d/drive-file/view",
+                    Path(root),
+                )
+
     def test_claim_then_fenced_spec_builds_dynamic_job_spec(self):
         config = ProductionConfig.from_env(
             {

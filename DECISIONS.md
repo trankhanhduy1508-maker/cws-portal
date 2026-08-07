@@ -1,5 +1,12 @@
 # Official Decisions
 
+## B2-first Worker input — 2026-08-07
+
+**[ACTIVE]** Production Worker input may use authenticated B2 objects directly;
+Google Drive is optional and is required only for Drive-backed JobSpecs. The
+Node Agent must not require a Drive API key for B2-only jobs. Missing Drive
+configuration must fail closed only when a Drive URI is actually assigned.
+
 ## Production Worker host binding audit — 2026-08-07
 
 **[ACTIVE]** Do not infer or reuse a production `worker_id` for a physical

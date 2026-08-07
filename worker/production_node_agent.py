@@ -86,7 +86,7 @@ class ProductionConfig:
     b2_key_id: str
     b2_app_key: str
     b2_output_prefix: str
-    google_drive_api_key: str
+    google_drive_api_key: str | None
     worker_vram_mb: int
     worker_ram_mb: int
     poll_seconds: float
@@ -157,7 +157,9 @@ class ProductionConfig:
             b2_key_id=required("CWS_B2_KEY_ID"),
             b2_app_key=required("CWS_B2_APP_KEY"),
             b2_output_prefix=b2_prefix,
-            google_drive_api_key=required("CWS_GOOGLE_DRIVE_API_KEY"),
+            # Drive is optional. B2-backed JobSpecs must not need a Google API
+            # key; the downloader fails closed only if a Drive URI is claimed.
+            google_drive_api_key=values.get("CWS_GOOGLE_DRIVE_API_KEY", "").strip() or None,
             worker_vram_mb=integer("CWS_WORKER_VRAM_MB", 0),
             worker_ram_mb=integer("CWS_WORKER_RAM_MB", 0),
             poll_seconds=positive_float("CWS_WORKER_POLL_SECONDS", 5.0),
@@ -303,6 +305,10 @@ class DriveOrB2Downloader(ProjectDownloader):
     def _download_http(self, uri: str, destination: Path) -> Path:
         drive_id = self._drive_id(uri)
         if drive_id:
+            if not self.config.google_drive_api_key:
+                raise PermanentWorkerError(
+                    "CWS_GOOGLE_DRIVE_API_KEY is required for Google Drive input"
+                )
             uri = (
                 "https://www.googleapis.com/drive/v3/files/"
                 + urllib.parse.quote(drive_id, safe="")
@@ -317,6 +323,10 @@ class DriveOrB2Downloader(ProjectDownloader):
             raise PermanentWorkerError("project URI must use HTTPS or b2://")
         if parsed.hostname == "drive.google.com" and not drive_id:
             raise PermanentWorkerError("Google Drive URI is not a file link")
+        if parsed.hostname == "www.googleapis.com" and not self.config.google_drive_api_key:
+            raise PermanentWorkerError(
+                "CWS_GOOGLE_DRIVE_API_KEY is required for Google Drive input"
+            )
         destination.parent.mkdir(parents=True, exist_ok=True)
         target = destination / "input.download"
         partial = target.with_suffix(target.suffix + ".part")
