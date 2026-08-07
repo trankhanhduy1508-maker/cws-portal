@@ -10,6 +10,14 @@
   backend completion and customer download.
 - Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
 
+## Official Blender fixture gate — 2026-08-07
+
+- **CODE/TEST VERIFIED**: production input validation rejects HTML/error
+  payloads before Blender execution.
+- **INPUT VERIFIED**: official Blender `color_vortex.blend` fixture has a
+  verified Blender signature and SHA-256.
+- **NEEDS_VERIFICATION**: real production Worker/B2/backend/customer E2E.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **CODE/UNIT VERIFIED**: credential-gated Node Agent loop now connects the

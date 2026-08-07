@@ -11,6 +11,14 @@
   required before Worker DONE.
 - Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
 
+## Official Blender fixture gate — 2026-08-07
+
+- **CODE/TEST VERIFIED**: downloader rejects HTML/error payloads and validates
+  Blender/ZIP signatures before execution.
+- **INPUT VERIFIED**: official `color_vortex.blend` fixture and SHA-256 are
+  recorded in the worker evidence report.
+- **BLOCKED**: physical Worker/B2/backend E2E remains unverified.
+
 ## Production Node Agent / generic Worker audit — 2026-08-07
 
 - **CODE VERIFIED**: canonical package is Node Agent → dynamic JobSpec/TaskSpec

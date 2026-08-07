@@ -357,3 +357,13 @@ checkpointed output integrity and redacted host telemetry. Physical
 Worker/B2/backend E2E is still required before claiming Worker DONE.
 
 Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
+
+## Production input signature validation — 2026-08-07
+
+**[ACTIVE]** The production Worker validates downloaded project bytes before
+preflight: `.blend` must have a `BLENDER` header or a gzip stream whose
+decompressed prefix is `BLENDER`; `.zip` must have a ZIP signature. HTML/error
+responses are rejected and removed. This protects the real Blender path from
+Drive/CDN error payloads without trusting MIME or filename alone.
+
+Evidence: `reports/worker/CWS_OFFICIAL_BLENDER_FIXTURE_VERIFICATION_2026-08-07.md`.

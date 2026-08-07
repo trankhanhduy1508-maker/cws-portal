@@ -14,6 +14,7 @@ production configuration.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import logging
@@ -243,6 +244,27 @@ class DriveOrB2Downloader(ProjectDownloader):
         query = _DRIVE_QUERY_ID.search(parsed.query)
         return query.group(1) if query else None
 
+    @staticmethod
+    def _validate_downloaded_file(path: Path) -> None:
+        """Reject HTML/error payloads before Blender or archive handling."""
+        suffix = path.suffix.lower()
+        try:
+            with path.open("rb") as stream:
+                prefix = stream.read(8)
+            if suffix == ".blend":
+                if prefix.startswith(b"BLENDER"):
+                    return
+                if prefix[:2] == b"\x1f\x8b":
+                    with gzip.open(path, "rb") as compressed:
+                        if compressed.read(7) == b"BLENDER":
+                            return
+                raise PermanentWorkerError("downloaded .blend is not a Blender file")
+            if suffix == ".zip" and prefix[:4] == b"PK\x03\x04":
+                return
+            raise PermanentWorkerError("downloaded project has an invalid file signature")
+        except (OSError, EOFError, gzip.BadGzipFile) as exc:
+            raise PermanentWorkerError("downloaded project could not be validated") from exc
+
     def _download_http(self, uri: str, destination: Path) -> Path:
         drive_id = self._drive_id(uri)
         if drive_id:
@@ -278,9 +300,11 @@ class DriveOrB2Downloader(ProjectDownloader):
                         raise PermanentWorkerError("input exceeds 20 GiB safety limit")
                     stream.write(chunk)
             partial.replace(target)
+            self._validate_downloaded_file(target)
             return target
         except PermanentWorkerError:
             partial.unlink(missing_ok=True)
+            target.unlink(missing_ok=True)
             raise
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
             partial.unlink(missing_ok=True)
@@ -315,7 +339,11 @@ class DriveOrB2Downloader(ProjectDownloader):
                 aws_secret_access_key=self.config.b2_app_key,
             )
             client.download_file(self.config.b2_bucket, key, str(target))
+            self._validate_downloaded_file(target)
             return target
+        except PermanentWorkerError:
+            target.unlink(missing_ok=True)
+            raise
         except Exception as exc:
             target.unlink(missing_ok=True)
             raise RetryableWorkerError("B2 project download failed") from exc

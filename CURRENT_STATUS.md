@@ -11,6 +11,18 @@
   launched real Blender, uploaded B2 output and reported completion.
 - Matrix: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
 
+## Official Blender input fixture — 2026-08-07
+
+- **CODE/TEST VERIFIED**: production downloader now rejects HTML/error payloads
+  and validates `.blend`/`.zip` signatures; gzip-compressed Blender files are
+  accepted only when their decompressed prefix is `BLENDER`.
+- **INPUT VERIFIED**: official `download.blender.org/demo/color_vortex.blend`
+  was downloaded and verified at 556,884 bytes after decompression with the
+  recorded SHA-256.
+- **BLOCKED/NOT VERIFIED**: physical Worker claim, Blender process, B2 output,
+  backend completion and customer download still require production access.
+- Evidence: `reports/worker/CWS_OFFICIAL_BLENDER_FIXTURE_VERIFICATION_2026-08-07.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the

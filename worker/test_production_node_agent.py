@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from pathlib import Path
 
 from production_node_agent import (
@@ -21,6 +22,16 @@ class FakeClient:
 
 
 class ProductionNodeAgentContractTests(unittest.TestCase):
+    def test_download_validation_rejects_html_and_accepts_blend_signatures(self):
+        with tempfile.TemporaryDirectory() as root:
+            html = Path(root) / "error.blend"
+            html.write_text("<html>error</html>", encoding="utf-8")
+            with self.assertRaises(PermanentWorkerError):
+                DriveOrB2Downloader._validate_downloaded_file(html)
+            blend = Path(root) / "scene.blend"
+            blend.write_bytes(b"BLENDER-v")
+            DriveOrB2Downloader._validate_downloaded_file(blend)
+
     def test_config_requires_all_production_credentials(self):
         with self.assertRaises(PermanentWorkerError):
             ProductionConfig.from_env({})
