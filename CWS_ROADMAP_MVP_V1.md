@@ -6,9 +6,11 @@
   Render backend; all RenderService lifecycle methods fail closed instead of
   using browser mock state. The old deployed bundle remains unchanged until
   Vercel deployment quota resets.
-- **NEEDS_VERIFICATION/BLOCKED**: Vercel deployment quota reset is required
-  before verifying the new bundle; authenticated customer + physical Worker +
-  Supabase/B2 + payment runtime remain unverified.
+- **RUNTIME VERIFIED**: Git-integrated production deployment is `READY` on
+  commit `ebc7e017d7c3250b3a0680d8e8e15bb5fe56d818`; served bundle points to
+  the canonical Render backend and no longer has fake job/progress functions.
+  Authenticated customer + physical Worker + Supabase/B2 + payment runtime
+  remain **NEEDS_VERIFICATION**.
 - Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07.md`.
 
 ## Production ZIP E2E execution gate — 2026-08-07

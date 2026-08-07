@@ -2,10 +2,9 @@
 
 ## Kết luận
 
-Production hiện chưa được phép coi là E2E thật. Bundle đang phục vụ trên
-`https://cws-portal.vercel.app/` là deployment cũ và vẫn chứa nhánh mock của
-frontend. Source đã được sửa để production fail-closed và gọi backend thật;
-deployment mới chưa thể xác minh vì Vercel free deployment quota.
+Production hiện đã phục vụ bundle mới cho real frontend path, nhưng chưa được
+coi là E2E thật: physical Worker, B2 và payment chưa chạy. Source đã được sửa
+để production fail-closed và gọi backend thật.
 
 ## Bằng chứng runtime đọc-only
 
@@ -16,9 +15,13 @@ deployment mới chưa thể xác minh vì Vercel free deployment quota.
 - `GET /fleet/workers` không có staff AAL2 session → HTTP 401.
 - Vercel project/domain/repository/production branch đã được đối chiếu trong
   deployment evidence hiện có: project `cws-portal`, GitHub `main`.
-- Vercel deployment API trước đó trả `402 payment_required`, code
-  `api-deployments-free-per-day`, remaining `0`, reset
-  `2026-08-08T03:23:10.675Z`.
+- Git-integrated deployment `dpl_4mCukKvsmUjE8miN899UNcvRjtVZ` → `READY`,
+  target `production`, alias `cws-portal.vercel.app`, commit
+  `ebc7e017d7c3250b3a0680d8e8e15bb5fe56d818`.
+- Vercel HTML serves `assets/index-bm49gBRE.js`; bundle includes the canonical
+  Render URL and does not contain the old fake job/progress functions. The only
+  `mockBackend` reference is a lazy dev-only import guarded by the explicit
+  development mock flag.
 
 ## Root cause trong source
 
@@ -55,14 +58,13 @@ deployment mới chưa thể xác minh vì Vercel free deployment quota.
 
 ## Chưa được xác minh
 
-- Vercel đã phục vụ bundle mới: NEEDS_VERIFICATION vì quota.
+- Vercel production bundle mới: runtime read-only VERIFIED as above.
 - Authenticated customer upload/job thật.
 - Supabase queue claim, physical Windows Worker/Blender, B2 input/output,
   progress, preview, payment webhook và final download.
 
 ## Blocker chính xác
 
-Không có quyền bypass quota Vercel. Deployment mới chỉ nên thực hiện sau
-`2026-08-08T03:23:10.675Z`; không retry liên tục. Sau khi deployment READY,
-phải kiểm tra bundle mới và mới chạy một job production thật với customer
-session + physical Worker.
+Không còn blocker deployment. Bước tiếp theo cần một customer session đã
+đăng nhập và physical Worker production có credential hợp lệ để chạy một job
+thật; không dùng mock để thay thế.

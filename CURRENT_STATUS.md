@@ -11,11 +11,13 @@
   PASS.
 - **RUNTIME READ-ONLY VERIFIED**: Vercel root HTTP 200, Render `/health` HTTP
   200, anonymous protected `/jobs` and `/fleet/workers` HTTP 401.
-- **NEEDS_VERIFICATION**: current Vercel deployment still serves the old mock
-  bundle. A new deployment is blocked by Vercel `api-deployments-free-per-day`
-  (remaining 0; reset `2026-08-08T03:23:10.675Z`). Physical Worker, Supabase
-  claim, B2, authenticated customer session, payment and final download remain
-  unverified.
+- **RUNTIME VERIFIED**: Git-integrated Vercel deployment
+  `dpl_4mCukKvsmUjE8miN899UNcvRjtVZ` is `READY`, targets production, aliases
+  `cws-portal.vercel.app`, and carries commit `ebc7e017d7c3250b3a0680d8e8e15bb5fe56d818`.
+  Served bundle `index-bm49gBRE.js` contains the canonical backend URL and no
+  fake job/progress functions; its only mock reference is an explicit dev-only
+  lazy import. Physical Worker, Supabase claim, B2, authenticated customer
+  session, payment and final download remain unverified.
 - Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07.md`.
 
 ## GitHub → Vercel deployment verification — 2026-08-07
