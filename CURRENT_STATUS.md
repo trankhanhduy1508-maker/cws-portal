@@ -2,7 +2,7 @@
 
 ## Current production real-path audit — 2026-08-07
 
-- **READ-ONLY VERIFIED**: canonical Vercel production is `cws-portal`, READY on `main` commit `7ce643d`; live bundle calls the real Render backend and real WebSocket, with Supabase auth enabled and development mock auth disabled.
+- **READ-ONLY VERIFIED**: canonical Vercel production is `cws-portal`, READY on `main` commit `7444797`; live bundle calls the real Render backend and real WebSocket, with Supabase auth enabled and development mock auth disabled.
 - **CODE VERIFIED**: upload/Drive → `POST /jobs` → durable `render_orders` + Worker Fleet task → server WebSocket status/result; no active fake progress path was found in production.
 - **BLOCKED/NOT VERIFIED**: production Supabase has 0 `worker_identities`, 0 fresh heartbeats, 0 leases and 247 open tasks. No physical Worker claim, Blender process, B2 output or customer download was produced.
 - Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07_ADDENDUM.md`.
