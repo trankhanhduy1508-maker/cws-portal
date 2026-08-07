@@ -1,5 +1,17 @@
 # Current Status
 
+## ZIP input support — 2026-08-07
+
+- `.blend` and `.zip` are now accepted end-to-end at frontend/upload/API/B2
+  metadata level. Generic Worker safely extracts ZIP inputs, preserves asset
+  paths, requires exactly one `.blend`, and cleans the temporary workspace.
+- Security tests cover traversal, symlink, duplicate/ambiguous blend and
+  cleanup behavior. Backend 174/174, frontend 11/11, Worker 53/53 pass with
+  builds/lint/compile.
+- Production upload and physical Blender-from-ZIP runtime remain
+  **NEEDS_VERIFICATION**.
+- Evidence: `reports/worker/CWS_ZIP_INPUT_SUPPORT_2026-08-07.md`.
+
 ## Physical Worker one-job E2E readiness — 2026-08-07
 
 - Production read-only smoke: web HTTP 200, Render `/health` HTTP 200, and

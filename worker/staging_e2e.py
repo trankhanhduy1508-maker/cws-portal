@@ -52,6 +52,7 @@ class StagingProjectDownloader:
             source = Path(raw_path).resolve()
             if not source.is_file():
                 raise PermanentWorkerError("staging project file is unavailable")
+            target = destination / ("project.zip" if source.suffix.lower() == ".zip" else "project.blend")
             shutil.copy2(source, target)
             return target
         parsed = urlsplit(uri)
@@ -65,6 +66,7 @@ class StagingProjectDownloader:
             )
         if parsed.hostname.lower() not in self.allowed_hosts:
             raise PermanentWorkerError("staging project host is not allowlisted")
+        target = destination / ("project.zip" if Path(parsed.path).suffix.lower() == ".zip" else "project.blend")
         try:
             request = urllib.request.Request(uri, method="GET")
             opener = urllib.request.build_opener(_NoRedirectHandler())

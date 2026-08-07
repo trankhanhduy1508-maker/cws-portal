@@ -16,13 +16,14 @@ import { ResolveDriveDto } from './dto/resolve-drive.dto';
 import { CwsTempUploadStorage } from './temp-upload.storage';
 import { UploadTimeoutInterceptor } from './upload-timeout.interceptor';
 import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
+import { ACCEPTED_INPUT_EXTENSIONS, getInputFormat } from './input-file.util';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
 // MAX_FILE_SIZE_BYTES). Portal (Frontend) và Backend là 2 dự án
 // TypeScript/JavaScript tách biệt (không dùng chung 1 package), nên
 // không thể import thẳng — nếu đổi 1 bên, PHẢI đổi bên kia theo.
-const ACCEPTED_EXTENSIONS = ['.blend'];
+const ACCEPTED_EXTENSIONS = ACCEPTED_INPUT_EXTENSIONS;
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
 @Controller()
@@ -57,7 +58,10 @@ export class FilesController {
         const ext = file.originalname
           .slice(file.originalname.lastIndexOf('.'))
           .toLowerCase();
-        callback(null, ACCEPTED_EXTENSIONS.includes(ext));
+        callback(
+          null,
+          ACCEPTED_EXTENSIONS.some((accepted) => accepted === ext),
+        );
       },
     }),
   )
@@ -72,7 +76,7 @@ export class FilesController {
     const ext = file.originalname
       .slice(file.originalname.lastIndexOf('.'))
       .toLowerCase();
-    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+    if (!ACCEPTED_EXTENSIONS.some((accepted) => accepted === ext)) {
       throw new BadRequestException(
         `Định dạng không được hỗ trợ. Chỉ chấp nhận: ${ACCEPTED_EXTENSIONS.join(', ')}`,
       );
@@ -83,6 +87,7 @@ export class FilesController {
       fileRef: key,
       fileName: file.originalname,
       fileSizeBytes: file.size,
+      inputFormat: getInputFormat(file.originalname),
     };
   }
 

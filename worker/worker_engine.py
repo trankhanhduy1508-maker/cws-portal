@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,10 @@ from path_boundary import reject_reparse_points
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_MAX_ARCHIVE_ENTRIES = 10_000
+_MAX_ARCHIVE_UNCOMPRESSED_BYTES = 4 * 1024 * 1024 * 1024
+_MAX_ARCHIVE_MEMBER_BYTES = 2 * 1024 * 1024 * 1024
+_MAX_ARCHIVE_COMPRESSION_RATIO = 1_000
 
 
 class WorkerEngineError(RuntimeError):
@@ -266,6 +271,92 @@ def _inside(root: Path, child: Path) -> bool:
         return False
 
 
+def _safe_archive_member(name: str) -> Path:
+    """Convert an archive member to a safe relative path."""
+    normalized = name.replace('\\', '/').rstrip('/')
+    if (
+        not normalized
+        or '\x00' in normalized
+        or normalized.startswith('/')
+        or re.match(r'^[A-Za-z]:($|/)', normalized)
+    ):
+        raise PermanentWorkerError('archive contains an unsafe path')
+    parts = normalized.split('/')
+    if any(part in ('', '.', '..') or ':' in part for part in parts):
+        raise PermanentWorkerError('archive contains a path traversal entry')
+    return Path(*parts)
+
+
+def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Path:
+    """Use a .blend directly or safely extract exactly one .blend from ZIP."""
+    if downloaded.suffix.lower() == '.blend':
+        return downloaded
+    if downloaded.suffix.lower() != '.zip':
+        raise PermanentWorkerError('input must be a .blend file or .zip archive')
+
+    extraction_root = (job_root / 'project_archive').resolve()
+    if not _inside(job_root, extraction_root):
+        raise PermanentWorkerError('archive extraction escaped job workspace')
+    extraction_root.mkdir(parents=True, exist_ok=True)
+    seen: set[str] = set()
+    total_bytes = 0
+    try:
+        with zipfile.ZipFile(downloaded) as archive:
+            infos = archive.infolist()
+            if len(infos) > _MAX_ARCHIVE_ENTRIES:
+                raise PermanentWorkerError('archive contains too many entries')
+            for info in infos:
+                relative = _safe_archive_member(info.filename)
+                key = relative.as_posix().lower()
+                if key in seen:
+                    raise PermanentWorkerError('archive contains duplicate paths')
+                seen.add(key)
+                mode = (info.external_attr >> 16) & 0o170000
+                if mode == 0o120000:
+                    raise PermanentWorkerError('archive symlinks are not allowed')
+                if info.is_dir():
+                    (extraction_root / relative).mkdir(parents=True, exist_ok=True)
+                    continue
+                if info.file_size < 0 or info.file_size > _MAX_ARCHIVE_MEMBER_BYTES:
+                    raise PermanentWorkerError('archive member is too large')
+                compressed = info.compress_size
+                if info.file_size > 1024 * 1024 and (
+                    compressed == 0
+                    or info.file_size / compressed > _MAX_ARCHIVE_COMPRESSION_RATIO
+                ):
+                    raise PermanentWorkerError('archive compression ratio is unsafe')
+                if total_bytes + info.file_size > _MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+                    raise PermanentWorkerError('archive expands beyond the safety limit')
+                target = (extraction_root / relative).resolve()
+                if not _inside(extraction_root, target):
+                    raise PermanentWorkerError('archive path escaped extraction root')
+                target.parent.mkdir(parents=True, exist_ok=True)
+                written = 0
+                with archive.open(info, 'r') as source, target.open('xb') as output:
+                    while True:
+                        chunk = source.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        written += len(chunk)
+                        if written > _MAX_ARCHIVE_MEMBER_BYTES:
+                            raise PermanentWorkerError('archive member expanded beyond the safety limit')
+                        output.write(chunk)
+                total_bytes += written
+    except zipfile.BadZipFile as exc:
+        raise PermanentWorkerError('input is not a valid ZIP archive') from exc
+
+    blend_files = [
+        path
+        for path in extraction_root.rglob('*')
+        if path.is_file() and path.suffix.lower() == '.blend'
+    ]
+    if len(blend_files) != 1:
+        raise PermanentWorkerError(
+            f'ZIP must contain exactly one .blend file (found {len(blend_files)})'
+        )
+    return blend_files[0]
+
+
 class BasicPreflight:
     """Safe filesystem-only preflight; it never executes customer code."""
 
@@ -433,6 +524,9 @@ class WorkerEngine:
             project = project.resolve()
             if not _inside(job_root, project):
                 raise PermanentWorkerError("downloaded project escaped job workspace")
+            project = resolve_project_input(spec, project, job_root).resolve()
+            if not _inside(job_root, project):
+                raise PermanentWorkerError("resolved project escaped job workspace")
             self.reporter.stage(spec, "PREFLIGHT")
             self.preflight.inspect(spec, project)
             self.reporter.stage(spec, "PREPARING")

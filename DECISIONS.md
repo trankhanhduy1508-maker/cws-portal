@@ -287,7 +287,7 @@ unique index is the correctness boundary for concurrent retries. The key is
 not a credential and is never logged as a secret. Migration 018 must pass
 isolated staging preflight before production application.
 
-## API security boundary - 2026-08-06
+## API security boundary — 2026-08-06
 
 **[ACTIVE]** Payment details are customer-owned data: `GET /payments/:id`
 requires the linked job owner or a server-verified Admin AAL2 session. Direct
@@ -315,3 +315,13 @@ gate is explicitly cleared. No `npm audit fix --force` is allowed.
 lightweight CSS 3D CWS mark. Three.js is intentionally not added before MVP
 runtime verification: the effect is decorative, while the existing customer
 state machine and render-before-payment gate remain unchanged.
+
+## ZIP project input boundary - 2026-08-07
+
+**[ACTIVE]** MVP accepts `.blend` directly or `.zip` containing exactly one
+`.blend`. The generic Worker extracts ZIPs only inside the per-attempt
+workspace, preserves relative asset paths, rejects traversal/symlink/ambiguous
+archives, and never recursively extracts nested archives. Existing
+`render_orders.project_name` remains the input-name metadata; no duplicate
+database column is introduced. Production B2 and physical Worker ZIP runtime
+remain separate verification gates.

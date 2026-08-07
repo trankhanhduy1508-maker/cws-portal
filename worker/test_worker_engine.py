@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 import subprocess
 from pathlib import Path
@@ -15,6 +16,18 @@ class Downloader:
     def download(self, spec, destination):
         path = destination / "project.blend"
         path.write_bytes(b"safe blend fixture")
+        return path
+
+
+class ZipDownloader:
+    def __init__(self, members):
+        self.members = members
+
+    def download(self, spec, destination):
+        path = destination / "project.zip"
+        with zipfile.ZipFile(path, "w") as archive:
+            for name, content in self.members:
+                archive.writestr(name, content)
         return path
 
 
@@ -240,6 +253,63 @@ class WorkerEngineTests(unittest.TestCase):
                 WorkerEngine(Path(tmp), Downloader(), BasicPreflight(), Renderer(),
                              Checkpoints(), BasicOutputValidator(10), Reporter(), rejected).run(spec(frame_end=1))
             self.assertFalse((Path(tmp) / "task-1").exists())
+
+    def test_zip_input_extracts_one_blend_and_preserves_relative_assets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoints, reporter = Checkpoints(), Reporter()
+            engine = WorkerEngine(
+                Path(tmp),
+                ZipDownloader([
+                    ("scene/main.blend", b"blend"),
+                    ("scene/textures/wall.png", b"texture"),
+                ]),
+                BasicPreflight(), Renderer(), checkpoints,
+                BasicOutputValidator(10), reporter,
+            )
+            engine.run(spec(frame_end=1))
+            self.assertIn(("complete", "task-1"), reporter.events)
+            self.assertFalse((Path(tmp) / "task-1").exists())
+
+    def test_zip_slip_is_rejected_and_workspace_is_cleaned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(PermanentWorkerError, "path traversal"):
+                WorkerEngine(
+                    Path(tmp), ZipDownloader([
+                        ("../escape.blend", b"blend"),
+                    ]), BasicPreflight(), Renderer(), Checkpoints(),
+                    BasicOutputValidator(10), Reporter(),
+                ).run(spec(frame_end=1))
+            self.assertFalse((Path(tmp) / "escape.blend").exists())
+            self.assertFalse((Path(tmp) / "task-1").exists())
+
+    def test_zip_requires_exactly_one_blend_file(self):
+        for members, expected in (
+            ([('readme.txt', b'no scene')], "found 0"),
+            ([('a.blend', b'a'), ('b.blend', b'b')], "found 2"),
+        ):
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(PermanentWorkerError, expected):
+                    WorkerEngine(
+                        Path(tmp), ZipDownloader(members), BasicPreflight(), Renderer(),
+                        Checkpoints(), BasicOutputValidator(10), Reporter(),
+                    ).run(spec(frame_end=1))
+
+    def test_zip_symlink_entry_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            class SymlinkDownloader:
+                def download(self, current_spec, destination):
+                    path = destination / "project.zip"
+                    info = zipfile.ZipInfo("scene.blend")
+                    info.create_system = 3
+                    info.external_attr = (0o120777 << 16) | 0xA000
+                    with zipfile.ZipFile(path, "w") as archive:
+                        archive.writestr(info, "target")
+                    return path
+            with self.assertRaisesRegex(PermanentWorkerError, "symlinks"):
+                WorkerEngine(
+                    Path(tmp), SymlinkDownloader(), BasicPreflight(), Renderer(), Checkpoints(),
+                    BasicOutputValidator(10), Reporter(),
+                ).run(spec(frame_end=1))
 
     def test_lease_guard_is_checked_before_checkpoint_upload(self):
         class RejectBeforeUpload(Guard):

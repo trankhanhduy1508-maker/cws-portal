@@ -110,7 +110,7 @@ export const PAYMENT_STATUS_LABEL = {
 };
 
 // Định dạng file được chấp nhận — đổi ở đây khi Backend hỗ trợ thêm định dạng
-export const ACCEPTED_FILE_EXTENSIONS = ['.blend'];
+export const ACCEPTED_FILE_EXTENSIONS = ['.blend', '.zip'];
 export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB, điều chỉnh khi có giới hạn thật từ Backend
 
 // Nguồn file đầu vào — người dùng chọn 1 trong 2

@@ -1,5 +1,15 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## ZIP project input — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: frontend, upload API, B2 object naming, Job metadata
+  and generic Worker now support `.blend` and `.zip`.
+- ZIP extraction is bounded and rejects traversal, symlink, duplicate and
+  ambiguous/missing `.blend` content; nested archives are not auto-extracted.
+- **NEEDS_VERIFICATION**: production B2 ZIP upload and physical Worker Blender
+  render from a ZIP containing exactly one `.blend`.
+- Evidence: `reports/worker/CWS_ZIP_INPUT_SUPPORT_2026-08-07.md`.
+
 ## One-job production E2E readiness — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: upload/Drive → job/task dispatch → Worker

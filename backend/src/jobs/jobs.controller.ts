@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -21,6 +22,7 @@ import { RoleGuard } from '../common/guards/role.guard';
 import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
 import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
 import { RequestChangesDto } from './dto/request-changes.dto';
+import { getInputFormat } from '../files/input-file.util';
 
 @Controller('jobs')
 export class JobsController {
@@ -37,6 +39,9 @@ export class JobsController {
   @Post()
   @UseGuards(MvpRateLimitGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
+    if (dto.fileRef && dto.fileName && !getInputFormat(dto.fileName)) {
+      throw new BadRequestException('Chỉ hỗ trợ file .blend hoặc .zip');
+    }
     // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
     // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
     // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
