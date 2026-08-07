@@ -3,7 +3,7 @@
   align-items: center;
   gap: 12px;
   padding: 14px 4px;
-  border-bottom: 1px solid #F0F0F1;
+  border-bottom: 1px solid rgba(157,177,216,0.14);
   text-align: left;
   width: 100%;
 }
@@ -30,7 +30,7 @@
 .history-item__name {
   font-size: 14.5px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: #f4f7fb;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -38,7 +38,7 @@
 
 .history-item__meta {
   font-size: 12.5px;
-  color: #B0B0B5;
+  color: #9aa6ba;
   margin-top: 2px;
 }
 
@@ -53,5 +53,5 @@
 .history-empty {
   text-align: center;
   padding: 48px 16px;
-  color: #B0B0B5;
+  color: #9aa6ba;
 }

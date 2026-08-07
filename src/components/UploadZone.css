@@ -100,7 +100,7 @@
 .upload-zone__file-name {
   font-size: 15px;
   font-weight: 600;
-  color: #1C1C1E;
+  color: #f4f7fb;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -109,7 +109,7 @@
 .upload-zone__file-meta {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  color: #6B6B70;
+  color: #9aa6ba;
   margin-top: 2px;
 }
 
@@ -117,13 +117,13 @@
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #3B5BFF;
+  color: #9cb7ff;
   padding: 8px 14px;
   border-radius: 10px;
 }
 
 .upload-zone__change-btn:hover {
-  background: #EEF0FF;
+  background: rgba(93,127,255,0.14);
 }
 
 .upload-zone.has-error {
