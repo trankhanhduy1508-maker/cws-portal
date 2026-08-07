@@ -15,6 +15,8 @@
 - **NOT VERIFIED**: repository still has no production long-running Node Agent
   adapter that authenticates, claims a dynamic task, wires B2/Drive download and
   progress/checkpoint RPCs into `worker_engine.py`, then launches real Blender.
+  Render has deployed the new folder resolver, but the supplied folder call
+  returns HTTP 400 because production `GOOGLE_DRIVE_API_KEY` is not configured.
   No production E2E claim is made.
 - Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_GENERIC_WORKER_AUDIT_2026-08-07.md`.
 

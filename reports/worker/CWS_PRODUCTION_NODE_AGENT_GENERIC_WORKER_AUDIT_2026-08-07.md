@@ -63,8 +63,9 @@ candidates are rejected; the folder ID is not hard-coded.
 - Worker: 53 tests PASS; canonical launcher tests PASS; Python compile PASS.
 - Frontend: 11 tests PASS; lint/build PASS.
 - Production read-only health/auth evidence remains valid from the prior report.
-- The folder resolver change is code-verified only until Render deploys it and
-  the production Google Drive API key/access is verified.
+- Render now returns the new folder-resolver message, proving the backend
+  deployment reached production; it returns HTTP 400 because
+  `GOOGLE_DRIVE_API_KEY` is not configured. No secret value was read or printed.
 
 ## E2E status
 
@@ -73,7 +74,9 @@ Blender PID/log, B2 object or customer status transition was generated in this
 session. Creating a fake job or using legacy/staging code would not prove the
 requested path.
 
-The single external blocker is the missing production runtime bridge and its
-physical Worker credential/host execution. After that bridge is deployed and a
-Worker is running, the supplied folder can be tested through the canonical file
-resolution path above.
+The single external gate is production Worker execution/provisioning: a
+physical Windows host with Blender, the refreshed canonical package, per-worker
+credential and required backend/B2 runtime configuration. The current machine
+has no Blender installation and no Worker runtime credential. The supplied
+folder additionally requires production-only `GOOGLE_DRIVE_API_KEY`; it is not
+present in this session.
