@@ -376,6 +376,12 @@ Google Login
   payment → download remains `NEEDS_VERIFICATION`.
 - Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
 
+# Production real-path audit — 2026-08-07
+
+- **CODE/READ-ONLY VERIFIED**: canonical Vercel production serves the real backend/WebSocket path; the explicit development mock-auth branch is disabled in the live bundle.
+- **BLOCKED/NEEDS_VERIFICATION**: production has no `worker_identities`, no fresh heartbeat and no lease, so Blender/B2 physical E2E cannot start.
+- Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07_ADDENDUM.md`.
+
 # Job retry correctness - 2026-08-06
 
 - `POST /jobs` idempotency contract is **CODE/UNIT VERIFIED** with additive
