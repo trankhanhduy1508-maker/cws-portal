@@ -63,7 +63,7 @@ export async function submitGoogleDrive(rawLink) {
   });
   if (!res.ok) throw new Error('Không đọc được thông tin file từ Google Drive');
   const data = await res.json();
-  return { fileRef: null, driveLink, ...data };
+  return { fileRef: null, driveLink: data.resolvedDriveLink || driveLink, ...data };
 }
 
 // ============================================================

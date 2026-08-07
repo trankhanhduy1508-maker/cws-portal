@@ -1,5 +1,14 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production Node Agent / generic Worker audit — 2026-08-07
+
+- **CODE VERIFIED**: canonical dynamic Worker direction is preserved; legacy
+  `cws_worker_full.py` is not used. Generic package manifest/entrypoint mismatch
+  was fixed, and folder input now resolves exactly one supported project.
+- **NEEDS_VERIFICATION/BLOCKED**: production Node Agent claim/download/B2/
+  Blender/status bridge and physical Worker runtime still lack real evidence.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_GENERIC_WORKER_AUDIT_2026-08-07.md`.
+
 ## Production real-path audit — 2026-08-07
 
 - **CODE VERIFIED**: frontend production configuration now targets the real

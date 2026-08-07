@@ -1,5 +1,23 @@
 # Current Status
 
+## Production Node Agent / generic Worker audit — 2026-08-07
+
+- **CODE VERIFIED**: canonical direction remains Node Agent → dynamic
+  JobSpec/TaskSpec → `worker/worker_engine.py`; legacy `cws_worker_full.py` and
+  `cws_worker.bat` are excluded from production.
+- **FIXED**: downloaded package contract had a wrong entrypoint path and stale
+  SHA-256 manifest. Launcher now validates `worker/worker_engine.py` and the
+  manifest hashes match the checked-in generic package.
+- **FIXED/CODE VERIFIED**: Google Drive folder resolution now selects exactly
+  one direct `.blend`/`.zip` child and returns its canonical file link. The
+  supplied folder has one valid `.blend` according to authenticated Drive
+  listing.
+- **NOT VERIFIED**: repository still has no production long-running Node Agent
+  adapter that authenticates, claims a dynamic task, wires B2/Drive download and
+  progress/checkpoint RPCs into `worker_engine.py`, then launches real Blender.
+  No production E2E claim is made.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_GENERIC_WORKER_AUDIT_2026-08-07.md`.
+
 ## Production real-path audit — 2026-08-07
 
 - **CODE VERIFIED**: `.env.production` now points the Vite frontend to the

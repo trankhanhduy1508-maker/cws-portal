@@ -1,5 +1,18 @@
 # CWS WORKER ROADMAP
 
+## Production Node Agent / generic Worker audit — 2026-08-07
+
+- **CODE VERIFIED**: canonical package is Node Agent → dynamic JobSpec/TaskSpec
+  → `worker/worker_engine.py`; legacy worker files are not production runtime.
+- **FIXED**: package launcher validation now matches the real `worker/` layout
+  and pinned SHA-256 manifest.
+- **CODE VERIFIED**: Google Drive folder resolver safely maps exactly one
+  supported `.blend`/`.zip` child to a canonical file link.
+- **BLOCKED/NOT VERIFIED**: production Node Agent adapter, physical Worker,
+  B2 input/output, real Blender process and backend status callbacks are still
+  absent from runtime evidence.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_GENERIC_WORKER_AUDIT_2026-08-07.md`.
+
 ## Eevee stress benchmark — 2026-08-06
 
 - **CODE/UNIT VERIFIED**: bounded unoptimized architectural Eevee scene

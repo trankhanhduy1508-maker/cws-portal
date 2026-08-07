@@ -24,16 +24,20 @@ class ArtifactValidationError(ValueError):
 @dataclass(frozen=True)
 class WorkerArtifact:
     package_root: Path
-    entrypoint: str = "worker_engine.py"
+    entrypoint: str = "worker/worker_engine.py"
     launcher: str = "worker-engine.bat"
     manifest: str = "worker-engine-manifest.json"
     expected_version: str = "0.1.0"
 
 
 def _safe_child(root: Path, relative: str) -> Path:
+    relative_path = Path(relative)
+    if relative_path.is_absolute():
+        raise ArtifactValidationError(f"artifact path must be relative: {relative}")
     candidate = (root / relative).resolve()
-    if candidate.parent != root.resolve() or candidate.name != relative:
-        raise ArtifactValidationError(f"artifact path must be a direct child: {relative}")
+    root_resolved = root.resolve()
+    if candidate == root_resolved or root_resolved not in candidate.parents:
+        raise ArtifactValidationError(f"artifact path escaped package root: {relative}")
     return candidate
 
 

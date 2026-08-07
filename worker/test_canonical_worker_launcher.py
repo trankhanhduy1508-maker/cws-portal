@@ -1,5 +1,6 @@
 import hashlib
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,13 +12,15 @@ class PinnedWorkerLauncherTests(unittest.TestCase):
     def make_package(self):
         temp = tempfile.TemporaryDirectory()
         root = Path(temp.name)
-        entry = root / "worker_engine.py"
+        worker_dir = root / "worker"
+        worker_dir.mkdir()
+        entry = worker_dir / "worker_engine.py"
         launcher = root / "worker-engine.bat"
         entry.write_text("print('staging')\n", encoding="utf-8")
         launcher.write_text("@echo off\r\nexit /b 0\r\n", encoding="utf-8")
         hashes = {}
-        for path in (entry, launcher):
-            hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+        hashes["worker/worker_engine.py"] = hashlib.sha256(entry.read_bytes()).hexdigest()
+        hashes["worker-engine.bat"] = hashlib.sha256(launcher.read_bytes()).hexdigest()
         (root / "worker-engine-manifest.json").write_text(
             json.dumps({"version": "0.1.0", "files": hashes}), encoding="utf-8"
         )
@@ -32,7 +35,7 @@ class PinnedWorkerLauncherTests(unittest.TestCase):
     def test_rejects_tampered_entrypoint(self):
         temp, root = self.make_package()
         self.addCleanup(temp.cleanup)
-        (root / "worker_engine.py").write_text("tampered\n", encoding="utf-8")
+        (root / "worker" / "worker_engine.py").write_text("tampered\n", encoding="utf-8")
         with self.assertRaises(ArtifactValidationError):
             PinnedWorkerLauncher(WorkerArtifact(root)).validate()
 
