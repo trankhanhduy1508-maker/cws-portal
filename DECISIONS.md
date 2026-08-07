@@ -1,5 +1,16 @@
 # Official Decisions
 
+## Secure first-run Worker enrollment — 2026-08-07
+
+**[ACTIVE]** The canonical Node Agent must not self-register a production
+Worker from hostname, GPU, `worker_id`, or an unauthenticated caller-supplied
+`register_worker` request. Current production evidence has 29 registry rows,
+0 identities, 0 leases, and 0 fresh heartbeats; MAY083 cannot be mapped safely
+without a bootstrap trust anchor. Any future auto-provision flow must first
+authenticate the machine or a one-time Owner-issued enrollment credential, then
+issue the existing per-worker DPAPI/HMAC credential. Evidence:
+`CWS_PROVISIONING_AUTO_BIND_GATE_2026-08-07.md`.
+
 ## B2-first Worker input — 2026-08-07
 
 **[ACTIVE]** Production Worker input may use authenticated B2 objects directly;

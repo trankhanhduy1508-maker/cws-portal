@@ -1,5 +1,20 @@
 # Current Status
 
+## Production worker auto-provision gate — 2026-08-07
+
+- **READ-ONLY VERIFIED**: production Supabase project `ynhxlxetwuiyejcjypsi`
+  currently has 29 `workers`, 0 `worker_identities`, 0 `worker_leases`, and 0
+  workers with `last_seen_at` in the last two minutes. `public.workers` has no
+  hostname or device-fingerprint mapping for `MAY083`.
+- **CODE VERIFIED**: the canonical Node Agent intentionally requires an
+  explicit `CWS_WORKER_ID` plus a per-worker DPAPI credential and sends only
+  authenticated RPCs. It does not auto-register from hostname/GPU. The legacy
+  caller-supplied `register_worker` path is not a safe bootstrap mechanism.
+- **BLOCKED**: safe first-run auto-bind needs an approved bootstrap trust
+  anchor. No identity, secret, job, B2 object, or production mutation was
+  created in this check.
+- Evidence: `CWS_PROVISIONING_AUTO_BIND_GATE_2026-08-07.md`.
+
 ## B2-only Worker input path — 2026-08-07
 
 - **FIXED/CODE VERIFIED**: B2-backed JobSpecs no longer require

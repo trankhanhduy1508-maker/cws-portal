@@ -1,5 +1,18 @@
 # CWS WORKER ROADMAP
 
+## Production auto-provision gate — 2026-08-07
+
+- **READ-ONLY VERIFIED**: Supabase production has 29 Worker registry rows, 0
+  identities, 0 leases, and 0 fresh heartbeats; the current registry cannot
+  securely map `MAY083` by hostname or device fingerprint.
+- **CODE VERIFIED**: the canonical Node Agent requires explicit per-worker
+  identity and DPAPI credential. Do not restore legacy caller-supplied
+  `register_worker`, infer a Worker ID, or introduce a shared fleet secret.
+- **BLOCKED**: automatic first-run registration requires an approved bootstrap
+  trust anchor before it can issue a per-worker credential. B2 provisioning and
+  physical E2E remain downstream gates.
+- Evidence: `CWS_PROVISIONING_AUTO_BIND_GATE_2026-08-07.md`.
+
 ## Worker/Node Agent production-path hardening — 2026-08-07
 
 - **FIXED/CODE VERIFIED**: extension-neutral Drive input detection supports
