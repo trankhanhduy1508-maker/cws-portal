@@ -45,3 +45,13 @@ one small real job with the physical Worker and payment owner gate.
   backend changes. Deploying it would not prove or deploy the canonical commit.
 - Status: deployment-to-current-HEAD **BLOCKED/NEEDS_VERIFICATION**; no env,
   domain, project or production data was changed.
+
+## Final deployment verification — 2026-08-07
+
+- Canonical `main` after the readability fix: `2f1215a3c55e233c2cbc7d3533f0cf0d32d8f8b4`.
+- Vercel deployment `dpl_J2pfgu2tRXME7dCj9r3ECn5pUHVs` reached `READY`, target
+  `production`, with the exact Git SHA and aliases including
+  `cws-portal.vercel.app`.
+- Production root returned HTTP 200 with the new hashed CSS bundle
+  `index-ZRfWCOMP.css`; HSTS remained enabled. Deployment-to-HEAD is verified
+  for this commit. Customer/Admin authenticated E2E remains unverified.

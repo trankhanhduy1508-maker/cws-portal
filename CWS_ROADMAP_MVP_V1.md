@@ -304,7 +304,7 @@ Google Login
 # Vercel production HEAD verification - 2026-08-07
 
 - Correct Vercel project/domain/production branch confirmed read-only.
-- Production is READY on old commit `95abec7`; canonical `main` is
-  `4f4600804e19f4a1937d36cb7ad83c19c57f1311`. Exact-HEAD deployment remains
-  blocked by deployment API/credential availability; no production mutation
-  occurred.
+- Production is READY on canonical `main` commit
+  `2f1215a3c55e233c2cbc7d3533f0cf0d32d8f8b4`; root web smoke returned HTTP
+  200. Authenticated customer/Admin, Worker, B2 and live payment remain
+  runtime gates.

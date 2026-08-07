@@ -543,6 +543,14 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
   authenticated customer, physical Worker/Blender, B2 and payment.
 - Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
 
+## Vercel production deployment verified - 2026-08-07
+
+- Deployment `dpl_J2pfgu2tRXME7dCj9r3ECn5pUHVs` is READY on production and
+  matches canonical `main` SHA `2f1215a3c55e233c2cbc7d3533f0cf0d32d8f8b4`.
+- `https://cws-portal.vercel.app/` returned HTTP 200 and served the latest
+  hashed UI bundle. This verifies deployment and basic web smoke only; it does
+  not verify authenticated Admin, physical Worker, B2 or payment E2E.
+
 ## Job create idempotency - 2026-08-06
 
 - `POST /jobs` now requires a bounded `Idempotency-Key`; same-key retries
