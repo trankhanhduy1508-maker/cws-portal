@@ -1,5 +1,17 @@
 # CWS_SCALING_ROADMAP.md
 
+## Current verification — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: durable Job idempotency, payment uniqueness
+  preflight, disk-streamed upload, scheduler single-flight/batched reads,
+  bounded rate limits and Worker fencing are present in `main`.
+- **SIMULATED_LOAD_VERIFIED**: real Nest loopback harness passes 10/25/50/100
+  independent customer scenarios with zero duplicate claims and bounded
+  failover/stale completion rejection.
+- **NEEDS_VERIFICATION**: isolated Supabase/RLS, B2, physical Worker,
+  realtime and payment-provider capacity. No production capacity claim.
+- Evidence: `reports/scaling/CWS_P0_SCALING_AND_ZIP_E2E_READINESS_2026-08-07.md`.
+
 ## Scope
 
 Scale safely from the MVP control plane. PostgreSQL/Supabase remains the
