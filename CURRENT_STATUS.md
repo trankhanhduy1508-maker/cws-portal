@@ -33,6 +33,18 @@
   canonical production Node Agent. No production job was created.
 - Evidence: `reports/worker/CWS_PHYSICAL_WORKER_PRODUCTION_E2E_BLOCKER_2026-08-07.md`.
 
+## Production E2E control-plane audit — 2026-08-07
+
+- **RUNTIME READ-ONLY VERIFIED**: Render health/CORS and Supabase production
+  health/schema preflight pass. Supabase currently reports 29 registered
+  Workers, 0 fresh heartbeats and 247 open tasks.
+- **BLOCKED**: production `worker_identities`, resilient claim and dynamic
+  JobSpec RPCs from migrations 020/021/022 are absent; the Windows host has no
+  Worker identity/B2 configuration. Vercel's latest observed READY deployment
+  is also behind current HEAD.
+- No production job or mutation was created in this audit.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_CONTROL_PLANE_AUDIT_2026-08-07.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the
