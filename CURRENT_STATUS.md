@@ -1,5 +1,17 @@
 # Current Status
 
+## Production pricing gate audit - 2026-08-07
+
+- **FIXED/CODE VERIFIED**: final customer pricing now uses the approved
+  `actual worker runtime cost x 2.5` formula, with a 6,000 VND/worker-hour
+  host baseline. The previous multiplier `2` was corrected.
+- **FIXED/CODE VERIFIED**: approval fails closed when no verified Worker
+  execution or runtime heartbeat exists; it no longer creates a fallback price.
+- **NEEDS_VERIFICATION**: production pricing still needs a real completed
+  Worker execution and payment runtime. No production job or payment was
+  created in this session.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_PRICING_GATE_2026-08-07.md`.
+
 ## Production Node Agent / generic Worker audit — 2026-08-07
 
 - **CODE VERIFIED**: canonical direction remains Node Agent → dynamic

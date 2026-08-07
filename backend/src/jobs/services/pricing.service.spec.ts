@@ -1,16 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { PricingService } from './pricing.service';
 import { WorkerFleetGateway } from '../worker-fleet.gateway';
 
-const VND_PER_WORKER_HOUR = 6000;
-const FINAL_PRICE_MULTIPLIER = 2;
 const WORKER_STARTUP_SECONDS = 10 * 60;
-
-function priceFromSeconds(totalSeconds: number): number {
-  return Math.round(
-    (totalSeconds / 3600) * VND_PER_WORKER_HOUR * FINAL_PRICE_MULTIPLIER,
-  );
-}
 
 describe('PricingService.computeFinalPriceVnd()', () => {
   let service: PricingService;
@@ -29,13 +22,12 @@ describe('PricingService.computeFinalPriceVnd()', () => {
     service = module.get(PricingService);
   });
 
-  it('không có dữ liệu execution nào -> tính tối thiểu 1 Worker x thời gian khởi động', async () => {
+  it('không có execution runtime -> từ chối tính giá thay vì dùng fallback', async () => {
     mockGateway.getTaskExecutionDetails.mockResolvedValue([]);
 
-    const result = await service.computeFinalPriceVnd('job-1');
-
-    expect(result.workerRuntimeSeconds).toBe(WORKER_STARTUP_SECONDS);
-    expect(result.finalPriceVnd).toBe(priceFromSeconds(WORKER_STARTUP_SECONDS));
+    await expect(service.computeFinalPriceVnd('job-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('1 worker, 1 task -> runtime task + 1 lần khởi động', async () => {
@@ -99,7 +91,7 @@ describe('PricingService.computeFinalPriceVnd()', () => {
     );
   });
 
-  it('task chưa kịp có heartbeat nào (lastHeartbeat null) -> runtime = 0 cho task đó, không bịa số', async () => {
+  it('task chưa có heartbeat runtime -> từ chối tính giá', async () => {
     mockGateway.getTaskExecutionDetails.mockResolvedValue([
       {
         workerId: 'W1',
@@ -108,8 +100,22 @@ describe('PricingService.computeFinalPriceVnd()', () => {
       },
     ]);
 
+    await expect(service.computeFinalPriceVnd('job-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('áp dụng đúng giá host 6.000 VND/worker-hour nhân 2.5', async () => {
+    mockGateway.getTaskExecutionDetails.mockResolvedValue([
+      {
+        workerId: 'W1',
+        claimedAt: '2026-07-31T00:00:00.000Z',
+        lastHeartbeat: '2026-07-31T01:00:00.000Z',
+      },
+    ]);
+
     const result = await service.computeFinalPriceVnd('job-1');
 
-    expect(result.workerRuntimeSeconds).toBe(0 + WORKER_STARTUP_SECONDS);
+    expect(result.finalPriceVnd).toBe(((3600 + WORKER_STARTUP_SECONDS) / 3600) * 6000 * 2.5);
   });
 });

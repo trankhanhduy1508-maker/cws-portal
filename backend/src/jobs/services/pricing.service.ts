@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { WorkerFleetGateway } from '../worker-fleet.gateway';
 
 const VND_PER_WORKER_HOUR = 6000;
-const FINAL_PRICE_MULTIPLIER = 2;
+const FINAL_PRICE_MULTIPLIER = 2.5;
 const WORKER_STARTUP_SECONDS = 10 * 60;
 
 /**
@@ -15,7 +15,7 @@ const WORKER_STARTUP_SECONDS = 10 * 60;
  *
  * Công thức: cộng dồn runtime của TỪNG task (claimedAt → lastHeartbeat),
  * cộng thêm 10 phút khởi động cho MỖI Worker khác nhau (không phải mỗi
- * task) → đổi ra giờ → x 6.000đ/giờ → x 2.
+ * task) → đổi ra giờ → x 6.000đ/giờ → x 2.5.
  */
 @Injectable()
 export class PricingService {
@@ -31,14 +31,11 @@ export class PricingService {
 
     if (executions.length === 0) {
       this.logger.warn(
-        `computeFinalPriceVnd(${internalJobId}): không có dữ liệu claimed_at/worker_id — ` +
-          'tính giá tối thiểu 1 Worker x thời gian khởi động để không chặn approve().',
+        `computeFinalPriceVnd(${internalJobId}): không có execution runtime đã xác minh.`,
       );
-      const seconds = WORKER_STARTUP_SECONDS;
-      return {
-        finalPriceVnd: this.priceFromSeconds(seconds),
-        workerRuntimeSeconds: seconds,
-      };
+      throw new BadRequestException(
+        'Chưa thể tính giá: thiếu runtime Worker đã xác minh.',
+      );
     }
 
     // SỬA LỖI (phát hiện qua tự rà soát 31/07/2026): trước đây gộp
@@ -62,9 +59,17 @@ export class PricingService {
       // cột completed_at riêng, không được sửa schema đó. Task xong quá
       // nhanh chưa kịp có heartbeat nào thì coi runtime = 0 cho task đó
       // thay vì bịa số.
-      const endMs = exec.lastHeartbeat
-        ? new Date(exec.lastHeartbeat).getTime()
-        : claimedAtMs;
+      if (!exec.lastHeartbeat) {
+        throw new BadRequestException(
+          'Chưa thể tính giá: execution chưa có heartbeat runtime đã xác minh.',
+        );
+      }
+      const endMs = new Date(exec.lastHeartbeat).getTime();
+      if (!Number.isFinite(claimedAtMs) || !Number.isFinite(endMs)) {
+        throw new BadRequestException(
+          'Chưa thể tính giá: timestamp runtime Worker không hợp lệ.',
+        );
+      }
 
       totalTaskRuntimeSeconds += Math.max(0, (endMs - claimedAtMs) / 1000);
       workerIdsSeen.add(exec.workerId);

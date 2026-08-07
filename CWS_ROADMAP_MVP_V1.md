@@ -1,5 +1,14 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production pricing gate audit - 2026-08-07
+
+- **CODE/UNIT VERIFIED**: final amount uses actual recorded Worker runtime,
+  6,000 VND per worker-hour, and the approved 2.5 customer multiplier.
+- **CODE/UNIT VERIFIED**: missing runtime evidence is fail-closed and cannot
+  produce a payable amount.
+- **NEEDS_VERIFICATION**: authenticated production Worker/B2/payment runtime.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_PRICING_GATE_2026-08-07.md`.
+
 ## Production Node Agent / generic Worker audit — 2026-08-07
 
 - **CODE VERIFIED**: canonical dynamic Worker direction is preserved; legacy

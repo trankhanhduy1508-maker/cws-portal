@@ -325,3 +325,11 @@ archives, and never recursively extracts nested archives. Existing
 `render_orders.project_name` remains the input-name metadata; no duplicate
 database column is introduced. Production B2 and physical Worker ZIP runtime
 remain separate verification gates.
+
+## Runtime pricing boundary - 2026-08-07
+
+**[ACTIVE]** After render completion and preview approval, customer price is
+computed from recorded Worker runtime using a 6,000 VND/worker-hour host
+baseline multiplied by 2.5. If verified execution/heartbeat runtime is absent
+or invalid, approval must fail closed; no demo or minimum fallback price may be
+created. Production payment remains gated on this runtime-derived amount.
