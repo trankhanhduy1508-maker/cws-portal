@@ -1,5 +1,14 @@
 # CWS WORKER VIBE CODE
 
+## Production input/checkpoint hardening — 2026-08-07
+
+- HTTP/Drive input is staged without trusting the URL filename; Blender/ZIP
+  magic is detected before the input enters the render pipeline.
+- B2 checkpoint resume and verification re-hash remote object bytes; object
+  metadata by itself is insufficient.
+- Local verification is complete; production B2 and lease/fencing runtime
+  evidence remains blocked by missing authenticated Worker/B2 configuration.
+
 ## Remediation continuation — 2026-08-05
 
 - Job workspace now rejects symlink/reparse-like path components before creation; Python suite is 30/30 PASS.

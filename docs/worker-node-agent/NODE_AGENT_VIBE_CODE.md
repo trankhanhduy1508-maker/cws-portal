@@ -1,5 +1,16 @@
 # CWS NODE AGENT / ACTIVE_IDLE VIBE CODE
 
+## Production state/reporting hardening — 2026-08-07
+
+- The authenticated production adapter reports state transitions through the
+  existing `report_worker_state_transition` RPC.
+- Admin-facing mapping is explicit: `ACTIVE_IDLE`, `PREPARING`,
+  `RENDERING`, `RECOVERY`, `CLEANUP`; the internal launch state is not exposed
+  as a new product state.
+- State-report failure is degraded/logged and does not kill the supervisor;
+  heartbeat/lease remains the backend authority.
+- This is CODE VERIFIED only until a real production identity sends a heartbeat.
+
 ## Remediation continuation — 2026-08-05
 
 - Native SCM service PoC is **REAL RUNTIME VERIFIED** for lifecycle/heartbeat/restart; no Blender launch is attempted from Session 0.

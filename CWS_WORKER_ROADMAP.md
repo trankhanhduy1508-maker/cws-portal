@@ -1,5 +1,20 @@
 # CWS WORKER ROADMAP
 
+## Worker/Node Agent production-path hardening — 2026-08-07
+
+- **FIXED/CODE VERIFIED**: extension-neutral Drive input detection supports
+  extensionless `.blend`/`.zip` links and fails closed on invalid payloads.
+- **FIXED/CODE VERIFIED**: B2 checkpoint resume and verification hash the actual
+  remote bytes; metadata alone is not accepted.
+- **FIXED/CODE VERIFIED**: canonical Node Agent reports observed fleet states
+  through authenticated RPC, mapping internal launch/run states to the Admin
+  contract without power-management side effects.
+- **VERIFIED**: Worker 69/69, backend 178/178 and backend build PASS; local
+  Blender/WorkerEngine runtime evidence is recorded.
+- **BLOCKED/NOT VERIFIED**: production identity, real Supabase lease/heartbeat,
+  B2 upload and physical Worker E2E remain external gates.
+- Evidence: `reports/worker/CWS_WORKER_NODE_AGENT_PRODUCTION_PATH_HARDENING_2026-08-07.md`.
+
 ## Production Worker auto-bind audit — 2026-08-07
 
 - **READ-ONLY VERIFIED**: production `workers` has 29 offline rows, while

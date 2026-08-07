@@ -36,6 +36,8 @@ from typing import Any, Mapping
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from node_agent import Job, NodeAgent, WorkerResult
+from node_agent import NodeState
+from node_agent_runtime_policy import RuntimePolicy
 from worker_engine import (
     AttemptGuard,
     BasicPreflight,
@@ -58,6 +60,15 @@ _SAFE_ID = re.compile(r"^[A-Za-z0-9._~-]{1,128}$")
 _DRIVE_FILE_ID = re.compile(r"/file/d/([A-Za-z0-9_-]+)")
 _DRIVE_QUERY_ID = re.compile(r"(?:^|&)id=([A-Za-z0-9_-]+)(?:&|$)")
 _LOGGER = logging.getLogger("cws.production_node_agent")
+
+_OBSERVED_STATES = {
+    NodeState.ACTIVE_IDLE.value: "ACTIVE_IDLE",
+    NodeState.PREPARING.value: "PREPARING",
+    NodeState.WORKER_START.value: "PREPARING",
+    NodeState.WORKER_RUNNING.value: "RENDERING",
+    NodeState.RECOVERY.value: "RECOVERY",
+    NodeState.CLEANUP.value: "CLEANUP",
+}
 
 
 @dataclass(frozen=True)
@@ -112,6 +123,12 @@ class ProductionConfig:
                 raise PermanentWorkerError(f"{name} must be non-negative")
             return result
 
+        def positive_integer(name: str, default: int) -> int:
+            result = integer(name, default)
+            if result <= 0:
+                raise PermanentWorkerError(f"{name} must be positive")
+            return result
+
         def positive_float(name: str, default: float) -> float:
             raw = values.get(name, str(default)).strip()
             try:
@@ -145,7 +162,7 @@ class ProductionConfig:
             worker_ram_mb=integer("CWS_WORKER_RAM_MB", 0),
             poll_seconds=positive_float("CWS_WORKER_POLL_SECONDS", 5.0),
             heartbeat_seconds=positive_float("CWS_WORKER_HEARTBEAT_SECONDS", 20.0),
-            render_timeout_seconds=integer("CWS_RENDER_TIMEOUT_SECONDS", 3600),
+            render_timeout_seconds=positive_integer("CWS_RENDER_TIMEOUT_SECONDS", 3600),
         )
 
 
@@ -168,6 +185,19 @@ class ProductionRpcAdapter:
 
     def worker_ping(self) -> None:
         self.client.call("worker_ping", {})
+
+    def transition(self, state: str, task_id: int | None = None, reason: str | None = None) -> None:
+        observed = _OBSERVED_STATES.get(state, state)
+        if observed not in {"ACTIVE_IDLE", "PREPARING", "RENDERING", "RECOVERY", "CLEANUP"}:
+            raise PermanentWorkerError("invalid Worker observed state")
+        payload: dict[str, Any] = {"p_to_state": observed}
+        if task_id is not None:
+            payload["p_task_id"] = int(task_id)
+        if reason:
+            payload["p_reason"] = reason[:240]
+        result = self.client.call("report_worker_state_transition", payload)
+        if result is not True:
+            raise RetryableWorkerError("Worker state transition was rejected")
 
     def claim(self) -> JobSpec | None:
         claimed = _single_assignment(
@@ -288,10 +318,7 @@ class DriveOrB2Downloader(ProjectDownloader):
         if parsed.hostname == "drive.google.com" and not drive_id:
             raise PermanentWorkerError("Google Drive URI is not a file link")
         destination.parent.mkdir(parents=True, exist_ok=True)
-        suffix = Path(parsed.path).suffix.lower()
-        if suffix not in {".blend", ".zip"}:
-            suffix = ".blend"
-        target = destination / f"input{suffix}"
+        target = destination / "input.download"
         partial = target.with_suffix(target.suffix + ".part")
         try:
             with urllib.request.urlopen(uri, timeout=60) as response, partial.open("wb") as stream:
@@ -305,15 +332,34 @@ class DriveOrB2Downloader(ProjectDownloader):
                         raise PermanentWorkerError("input exceeds 20 GiB safety limit")
                     stream.write(chunk)
             partial.replace(target)
-            self._validate_downloaded_file(target)
-            return target
+            detected = self._detect_download_suffix(target)
+            final_target = destination / f"input{detected}"
+            target.replace(final_target)
+            self._validate_downloaded_file(final_target)
+            return final_target
         except PermanentWorkerError:
             partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
+            for candidate in (destination / "input.blend", destination / "input.zip"):
+                candidate.unlink(missing_ok=True)
             raise
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
             partial.unlink(missing_ok=True)
+            target.unlink(missing_ok=True)
             raise RetryableWorkerError("project download failed") from exc
+
+    @staticmethod
+    def _detect_download_suffix(path: Path) -> str:
+        try:
+            with path.open("rb") as stream:
+                prefix = stream.read(8)
+        except OSError as exc:
+            raise PermanentWorkerError("downloaded project could not be read") from exc
+        if prefix.startswith(b"BLENDER") or prefix[:2] == b"\x1f\x8b":
+            return ".blend"
+        if prefix[:4] == b"PK\x03\x04":
+            return ".zip"
+        raise PermanentWorkerError("downloaded project has an invalid file signature")
 
     def _download_b2(self, uri: str, destination: Path) -> Path:
         if self._boto3 is None:
@@ -443,14 +489,38 @@ class ProductionB2CheckpointStore(CheckpointStore):
                 return None
             raise RetryableWorkerError("B2 output HEAD failed") from exc
 
+    def _remote_digest(self, key: str) -> tuple[int, str]:
+        digest = hashlib.sha256()
+        size = 0
+        body = None
+        try:
+            response = self.client.get_object(Bucket=self.config.b2_bucket, Key=key)
+            body = response["Body"]
+            while True:
+                chunk = body.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                digest.update(chunk)
+            return size, digest.hexdigest()
+        except Exception as exc:
+            raise RetryableWorkerError("B2 output download verification failed") from exc
+        finally:
+            if body is not None:
+                body.close()
+
     def is_verified(self, spec: JobSpec, frame: int) -> bool:
         metadata = (self._head(self._key(spec, frame)) or {}).get("Metadata", {})
-        return (
+        if not (
             metadata.get("job_id") == spec.job_id
             and metadata.get("task_id") == spec.task_id
             and metadata.get("frame") == str(frame)
+            and metadata.get("bytes", "").isdigit()
             and bool(metadata.get("sha256"))
-        )
+        ):
+            return False
+        size, digest = self._remote_digest(self._key(spec, frame))
+        return size == int(metadata["bytes"]) and digest == metadata["sha256"]
 
     def put(self, spec: JobSpec, frame: int, output: Path) -> None:
         if self.is_verified(spec, frame):
@@ -468,6 +538,7 @@ class ProductionB2CheckpointStore(CheckpointStore):
                         "attempt_id": spec.attempt_id,
                         "generation": str(spec.lease_generation),
                         "frame": str(frame),
+                        "bytes": str(output.stat().st_size),
                         "sha256": self._sha256(output),
                     },
                 },
@@ -477,7 +548,12 @@ class ProductionB2CheckpointStore(CheckpointStore):
 
     def verify(self, spec: JobSpec, frame: int, output: Path) -> None:
         metadata = (self._head(self._key(spec, frame)) or {}).get("Metadata", {})
-        if metadata.get("sha256") != self._sha256(output):
+        size, digest = self._remote_digest(self._key(spec, frame))
+        if (
+            metadata.get("sha256") != self._sha256(output)
+            or digest != metadata.get("sha256")
+            or size != output.stat().st_size
+        ):
             raise RetryableWorkerError(f"B2 output verification failed for frame {frame}")
 
 
@@ -558,6 +634,13 @@ class ProductionNodeAgentRuntime:
         else:
             self.rpc.heartbeat(self.last_claim)
 
+    def _report_state(self, state: Any) -> None:
+        task_id = int(self.last_claim.task_id) if self.last_claim is not None else None
+        try:
+            self.rpc.transition(getattr(state, "value", str(state)), task_id)
+        except Exception as exc:
+            _LOGGER.warning("Worker state report failed: %s", type(exc).__name__)
+
     def _poll(self) -> Job | None:
         spec = self.rpc.claim()
         self.last_claim = spec
@@ -621,6 +704,7 @@ class ProductionNodeAgentRuntime:
             heartbeat_interval=self.config.heartbeat_seconds,
             max_retries=0,
             non_blocking_heartbeat=True,
+            runtime_policy=RuntimePolicy(state_observer=self._report_state),
         )
         poll_backoff = self.config.poll_seconds
         try:

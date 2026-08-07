@@ -1,5 +1,21 @@
 # Current Status
 
+## Worker/Node Agent production-path hardening — 2026-08-07
+
+- **FIXED/CODE VERIFIED**: extension-neutral Drive download detection now
+  accepts a real ZIP from a URL without a filename suffix and rejects HTML or
+  invalid signatures before Blender.
+- **FIXED/CODE VERIFIED**: B2 checkpoint resume/verify streams the remote
+  object and recomputes SHA-256 instead of trusting metadata alone.
+- **FIXED/CODE VERIFIED**: authenticated Node Agent state transitions report
+  `ACTIVE_IDLE`, `PREPARING`, `RENDERING`, `RECOVERY` and `CLEANUP` through the
+  existing RPC used by Admin fleet visibility.
+- **VERIFIED**: Worker suite 69/69, backend 178/178 and backend build PASS;
+  real local Blender/WorkerEngine verification is recorded separately.
+- **NOT VERIFIED/BLOCKED**: physical authenticated production Worker,
+  Supabase claim/heartbeat, B2 production object and customer/payment E2E.
+- Evidence: `reports/worker/CWS_WORKER_NODE_AGENT_PRODUCTION_PATH_HARDENING_2026-08-07.md`.
+
 ## Production Worker auto-bind audit — 2026-08-07
 
 - **READ-ONLY VERIFIED**: production Supabase has 29 Worker rows, 0

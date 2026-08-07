@@ -18,6 +18,13 @@ class NodeAgentRuntimePolicyTests(unittest.TestCase):
         policy.on_state(NodeState.ACTIVE_IDLE)
         self.assertEqual(events, ["off", "on", "off"])
 
+    def test_state_observer_receives_every_transition(self):
+        states = []
+        policy = RuntimePolicy(state_observer=states.append)
+        policy.on_state(NodeState.ACTIVE_IDLE)
+        policy.on_state(NodeState.PREPARING)
+        self.assertEqual(states, [NodeState.ACTIVE_IDLE, NodeState.PREPARING])
+
     def test_retry_backoff_is_bounded_and_non_blocking(self):
         clock = [0.0]
         jobs = iter([Job("job-1", {})])

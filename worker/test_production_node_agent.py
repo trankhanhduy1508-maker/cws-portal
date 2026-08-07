@@ -1,11 +1,13 @@
 import unittest
 import tempfile
+from types import SimpleNamespace
 from pathlib import Path
 
 from production_node_agent import (
     DriveOrB2Downloader,
     ProductionConfig,
     ProductionRpcAdapter,
+    ProductionB2CheckpointStore,
     _single_assignment,
 )
 from worker_engine import PermanentWorkerError
@@ -91,6 +93,112 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
                 ("get_claimed_task_spec", {"p_task_id": 42, "p_generation": 7}),
             ],
         )
+
+    def test_drive_download_signature_selects_zip_without_url_extension(self):
+        with tempfile.TemporaryDirectory() as root:
+            archive = Path(root) / "input.download"
+            archive.write_bytes(b"PK\x03\x04archive")
+            self.assertEqual(DriveOrB2Downloader._detect_download_suffix(archive), ".zip")
+
+    def test_transition_maps_worker_running_to_rendering(self):
+        config = ProductionConfig.from_env(
+            {
+                "CWS_BACKEND_URL": "https://backend.example",
+                "CWS_WORKER_ID": "worker-a",
+                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+                "CWS_WORKSPACE": "C:/CWS/work",
+                "CWS_B2_ENDPOINT": "s3.us-west-004.backblazeb2.com",
+                "CWS_B2_BUCKET": "cws-prod",
+                "CWS_B2_KEY_ID": "key-id",
+                "CWS_B2_APP_KEY": "app-key",
+                "CWS_B2_OUTPUT_PREFIX": "renders",
+                "CWS_GOOGLE_DRIVE_API_KEY": "drive-key",
+            }
+        )
+        client = FakeClient([True])
+        ProductionRpcAdapter(client, config).transition("WORKER_RUNNING", 42)
+        self.assertEqual(
+            client.calls,
+            [("report_worker_state_transition", {"p_to_state": "RENDERING", "p_task_id": 42})],
+        )
+
+    def test_render_timeout_must_be_positive(self):
+        values = {
+            "CWS_BACKEND_URL": "https://backend.example",
+            "CWS_WORKER_ID": "worker-a",
+            "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+            "CWS_WORKSPACE": "C:/CWS/work",
+            "CWS_B2_ENDPOINT": "s3.us-west-004.backblazeb2.com",
+            "CWS_B2_BUCKET": "cws-prod",
+            "CWS_B2_KEY_ID": "key-id",
+            "CWS_B2_APP_KEY": "app-key",
+            "CWS_B2_OUTPUT_PREFIX": "renders",
+            "CWS_GOOGLE_DRIVE_API_KEY": "drive-key",
+            "CWS_RENDER_TIMEOUT_SECONDS": "0",
+        }
+        with self.assertRaises(PermanentWorkerError):
+            ProductionConfig.from_env(values)
+
+    def test_b2_resume_verifies_remote_bytes_not_metadata_only(self):
+        payload = b"verified-png-payload"
+
+        class Body:
+            def __init__(self, value):
+                self.value = value
+
+            def read(self, size):
+                value, self.value = self.value[:size], self.value[size:]
+                return value
+
+            def close(self):
+                return None
+
+        class Client:
+            def head_object(self, **_kwargs):
+                import hashlib
+                return {
+                    "Metadata": {
+                        "job_id": "job-1",
+                        "task_id": "42",
+                        "frame": "1",
+                        "bytes": str(len(payload)),
+                        "sha256": hashlib.sha256(payload).hexdigest(),
+                    }
+                }
+
+            def get_object(self, **_kwargs):
+                return {"Body": Body(payload)}
+
+        store = object.__new__(ProductionB2CheckpointStore)
+        store.config = SimpleNamespace(b2_bucket="bucket")
+        store.client = Client()
+        store._client_error = Exception
+        value = ProductionConfig.from_env(
+            {
+                "CWS_BACKEND_URL": "https://backend.example",
+                "CWS_WORKER_ID": "worker-a",
+                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+                "CWS_WORKSPACE": "C:/CWS/work",
+                "CWS_B2_ENDPOINT": "s3.example",
+                "CWS_B2_BUCKET": "bucket",
+                "CWS_B2_KEY_ID": "key-id",
+                "CWS_B2_APP_KEY": "app-key",
+                "CWS_B2_OUTPUT_PREFIX": "renders",
+                "CWS_GOOGLE_DRIVE_API_KEY": "drive-key",
+            }
+        )
+        spec = ProductionRpcAdapter(FakeClient([]), value).config
+        del spec
+        from worker_engine import JobSpec
+        job_spec = JobSpec.from_mapping({
+            "job_id": "job-1", "task_id": "42", "attempt_id": "9",
+            "lease_generation": 2, "project_uri": "b2://bucket/input.blend",
+            "frame_start": 1, "frame_end": 1, "output_prefix": "renders",
+            "output_format": "png",
+        })
+        self.assertTrue(store.is_verified(job_spec, 1))
+        store.client.get_object = lambda **_kwargs: {"Body": Body(b"tampered")}
+        self.assertFalse(store.is_verified(job_spec, 1))
 
     def test_drive_and_assignment_validation_fail_closed(self):
         self.assertEqual(
