@@ -59,6 +59,15 @@
   host, provisioned with a per-worker credential, and supplied with scoped B2
   runtime configuration. No identity or secret was guessed or created.
 
+## Final provisioning blocker — 2026-08-07
+
+- Host evidence: `MAY083`, NVIDIA GeForce RTX 2060 SUPER.
+- Production registry has no machine/boot/session mapping for its 29 offline
+  Worker IDs. No `CWS_*` production env or DPAPI credential exists locally.
+- **BLOCKED** only at authorized Worker-ID binding and scoped B2 credential
+  provisioning; migrations, package, Blender and launcher are ready.
+- Evidence: `reports/evidence/CWS_PRODUCTION_PROVISIONING_GATE_FINAL_BLOCKER_2026-08-07.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the
