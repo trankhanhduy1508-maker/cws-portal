@@ -13,8 +13,9 @@
   Blender 5.2.0; production RPC routines required for claim/heartbeat/spec and
   completion exist in Supabase.
 - **BLOCKED BEFORE HEARTBEAT**: production has 0 worker identities and 0 fresh
-  workers; MAY083 has no `CWS_*` runtime configuration, DPAPI credential or B2
-  Python dependency. No job mutation was performed.
+  workers; MAY083 has no `CWS_*` runtime configuration or DPAPI credential.
+  Local Worker Python now imports `boto3 1.43.66`; no job mutation was
+  performed.
 - Evidence: `reports/evidence/CWS_PRODUCTION_PHYSICAL_WORKER_READINESS_AUDIT_2026-08-07.md`.
 
 ## Vercel project consolidation audit — 2026-08-07

@@ -27,9 +27,10 @@ machine environment: `CWS_BACKEND_URL`, `CWS_WORKER_ID`,
 `CWS_B2_KEY_ID`, `CWS_B2_APP_KEY`, `CWS_B2_OUTPUT_PREFIX` and
 `CWS_GOOGLE_DRIVE_API_KEY`. No DPAPI credential store was found.
 
-The package's launcher defaults to `python`; the host Python installations do
-not include `boto3`, which the production Node Agent requires for B2 input/output.
-This is a host provisioning prerequisite, not a reason to bypass the real B2
+The isolated host Python initially lacked `pip` and `boto3`. This was repaired
+locally using the official PyPA bootstrap script and pinned runtime install;
+`boto3 1.43.66` now imports in the Worker Python runtime. The launcher still
+requires explicit production configuration and does not bypass the real B2
 adapter or use the legacy Worker.
 
 ## Result
