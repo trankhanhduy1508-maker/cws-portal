@@ -24,4 +24,7 @@
 This is `NEEDS_VERIFICATION`, not production PASS. The GitHub push was
 successful, but the existing integration did not create a deployment during
 the verification window. The remaining blocker is the observed Vercel
-build-rate-limit; no CLI device authorization was used.
+build-rate-limit. A direct prebuilt deployment from the current HEAD artifact
+was then attempted through the authenticated connector, but Vercel rejected
+it with `payment_required` / `api-deployments-free-per-day`, remaining `0`,
+reset in approximately 24 hours. No CLI device authorization was used.

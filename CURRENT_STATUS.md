@@ -12,6 +12,9 @@
   therefore **NEEDS_VERIFICATION** for the
   latest commit. No Vercel CLI
   device authorization or project/config mutation was used.
+- A direct prebuilt Vercel connector deployment from the current HEAD artifact
+  was also attempted without device authorization; Vercel rejected it with
+  `api-deployments-free-per-day`, remaining `0`, reset in approximately 24h.
 - Evidence: `reports/evidence/CWS_GITHUB_VERCEL_DEPLOYMENT_2026-08-07.md`.
 
 ## Production ZIP E2E execution gate — 2026-08-07
