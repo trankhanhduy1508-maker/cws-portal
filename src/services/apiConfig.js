@@ -1,7 +1,4 @@
-// Cấu hình kết nối Backend — hiện tại CHƯA có Backend thật nên để trống.
-// Khi Backend CWS hoàn thành, chỉ cần điền BASE_URL/WS_BASE_URL vào đây
-// (hoặc đọc từ biến môi trường .env), KHÔNG cần sửa bất kỳ Component
-// hay Service nào khác.
+// Production luôn trỏ tới Backend CWS thật. Không có fallback mock/demo.
 
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_CWS_API_BASE_URL || '',

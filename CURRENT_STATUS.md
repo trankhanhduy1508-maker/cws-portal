@@ -1,13 +1,31 @@
 # Current Status
 
+## Production real-path audit — 2026-08-07
+
+- **CODE VERIFIED**: `.env.production` now points the Vite frontend to the
+  canonical Render backend (`https://cws-portal.onrender.com`) and its WebSocket
+  endpoint. `RenderService` no longer falls back to `mockBackend` for any
+  production operation; missing backend configuration fails closed.
+- **TEST VERIFIED**: frontend 5 files/11 tests, lint and build PASS; backend
+  33 suites/174 tests and build PASS; Worker compile and RPC-auth 4-test smoke
+  PASS.
+- **RUNTIME READ-ONLY VERIFIED**: Vercel root HTTP 200, Render `/health` HTTP
+  200, anonymous protected `/jobs` and `/fleet/workers` HTTP 401.
+- **NEEDS_VERIFICATION**: current Vercel deployment still serves the old mock
+  bundle. A new deployment is blocked by Vercel `api-deployments-free-per-day`
+  (remaining 0; reset `2026-08-08T03:23:10.675Z`). Physical Worker, Supabase
+  claim, B2, authenticated customer session, payment and final download remain
+  unverified.
+- Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07.md`.
+
 ## GitHub → Vercel deployment verification — 2026-08-07
 
-- Canonical `main` is `b7884a7` (latest pushed commit) and matches
+- Canonical `main` is `1afba11` (latest pushed commit) and matches
   `origin/main`.
 - Vercel project `cws-portal` is correctly linked to
   `trankhanhduy1508-maker/cws-portal`, branch `main`, and its current
   production deployment is `READY` on the older commit `fd34ebd`.
-- The GitHub/Vercel integration has not produced a deployment for `b7884a7`
+- The GitHub/Vercel integration has not produced a deployment for `1afba11`
   after the push; its check reports Vercel `build-rate-limit`. Production is
   therefore **NEEDS_VERIFICATION** for the
   latest commit. No Vercel CLI

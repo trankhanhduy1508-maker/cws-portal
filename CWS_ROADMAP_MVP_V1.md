@@ -1,5 +1,16 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production real-path audit — 2026-08-07
+
+- **CODE VERIFIED**: frontend production configuration now targets the real
+  Render backend; all RenderService lifecycle methods fail closed instead of
+  using browser mock state. The old deployed bundle remains unchanged until
+  Vercel deployment quota resets.
+- **NEEDS_VERIFICATION/BLOCKED**: Vercel deployment quota reset is required
+  before verifying the new bundle; authenticated customer + physical Worker +
+  Supabase/B2 + payment runtime remain unverified.
+- Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07.md`.
+
 ## Production ZIP E2E execution gate — 2026-08-07
 
 - **NEEDS_VERIFICATION/BLOCKED**: read-only production health/CORS/auth probes

@@ -8,24 +8,19 @@
 // Worker/Scheduler — Frontend chỉ nói chuyện với RenderService, Backend
 // thật (sau này) mới là nơi biết Worker/Scheduler tồn tại.
 //
-// HIỆN TẠI: chưa có Backend (IS_BACKEND_CONFIGURED === false) nên mọi
-// hàm bên dưới ủy quyền cho `mockBackend.js` — 1 "server giả" có state
-// sống độc lập với UI (xem comment trong file đó). Khi Dy nối Backend
-// thật, chỉ cần hoàn thiện các hàm `*Real` trong file này, KHÔNG đổi
-// tên hàm export hay shape tham số/callback — Component/Hook không cần
-// sửa gì.
+// Production path chỉ gọi Backend thật. Nếu thiếu cấu hình, request phải fail
+// rõ ràng thay vì tạo job/progress/payment giả trong trình duyệt.
 // ============================================================
 
 import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
-import * as mock from './mockBackend';
 import { validateFile, validateDriveLink } from '../utils/fileUtils';
 import { getAccessToken } from './AuthService';
 
-// Giữ tham chiếu File thật theo fileRef — CHỈ dùng ở mock mode để tạo
-// Blob URL placeholder lúc job hoàn thành (xem ghi chú "download thật"
-// trong PreviewDownloadScreen). Backend thật không cần cấu trúc này vì
-// server thật giữ file thật, không phải trình duyệt.
-const mockFileRefRegistry = new Map();
+function requireBackend() {
+  if (!IS_BACKEND_CONFIGURED) {
+    throw new Error('CWS Backend chưa được cấu hình; không thể chạy chế độ demo.');
+  }
+}
 
 // ============================================================
 // 1. UPLOAD FILE / GOOGLE DRIVE
@@ -41,22 +36,14 @@ const mockFileRefRegistry = new Map();
 export async function uploadFile(file) {
   const { valid, error } = validateFile(file);
   if (!valid) throw new Error(error);
-
-  if (IS_BACKEND_CONFIGURED) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-      method: 'POST', body: formData,
-    });
-    if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
-    return res.json();
-  }
-
-  // Mock: chưa có server thật để tải lên, chỉ giữ tham chiếu cục bộ.
-  await new Promise((r) => setTimeout(r, 400));
-  const fileRef = `local-${Date.now()}`;
-  mockFileRefRegistry.set(fileRef, file);
-  return { fileRef, fileName: file.name, fileSizeBytes: file.size };
+  requireBackend();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
+    method: 'POST', body: formData,
+  });
+  if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
+  return res.json();
 }
 
 /**
@@ -68,21 +55,15 @@ export async function submitGoogleDrive(rawLink) {
   if (!valid) throw new Error(error);
   const driveLink = rawLink.trim();
 
-  if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ driveLink }),
-    });
-    if (!res.ok) throw new Error('Không đọc được thông tin file từ Google Drive');
-    const data = await res.json();
-    return { fileRef: null, driveLink, ...data };
-  }
-
-  // Mock: chưa có Backend để hỏi Google Drive thật — thành thật trả về
-  // "không biết" thay vì bịa tên file/dung lượng giả.
-  await new Promise((r) => setTimeout(r, 300));
-  return { fileRef: null, driveLink, fileName: null, fileSizeBytes: null };
+  requireBackend();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ driveLink }),
+  });
+  if (!res.ok) throw new Error('Không đọc được thông tin file từ Google Drive');
+  const data = await res.json();
+  return { fileRef: null, driveLink, ...data };
 }
 
 // ============================================================
@@ -95,18 +76,14 @@ export async function submitGoogleDrive(rawLink) {
  * @returns {Promise<{ etaSeconds: number, costVnd: number, queueSeconds: number }>}
  */
 export async function estimateJob(input, profileId) {
-  if (IS_BACKEND_CONFIGURED) {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ESTIMATE_JOB}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, profileId }),
-    });
-    if (!res.ok) throw new Error('Không ước tính được thời gian/giá');
-    return res.json();
-  }
-
-  await new Promise((r) => setTimeout(r, 200)); // giả lập độ trễ gọi API thật
-  return mock.computeEstimate({ fileSizeBytes: input.fileSizeBytes, profileId });
+  requireBackend();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ESTIMATE_JOB}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...input, profileId }),
+  });
+  if (!res.ok) throw new Error('Không ước tính được thời gian/giá');
+  return res.json();
 }
 
 // ============================================================
@@ -121,15 +98,13 @@ export async function estimateJob(input, profileId) {
  * @returns {Promise<{ paymentId: string, status: string, paymentCode: string|null, transferContent: string|null, amountVnd: number, qrImageUrl: string|null }>}
  */
 export async function getPaymentDetails(paymentId) {
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error('Không lấy được thông tin thanh toán');
-    return res.json();
-  }
-  return mock.mockGetPaymentDetails(paymentId);
+  requireBackend();
+  const token = await getAccessToken();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_PAYMENT_STATUS(paymentId)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Không lấy được thông tin thanh toán');
+  return res.json();
 }
 
 // ============================================================
@@ -142,34 +117,20 @@ export async function getPaymentDetails(paymentId) {
  * @returns {Promise<{ jobId: string }>}
  */
 export async function createJob({ input, profileId, idempotencyKey }) {
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ ...input, profileId }),
-    });
-    if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
-    const data = await res.json();
-    return { jobId: data.jobId };
-  }
-
-  const downloadSourceFile = input.fileRef ? mockFileRefRegistry.get(input.fileRef) : null;
-  const jobId = mock.mockCreateJob({
-    fileName: input.fileName,
-    fileSizeBytes: input.fileSizeBytes,
-    driveLink: input.driveLink,
-    software: input.software,
-    softwareVersion: input.softwareVersion,
-    notes: input.notes,
-    profileId,
-    downloadSourceFile,
+  requireBackend();
+  const token = await getAccessToken();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ ...input, profileId }),
   });
-  return { jobId };
+  if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
+  const data = await res.json();
+  return { jobId: data.jobId };
 }
 
 /**
@@ -184,20 +145,18 @@ export async function createJob({ input, profileId, idempotencyKey }) {
  * @returns {Promise<() => void>} unsubscribe
  */
 export async function subscribeToJobUpdates(jobId, { onUpdate, onComplete, onError }) {
-  if (IS_BACKEND_CONFIGURED) {
-    return subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError });
-  }
-  return mock.mockSubscribeToJob(jobId, { onUpdate, onComplete, onError });
+  requireBackend();
+  return subscribeToJobUpdatesReal(jobId, { onUpdate, onComplete, onError });
 }
 
 /** @returns {Promise<boolean>} */
 export async function cancelJob(jobId) {
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+  requireBackend();
+  const token = await getAccessToken();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CANCEL_JOB(jobId)}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
     // SỬA LỖI (tự phát hiện 31/07/2026): đây là hàm DUY NHẤT trong file
     // này trước đây "return res.ok" thay vì throw khi thất bại — mọi hàm
     // khác đều throw new Error(...) đúng quy ước chung. Hệ quả: khi
@@ -210,43 +169,38 @@ export async function cancelJob(jobId) {
       const body = await res.json().catch(() => null);
       throw new Error(body?.message || `Huỷ job thất bại (${res.status})`);
     }
-    return true;
-  }
-  return mock.mockCancelJob(jobId);
+  return true;
 }
 
 /** Lấy snapshot hiện tại của 1 job (dùng khi mở lại từ Job Dashboard). */
 export async function getJob(jobId) {
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error('Không lấy được thông tin job');
-    return res.json();
-  }
-  return mock.mockGetJob(jobId);
+  requireBackend();
+  const token = await getAccessToken();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GET_JOB(jobId)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Không lấy được thông tin job');
+  return res.json();
 }
 
 /** Danh sách job (Job Dashboard / History) — nếu đã đăng nhập Google,
  * Backend chỉ trả job của đúng khách đó (xem JobsController.listAll()). */
 export async function listJobs() {
-  if (IS_BACKEND_CONFIGURED) {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error('Không lấy được danh sách job');
-    return res.json();
-  }
-  return mock.mockListJobs();
+  requireBackend();
+  const token = await getAccessToken();
+  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LIST_JOBS}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Không lấy được danh sách job');
+  return res.json();
 }
 
 /** 3-5 ảnh preview có watermark — gọi khi job ở REVIEW_READY.
  * @returns {Promise<{ images: { url: string, displayOrder: number|null }[] }>}
  */
 export async function getJobPreview(jobId) {
-  if (IS_BACKEND_CONFIGURED) {
+  requireBackend();
+  {
     const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_PREVIEW(jobId)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -254,14 +208,14 @@ export async function getJobPreview(jobId) {
     if (!res.ok) throw new Error('Không lấy được ảnh xem trước');
     return res.json();
   }
-  return mock.mockGetJobPreview(jobId);
 }
 
 /** Khách duyệt bản preview -> Backend sinh QR MB Bank ngay trong response
  * này (field `payment`); đóng gói + mở link tải chỉ diễn ra SAU khi
  * webhook xác nhận PAID (job tự chuyển AWAITING_PAYMENT -> FINISHED). */
 export async function approveJob(jobId) {
-  if (IS_BACKEND_CONFIGURED) {
+  requireBackend();
+  {
     const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.APPROVE_JOB(jobId)}`, {
       method: 'POST',
@@ -270,7 +224,6 @@ export async function approveJob(jobId) {
     if (!res.ok) throw new Error('Duyệt kết quả thất bại');
     return res.json();
   }
-  return mock.mockApproveJob(jobId);
 }
 
 /** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi nhận yêu cầu để
@@ -278,7 +231,8 @@ export async function approveJob(jobId) {
  * quyết định nghiệp vụ, xem jobs.service.ts#requestChanges). Job vẫn
  * ở REVIEW_READY sau khi gọi hàm này. */
 export async function requestJobChanges(jobId, note) {
-  if (IS_BACKEND_CONFIGURED) {
+  requireBackend();
+  {
     const token = await getAccessToken();
     const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REQUEST_CHANGES_JOB(jobId)}`, {
       method: 'POST',
@@ -291,7 +245,6 @@ export async function requestJobChanges(jobId, note) {
     if (!res.ok) throw new Error('Gửi yêu cầu chỉnh sửa thất bại');
     return res.json();
   }
-  return mock.mockRequestChanges(jobId, note);
 }
 
 /**
@@ -307,12 +260,12 @@ export async function requestJobChanges(jobId, note) {
  * @returns {Promise<string|null>}
  */
 export async function getDownloadUrl(jobId) {
-  if (IS_BACKEND_CONFIGURED) {
+  requireBackend();
+  {
     const token = await getAccessToken();
     const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
     return `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOB_DOWNLOAD(jobId)}${tokenParam}`;
   }
-  return mock.mockGetJob(jobId)?.downloadUrl ?? null;
 }
 
 // ============================================================

@@ -23,7 +23,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
     getDownloadUrl(jobId).then((url) => { if (!cancelled) setRealHref(url); });
     return () => { cancelled = true; };
   }, [jobId]);
-  const href = IS_BACKEND_CONFIGURED ? realHref : downloadUrl;
+  const href = realHref;
 
   // File cuối giờ có thể là .mp4 (ghép video) HOẶC .zip (fallback không
   // có ffmpeg, xem PackagingService) — KHÔNG cố định phần mở rộng theo
@@ -98,7 +98,7 @@ export default function PreviewDownloadScreen({ jobId, fileName, downloadUrl, is
 
       <p className="download-expiry-note">
         {isPlaceholder
-          ? 'Bản demo: đang tải lại chính file bạn đã gửi (chưa có kết quả render thật từ Backend)'
+          ? 'Kết quả render thật chưa sẵn sàng. Vui lòng thử lại sau.'
           : 'Link tải có hiệu lực trong 3 ngày'}
       </p>
     </StepCard>

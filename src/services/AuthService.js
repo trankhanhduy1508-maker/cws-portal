@@ -12,7 +12,6 @@
 // ============================================================
 
 import { supabase, IS_SUPABASE_CONFIGURED } from './supabaseClient';
-import * as mock from './mockBackend';
 
 const MOCK_TOKEN_KEY = 'cws_mock_auth_token';
 const MOCK_CUSTOMER_KEY = 'cws_mock_auth_customer';
@@ -80,7 +79,8 @@ export async function startGoogleLogin() {
     return null;
   }
   if (USE_MOCK_AUTH) {
-    const { token, customer } = await mock.mockGoogleLogin();
+    const { mockGoogleLogin } = await import('./mockBackend');
+    const { token, customer } = await mockGoogleLogin();
     storeMockSession(token, customer);
     return customer;
   }
