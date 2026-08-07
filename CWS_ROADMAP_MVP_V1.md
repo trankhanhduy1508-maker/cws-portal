@@ -300,3 +300,11 @@ Google Login
 - Render-before-payment business logic was preserved. Frontend tests 9/9,
   lint and build PASS; browser/production visual verification remains open.
 - Evidence: `reports/product/CWS_UI_PREMIUM_DARK_REFRESH_2026-08-07.md`.
+
+# Vercel production HEAD verification - 2026-08-07
+
+- Correct Vercel project/domain/production branch confirmed read-only.
+- Production is READY on old commit `95abec7`; canonical `main` is
+  `4f4600804e19f4a1937d36cb7ad83c19c57f1311`. Exact-HEAD deployment remains
+  blocked by deployment API/credential availability; no production mutation
+  occurred.

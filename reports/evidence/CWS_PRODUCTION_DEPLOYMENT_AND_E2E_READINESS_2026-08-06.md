@@ -29,3 +29,19 @@ B2 credentials, and real payment/webhook. No production job or payment was creat
 
 After Vercel quota reset, deploy canonical `main`, repeat these probes, then run
 one small real job with the physical Worker and payment owner gate.
+
+## Fresh verification — 2026-08-07
+
+- Local canonical `main` and `origin/main`: `4f4600804e19f4a1937d36cb7ad83c19c57f1311`.
+- Connected Vercel project lookup confirmed project `cws-portal`, id
+  `prj_oEEqu24zYqTq1p9FJhzkUake0pEi`, production domain
+  `https://cws-portal.vercel.app`, and Git production branch `main`.
+- Production deployment remains READY but still points to
+  `95abec7b5b49e7788066ef328647845c12968851`, not current `main`.
+- Production web smoke: HTTP 200; Vercel headers show HTTPS/HSTS. This is a
+  read-only smoke check and does not verify the new UI bundle.
+- No safe deployment was performed: the connected deploy operation requires a
+  local file payload, while this worktree contains unrelated uncommitted
+  backend changes. Deploying it would not prove or deploy the canonical commit.
+- Status: deployment-to-current-HEAD **BLOCKED/NEEDS_VERIFICATION**; no env,
+  domain, project or production data was changed.

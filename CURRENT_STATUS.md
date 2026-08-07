@@ -576,6 +576,18 @@ Legacy `cws_worker_full.py`/`cws_worker.bat` are retained as reference-only sour
   verification was not available because `agent-browser` is not installed.
 - Evidence: `reports/product/CWS_UI_PREMIUM_DARK_REFRESH_2026-08-07.md`.
 
+## Vercel production HEAD verification - 2026-08-07
+
+- Canonical local/remote `main` is `4f4600804e19f4a1937d36cb7ad83c19c57f1311`.
+- Connected Vercel lookup confirms the correct `cws-portal` project and
+  production branch `main`; production is READY but still serves commit
+  `95abec7b5b49e7788066ef328647845c12968851`.
+- Production root read-only smoke returned HTTP 200. Deployment to the exact
+  commit is **BLOCKED/NEEDS_VERIFICATION** because no Git-SHA deployment
+  credential/API is available and the worktree contains unrelated dirty
+  backend files that must not be deployed.
+- Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
+
 ## NestJS 11 isolated canary - 2026-08-07
 
 - Ephemeral canary upgraded Nest runtime/toolchain to 11.1.28 and schedule to
