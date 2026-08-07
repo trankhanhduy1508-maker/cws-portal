@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import threading
 import time
 import urllib.error
@@ -42,6 +43,7 @@ from worker_engine import (
     RetryableWorkerError,
     WorkerEngine,
 )
+from blender_bootstrap import resolve_blender
 from worker_rpc_auth import WorkerCredential, WorkerRpcClient
 from windows_credential_store import WindowsProtectedCredentialStore
 
@@ -57,7 +59,10 @@ class ProductionConfig:
     backend_url: str
     worker_id: str
     credential_file: Path
-    blender_exe: Path
+    blender_exe: Path | None
+    blender_cache_dir: Path
+    blender_download_url: str | None
+    blender_sha256: str | None
     workspace: Path
     b2_endpoint: str
     b2_bucket: str
@@ -111,12 +116,19 @@ class ProductionConfig:
                 raise PermanentWorkerError(f"{name} must be positive")
             return result
 
+        workspace = Path(required("CWS_WORKSPACE"))
+        explicit_blender = values.get("CWS_BLENDER_EXE", "").strip()
         return cls(
             backend_url=backend_url,
             worker_id=worker_id,
             credential_file=Path(required("CWS_WORKER_CREDENTIAL_FILE")),
-            blender_exe=Path(required("CWS_BLENDER_EXE")),
-            workspace=Path(required("CWS_WORKSPACE")),
+            blender_exe=Path(explicit_blender) if explicit_blender else None,
+            blender_cache_dir=Path(
+                values.get("CWS_BLENDER_CACHE_DIR", str(workspace / "Blender"))
+            ),
+            blender_download_url=values.get("CWS_BLENDER_DOWNLOAD_URL", "").strip() or None,
+            blender_sha256=values.get("CWS_BLENDER_SHA256", "").strip() or None,
+            workspace=workspace,
             b2_endpoint=required("CWS_B2_ENDPOINT").removeprefix("https://").rstrip("/"),
             b2_bucket=required("CWS_B2_BUCKET"),
             b2_key_id=required("CWS_B2_KEY_ID"),
@@ -314,6 +326,53 @@ class DriveOrB2Downloader(ProjectDownloader):
         return self._download_http(spec.project_uri, destination)
 
 
+class BlenderScenePreflight:
+    """Read-only Blender inspection that rejects missing linked assets."""
+
+    def __init__(self, blender_exe: Path, analyzer_script: Path, capabilities: Mapping[str, Any]):
+        self.blender_exe = blender_exe
+        self.analyzer_script = analyzer_script
+        self.basic = BasicPreflight(capabilities)
+
+    def inspect(self, spec: JobSpec, project: Path) -> None:
+        self.basic.inspect(spec, project)
+        report = project.parent / "scene-analysis.json"
+        env = os.environ.copy()
+        env["CWS_ANALYZER_OUTPUT"] = str(report)
+        command = [
+            str(self.blender_exe),
+            "--background",
+            "--disable-autoexec",
+            str(project),
+            "--python",
+            str(self.analyzer_script),
+        ]
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                env=env,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RetryableWorkerError("Blender scene preflight failed") from exc
+        if result.returncode != 0 or not report.is_file():
+            raise RetryableWorkerError("Blender scene analyzer failed")
+        try:
+            analysis = json.loads(report.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RetryableWorkerError("Blender scene analysis was invalid") from exc
+        finally:
+            report.unlink(missing_ok=True)
+        missing = analysis.get("missing_assets", [])
+        if missing:
+            raise PermanentWorkerError(
+                f"scene has {len(missing)} missing linked asset(s)"
+            )
+
+
 class ProductionB2CheckpointStore(CheckpointStore):
     def __init__(self, config: ProductionConfig):
         try:
@@ -437,6 +496,12 @@ class ProductionNodeAgentRuntime:
     def __init__(self, config: ProductionConfig):
         token = WindowsProtectedCredentialStore(config.credential_file).load()
         self.config = config
+        self.blender_exe = resolve_blender(
+            config.blender_exe,
+            config.blender_cache_dir,
+            config.blender_download_url,
+            config.blender_sha256,
+        )
         self.rpc = ProductionRpcAdapter(
             WorkerRpcClient(
                 config.backend_url,
@@ -445,6 +510,14 @@ class ProductionNodeAgentRuntime:
             config,
         )
         self.last_claim: JobSpec | None = None
+
+    def _record_metrics(self, payload: Mapping[str, Any]) -> None:
+        """Append redacted host metrics outside the per-attempt workspace."""
+        path = self.config.workspace / "agent-metrics.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        record = {"timestamp": time.time(), **dict(payload)}
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, separators=(",", ":")) + "\n")
 
     def _heartbeat(self) -> None:
         if self.last_claim is None:
@@ -467,16 +540,19 @@ class ProductionNodeAgentRuntime:
             engine = WorkerEngine(
                 workspace_root=self.config.workspace,
                 downloader=DriveOrB2Downloader(self.config),
-                preflight=BasicPreflight(
+                preflight=BlenderScenePreflight(
+                    self.blender_exe,
+                    Path(__file__).with_name("blender_scene_analyzer.py"),
                     {
                         "vram_mb": self.config.worker_vram_mb,
                         "ram_mb": self.config.worker_ram_mb,
-                    }
+                    },
                 ),
                 renderer=BlenderCliRenderer(
-                    self.config.blender_exe,
+                    self.blender_exe,
                     timeout_seconds=self.config.render_timeout_seconds,
                     use_job_object=True,
+                    metrics_callback=self._record_metrics,
                 ),
                 checkpoints=ProductionB2CheckpointStore(self.config),
                 validator=OutputIntegrityValidator(),

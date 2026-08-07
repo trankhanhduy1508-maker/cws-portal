@@ -1,5 +1,16 @@
 # Current Status
 
+## Legacy/production Worker feature parity — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: pinned Blender bootstrap, read-only scene preflight,
+  generic render execution, checkpoint/integrity handling and authenticated
+  dynamic Node Agent are on the canonical production path.
+- **CODE VERIFIED**: best-effort redacted CPU/RAM/GPU/PID telemetry is recorded
+  outside the attempt workspace and cannot change job/payment state.
+- **NOT VERIFIED/BLOCKED**: no physical Worker has claimed a production task,
+  launched real Blender, uploaded B2 output and reported completion.
+- Matrix: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the

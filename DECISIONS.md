@@ -344,3 +344,16 @@ task/generation lease, and use the generic `worker_engine.py` for Drive/B2
 download, Blender execution, checkpoint upload and status reporting. The
 read-only spec bridge is prepared in migration 022; production application,
 per-worker provisioning and physical runtime verification remain gates.
+
+## Legacy Worker parity boundary — 2026-08-07
+
+**[ACTIVE]** `cws_worker_full.py` and `worker_full.py` are knowledge
+references only. Production must not restore their unpinned dependency
+installation, unsafe Blender auto-execution, remote shutdown/update, or blind
+scene mutation. Equivalent MVP capabilities use the modular Node Agent/Worker
+Engine path: pinned Blender bootstrap, authenticated dynamic JobSpec, safe
+`.blend`/`.zip` handling, read-only scene preflight, bounded process ownership,
+checkpointed output integrity and redacted host telemetry. Physical
+Worker/B2/backend E2E is still required before claiming Worker DONE.
+
+Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.

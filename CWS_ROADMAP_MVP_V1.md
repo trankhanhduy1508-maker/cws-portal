@@ -1,5 +1,15 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Worker parity gate — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: legacy capability inventory is reconciled against
+  Node Agent → dynamic JobSpec → generic Worker Engine. Pinned Blender
+  bootstrap, scene preflight, safe archive handling and host telemetry are
+  included without changing Render → Preview → Payment ordering.
+- **NEEDS_VERIFICATION**: physical Worker claim, Blender PID, B2 output,
+  backend completion and customer download.
+- Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **CODE/UNIT VERIFIED**: credential-gated Node Agent loop now connects the

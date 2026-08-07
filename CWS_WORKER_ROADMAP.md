@@ -1,5 +1,16 @@
 # CWS WORKER ROADMAP
 
+## Legacy/production parity audit — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: legacy capability inventory is reconciled against
+  Node Agent → dynamic JobSpec → generic Worker Engine without restoring unsafe
+  auto-install, autoexec, remote shutdown or remote update behavior.
+- **CODE/UNIT VERIFIED**: pinned Blender bootstrap, scene asset preflight and
+  redacted host telemetry are wired into the generic path.
+- **BLOCKED/NOT VERIFIED**: physical Windows/Blender/B2/backend E2E remains
+  required before Worker DONE.
+- Evidence: `FEATURE_PARITY_LEGACY_VS_PRODUCTION.md`.
+
 ## Production Node Agent / generic Worker audit — 2026-08-07
 
 - **CODE VERIFIED**: canonical package is Node Agent → dynamic JobSpec/TaskSpec

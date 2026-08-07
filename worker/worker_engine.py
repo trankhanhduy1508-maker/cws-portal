@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import tempfile
 import zipfile
 from enum import Enum
@@ -427,10 +428,13 @@ class BlenderCliRenderer:
     """Render one frame with customer auto-execution disabled."""
 
     def __init__(self, executable: Path, timeout_seconds: int = 3600,
-                 use_job_object: bool = False):
+                 use_job_object: bool = False, metrics_callback=None,
+                 metrics_interval_seconds: float = 5.0):
         self.executable = executable.resolve()
         self.timeout_seconds = timeout_seconds
         self.use_job_object = use_job_object
+        self.metrics_callback = metrics_callback
+        self.metrics_interval_seconds = metrics_interval_seconds
 
     @staticmethod
     def _terminate_tree(process: subprocess.Popen[str]) -> None:
@@ -462,6 +466,20 @@ class BlenderCliRenderer:
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True, creationflags=creationflags)
+        stop_metrics = threading.Event()
+        metrics_thread = None
+        if self.metrics_callback is not None:
+            from host_metrics import collect_host_metrics
+
+            def sample() -> None:
+                while not stop_metrics.wait(self.metrics_interval_seconds):
+                    try:
+                        self.metrics_callback(collect_host_metrics(process.pid))
+                    except Exception:
+                        pass
+
+            metrics_thread = threading.Thread(target=sample, name="cws-render-metrics", daemon=True)
+            metrics_thread.start()
         job_object = None
         try:
             if self.use_job_object:
@@ -475,6 +493,9 @@ class BlenderCliRenderer:
             self._terminate_tree(process)
             raise RetryableWorkerError("could not attach Blender process to Job Object") from exc
         finally:
+            stop_metrics.set()
+            if metrics_thread is not None:
+                metrics_thread.join(timeout=2)
             if job_object is not None:
                 job_object.close()
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
