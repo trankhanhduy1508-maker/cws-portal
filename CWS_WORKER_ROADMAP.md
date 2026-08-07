@@ -19,6 +19,15 @@
   recorded in the worker evidence report.
 - **BLOCKED**: physical Worker/B2/backend E2E remains unverified.
 
+## Production provisioning gate progress — 2026-08-07
+
+- **RUNTIME VERIFIED**: migrations 020/021/022 are applied and the production
+  claim/spec/fencing RPCs verify present.
+- **LOCAL PACKAGE VERIFIED**: current canonical Node Agent runtime is copied
+  to the existing Desktop Worker package and compiles.
+- **BLOCKED**: explicit Worker identity/credential and scoped B2 configuration
+  are still required; no offline Worker ID was reused.
+
 ## Windows host readiness — 2026-08-07
 
 - **REAL LOCAL RUNTIME VERIFIED**: official Blender 5.2.0 portable runtime

@@ -36,6 +36,15 @@
   and run authenticated B2/Blender production E2E.
 - Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_ADAPTER_2026-08-07.md`.
 
+## Production provisioning gate progress — 2026-08-07
+
+- **RUNTIME VERIFIED**: production migrations 020/021/022 and dynamic Worker
+  RPC bridge are applied and schema-verified.
+- **LOCAL PACKAGE VERIFIED**: canonical Node Agent package is present and
+  compiles on the Windows host.
+- **NEEDS_VERIFICATION/BLOCKED**: per-worker identity mapping, B2 config,
+  authenticated claim and physical render/output remain outstanding.
+
 ## Production pricing gate audit - 2026-08-07
 
 - **CODE/UNIT VERIFIED**: final amount uses actual recorded Worker runtime,

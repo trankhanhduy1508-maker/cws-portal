@@ -45,6 +45,17 @@
 - No production job or mutation was created in this audit.
 - Evidence: `reports/evidence/CWS_PRODUCTION_E2E_CONTROL_PLANE_AUDIT_2026-08-07.md`.
 
+## Production provisioning gate progress — 2026-08-07
+
+- **RUNTIME VERIFIED**: migrations 020/021/022 applied to Supabase production;
+  worker identity tables, resilient claim, dynamic JobSpec, fenced heartbeat,
+  stale requeue and retry column all verify present.
+- **LOCAL PACKAGE VERIFIED**: Desktop Worker package now contains the canonical
+  `production_node_agent.py` and current runtime modules; Python compile passes.
+- **BLOCKED**: a real Worker ID must be explicitly mapped to this physical
+  host, provisioned with a per-worker credential, and supplied with scoped B2
+  runtime configuration. No identity or secret was guessed or created.
+
 ## Production Node Agent adapter preparation - 2026-08-07
 
 - **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the
