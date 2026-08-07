@@ -52,6 +52,9 @@
   stale requeue and retry column all verify present.
 - **LOCAL PACKAGE VERIFIED**: Desktop Worker package now contains the canonical
   `production_node_agent.py` and current runtime modules; Python compile passes.
+- **FIXED/LOCAL RUNTIME VERIFIED**: direct Windows launcher execution now works
+  with isolated Python; it reaches fail-closed production configuration
+  validation instead of failing to import sibling Worker modules.
 - **BLOCKED**: a real Worker ID must be explicitly mapped to this physical
   host, provisioned with a per-worker credential, and supplied with scoped B2
   runtime configuration. No identity or secret was guessed or created.

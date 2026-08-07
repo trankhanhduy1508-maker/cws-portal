@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -29,6 +30,10 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+
+# Support direct execution by the Windows launcher even when the bundled
+# Python runtime runs in isolated mode and omits PYTHONPATH.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from node_agent import Job, NodeAgent, WorkerResult
 from worker_engine import (

@@ -27,7 +27,9 @@
 The production backend bridge is now present, but the Windows host has no
 production Worker identity, `CWS_*` runtime configuration or B2 credentials.
 The Desktop package has been updated with the canonical `production_node_agent.py`
-and dependencies and compile verification passed. No production job, payment,
-B2 mutation or fake completion was created.
+and dependencies and compile verification passed. A direct launcher smoke
+reached the intended fail-closed error `missing production configuration:
+CWS_BACKEND_URL`; an isolated-Python sibling-module import issue was fixed.
+No production job, payment, B2 mutation or fake completion was created.
 
 This report is read-only evidence, not a production PASS.
