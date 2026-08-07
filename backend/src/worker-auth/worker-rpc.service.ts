@@ -11,6 +11,7 @@ const RPC_NAMES = new Set([
   'worker_ping',
   'claim_next_task',
   'claim_next_resilient_task',
+  'get_claimed_task_spec',
   'report_heartbeat',
   'complete_task',
   'fail_task',
@@ -60,6 +61,19 @@ export class WorkerRpcService {
           body.p_worker_vram_mb,
           'p_worker_vram_mb',
         ),
+      };
+    }
+    if (operation === 'get_claimed_task_spec') {
+      if (
+        !Number.isInteger(body.p_task_id) ||
+        !Number.isInteger(body.p_generation)
+      ) {
+        throw new BadRequestException('Worker task and generation are required');
+      }
+      return {
+        p_worker_id: workerId,
+        p_task_id: Number(body.p_task_id),
+        p_generation: Number(body.p_generation),
       };
     }
     if (

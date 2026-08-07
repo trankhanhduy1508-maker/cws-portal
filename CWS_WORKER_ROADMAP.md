@@ -97,6 +97,19 @@
 **Dự án:** Computer Workspace — CWS  
 **Mục tiêu:** Hoàn thiện kiến trúc Worker sau khi MVP hoàn tất, bảo đảm tương thích cao với hệ thống hiện tại, có khả năng quan sát, phục hồi, điều phối lại công việc và thống kê thời gian thuê chính xác.
 
+## Production Node Agent adapter preparation - 2026-08-07
+
+- **CODE/UNIT VERIFIED**: `worker/production_node_agent.py` is the canonical
+  authenticated loop for dynamic JobSpec claim, Drive/B2 download, generic
+  Engine execution, Blender Job Object containment, progress, checkpoint and
+  fenced completion. Legacy Worker scripts and staging adapters are excluded.
+- **PREPARED/NOT APPLIED**: migration
+  `worker_migrations/022_production_dynamic_task_spec_rpc.sql` exposes the
+  complete spec only for the current worker/generation lease.
+- **NEEDS_VERIFICATION**: production migration, per-worker DPAPI provisioning,
+  physical Blender runtime and real B2/Drive evidence.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_ADAPTER_2026-08-07.md`.
+
 ---
 
 

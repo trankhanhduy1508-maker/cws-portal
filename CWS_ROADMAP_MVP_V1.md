@@ -1,5 +1,16 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production Node Agent adapter preparation - 2026-08-07
+
+- **CODE/UNIT VERIFIED**: credential-gated Node Agent loop now connects the
+  authenticated RPC gateway to dynamic JobSpec, Drive/B2, generic Worker
+  Engine, Blender process containment, progress, checkpoint and finalization.
+- **CODE/UNIT VERIFIED**: Worker input host and output-prefix validation reject
+  arbitrary HTTPS/SSRF and path-injection inputs.
+- **NEEDS_VERIFICATION**: apply migration 022, provision a physical Worker,
+  and run authenticated B2/Blender production E2E.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_ADAPTER_2026-08-07.md`.
+
 ## Production pricing gate audit - 2026-08-07
 
 - **CODE/UNIT VERIFIED**: final amount uses actual recorded Worker runtime,

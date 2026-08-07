@@ -254,6 +254,10 @@ class WorkerEngineTests(unittest.TestCase):
                              Checkpoints(), BasicOutputValidator(10), Reporter(), rejected).run(spec(frame_end=1))
             self.assertFalse((Path(tmp) / "task-1").exists())
 
+    def test_output_prefix_path_traversal_is_rejected(self):
+        with self.assertRaisesRegex(PermanentWorkerError, "invalid output_prefix"):
+            spec(output_prefix="renders/../outside")
+
     def test_zip_input_extracts_one_blend_and_preserves_relative_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             checkpoints, reporter = Checkpoints(), Reporter()
@@ -333,6 +337,23 @@ class WorkerEngineTests(unittest.TestCase):
                              CheckpointsThatMustNotWrite(), BasicOutputValidator(10),
                              Reporter(), guard).run(spec(frame_end=1))
             self.assertFalse((Path(tmp) / "task-1").exists())
+
+    def test_lease_guard_is_checked_before_final_completion(self):
+        class RejectBeforeComplete(Guard):
+            def assert_active(self, current_spec):
+                self.events.append("assert")
+                if "CHECKPOINTED" in self.events:
+                    raise PermanentWorkerError("stale fencing generation")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            guard = RejectBeforeComplete()
+            reporter = Reporter()
+            with self.assertRaises(PermanentWorkerError):
+                WorkerEngine(
+                    Path(tmp), Downloader(), BasicPreflight(), Renderer(),
+                    Checkpoints(), BasicOutputValidator(10), reporter, guard,
+                ).run(spec(frame_end=1))
+            self.assertNotIn(("complete", "task-1"), reporter.events)
 
 
 if __name__ == "__main__":

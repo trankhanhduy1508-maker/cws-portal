@@ -1,5 +1,28 @@
 # Current Status
 
+## Production Node Agent adapter preparation - 2026-08-07
+
+- **IMPLEMENTED/CODE VERIFIED**: `worker/production_node_agent.py` is the
+  canonical credential-gated loop. It uses DPAPI credential loading,
+  authenticated backend RPC claim/heartbeat/stage/complete/fail calls,
+  dynamic JobSpec retrieval, Drive/B2 input download, generic
+  `worker_engine.py`, real Blender CLI with Job Object containment, and B2
+  checkpoint upload/verification.
+- **IMPLEMENTED/CODE VERIFIED**: `get_claimed_task_spec` is an authenticated,
+  read-only, worker/generation-fenced RPC bridge. SQL is prepared in migration
+  `worker_migrations/022_production_dynamic_task_spec_rpc.sql`; it has not been
+  applied to production in this session.
+- **IMPLEMENTED/CODE VERIFIED**: generic Engine checks the lease immediately
+  before final completion, preventing stale attempts from finalizing after
+  reassignment.
+- **IMPLEMENTED/CODE VERIFIED**: output object prefixes are bounded relative
+  paths and production input download is restricted to Google Drive/Google API
+  HTTPS or the configured B2 bucket.
+- **NEEDS_VERIFICATION/BLOCKED**: production migration apply, physical
+  Windows/Blender runtime, Drive/B2 credentials, and real job evidence remain
+  outstanding. No production job was created.
+- Evidence: `reports/worker/CWS_PRODUCTION_NODE_AGENT_ADAPTER_2026-08-07.md`.
+
 ## Production pricing gate audit - 2026-08-07
 
 - **FIXED/CODE VERIFIED**: final customer pricing now uses the approved

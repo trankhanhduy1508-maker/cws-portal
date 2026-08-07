@@ -106,6 +106,15 @@ class JobSpec:
             raise PermanentWorkerError("invalid output_format")
         if not str(value["project_uri"]).strip():
             raise PermanentWorkerError("project_uri is required")
+        output_prefix = str(value["output_prefix"]).strip().strip("/")
+        if (
+            not output_prefix
+            or "\\" in output_prefix
+            or "\x00" in output_prefix
+            or any(part in {"", ".", ".."} for part in output_prefix.split("/"))
+            or not re.fullmatch(r"[A-Za-z0-9._/-]{1,512}", output_prefix)
+        ):
+            raise PermanentWorkerError("invalid output_prefix")
         if bool(value.get("autoexec", False)):
             raise PermanentWorkerError("customer autoexec is disabled by policy")
         required_vram_mb = int(value.get("required_vram_mb", 0))
@@ -120,7 +129,7 @@ class JobSpec:
             project_uri=str(value["project_uri"]),
             frame_start=start,
             frame_end=end,
-            output_prefix=str(value["output_prefix"]),
+            output_prefix=output_prefix,
             output_format=output_format,
             autoexec=False,
             required_vram_mb=required_vram_mb,
@@ -549,6 +558,10 @@ class WorkerEngine:
                 self.checkpoints.verify(spec, frame, rendered)
                 self._guard(spec, "CHECKPOINTED")
                 self.reporter.progress(spec, frame, total)
+            # Fencing is required immediately before the final state change as
+            # well as before every output side effect. A stale attempt must
+            # never finalize a task after reassignment.
+            self._guard(spec, "COMPLETING")
             self.reporter.complete(spec)
         except (PermanentWorkerError, RetryableWorkerError) as exc:
             category = "permanent" if isinstance(exc, PermanentWorkerError) else "retryable"

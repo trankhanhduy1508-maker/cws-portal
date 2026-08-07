@@ -66,4 +66,21 @@ describe('WorkerRpcService', () => {
       p_worker_vram_mb: 4096,
     });
   });
+
+  it('reads a claimed JobSpec only with the authenticated worker identity', async () => {
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await service.call('get_claimed_task_spec', 'worker-a', {
+      p_worker_id: 'attacker',
+      p_task_id: 42,
+      p_generation: 7,
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith('get_claimed_task_spec', {
+      p_worker_id: 'worker-a',
+      p_task_id: 42,
+      p_generation: 7,
+    });
+  });
 });

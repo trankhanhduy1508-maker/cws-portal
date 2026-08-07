@@ -333,3 +333,14 @@ computed from recorded Worker runtime using a 6,000 VND/worker-hour host
 baseline multiplied by 2.5. If verified execution/heartbeat runtime is absent
 or invalid, approval must fail closed; no demo or minimum fallback price may be
 created. Production payment remains gated on this runtime-derived amount.
+
+## Production Node Agent bridge - 2026-08-07
+
+**[ACTIVE]** The production Worker runtime is the credential-gated
+`production_node_agent.py` loop, not the legacy Worker scripts or staging
+harness. It must obtain the assignment through the authenticated backend
+gateway, read a complete dynamic JobSpec only while holding the current
+task/generation lease, and use the generic `worker_engine.py` for Drive/B2
+download, Blender execution, checkpoint upload and status reporting. The
+read-only spec bridge is prepared in migration 022; production application,
+per-worker provisioning and physical runtime verification remain gates.
