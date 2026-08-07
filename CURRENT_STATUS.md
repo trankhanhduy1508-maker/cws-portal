@@ -1,5 +1,22 @@
 # Current Status
 
+## Scaling P0 + production ZIP E2E readiness — 2026-08-07
+
+- Existing P0 protections remain **CODE/UNIT VERIFIED**: durable job
+  idempotency/fingerprint, payment uniqueness migration, disk-backed upload,
+  bounded rate limits, scheduler single-flight/batched reads and DB fencing.
+- Load harness now models independent customer proxy IPs without weakening
+  production rate limits. Real Nest loopback load passed 10/25/50/100 jobs;
+  duplicate claims were 0 and the 25/50/100 cases exercised bounded failover
+  with stale completion rejection.
+- Production read-only: Vercel HTTP 200 with ZIP marker; Render health 200,
+  CORS preflight 204 exact origin, protected routes 401. No production
+  mutation was made.
+- Production ZIP E2E remains **NEEDS_VERIFICATION/BLOCKED** at authenticated
+  upload/physical Worker/B2/payment because credentials, hardware and real
+  payment are not available in this session.
+- Evidence: `reports/scaling/CWS_P0_SCALING_AND_ZIP_E2E_READINESS_2026-08-07.md`.
+
 ## ZIP input support — 2026-08-07
 
 - `.blend` and `.zip` are now accepted end-to-end at frontend/upload/API/B2

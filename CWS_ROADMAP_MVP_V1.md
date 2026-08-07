@@ -1,5 +1,17 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Scaling P0 verification — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: P0 queue/idempotency and overload guardrails remain
+  active; no new broker or Redis layer is introduced without measured staging
+  evidence.
+- **SIMULATED LOAD VERIFIED**: real Nest harness passes 10/25/50/100 customer
+  submissions with independent test proxy IPs, no duplicate claims, and
+  bounded failover/stale fencing. This is not infrastructure capacity PASS.
+- **NEEDS_VERIFICATION**: Supabase/RLS, B2 bandwidth, physical Worker and
+  payment capacity in isolated staging.
+- Evidence: `reports/scaling/CWS_P0_SCALING_AND_ZIP_E2E_READINESS_2026-08-07.md`.
+
 ## ZIP project input — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: frontend, upload API, B2 object naming, Job metadata

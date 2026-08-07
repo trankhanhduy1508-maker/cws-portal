@@ -243,6 +243,9 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       .useValue({ generateReviewPreview: async () => undefined })
       .compile();
     app = module.createNestApplication();
+    // The harness represents independent customers behind distinct test
+    // proxy addresses. Production proxy trust remains unchanged.
+    app.getHttpAdapter().getInstance().set('trust proxy', true);
     await app.init();
     await app.listen(0, '127.0.0.1');
     baseUrl = `http://127.0.0.1:${(app.getHttpServer().address() as AddressInfo).port}`;
@@ -271,11 +274,15 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       let rampErrors = 0;
       for (let offset = 0; offset < customers; offset += 10) {
         const rampBatch = await Promise.all(
-          Array.from({ length: Math.min(10, customers - offset) }, async () => {
+          Array.from({ length: Math.min(10, customers - offset) }, async (_, batchIndex) => {
+            const customerIndex = offset + batchIndex;
             const started = performance.now();
             const response = await fetch(`${baseUrl}/jobs/estimate`, {
               method: 'POST',
-              headers: { 'content-type': 'application/json' },
+              headers: {
+                'content-type': 'application/json',
+                'x-forwarded-for': `198.51.100.${customerIndex + 1}`,
+              },
               body: JSON.stringify({ profileId: 'standard', fileSizeBytes: 1024 }),
             });
             rampLatencies.push(performance.now() - started);
@@ -296,6 +303,7 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
+              'x-forwarded-for': '198.51.100.250',
               'Idempotency-Key': `load-duplicate-key-${customers.toString().padStart(3, '0')}`,
             },
             body: JSON.stringify(duplicatePayload),
@@ -325,6 +333,7 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
               headers: {
                 'content-type': 'application/json',
                 'Idempotency-Key': `load-${customers}-${index.toString().padStart(3, '0')}-key-x`,
+                'x-forwarded-for': `198.51.100.${index + 1}`,
               },
               body: JSON.stringify({
                 fileRef: `load-test/input-${customers}-${index}.blend`,
