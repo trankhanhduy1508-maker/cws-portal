@@ -13,8 +13,8 @@
 
 - **CODE VERIFIED**: frontend production configuration now targets the real
   Render backend; all RenderService lifecycle methods fail closed instead of
-  using browser mock state. The old deployed bundle remains unchanged until
-  Vercel deployment quota resets.
+  using browser mock state. The last verified deployment is recorded below;
+  the latest worker/Drive commit still awaits hosting integration verification.
 - **RUNTIME VERIFIED**: Git-integrated production deployment is `READY` on
   commit `ebc7e017d7c3250b3a0680d8e8e15bb5fe56d818`; served bundle points to
   the canonical Render backend and no longer has fake job/progress functions.

@@ -40,12 +40,12 @@
 
 ## GitHub → Vercel deployment verification — 2026-08-07
 
-- Canonical `main` is `1afba11` (latest pushed commit) and matches
+- Canonical `main` is `93203a0` (latest pushed commit) and matches
   `origin/main`.
 - Vercel project `cws-portal` is correctly linked to
   `trankhanhduy1508-maker/cws-portal`, branch `main`, and its current
   production deployment is `READY` on the older commit `fd34ebd`.
-- The GitHub/Vercel integration has not produced a deployment for `1afba11`
+- The GitHub/Vercel integration has not produced a deployment for `93203a0`
   after the push; its check reports Vercel `build-rate-limit`. Production is
   therefore **NEEDS_VERIFICATION** for the
   latest commit. No Vercel CLI
