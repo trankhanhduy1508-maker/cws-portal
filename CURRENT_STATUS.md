@@ -1,5 +1,15 @@
 # Current Status
 
+## Production ZIP E2E execution gate — 2026-08-07
+
+- Read-only probes: Vercel 200, Render `/health` 200, exact CORS preflight
+  204, and protected production routes 401.
+- Vercel CLI auth timed out and no `VERCEL_TOKEN`, Supabase/psql, B2 or Worker
+  credential is present; no production mutation was attempted.
+- Production ZIP E2E remains **NEEDS_VERIFICATION/BLOCKED** at authenticated
+  upload → physical Worker → B2 → payment. Evidence:
+  `reports/evidence/CWS_PRODUCTION_ZIP_E2E_EXECUTION_2026-08-07.md`.
+
 ## Scaling P0 + production ZIP E2E readiness — 2026-08-07
 
 - Existing P0 protections remain **CODE/UNIT VERIFIED**: durable job

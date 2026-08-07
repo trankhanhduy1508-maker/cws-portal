@@ -1,5 +1,12 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production ZIP E2E execution gate — 2026-08-07
+
+- **NEEDS_VERIFICATION/BLOCKED**: read-only production health/CORS/auth probes
+  pass, but authenticated ZIP upload, physical Worker render, B2 output and
+  payment remain unverified. No production mutation was performed.
+- Evidence: `reports/evidence/CWS_PRODUCTION_ZIP_E2E_EXECUTION_2026-08-07.md`.
+
 ## Scaling P0 verification — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: P0 queue/idempotency and overload guardrails remain
