@@ -8,12 +8,22 @@ environment change was attempted.
 
 ## Repository and tool evidence
 
-- `HEAD == origin/main == 9e93607991292c2b6906dede90e9f031da82c375`.
+- `HEAD == origin/main == 1e42a8168db85febfd97f3fb34e12bcf55d3ee98`.
 - No repository `.env`, Worker `.env`, staging `.env` or `.vercel` project link
   is present.
 - Vercel CLI 58.7.1 is available, but `vercel whoami` reached the interactive
   authentication path and timed out; no `VERCEL_TOKEN` is present.
 - No authenticated Supabase CLI/psql session or B2 credential is present.
+
+## GitHub → Vercel deployment evidence
+
+- The linked Vercel project is `cws-portal` (`prj_oEEqu24zYqTq1p9FJhzkUake0pEi`),
+  sourced from `trankhanhduy1508-maker/cws-portal`, production branch `main`.
+- The latest observed production deployment is `READY`, but serves commit
+  `fd34ebd00a1ba2641f1f06c5cca3748bf15abffc`, not current `HEAD`.
+- GitHub combined status for `1e42a81` reports Vercel `build-rate-limit`.
+- No CLI device authorization was used and no production project/env/domain
+  mutation was attempted.
 
 ## Production read-only probes
 

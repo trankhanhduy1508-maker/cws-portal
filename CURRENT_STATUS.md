@@ -1,5 +1,17 @@
 # Current Status
 
+## GitHub → Vercel deployment verification — 2026-08-07
+
+- Canonical `main` is `1e42a8168db85febfd97f3fb34e12bcf55d3ee98` and matches
+  `origin/main`.
+- Vercel project `cws-portal` is correctly linked to
+  `trankhanhduy1508-maker/cws-portal`, branch `main`, and its current
+  production deployment is `READY` on the older commit `fd34ebd`.
+- The GitHub check for `1e42a81` reports Vercel `build-rate-limit`; therefore
+  production is **NEEDS_VERIFICATION** for the latest commit. No Vercel CLI
+  device authorization or project/config mutation was used.
+- Evidence: `reports/evidence/CWS_GITHUB_VERCEL_DEPLOYMENT_2026-08-07.md`.
+
 ## Production ZIP E2E execution gate — 2026-08-07
 
 - Read-only probes: Vercel 200, Render `/health` 200, exact CORS preflight
