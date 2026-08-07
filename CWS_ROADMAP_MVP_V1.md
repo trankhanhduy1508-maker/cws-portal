@@ -1,5 +1,16 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## One-job production E2E readiness — 2026-08-07
+
+- **CODE/UNIT VERIFIED**: upload/Drive → job/task dispatch → Worker
+  heartbeat/progress → `REVIEW_READY` → approve/runtime pricing → payment
+  verification → packaging/`FINISHED` → authorized B2 download path.
+- **REAL RUNTIME VERIFIED (read-only only)**: production web HTTP 200, Render
+  `/health` HTTP 200, and anonymous protected jobs/fleet/CRM routes HTTP 401.
+- **NEEDS_VERIFICATION**: one authenticated customer job on a physical Windows
+  Worker with Blender, B2 output, live payment/webhook, and final download.
+- Evidence/checklist: `CWS_PHYSICAL_WORKER_ONE_JOB_READINESS.md`.
+
 ## Staging identity/failover gate — 2026-08-06
 
 - **BLOCKED**: staging preflight cannot run in the current session because no

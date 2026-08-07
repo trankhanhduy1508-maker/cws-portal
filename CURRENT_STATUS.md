@@ -1,5 +1,17 @@
 # Current Status
 
+## Physical Worker one-job E2E readiness — 2026-08-07
+
+- Production read-only smoke: web HTTP 200, Render `/health` HTTP 200, and
+  anonymous jobs/fleet/CRM routes HTTP 401. No production mutation was made.
+- Backend 172/172 + build/lint, frontend 9/9 + lint/build, Worker 49/49 +
+  Python compile pass.
+- Code path is prepared through `REVIEW_READY → approve → runtime price →
+  payment → PAID → packaging → FINISHED → signed download`; physical Worker,
+  B2 runtime, authenticated customer and live payment remain
+  **NEEDS_VERIFICATION**.
+- Evidence/checklist: `CWS_PHYSICAL_WORKER_ONE_JOB_READINESS.md`.
+
 ## Eevee stress benchmark — 2026-08-06
 
 - Added bounded intentionally-unoptimized architecture scene generator and
