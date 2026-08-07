@@ -10,12 +10,12 @@
 
 ## Current evidence
 
-- Local `HEAD == origin/main == 8fc9d08` after the valid evidence commit.
+- Local `HEAD == origin/main == b7884a7` after the valid evidence commit.
 - Vercel project lookup identifies the linked project and `main` branch alias.
 - Latest observed production deployment is `READY`, but its Git SHA is
   `fd34ebd00a1ba2641f1f06c5cca3748bf15abffc`.
-- GitHub combined status for `1e42a81` reports Vercel `build-rate-limit`; no
-  deployment for `8fc9d08` was visible after the push.
+- GitHub combined status for `b7884a7` reports Vercel `build-rate-limit`; no
+  deployment for this latest commit was visible after the push.
 - Production web read-only smoke remains HTTP 200; this does not prove the
   current HEAD is deployed.
 

@@ -8,7 +8,7 @@ environment change was attempted.
 
 ## Repository and tool evidence
 
-- `HEAD == origin/main == 8fc9d08` after the deployment evidence commit.
+- `HEAD == origin/main == b7884a7` after the deployment evidence commit.
 - No repository `.env`, Worker `.env`, staging `.env` or `.vercel` project link
   is present.
 - Vercel CLI 58.7.1 is available, but `vercel whoami` reached the interactive
@@ -21,8 +21,8 @@ environment change was attempted.
   sourced from `trankhanhduy1508-maker/cws-portal`, production branch `main`.
 - The latest observed production deployment is `READY`, but serves commit
   `fd34ebd00a1ba2641f1f06c5cca3748bf15abffc`, not current `HEAD`.
-- GitHub combined status for `1e42a81` reports Vercel `build-rate-limit`; no
-  deployment for the follow-up `8fc9d08` was visible after the push.
+- GitHub combined status for `b7884a7` reports Vercel `build-rate-limit`; no
+  deployment for this latest commit was visible after the push.
 - No CLI device authorization was used and no production project/env/domain
   mutation was attempted.
 
