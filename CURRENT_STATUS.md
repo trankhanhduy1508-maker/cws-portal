@@ -1,5 +1,20 @@
 # Current Status
 
+## Production Worker auto-bind audit — 2026-08-07
+
+- **READ-ONLY VERIFIED**: production Supabase has 29 Worker rows, 0
+  `worker_identities`, 0 `worker_leases`, 0 fresh heartbeat rows, and no
+  hostname/machine-fingerprint field. All observed `boot_id`/`session_id`
+  values are null; no Worker ID maps verifiably to `MAY083`.
+- **CODE VERIFIED**: the canonical Node Agent requires explicit
+  `CWS_WORKER_ID` plus DPAPI credential and only sends authenticated
+  `worker_ping`; it has no auto-register/auto-bind path. The legacy
+  `register_worker` RPC accepts a caller-supplied ID and is not a secure host
+  identity mechanism.
+- **BLOCKED**: no Worker ID was selected or guessed. Auto-binding requires an
+  approved bootstrap identity contract before MAY083 can heartbeat or claim.
+- Evidence: `reports/evidence/CWS_PRODUCTION_WORKER_AUTO_BIND_AUDIT_2026-08-07.md`.
+
 ## Legacy/production Worker feature parity — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: pinned Blender bootstrap, read-only scene preflight,

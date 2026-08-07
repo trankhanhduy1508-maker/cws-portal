@@ -1,5 +1,19 @@
 # CWS WORKER ROADMAP
 
+## Production Worker auto-bind audit — 2026-08-07
+
+- **READ-ONLY VERIFIED**: production `workers` has 29 offline rows, while
+  `worker_identities` and `worker_leases` are empty. The current schema has no
+  hostname or device-fingerprint field and no row maps verifiably to `MAY083`.
+- **CODE VERIFIED**: canonical Node Agent startup requires
+  `CWS_WORKER_ID` + DPAPI credential; its authenticated heartbeat does not
+  register or derive a Worker identity. Legacy `register_worker` only trusted
+  an explicit caller-supplied ID and is not restored.
+- **BLOCKED**: automatic binding cannot be safely restored from current data.
+  An approved bootstrap identity contract is required; reusing an offline ID
+  by guess would violate the Worker identity contract.
+- Evidence: `reports/evidence/CWS_PRODUCTION_WORKER_AUTO_BIND_AUDIT_2026-08-07.md`.
+
 ## Legacy/production parity audit — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: legacy capability inventory is reconciled against

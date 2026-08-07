@@ -1,5 +1,17 @@
 # Official Decisions
 
+## Production Worker host binding audit — 2026-08-07
+
+**[ACTIVE]** Do not infer or reuse a production `worker_id` for a physical
+host from GPU, hostname or registration age. The production schema currently
+has no hostname/device-fingerprint mapping, `worker_identities` is empty, and
+the canonical Node Agent requires an explicitly provisioned per-Worker
+credential. The legacy `register_worker` RPC accepts a caller-supplied ID and
+is not an acceptable automatic binding mechanism. Any future auto-bind must
+use an approved bootstrap identity contract and preserve per-Worker
+credential/HMAC isolation. Evidence:
+`reports/evidence/CWS_PRODUCTION_WORKER_AUTO_BIND_AUDIT_2026-08-07.md`.
+
 ## Failover preflight and Worker provisioning — 2026-08-06
 
 **[ACTIVE]** Migration 020/021 is applied only after the read-only preflight.
