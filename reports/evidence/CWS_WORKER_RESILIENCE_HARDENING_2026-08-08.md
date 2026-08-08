@@ -8,7 +8,7 @@ provider router, broker or new production service was added.
 
 Spec Kit change: `specs/003-worker-resilience-hardening/`
 Analyze: `reports/process/CWS_WORKER_RESILIENCE_ANALYZE_2026-08-08.md`
-Implementation commit: `b68aa08`; final pushed HEAD: `9bc5d3b`.
+Implementation commit: `b68aa08`; final pushed HEAD: `e2b86d7`.
 
 ## Implemented contract
 
