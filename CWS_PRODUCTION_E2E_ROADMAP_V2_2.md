@@ -33,6 +33,25 @@ Do NOT:
 - reintroduce legacy `cws_worker_full.py` as the canonical production path
 - add Redis/NATS/MQTT/microservices before Golden E2E
 
+### Production E2E autonomy — MANDATORY
+
+The production E2E runtime must operate without ChatGPT, Codex, Claude, Kimi, or any other AI being online or taking actions.
+
+Canonical runtime path:
+
+`Customer UI -> Backend/Supabase -> durable Job/Task -> Scheduler/Claim -> Node Agent/Worker -> Blender -> B2 -> status/progress -> review/payment/delivery`
+
+AI may assist development, debugging, log analysis, testing, or incident investigation, but AI must never be a required runtime dependency or orchestration step.
+
+Therefore:
+
+- no normal production job may require an AI to issue a command, approve a transition, restart a workflow, upload output, or mark completion
+- no normal production job may require the Founder to manually advance the workflow after submission
+- Founder-owned credentials/secrets may require a one-time provisioning action, but the same class of action must not be repeated per job
+- once a Worker is provisioned, credentials required for normal operation must be loaded automatically through the approved secure mechanism
+- retries, heartbeat handling, claim/reclaim, progress reporting, completion/failure transitions, cleanup, and return-to-idle must be deterministic code/state-machine behavior
+- if the normal production path stalls until an AI or human intervenes, Golden E2E is NOT PASS
+
 ### Provisioning — SIMPLIFY
 
 For MVP, provisioning must be one-command / one-script as far as practical.
@@ -131,6 +150,8 @@ It must fail closed and must never print or commit secrets.
 
 If an operation truly requires Founder-owned production credentials or must execute on the physical Windows machine because of DPAPI, Codex should automate everything around that step and leave the smallest possible explicit Founder action.
 
+Any Founder action for credential provisioning is setup-only. After successful provisioning, subsequent normal jobs must not require re-entering those credentials or invoking Codex/AI.
+
 ## PASS condition
 
 On MAY083 (first test machine):
@@ -141,6 +162,7 @@ On MAY083 (first test machine):
 - required CWS runtime configuration present
 - scoped B2 credential configured
 - Node Agent preflight passes
+- after provisioning, Node Agent can start/restart and recover its approved runtime configuration without AI assistance
 
 ## Runtime progress — 2026-08-08
 
@@ -172,6 +194,7 @@ Must show real evidence that:
 - production Worker row shows fresh `last_seen_at`
 - Worker becomes eligible/online according to current scheduling rules
 - no shared secret or Supabase service-role key is exposed on the Worker
+- heartbeat continues without Codex/AI keeping the process alive or issuing periodic commands
 
 No simulated PASS.
 
@@ -197,6 +220,8 @@ Prove the core render pipeline on one real production task.
 10. task/job reaches the correct review/completion state
 11. Worker cleanup runs and returns to idle state
 
+All steps after task availability must execute through production code without an AI issuing per-step commands.
+
 ## PASS evidence
 
 Evidence must include at minimum:
@@ -206,6 +231,7 @@ Evidence must include at minimum:
 - real Blender PID/process evidence
 - real B2 object evidence
 - real backend/Supabase completion state
+- evidence that no AI/manual workflow advancement was required between claim and completion
 
 ---
 
@@ -220,6 +246,8 @@ Connect the existing customer production UI to the proven Worker path.
 Customer UI -> backend -> durable job/task -> MAY083 -> Blender -> B2 -> realtime status/progress -> `REVIEW_READY` (or current canonical equivalent).
 
 No fake progress, browser-only mock completion, or demo-only render path is allowed.
+
+From the customer's submission onward, the normal path to `REVIEW_READY` must be autonomous. No Codex/AI/manual command is allowed to move the job through normal runtime states.
 
 Support both currently approved input types only where repository code already defines them (for example `.blend` / approved `.zip` flow). Do not add unrelated formats.
 
@@ -242,6 +270,8 @@ Use the existing approved SePay sandbox/test flow first.
 `REVIEW_READY -> approve/final amount -> QR/payment code -> SePay sandbox webhook -> PAID -> authorized/signed B2 final download`
 
 Verify that payment amount uses the current approved pricing/runtime evidence in the repository.
+
+The payment webhook, payment-state transition, and delivery-link generation must run by deterministic production code; AI must not be required to interpret the payment or release the result.
 
 Do not switch to live payment merely to satisfy this phase.
 
@@ -277,8 +307,24 @@ A single traceable job must prove:
 18. payment becomes PAID
 19. authorized final download is generated
 20. customer downloads final result
+21. after the initial customer action and any explicitly required sandbox payment action, the normal system workflow completes without Codex, ChatGPT, Claude, Kimi, or any other AI issuing runtime commands or changing state
+22. no Founder/manual intervention is required to advance normal job states; setup-only credential provisioning does not count as per-job intervention
 
 Golden E2E is not DONE without runtime evidence across the entire chain.
+
+### AI-OFF acceptance test — REQUIRED
+
+Before marking P6 DONE, run one acceptance test with AI tooling removed from the runtime loop:
+
+- provision required secrets/configuration beforehand
+- start the canonical production services/Worker through the normal supported mechanism
+- do not use AI to issue claim/render/upload/status/completion commands
+- submit one real controlled job through the canonical customer path
+- observe only; do not manually advance job/task states
+- allow the system to claim, render, upload, update progress/state, clean up, and deliver through its own code
+- record timestamps/job ID/Worker ID/Blender process/B2 object/backend state as evidence
+
+If any normal transition requires Codex/AI or Founder intervention, record it as a blocker, fix the deterministic runtime path, and rerun the AI-OFF acceptance test.
 
 ---
 
@@ -296,6 +342,8 @@ Then verify, in priority order:
 6. provisioning second/third machine using the same stable identity process
 7. measured production/staging capacity
 8. scale work only where evidence shows an actual bottleneck
+
+Recovery/failover must also be deterministic and must not depend on AI intervention for expected failure modes.
 
 Do not add new brokers or distributed infrastructure without measured need.
 
@@ -326,6 +374,8 @@ When blocked:
 3. reduce the Founder action to the minimum possible step
 4. state the exact next command/action and expected PASS signal
 
+A missing AI session, expired AI token/quota, or absence of Codex/ChatGPT/Claude/Kimi is never a valid production-runtime blocker. If production requires AI presence, treat that dependency itself as a defect to remove.
+
 ---
 
 # DOCUMENTS-BEFORE-CODE / SOURCE-OF-TRUTH SYNC
@@ -352,7 +402,9 @@ Codex must work from P0 forward continuously.
 
 Priority:
 
-`Golden E2E > minimum safe provisioning > real runtime evidence > refactor/cleanup`
+`Golden E2E > AI-independent deterministic runtime > minimum safe provisioning > real runtime evidence > refactor/cleanup`
+
+Codex's role is to build, verify, and repair the system. Codex must not become part of the system's normal production control loop.
 
 Do as much as possible without asking the Founder to perform steps Codex can do itself.
 
@@ -364,6 +416,4 @@ Canonical deployment resources already exist; inspect and reuse them.
 
 # NEXT MILESTONE
 
-**First authenticated heartbeat from MAY083 into production using the canonical Node Agent.**
-
-After that, immediately continue to one real claim/render/B2 completion unless a real blocker appears.
+**Complete the scoped B2 one-time provisioning blocker on MAY083, then continue automatically to authenticated heartbeat and one real claim -> Blender -> B2 completion. After the runtime path is proven, execute the required AI-OFF acceptance test.**
