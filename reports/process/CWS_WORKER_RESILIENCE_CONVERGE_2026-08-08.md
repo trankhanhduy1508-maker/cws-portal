@@ -6,8 +6,9 @@
 requirements, plan decisions and implementation tasks in
 `specs/003-worker-resilience-hardening/`.
 
-T019 delivery is complete: implementation commit `b68aa08` and final pushed
-HEAD `e2b86d7`. It is not an implementation gap.
+T019 delivery is complete: implementation commit `b68aa08`; documentation
+follow-up commits are on `main` after the implementation. It is not an
+implementation gap.
 
 ## Checks
 
