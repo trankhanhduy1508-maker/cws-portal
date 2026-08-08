@@ -773,12 +773,38 @@ class ProductionNodeAgentRuntime:
         finally:
             agent.close()
 
+    def run_heartbeat_only(self) -> None:
+        """Maintain authenticated presence without claiming queued work.
+
+        This is a bounded operational mode for maintenance/readiness windows;
+        normal production rendering continues to use ``run_forever``.
+        """
+        self.rpc.transition("ACTIVE_IDLE", reason="heartbeat_only")
+        backoff = self.config.heartbeat_seconds
+        while True:
+            try:
+                self.rpc.worker_ping()
+                backoff = self.config.heartbeat_seconds
+                time.sleep(self.config.heartbeat_seconds)
+            except Exception as exc:
+                _LOGGER.warning("Heartbeat-only ping failed: %s", type(exc).__name__)
+                time.sleep(min(backoff, 60.0))
+                backoff = min(backoff * 2.0, 60.0)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="CWS production Node Agent")
     parser.add_argument("--once", action="store_true", help="poll once and exit if idle")
+    parser.add_argument(
+        "--heartbeat-only",
+        action="store_true",
+        help="maintain authenticated ACTIVE_IDLE presence without claiming work",
+    )
     args = parser.parse_args()
     runtime = ProductionNodeAgentRuntime(ProductionConfig.from_env())
+    if args.heartbeat_only:
+        runtime.run_heartbeat_only()
+        return 0
     if not args.once:
         runtime.run_forever()
         return 0

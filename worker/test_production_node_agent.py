@@ -220,6 +220,33 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
                 "GET",
             )
 
+    def test_heartbeat_only_reports_idle_before_first_ping(self):
+        from unittest.mock import patch
+        from production_node_agent import ProductionNodeAgentRuntime
+
+        runtime = object.__new__(ProductionNodeAgentRuntime)
+
+        class Rpc:
+            def __init__(self):
+                self.calls = []
+
+            def transition(self, state, reason=None):
+                self.calls.append(("transition", state, reason))
+
+            def worker_ping(self):
+                self.calls.append(("ping",))
+                raise KeyboardInterrupt
+
+        runtime.rpc = Rpc()
+        runtime.config = type("Config", (), {"heartbeat_seconds": 15})()
+        with patch("production_node_agent.time.sleep"):
+            with self.assertRaises(KeyboardInterrupt):
+                runtime.run_heartbeat_only()
+        self.assertEqual(
+            runtime.rpc.calls,
+            [("transition", "ACTIVE_IDLE", "heartbeat_only"), ("ping",)],
+        )
+
     def test_drive_and_assignment_validation_fail_closed(self):
         self.assertEqual(
             DriveOrB2Downloader._drive_id(
