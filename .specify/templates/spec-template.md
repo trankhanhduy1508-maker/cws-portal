@@ -8,6 +8,25 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+## Pre-Spec Diagnostic Gate *(mandatory)*
+
+> Do not continue to requirements or implementation until this section is grounded in repository/runtime evidence. Follow `CWS_EXECUTION_FUNNEL.md`.
+
+- **GOAL**: [What real customer/system outcome must exist?]
+- **OBSERVATION**: [What is actually happening?]
+- **EVIDENCE**: [Logs, code path, DB/runtime evidence, report, screenshot, or test proving the observation]
+- **EXPECTED**: [Expected behavior]
+- **ACTUAL**: [Observed behavior]
+- **PROXIMATE CAUSE**: [Immediate mechanism of failure]
+- **ROOT CAUSE / HYPOTHESIS**: [Deeper condition that allowed the failure]
+- **FALSIFYING EVIDENCE**: [What evidence would prove this diagnosis wrong?]
+- **ONE CURRENT BOTTLENECK**: [First verified FAIL/BLOCKED stage in the real E2E path]
+- **MINIMUM FIX**: [Smallest durable correction intended to remove this bottleneck]
+- **NON-GOALS**: [Related work explicitly excluded]
+- **SUCCESS EVIDENCE**: [What must be observed to verify the fix, including production runtime when applicable]
+
+If root cause is not yet confirmed, keep it explicitly as a falsifiable hypothesis and remain in investigation until enough evidence exists to justify the minimum fix.
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -88,15 +107,13 @@
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-002**: System MUST [data requirement, e.g., "persist user preferences"]
+- **FR-003**: System MUST [behavior, e.g., "log all security events"]
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-004**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-005**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
@@ -112,20 +129,16 @@
 
 ### Measurable Outcomes
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-001**: [Measurable outcome tied to the diagnosed bottleneck]
+- **SC-002**: [Regression/safety outcome]
+- **SC-003**: [Production/runtime outcome when applicable]
 
 ## Assumptions
 
 <!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
+  ACTION REQUIRED: Keep assumptions explicit. Do not convert unknown technical state into a fact.
 -->
 
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- [Assumption about scope]
+- [Assumption about data/environment]
+- [Dependency on existing system/service]
