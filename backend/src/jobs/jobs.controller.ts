@@ -48,12 +48,21 @@ export class JobsController {
       throw new BadRequestException('Chỉ hỗ trợ file .blend, .zip hoặc .rar');
     }
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    if (!customerId) throw new UnauthorizedException('Cần đăng nhập để tạo job');
-    if (dto.driveLink) {
+    if (!customerId)
+      throw new UnauthorizedException('Cần đăng nhập để tạo job');
+    // /drive/resolve may already have materialized a public Drive file to
+    // B2 and return fileRef. Never download Drive again when that capability
+    // is present; the direct-link branch is only a fallback for older/API
+    // clients that submit driveLink without a materialized fileRef.
+    if (dto.driveLink && !dto.fileRef) {
       if (!this.googleDriveService || !this.inputUploadsService) {
-        throw new UnauthorizedException('Google Drive import chưa được cấu hình');
+        throw new UnauthorizedException(
+          'Google Drive import chưa được cấu hình',
+        );
       }
-      const imported = await this.googleDriveService.materializeToB2(dto.driveLink);
+      const imported = await this.googleDriveService.materializeToB2(
+        dto.driveLink,
+      );
       dto = {
         ...dto,
         driveLink: null,

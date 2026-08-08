@@ -6,8 +6,10 @@ import { B2StorageService } from './b2-storage.service';
 
 describe('GoogleDriveService', () => {
   let service: GoogleDriveService;
+  let b2StorageMock: { uploadFile: jest.Mock };
 
   beforeEach(async () => {
+    b2StorageMock = { uploadFile: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GoogleDriveService,
@@ -15,7 +17,7 @@ describe('GoogleDriveService', () => {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue(null) }, // không cấu hình API key
         },
-        { provide: B2StorageService, useValue: { uploadFile: jest.fn() } },
+        { provide: B2StorageService, useValue: b2StorageMock },
       ],
     }).compile();
 
@@ -34,16 +36,56 @@ describe('GoogleDriveService', () => {
   });
 
   describe('trích file ID hợp lệ', () => {
-    it('từ chối Drive file khi Backend chưa có trusted Google Drive capability', async () => {
-      await expect(service.resolve(
-        'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view?usp=drivesdk',
-      )).rejects.toThrow(/Google Drive import/);
+    it('dùng public direct download khi Backend không có Google Drive API key', async () => {
+      const bytes = Buffer.concat([
+        Buffer.from('BLENDER'),
+        Buffer.from([45, 118, 50]),
+      ]);
+      b2StorageMock.uploadFile.mockResolvedValue({
+        key: 'uploads/public-scene.blend',
+      });
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            '<form><input name="uuid" value="uuid-1"></form><a>scene.blend (1M)</a>',
+            { headers: { 'content-type': 'text/html' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(bytes, {
+            headers: {
+              'content-type': 'application/octet-stream',
+              'content-disposition': 'attachment; filename="scene.blend"',
+              'content-length': String(bytes.length),
+            },
+          }),
+        );
+      await expect(
+        service.resolve(
+          'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view?usp=drivesdk',
+        ),
+      ).resolves.toMatchObject({
+        fileRef: 'uploads/public-scene.blend',
+        fileName: 'scene.blend',
+        fileSizeBytes: bytes.length,
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      fetchSpy.mockRestore();
     });
 
-    it('từ chối link dạng ?id=<id> khi Backend chưa cấu hình', async () => {
-      await expect(service.resolve(
-        'https://drive.google.com/open?id=1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ',
-      )).rejects.toThrow(/Google Drive import/);
+    it('hướng dẫn rõ ràng khi public link không có trang xác nhận tải', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('<html><title>Sign in</title></html>', {
+          headers: { 'content-type': 'text/html' },
+        }),
+      );
+      await expect(
+        service.resolve(
+          'https://drive.google.com/open?id=1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ',
+        ),
+      ).rejects.toThrow(/Anyone with the link/);
+      fetchSpy.mockRestore();
     });
   });
 
@@ -68,7 +110,11 @@ describe('GoogleDriveService', () => {
     let b2Storage: { uploadFile: jest.Mock };
 
     beforeEach(async () => {
-      b2Storage = { uploadFile: jest.fn().mockResolvedValue({ key: 'uploads/drive-project.blend' }) };
+      b2Storage = {
+        uploadFile: jest
+          .fn()
+          .mockResolvedValue({ key: 'uploads/drive-project.blend' }),
+      };
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           GoogleDriveService,
@@ -117,25 +163,40 @@ describe('GoogleDriveService', () => {
     });
 
     it('materializes verified Drive input to B2 before a B2-only Worker can claim it', async () => {
-      const bytes = Buffer.concat([Buffer.from('BLENDER'), Buffer.from([45, 118, 50])]);
+      const bytes = Buffer.concat([
+        Buffer.from('BLENDER'),
+        Buffer.from([45, 118, 50]),
+      ]);
       fetchSpy
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ name: 'scene.blend', size: String(bytes.length) }),
+          json: () =>
+            Promise.resolve({
+              name: 'scene.blend',
+              size: String(bytes.length),
+            }),
         } as Response)
-        .mockResolvedValueOnce(new Response(bytes, { headers: { 'content-length': String(bytes.length) } }));
+        .mockResolvedValueOnce(
+          new Response(bytes, {
+            headers: { 'content-length': String(bytes.length) },
+          }),
+        );
 
-      await expect(serviceWithApiKey.materializeToB2(
-        'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view',
-      )).resolves.toEqual({
+      await expect(
+        serviceWithApiKey.materializeToB2(
+          'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view',
+        ),
+      ).resolves.toEqual({
         key: 'uploads/drive-project.blend',
         fileName: 'scene.blend',
         fileSizeBytes: bytes.length,
       });
-      expect(b2Storage.uploadFile).toHaveBeenCalledWith(expect.objectContaining({
-        originalname: 'scene.blend',
-        size: bytes.length,
-      }));
+      expect(b2Storage.uploadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalname: 'scene.blend',
+          size: bytes.length,
+        }),
+      );
     });
 
     it('Google Drive API lỗi khác 404 (vd 500/quota) -> KHÔNG chặn cứng, trả null thay vì bịa dữ liệu (không phải lỗi quyền, không nên hiện nhầm thông báo "kiểm tra quyền")', async () => {

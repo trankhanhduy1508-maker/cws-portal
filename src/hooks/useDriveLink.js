@@ -7,7 +7,7 @@ import { submitGoogleDrive } from '../services/RenderService';
  */
 export function useDriveLink() {
   const [driveLink, setDriveLinkState] = useState(null);
-  const [resolvedInfo, setResolvedInfo] = useState(null); // { fileName, fileSizeBytes }
+  const [resolvedInfo, setResolvedInfo] = useState(null); // { fileRef, fileName, fileSizeBytes }
   const [linkError, setLinkError] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
 
@@ -17,7 +17,11 @@ export function useDriveLink() {
     try {
       const result = await submitGoogleDrive(rawLink);
       setDriveLinkState(result.driveLink);
-      setResolvedInfo({ fileName: result.fileName, fileSizeBytes: result.fileSizeBytes });
+      setResolvedInfo({
+        fileRef: result.fileRef || null,
+        fileName: result.fileName,
+        fileSizeBytes: result.fileSizeBytes,
+      });
       return true;
     } catch (err) {
       setLinkError(err.message || 'Link không hợp lệ');
@@ -35,5 +39,24 @@ export function useDriveLink() {
     setResolvedInfo(null);
   }, []);
 
-  return { driveLink, linkError, resolvedInfo, isResolving, submitLink, clearLink };
+  const restoreResolved = useCallback((result) => {
+    if (!result?.driveLink) return;
+    setDriveLinkState(result.driveLink);
+    setResolvedInfo({
+      fileRef: result.fileRef || null,
+      fileName: result.fileName || null,
+      fileSizeBytes: result.fileSizeBytes ?? null,
+    });
+    setLinkError(null);
+  }, []);
+
+  return {
+    driveLink,
+    linkError,
+    resolvedInfo,
+    isResolving,
+    submitLink,
+    restoreResolved,
+    clearLink,
+  };
 }

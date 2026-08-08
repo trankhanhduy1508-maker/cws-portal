@@ -43,6 +43,9 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
             blend = Path(root) / "scene.blend"
             blend.write_bytes(b"BLENDER-v")
             DriveOrB2Downloader._validate_downloaded_file(blend)
+            compressed_blend = Path(root) / "compressed.blend"
+            compressed_blend.write_bytes(b"\x28\xb5\x2f\xfd\x00\x58\x9d\x21")
+            DriveOrB2Downloader._validate_downloaded_file(compressed_blend)
 
     def test_config_requires_all_production_credentials(self):
         with self.assertRaises(PermanentWorkerError):

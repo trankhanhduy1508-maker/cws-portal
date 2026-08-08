@@ -111,7 +111,15 @@ function CustomerPortalApp() {
   const [selectedProfileId, setSelectedProfileId] = useState(null);
 
   const { file, fileError, setFile, clearFile } = useFileSelection();
-  const { driveLink, linkError, resolvedInfo, isResolving, submitLink, clearLink } = useDriveLink();
+  const {
+    driveLink,
+    linkError,
+    resolvedInfo,
+    isResolving,
+    submitLink,
+    restoreResolved,
+    clearLink,
+  } = useDriveLink();
   const fileUploadResolver = useFileUploadResolver();
   const { estimates, isLoading: isLoadingEstimates } = useProfileEstimates(
     screen === SCREEN.PROFILE ? resolvedInput : null
@@ -134,13 +142,20 @@ function CustomerPortalApp() {
   // sẵn nên bấm "Bắt đầu render" lần 2 sẽ qua ngay).
   useEffect(() => {
     if (!auth.isAuthenticated || screen !== SCREEN.LANDING) return;
-    let pendingLink = null;
+    let pendingInput = null;
     try {
-      pendingLink = sessionStorage.getItem(PENDING_DRIVE_LINK_KEY);
+      const raw = sessionStorage.getItem(PENDING_DRIVE_LINK_KEY);
+      if (raw) {
+        try {
+          pendingInput = JSON.parse(raw);
+        } catch {
+          pendingInput = { driveLink: raw };
+        }
+      }
     } catch {
       // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán lại link.
     }
-    if (!pendingLink) return;
+    if (!pendingInput?.driveLink) return;
     try {
       sessionStorage.removeItem(PENDING_DRIVE_LINK_KEY);
     } catch {
@@ -148,8 +163,12 @@ function CustomerPortalApp() {
     }
     autoContinueRef.current = true;
     setSource(FILE_SOURCE.GOOGLE_DRIVE);
-    submitLink(pendingLink);
-  }, [auth.isAuthenticated, screen, submitLink]);
+    if (pendingInput.fileRef) {
+      restoreResolved(pendingInput);
+    } else {
+      submitLink(pendingInput.driveLink);
+    }
+  }, [auth.isAuthenticated, screen, restoreResolved, submitLink]);
 
   // ---- Đăng nhập Google — dùng chung cho nút Google trên Landing lẫn
   // bước bắt buộc đăng nhập khi bấm Render (handleContinueFromUpload).
@@ -158,14 +177,17 @@ function CustomerPortalApp() {
   const triggerGoogleLogin = useCallback(async () => {
     if (source === FILE_SOURCE.GOOGLE_DRIVE && driveLink) {
       try {
-        sessionStorage.setItem(PENDING_DRIVE_LINK_KEY, driveLink);
+        sessionStorage.setItem(
+          PENDING_DRIVE_LINK_KEY,
+          JSON.stringify({ driveLink, ...(resolvedInfo || {}) }),
+        );
       } catch {
         // sessionStorage có thể bị chặn — bỏ qua an toàn, khách tự dán
         // lại link sau khi đăng nhập nếu trình duyệt không hỗ trợ.
       }
     }
     return auth.login();
-  }, [auth, source, driveLink]);
+  }, [auth, source, driveLink, resolvedInfo]);
 
   // ---- Bước 1: Upload/Drive -> Render Profile. Đăng nhập Google chỉ
   // thực sự BẮT BUỘC tại đây (khách được xem/chọn Upload hoặc dán link
@@ -196,7 +218,12 @@ function CustomerPortalApp() {
         setActiveProjectName(uploaded.fileName);
       } else {
         const fileName = resolvedInfo?.fileName || driveLink;
-        setResolvedInput({ fileRef: null, driveLink, fileName, fileSizeBytes: resolvedInfo?.fileSizeBytes });
+        setResolvedInput({
+          fileRef: resolvedInfo?.fileRef || null,
+          driveLink: resolvedInfo?.fileRef ? null : driveLink,
+          fileName,
+          fileSizeBytes: resolvedInfo?.fileSizeBytes,
+        });
         setActiveProjectName(fileName);
       }
       setScreen(SCREEN.PROFILE);

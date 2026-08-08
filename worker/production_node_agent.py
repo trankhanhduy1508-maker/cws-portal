@@ -452,6 +452,10 @@ class DriveOrB2Downloader(ProjectDownloader):
             if suffix == ".blend":
                 if prefix.startswith(b"BLENDER"):
                     return
+                # Blender-native compressed .blend files use a Zstandard
+                # frame header instead of the ASCII BLENDER header.
+                if prefix[:4] == b"\x28\xb5\x2f\xfd":
+                    return
                 if prefix[:2] == b"\x1f\x8b":
                     with gzip.open(path, "rb") as compressed:
                         if compressed.read(7) == b"BLENDER":
@@ -528,7 +532,11 @@ class DriveOrB2Downloader(ProjectDownloader):
                 prefix = stream.read(8)
         except OSError as exc:
             raise PermanentWorkerError("downloaded project could not be read") from exc
-        if prefix.startswith(b"BLENDER") or prefix[:2] == b"\x1f\x8b":
+        if (
+            prefix.startswith(b"BLENDER")
+            or prefix[:2] == b"\x1f\x8b"
+            or prefix[:4] == b"\x28\xb5\x2f\xfd"
+        ):
             return ".blend"
         if prefix[:4] == b"PK\x03\x04":
             return ".zip"

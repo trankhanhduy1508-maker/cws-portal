@@ -271,16 +271,24 @@ Response: `{ "fileRef": "uploads/uuid-name.blend", "fileName": "name.blend", "fi
 Giới hạn: chỉ `.blend`, tối đa 2GB.
 
 ### POST /drive/resolve
-Xác nhận + đọc metadata 1 link chia sẻ (Google Drive/OneDrive/Dropbox/Direct Link).
+Xác nhận một link chia sẻ. Với Google Drive public file link, Backend tải
+streaming đúng một lần vào B2 input canonical và trả luôn `fileRef`; Worker
+không bao giờ tải trực tiếp từ Drive. Folder link vẫn cần capability Google
+Drive API hiện hữu.
 
 Request: `{ "driveLink": "https://..." }`
 
-Response: `{ "driveLink", "fileName": string|null, "fileSizeBytes": number|null }`
+Response: `{ "driveLink", "fileName": string|null, "fileSizeBytes": number|null, "fileRef": string|null }`
 
-`fileName`/`fileSizeBytes` là `null` nếu: chưa cấu hình
-`GOOGLE_DRIVE_API_KEY`, HOẶC link không phải Google Drive (OneDrive/
-Dropbox được chấp nhận cú pháp nhưng chưa có tích hợp API thật — trả
-null thay vì bịa, không phải lỗi).
+Public Google Drive file links không cần `GOOGLE_DRIVE_API_KEY`. Backend dùng
+download flow `uc?export=download` + trang cảnh báo virus scan (`uuid`) +
+`drive.usercontent.google.com`, giới hạn 2GB, kiểm tra HTTP/redirect/signature,
+ghi file tạm theo stream và cleanup khi lỗi. File private hoặc cần đăng nhập
+Google Drive trả lỗi rõ ràng, hướng dẫn bật “Anyone with the link”.
+
+Với link không phải Google Drive (OneDrive/Dropbox), endpoint vẫn trả null
+thay vì bịa metadata. Folder link cần `GOOGLE_DRIVE_API_KEY` để liệt kê đúng
+một project.
 
 Tự động từ chối (400) nếu link Google Drive là link THƯ MỤC thay vì
 file — phát hiện sớm lỗi đã từng xảy ra thật với job CWS-JOB5.
