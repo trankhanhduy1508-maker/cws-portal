@@ -56,6 +56,13 @@ Do not require `worker_identities` or `worker_leases` for Golden E2E unless curr
 
 # P0 — PRODUCTION REALITY CHECK
 
+**Status: DONE — 2026-08-08.** Production migration/schema/RPC state was
+verified directly. Migrations 020/021/022 were already present and were not
+re-applied. Migration `worker_rpc_gateway_only` closed historical direct
+publishable-key Worker RPC access while preserving Backend `service_role`
+execution. Evidence:
+`reports/evidence/CWS_PRODUCTION_E2E_V2_2_P0_REALITY_CHECK_2026-08-08.md`.
+
 ## Goal
 
 Establish the real production state before any mutation.

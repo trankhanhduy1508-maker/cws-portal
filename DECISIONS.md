@@ -1,5 +1,16 @@
 # Official Decisions
 
+## Worker RPC gateway-only boundary — 2026-08-08
+
+**[ACTIVE]** Production Worker control-plane RPCs are executable only through
+the authenticated Backend Worker gateway. Direct `anon`/`authenticated`
+Supabase EXECUTE is revoked for current and historical Worker registration,
+claim, heartbeat, progress, completion, failure and state RPCs. Backend
+`service_role` execution remains explicitly granted; Workers never receive a
+Supabase service-role key. Production migration `worker_rpc_gateway_only`
+version `20260808023827` is verified. Evidence:
+`reports/evidence/CWS_PRODUCTION_E2E_V2_2_P0_REALITY_CHECK_2026-08-08.md`.
+
 ## Secure first-run Worker enrollment — 2026-08-07
 
 **[ACTIVE]** The canonical Node Agent must not self-register a production
@@ -62,7 +73,10 @@ claiming false resume. Evidence:
 
 **[ACTIVE]** Historical credentials are never printed or embedded in reports. Legacy credential-bearing helpers are disabled; production rotation is Owner-controlled and follows replacement → deploy/health-check → revoke-old order.
 
-**[ACTIVE]** Worker publishable RPCs remain available only because the current staging/full-E2E contract depends on them; production rollout remains blocked until worker node authentication is redesigned and reviewed. Migration 019 was applied only to staging.
+**[SUPERSEDED — by Worker RPC gateway-only boundary 2026-08-08]** Worker
+publishable RPCs remain available because the staging/full-E2E contract depends
+on them. Production now uses the authenticated Backend gateway and direct
+client-role EXECUTE is revoked.
 
 Authentication
 
@@ -263,7 +277,7 @@ Không thêm campaign, sales pipeline hay marketing automation.
 
 ## Worker production identity/RPC — 2026-08-06
 
-**[PROPOSED — Founder approval required]** Production Workers use one random
+**[ACTIVE — approved by Issue #18 / Roadmap V2.2 on 2026-08-08]** Production Workers use one random
 per-worker credential, stored only as a SHA-256 hash by the backend. Requests
 use HTTPS, `Authorization: Worker`, worker id, timestamp, unique nonce and
 HMAC-SHA256 over the method/path/raw-body hash. Backend checks lifecycle,

@@ -1,5 +1,18 @@
 # Current Status
 
+## Production E2E Roadmap V2.2 P0 — 2026-08-08
+
+- **RUNTIME VERIFIED / DONE**: production migrations 020/021/022, required
+  Worker tables/columns/RPCs, counts and backend health were checked directly.
+- **P0 SECURITY FIXED**: historical direct Worker RPC execution by
+  `anon`/`authenticated` was revoked by production migration
+  `worker_rpc_gateway_only` (`20260808023827`); `service_role` remains allowed
+  for the authenticated Backend gateway and all covered functions have pinned
+  `search_path`.
+- **NEXT**: P1 one-command physical Worker provisioning for MAY083. Production
+  still has 0 Worker identities, 0 leases and 0 fresh heartbeats.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P0_REALITY_CHECK_2026-08-08.md`.
+
 ## Production worker auto-provision gate — 2026-08-07
 
 - **READ-ONLY VERIFIED**: production Supabase project `ynhxlxetwuiyejcjypsi`

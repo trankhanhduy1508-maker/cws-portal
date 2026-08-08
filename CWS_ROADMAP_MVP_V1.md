@@ -1,5 +1,15 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production E2E Roadmap V2.2 P0 — 2026-08-08 [DONE]
+
+- Production schema and migration history directly confirm 020/021/022 and
+  the canonical authenticated Worker RPC contract.
+- Direct `anon`/`authenticated` execution of current and historical Worker
+  RPCs is revoked; Backend `service_role` access remains available.
+- Production has 0 identities, 0 leases and 0 fresh Workers, so P1 physical
+  provisioning is the next gate.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P0_REALITY_CHECK_2026-08-08.md`.
+
 ## Worker parity gate — 2026-08-07
 
 - **CODE/UNIT VERIFIED**: legacy capability inventory is reconciled against
