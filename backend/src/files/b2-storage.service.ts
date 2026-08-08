@@ -5,6 +5,7 @@ import { promises as fsPromises } from 'fs';
 import {
   S3Client,
   PutObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
@@ -107,7 +108,9 @@ export class B2StorageService {
           await fsPromises.unlink(file.path);
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            this.logger.warn(`Không cleanup được file tạm upload: ${(error as Error).message}`);
+            this.logger.warn(
+              `Không cleanup được file tạm upload: ${(error as Error).message}`,
+            );
           }
         }
       }
@@ -169,6 +172,14 @@ export class B2StorageService {
         ContentType: contentType,
       }),
     );
+    const remote = await this.s3.send(
+      new HeadObjectCommand({ Bucket: this.bucketName, Key: key }),
+    );
+    if (remote.ContentLength !== buffer.length) {
+      throw new Error(
+        `B2 remote verification failed for ${key}: expected ${buffer.length} bytes, received ${remote.ContentLength ?? 'unknown'}`,
+      );
+    }
     return `https://${this.endpoint}/${this.bucketName}/${key}`;
   }
 }

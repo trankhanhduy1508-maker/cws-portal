@@ -29,8 +29,9 @@ are now present and record the authoritative V2.4 order and gates.
   protected render-quality fields are compared. Customer Blender uses
   background CLI and `--disable-autoexec`.
 - Scheduler performs real output validation upstream of packaging, uploads the
-  full result under `final/` before payment, keeps raw download hidden until
-  `PAID`, creates real 3–5 CWS-watermarked previews, then creates final price,
+  full result under `final/` before payment, verifies the remote B2 object size
+  with `HeadObject`, keeps raw download hidden until `PAID`, creates real 3–5
+  CWS-watermarked previews, then creates final price,
   payment record/code and QR. Canonical MB account is required; no account is
   invented.
 - SePay matching requires exact `CWS {storage_code} {payment_code}` content and
