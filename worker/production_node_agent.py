@@ -19,6 +19,7 @@ import hashlib
 import http.client
 import json
 import logging
+import msvcrt
 import os
 import re
 import subprocess
@@ -70,6 +71,41 @@ _OBSERVED_STATES = {
     NodeState.RECOVERY.value: "RECOVERY",
     NodeState.CLEANUP.value: "CLEANUP",
 }
+
+
+class NodeAgentInstanceLock:
+    """Crash-safe Windows file lock preventing duplicate Node Agent instances."""
+
+    def __init__(self, workspace: Path):
+        self.path = workspace / ".node-agent.lock"
+        self._stream: Any | None = None
+
+    def __enter__(self) -> "NodeAgentInstanceLock":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        stream = self.path.open("a+b")
+        if stream.tell() == 0:
+            stream.write(b"0")
+            stream.flush()
+        stream.seek(0)
+        try:
+            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            stream.close()
+            raise PermanentWorkerError(
+                "another CWS Node Agent instance is already running"
+            ) from exc
+        self._stream = stream
+        return self
+
+    def __exit__(self, *_args: Any) -> None:
+        if self._stream is None:
+            return
+        self._stream.seek(0)
+        try:
+            msvcrt.locking(self._stream.fileno(), msvcrt.LK_UNLCK, 1)
+        finally:
+            self._stream.close()
+            self._stream = None
 
 
 @dataclass(frozen=True)
@@ -844,23 +880,25 @@ def main() -> int:
         help="maintain authenticated ACTIVE_IDLE presence without claiming work",
     )
     args = parser.parse_args()
-    runtime = ProductionNodeAgentRuntime(ProductionConfig.from_env())
-    if args.heartbeat_only:
-        runtime.run_heartbeat_only()
+    config = ProductionConfig.from_env()
+    with NodeAgentInstanceLock(config.workspace):
+        runtime = ProductionNodeAgentRuntime(config)
+        if args.heartbeat_only:
+            runtime.run_heartbeat_only()
+            return 0
+        if not args.once:
+            runtime.run_forever()
+            return 0
+        runtime.rpc.worker_ping()
+        spec = runtime.rpc.claim()
+        if spec is None:
+            return 0
+        handle = runtime._launch(Job(spec.task_id, spec))
+        while not handle.done:
+            time.sleep(0.2)
+        if handle.error is not None:
+            raise handle.error
         return 0
-    if not args.once:
-        runtime.run_forever()
-        return 0
-    runtime.rpc.worker_ping()
-    spec = runtime.rpc.claim()
-    if spec is None:
-        return 0
-    handle = runtime._launch(Job(spec.task_id, spec))
-    while not handle.done:
-        time.sleep(0.2)
-    if handle.error is not None:
-        raise handle.error
-    return 0
 
 
 if __name__ == "__main__":

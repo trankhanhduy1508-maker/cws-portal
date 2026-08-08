@@ -55,7 +55,7 @@ an anon/authenticated policy.
 - Backend: 38 suites / 195 tests PASS; Nest build PASS.
 - Enrollment service: issuance/hash-only storage, malformed/duplicate batch,
   atomic redemption and fail-closed negative tests PASS.
-- Worker: 85 tests PASS, including HTTPS-only redeem, no plaintext final
+- Worker: 86 tests PASS, including HTTPS-only redeem, no plaintext final
   credential in request, bounded batch inventory and migration privilege
   assertions.
 - 100 deterministic Worker IDs spread startup heartbeat/claim over the
@@ -71,6 +71,16 @@ After `f276193` was pushed, canonical Render served `/health` with 200. The new
 ticket endpoint rejected anonymous issuance with 401, and malformed redemption
 also returned 401. These fail-closed probes issued no ticket and changed no
 Worker identity.
+
+## MAY083 autonomous-loop evidence
+
+The prior maintenance `--heartbeat-only` process was replaced by the canonical
+normal `production_node_agent.py` loop, PID 6164. Supabase advanced MAY083
+`last_seen_at` from `2026-08-08 05:11:39.987271+00` to
+`2026-08-08 05:12:24.519194+00`; state remained `ACTIVE_IDLE` and active-task
+count remained zero. A concurrent `--once` invocation exited 1 with `another
+CWS Node Agent instance is already running`, verifying the OS-backed workspace
+lock. No Drive task was claimed by this B2-only Worker.
 
 ## Runtime boundary
 

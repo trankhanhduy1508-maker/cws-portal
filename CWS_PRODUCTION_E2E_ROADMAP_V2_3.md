@@ -138,6 +138,9 @@ The enrollment design must remain automatable for later Workers.
   enrollment secret is required.
 - **NEEDS PHYSICAL VERIFICATION**: a second physical Worker has not redeemed a
   real ticket. Existing MAY083 identity remains valid and unchanged.
+- **MAY083 AUTONOMOUS LOOP RUNTIME VERIFIED**: canonical production Node Agent
+  runs in normal claim mode (not heartbeat-only), maintains fresh presence and
+  rejects a duplicate local instance. It currently has no B2 task to execute.
 
 ## P1B — Replace per-Worker B2 secret dependency
 

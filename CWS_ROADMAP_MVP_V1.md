@@ -9,6 +9,10 @@
   IDs and deterministic startup jitter reduces synchronized heartbeat/claim.
 - **LOCAL SIMULATED LOAD VERIFIED**: auth/ownership-aware Nest scenarios at
   10/25/50/100 customers PASS; this is not a staging/production capacity claim.
+- **P2/P3 READY RUNTIME VERIFIED**: MAY083 runs canonical autonomous claim loop
+  as PID 6164, heartbeat advanced across cycles, no incompatible task was
+  claimed, and a duplicate launcher was rejected by the workspace instance
+  lock. Real task/Blender/B2 completion remains NEEDS_VERIFICATION.
 - **NEEDS PHYSICAL VERIFICATION**: enroll a second real host through the new
   path and run P3 with a customer-owned B2 task. This is not Golden E2E PASS.
 - Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.

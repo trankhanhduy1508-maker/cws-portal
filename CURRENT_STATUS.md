@@ -26,6 +26,13 @@
   10/25/50/100-customer scenarios PASS. At 100 jobs: 0 submit errors, 0
   duplicate claims, one failover and one stale completion rejection. This is
   simulated local evidence, not production capacity PASS.
+- **P3 AUTONOMOUS CLAIM LOOP RUNTIME VERIFIED READY/IDLE**: MAY083 now runs
+  canonical `production_node_agent.py` without `--heartbeat-only` as PID 6164.
+  Production `last_seen_at` advanced from `05:11:39.987271+00` to
+  `05:12:24.519194+00`; Worker remains `ACTIVE_IDLE`, owns zero active tasks
+  and advertises B2-only input. A second launcher exited 1 with the new
+  instance-lock error, proving duplicate Node Agent prevention on this host.
+  This is not a Blender/B2 task PASS.
 - **NEXT / NEEDS_VERIFICATION**: P3 requires one real authenticated customer
   `.blend`/`.zip` B2 upload/task. No physical second-Worker enrollment or
   Blender/B2 completion is claimed.

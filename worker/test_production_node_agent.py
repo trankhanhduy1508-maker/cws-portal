@@ -5,6 +5,7 @@ from pathlib import Path
 from production_node_agent import (
     DriveOrB2Downloader,
     ProductionConfig,
+    NodeAgentInstanceLock,
     ProductionRpcAdapter,
     ProductionB2CheckpointStore,
     _capability_url,
@@ -293,6 +294,18 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         self.assertGreater(max(first) - min(first), 4.0)
         self.assertGreaterEqual(len({int(value * 10) for value in first}), 30)
         self.assertEqual(_stable_startup_jitter("CWS-A", 0), 0)
+
+    def test_duplicate_node_agent_instance_is_rejected_and_lock_recovers(self):
+        with tempfile.TemporaryDirectory() as root:
+            first = NodeAgentInstanceLock(Path(root))
+            second = NodeAgentInstanceLock(Path(root))
+            with first:
+                with self.assertRaisesRegex(
+                    PermanentWorkerError, "already running"
+                ):
+                    second.__enter__()
+            with NodeAgentInstanceLock(Path(root)):
+                pass
 
     def test_drive_and_assignment_validation_fail_closed(self):
         self.assertEqual(
