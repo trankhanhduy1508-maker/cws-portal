@@ -60,6 +60,10 @@ was developed and no production state was faked or mutated.
    exposed or replaced with a weaker untrusted download path. No production
    environment mutation was attempted.
 
+Final read-only re-probe with the same exact body at `2026-08-08T09:44:42.691Z`
+returned the same HTTP `503` and message, confirming the blocker was not a
+transient response.
+
 Because the break occurs before input materialization, continuing downstream
 would require inventing a job/task or reusing an unrelated historical task,
 which is forbidden by this audit.
