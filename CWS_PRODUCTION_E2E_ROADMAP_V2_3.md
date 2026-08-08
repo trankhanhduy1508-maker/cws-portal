@@ -152,6 +152,16 @@ Do not choose a mechanism based on assumption. Verify B2 API behavior first.
 - secrets are never printed or committed
 - preflight passes with real runtime evidence
 
+### Implementation status — 2026-08-08
+
+- **CODE/UNIT VERIFIED**: Backend issues 120-second exact-object B2
+  S3-compatible presigned GET/PUT capabilities after authenticated Worker and
+  current-generation claim verification. Canonical Node Agent consumes these
+  capabilities with bounded streaming and no B2 credential.
+- **NEEDS RUNTIME VERIFICATION**: deploy Backend and prove real claimed-task B2
+  transfer before marking P1 PASS.
+- Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
+
 ---
 
 # P2 — AUTONOMOUS HEARTBEAT

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import http.client
 import json
 import logging
 import os
@@ -81,11 +82,6 @@ class ProductionConfig:
     blender_download_url: str | None
     blender_sha256: str | None
     workspace: Path
-    b2_endpoint: str
-    b2_bucket: str
-    b2_key_id: str
-    b2_app_key: str
-    b2_output_prefix: str
     google_drive_api_key: str | None
     worker_vram_mb: int
     worker_ram_mb: int
@@ -109,10 +105,6 @@ class ProductionConfig:
         worker_id = required("CWS_WORKER_ID")
         if not _SAFE_ID.fullmatch(worker_id):
             raise PermanentWorkerError("invalid CWS_WORKER_ID")
-        b2_prefix = required("CWS_B2_OUTPUT_PREFIX").strip("/")
-        if not b2_prefix or ".." in b2_prefix.split("/"):
-            raise PermanentWorkerError("invalid CWS_B2_OUTPUT_PREFIX")
-
         def integer(name: str, default: int) -> int:
             raw = values.get(name, str(default)).strip()
             try:
@@ -152,11 +144,6 @@ class ProductionConfig:
             blender_download_url=values.get("CWS_BLENDER_DOWNLOAD_URL", "").strip() or None,
             blender_sha256=values.get("CWS_BLENDER_SHA256", "").strip() or None,
             workspace=workspace,
-            b2_endpoint=required("CWS_B2_ENDPOINT").removeprefix("https://").rstrip("/"),
-            b2_bucket=required("CWS_B2_BUCKET"),
-            b2_key_id=required("CWS_B2_KEY_ID"),
-            b2_app_key=required("CWS_B2_APP_KEY"),
-            b2_output_prefix=b2_prefix,
             # Drive is optional. B2-backed JobSpecs must not need a Google API
             # key; the downloader fails closed only if a Drive URI is claimed.
             google_drive_api_key=values.get("CWS_GOOGLE_DRIVE_API_KEY", "").strip() or None,
@@ -178,6 +165,90 @@ def _single_assignment(value: Any) -> Mapping[str, Any] | None:
     if not isinstance(value, Mapping):
         raise PermanentWorkerError("claim RPC returned an invalid assignment")
     return value
+
+
+def _capability_url(capability: Mapping[str, Any], method: str) -> str:
+    if capability.get("method") != method:
+        raise PermanentWorkerError("storage capability method mismatch")
+    url = capability.get("url")
+    expires = capability.get("expires_in_seconds")
+    if not isinstance(url, str) or not isinstance(expires, int) or not 1 <= expires <= 300:
+        raise PermanentWorkerError("invalid storage capability")
+    parsed = urllib.parse.urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    if (
+        parsed.scheme != "https"
+        or not hostname.endswith(".backblazeb2.com")
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise PermanentWorkerError("storage capability host is not allowed")
+    return url
+
+
+def _capability_headers(capability: Mapping[str, Any]) -> dict[str, str]:
+    value = capability.get("headers", {})
+    if not isinstance(value, Mapping):
+        raise PermanentWorkerError("invalid storage capability headers")
+    headers: dict[str, str] = {}
+    for raw_name, raw_value in value.items():
+        name = str(raw_name).lower()
+        if name not in {"content-type", "content-length"} and not name.startswith(
+            "x-amz-meta-"
+        ):
+            raise PermanentWorkerError("storage capability contains an unsafe header")
+        if "\r" in str(raw_value) or "\n" in str(raw_value):
+            raise PermanentWorkerError("storage capability contains an unsafe header")
+        headers[name] = str(raw_value)
+    return headers
+
+
+def _download_capability(
+    capability: Mapping[str, Any], destination: Path, *, max_bytes: int
+) -> None:
+    url = _capability_url(capability, "GET")
+    request = urllib.request.Request(
+        url, method="GET", headers=_capability_headers(capability)
+    )
+    total = 0
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(request, timeout=120) as response, destination.open(
+        "wb"
+    ) as stream:
+        while True:
+            chunk = response.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise PermanentWorkerError("storage download exceeds safety limit")
+            stream.write(chunk)
+
+
+def _upload_capability(capability: Mapping[str, Any], source: Path) -> None:
+    url = _capability_url(capability, "PUT")
+    headers = _capability_headers(capability)
+    size = source.stat().st_size
+    if headers.get("content-length") != str(size):
+        raise PermanentWorkerError("storage capability content length mismatch")
+    parsed = urllib.parse.urlparse(url)
+    connection = http.client.HTTPSConnection(parsed.hostname, parsed.port or 443, timeout=120)
+    try:
+        with source.open("rb") as stream:
+            connection.request(
+                "PUT",
+                urllib.parse.urlunparse(("", "", parsed.path, parsed.params, parsed.query, "")),
+                body=stream,
+                headers=headers,
+            )
+            response = connection.getresponse()
+            response.read()
+            if response.status < 200 or response.status >= 300:
+                raise RetryableWorkerError(
+                    f"storage upload rejected with HTTP {response.status}"
+                )
+    finally:
+        connection.close()
 
 
 class ProductionRpcAdapter:
@@ -260,15 +331,36 @@ class ProductionRpcAdapter:
             },
         )
 
+    def storage_capability(
+        self,
+        action: str,
+        spec: JobSpec,
+        *,
+        frame: int | None = None,
+        size: int | None = None,
+        sha256: str | None = None,
+    ) -> Mapping[str, Any]:
+        payload: dict[str, Any] = {
+            "action": action,
+            "task_id": int(spec.task_id),
+            "generation": spec.lease_generation,
+        }
+        if frame is not None:
+            payload["frame"] = frame
+        if size is not None:
+            payload["bytes"] = size
+        if sha256 is not None:
+            payload["sha256"] = sha256
+        result = self.client.call_path("/worker/storage-capability", payload)
+        if not isinstance(result, Mapping):
+            raise RetryableWorkerError("invalid storage capability response")
+        return result
+
 
 class DriveOrB2Downloader(ProjectDownloader):
-    def __init__(self, config: ProductionConfig):
+    def __init__(self, config: ProductionConfig, rpc: ProductionRpcAdapter):
         self.config = config
-        try:
-            import boto3
-        except ImportError:
-            boto3 = None
-        self._boto3 = boto3
+        self.rpc = rpc
 
     @staticmethod
     def _drive_id(uri: str) -> str | None:
@@ -371,47 +463,36 @@ class DriveOrB2Downloader(ProjectDownloader):
             return ".zip"
         raise PermanentWorkerError("downloaded project has an invalid file signature")
 
-    def _download_b2(self, uri: str, destination: Path) -> Path:
-        if self._boto3 is None:
-            raise PermanentWorkerError("boto3 is required for B2 project download")
+    def _download_b2(self, spec: JobSpec, destination: Path) -> Path:
+        uri = spec.project_uri
         parsed = urllib.parse.urlparse(uri)
-        if parsed.netloc == self.config.b2_bucket:
-            bucket = parsed.netloc
-            key = parsed.path.lstrip("/")
-        elif parsed.path:
-            bucket = parsed.netloc
-            key = parsed.path.lstrip("/")
-        else:
-            bucket = self.config.b2_bucket
-            key = parsed.netloc
-        if bucket != self.config.b2_bucket or not key or ".." in key.split("/"):
+        key = parsed.path.lstrip("/")
+        if parsed.scheme != "b2" or not parsed.netloc or not key or ".." in key.split("/"):
             raise PermanentWorkerError("invalid B2 project URI")
         suffix = Path(key).suffix.lower()
         if suffix not in {".blend", ".zip"}:
             raise PermanentWorkerError("B2 input must be .blend or .zip")
         target = destination / f"input{suffix}"
         target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_suffix(target.suffix + ".part")
         try:
-            client = self._boto3.client(
-                "s3",
-                endpoint_url=f"https://{self.config.b2_endpoint}",
-                region_name="auto",
-                aws_access_key_id=self.config.b2_key_id,
-                aws_secret_access_key=self.config.b2_app_key,
-            )
-            client.download_file(self.config.b2_bucket, key, str(target))
+            capability = self.rpc.storage_capability("input_download", spec)
+            _download_capability(capability, partial, max_bytes=20 * 1024 * 1024 * 1024)
+            partial.replace(target)
             self._validate_downloaded_file(target)
             return target
         except PermanentWorkerError:
+            partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
             raise
         except Exception as exc:
+            partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
             raise RetryableWorkerError("B2 project download failed") from exc
 
     def download(self, spec: JobSpec, destination: Path) -> Path:
         if spec.project_uri.startswith("b2://"):
-            return self._download_b2(spec.project_uri, destination)
+            return self._download_b2(spec, destination)
         return self._download_http(spec.project_uri, destination)
 
 
@@ -463,24 +544,8 @@ class BlenderScenePreflight:
 
 
 class ProductionB2CheckpointStore(CheckpointStore):
-    def __init__(self, config: ProductionConfig):
-        try:
-            import boto3
-            from botocore.exceptions import ClientError
-        except ImportError as exc:
-            raise PermanentWorkerError("boto3 is required for B2 output") from exc
-        self._client_error = ClientError
-        self.config = config
-        self.client = boto3.client(
-            "s3",
-            endpoint_url=f"https://{config.b2_endpoint}",
-            region_name="auto",
-            aws_access_key_id=config.b2_key_id,
-            aws_secret_access_key=config.b2_app_key,
-        )
-
-    def _key(self, spec: JobSpec, frame: int) -> str:
-        return f"{spec.output_prefix.strip('/')}/{spec.task_id}/frame_{frame:04d}.{spec.output_format}"
+    def __init__(self, rpc: ProductionRpcAdapter):
+        self.rpc = rpc
 
     @staticmethod
     def _sha256(path: Path) -> str:
@@ -490,78 +555,54 @@ class ProductionB2CheckpointStore(CheckpointStore):
                 digest.update(chunk)
         return digest.hexdigest()
 
-    def _head(self, key: str) -> Mapping[str, Any] | None:
-        try:
-            return self.client.head_object(Bucket=self.config.b2_bucket, Key=key)
-        except self._client_error as exc:
-            code = str(exc.response.get("Error", {}).get("Code", ""))
-            if code in {"404", "NoSuchKey", "NotFound"}:
-                return None
-            raise RetryableWorkerError("B2 output HEAD failed") from exc
-
-    def _remote_digest(self, key: str) -> tuple[int, str]:
+    def _remote_digest(self, capability: Mapping[str, Any]) -> tuple[int, str]:
         digest = hashlib.sha256()
         size = 0
-        body = None
         try:
-            response = self.client.get_object(Bucket=self.config.b2_bucket, Key=key)
-            body = response["Body"]
-            while True:
-                chunk = body.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                digest.update(chunk)
+            url = _capability_url(capability, "GET")
+            with urllib.request.urlopen(url, timeout=120) as response:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    digest.update(chunk)
             return size, digest.hexdigest()
         except Exception as exc:
             raise RetryableWorkerError("B2 output download verification failed") from exc
-        finally:
-            if body is not None:
-                body.close()
 
     def is_verified(self, spec: JobSpec, frame: int) -> bool:
-        metadata = (self._head(self._key(spec, frame)) or {}).get("Metadata", {})
-        if not (
-            metadata.get("job_id") == spec.job_id
-            and metadata.get("task_id") == spec.task_id
-            and metadata.get("frame") == str(frame)
-            and metadata.get("bytes", "").isdigit()
-            and bool(metadata.get("sha256"))
-        ):
+        capability = self.rpc.storage_capability("frame_download", spec, frame=frame)
+        if capability.get("exists") is not True:
             return False
-        size, digest = self._remote_digest(self._key(spec, frame))
-        return size == int(metadata["bytes"]) and digest == metadata["sha256"]
+        expected_size = capability.get("bytes")
+        expected_digest = capability.get("sha256")
+        if not isinstance(expected_size, int) or not isinstance(expected_digest, str):
+            return False
+        size, digest = self._remote_digest(capability)
+        return size == expected_size and digest == expected_digest
 
     def put(self, spec: JobSpec, frame: int, output: Path) -> None:
         if self.is_verified(spec, frame):
             return
+        digest = self._sha256(output)
+        size = output.stat().st_size
         try:
-            self.client.upload_file(
-                str(output),
-                self.config.b2_bucket,
-                self._key(spec, frame),
-                ExtraArgs={
-                    "ContentType": "image/png",
-                    "Metadata": {
-                        "job_id": spec.job_id,
-                        "task_id": spec.task_id,
-                        "attempt_id": spec.attempt_id,
-                        "generation": str(spec.lease_generation),
-                        "frame": str(frame),
-                        "bytes": str(output.stat().st_size),
-                        "sha256": self._sha256(output),
-                    },
-                },
+            capability = self.rpc.storage_capability(
+                "frame_upload", spec, frame=frame, size=size, sha256=digest
             )
+            _upload_capability(capability, output)
         except Exception as exc:
             raise RetryableWorkerError("B2 output upload failed") from exc
 
     def verify(self, spec: JobSpec, frame: int, output: Path) -> None:
-        metadata = (self._head(self._key(spec, frame)) or {}).get("Metadata", {})
-        size, digest = self._remote_digest(self._key(spec, frame))
+        capability = self.rpc.storage_capability("frame_download", spec, frame=frame)
+        if capability.get("exists") is not True:
+            raise RetryableWorkerError(f"B2 output verification failed for frame {frame}")
+        size, digest = self._remote_digest(capability)
         if (
-            metadata.get("sha256") != self._sha256(output)
-            or digest != metadata.get("sha256")
+            capability.get("sha256") != self._sha256(output)
+            or digest != capability.get("sha256")
             or size != output.stat().st_size
         ):
             raise RetryableWorkerError(f"B2 output verification failed for frame {frame}")
@@ -665,7 +706,7 @@ class ProductionNodeAgentRuntime:
         def run() -> None:
             engine = WorkerEngine(
                 workspace_root=self.config.workspace,
-                downloader=DriveOrB2Downloader(self.config),
+                downloader=DriveOrB2Downloader(self.config, self.rpc),
                 preflight=BlenderScenePreflight(
                     self.blender_exe,
                     Path(__file__).with_name("blender_scene_analyzer.py"),
@@ -680,7 +721,7 @@ class ProductionNodeAgentRuntime:
                     use_job_object=True,
                     metrics_callback=self._record_metrics,
                 ),
-                checkpoints=ProductionB2CheckpointStore(self.config),
+                checkpoints=ProductionB2CheckpointStore(self.rpc),
                 validator=OutputIntegrityValidator(),
                 reporter=ProductionReporter(self.rpc),
                 guard=ProductionAttemptGuard(self.rpc),

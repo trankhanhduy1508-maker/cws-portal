@@ -35,6 +35,21 @@ class WorkerRpcAuthTests(unittest.TestCase):
             self.assertEqual(request.headers["X-cws-worker-id"], "worker-a")
             self.assertIn("Worker ", request.headers["Authorization"])
 
+    def test_storage_capability_path_is_hmac_signed_without_new_secret(self):
+        credential = WorkerCredential("worker-a", "A" * 40)
+        client = WorkerRpcClient("https://backend.example", credential)
+        with patch("worker_rpc_auth.urllib.request.urlopen") as opener:
+            response = opener.return_value.__enter__.return_value
+            response.read.return_value = b'{"method":"GET"}'
+            result = client.call_path(
+                "/worker/storage-capability",
+                {"action": "input_download", "task_id": 42, "generation": 3},
+            )
+            self.assertEqual(result, {"method": "GET"})
+            request = opener.call_args.args[0]
+            self.assertEqual(request.full_url, "https://backend.example/worker/storage-capability")
+            self.assertEqual(request.headers["X-cws-worker-id"], "worker-a")
+
 
 if __name__ == "__main__":
     unittest.main()

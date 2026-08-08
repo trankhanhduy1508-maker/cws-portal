@@ -203,7 +203,7 @@ thực thi Python script tuỳ ý từ file `.blend`. Xem
 `reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` mục 2.3 +
 `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`.
 
-**[ACTIVE]** B2 credential Worker (thêm 2026-08-03): không hardcode
+**[SUPERSEDED 2026-08-08 BY JOB-SCOPED STORAGE CAPABILITIES]** B2 credential Worker (thêm 2026-08-03): không hardcode
 trong `cws_worker_full.py` (file bị auto-update, phân phối rộng) —
 bắt buộc đọc `CWS_B2_KEY_ID`/`CWS_B2_APP_KEY` từ biến môi trường, set
 cục bộ qua `cws_worker.bat` trên từng máy (file không bị auto-update).
@@ -433,7 +433,29 @@ same-user Windows DPAPI store. Re-provisioning rotates that one Worker without
 changing any fleet-wide secret. This does not revive unauthenticated
 self-registration or caller-trusted `worker_id`.
 
-Scoped B2 credentials remain separate per-host runtime configuration. A Worker
-without both B2 values must fail preflight and must not claim work.
+**[SUPERSEDED 2026-08-08]** Scoped B2 credentials as per-host runtime
+configuration are no longer canonical. Workers must not receive long-lived B2
+credentials and must not require `CWS_B2_*` values before claiming work.
 
 Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.
+
+## Job-scoped Worker storage capabilities — 2026-08-08
+
+**[ACTIVE]** Long-lived Backblaze B2 application credentials stay only on the
+trusted Backend. An authenticated Worker that owns the current fenced task
+generation may request a short-lived (120-second), exact-object S3-compatible
+presigned GET for its input or PUT/GET for an assigned output frame. Backend
+derives bucket/key/frame bounds from server-side JobSpec and never trusts a
+Worker-supplied object key.
+
+Worker provisioning stores only the per-Worker HMAC identity credential under
+Windows DPAPI/ACL. There is no manual B2 operation per Worker or per Job. A
+compromised Worker can request capabilities only for its currently claimed
+task and capability lifetime; it cannot obtain the B2 account key, Supabase
+service role, another job's arbitrary key, or fleet-wide storage access. Adding
+Worker 101/1001 uses the same enrollment contract.
+
+Backblaze's official S3-compatible API documents presigned URL support for
+upload and download. Native `b2_get_upload_url` was rejected because its
+reusable bucket upload token is broader and may remain valid for up to 24
+hours. Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.

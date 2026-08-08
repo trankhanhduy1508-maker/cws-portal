@@ -1,5 +1,16 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Production E2E V2.3 scalable storage boundary — 2026-08-08
+
+- **CODE/UNIT VERIFIED**: authenticated Workers obtain 120-second exact-object
+  B2 S3-compatible GET/PUT capabilities from Backend only for their currently
+  claimed fenced assignment. Server-side B2 credentials never leave Backend.
+- **SUPERSEDES** the per-Worker B2 key gate: Worker provisioning now keeps only
+  its DPAPI-protected HMAC identity and needs no `CWS_B2_*` secret/configuration.
+- **NEEDS_VERIFICATION**: deploy Backend and prove real capability download,
+  Blender output upload, completion and P2-P6 production runtime.
+- Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
+
 ## Production E2E Roadmap V2.2 P0 — 2026-08-08 [DONE]
 
 - Production schema and migration history directly confirm 020/021/022 and
@@ -468,8 +479,8 @@ Google Login
 - P1 **PARTIAL / PRODUCTION VERIFIED**: MAY083 identity
   `CWS-BAE2782D20525D46`, DPAPI token, production verifier row, Blender 5.2.0,
   Python/boto3 and authenticated Worker gateway ping are verified.
-- P1 **BLOCKED** only on a scoped production B2 key pair absent from this host;
-  no service-role key, shared fleet secret or placeholder was introduced.
+- The V2.2 per-Worker B2 key blocker is **SUPERSEDED** by V2.3 job-scoped
+  Backend-issued storage capabilities; no B2 credential belongs on this host.
 - P2/P3 remain **NOT VERIFIED**: no canonical Node Agent claim, Blender render,
   B2 upload or completion is claimed from the identity-only ping.
 - Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.

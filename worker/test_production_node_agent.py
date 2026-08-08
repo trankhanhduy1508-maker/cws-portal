@@ -1,6 +1,5 @@
 import unittest
 import tempfile
-from types import SimpleNamespace
 from pathlib import Path
 
 from production_node_agent import (
@@ -8,6 +7,7 @@ from production_node_agent import (
     ProductionConfig,
     ProductionRpcAdapter,
     ProductionB2CheckpointStore,
+    _capability_url,
     _single_assignment,
 )
 from worker_engine import PermanentWorkerError
@@ -21,6 +21,14 @@ class FakeClient:
     def call(self, operation, payload):
         self.calls.append((operation, payload))
         return self.values.pop(0)
+
+    def call_path(self, path, payload):
+        self.calls.append((path, payload))
+        return self.values.pop(0)
+
+
+class SimpleRpc:
+    pass
 
 
 class ProductionNodeAgentContractTests(unittest.TestCase):
@@ -38,21 +46,17 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         with self.assertRaises(PermanentWorkerError):
             ProductionConfig.from_env({})
 
-    def test_b2_only_config_does_not_require_drive_api_key(self):
+    def test_worker_config_requires_no_b2_or_drive_secret(self):
         config = ProductionConfig.from_env(
             {
                 "CWS_BACKEND_URL": "https://backend.example",
                 "CWS_WORKER_ID": "worker-a",
                 "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
                 "CWS_WORKSPACE": "C:/CWS/work",
-                "CWS_B2_ENDPOINT": "s3.us-west-004.backblazeb2.com",
-                "CWS_B2_BUCKET": "cws-prod",
-                "CWS_B2_KEY_ID": "key-id",
-                "CWS_B2_APP_KEY": "app-key",
-                "CWS_B2_OUTPUT_PREFIX": "renders",
             }
         )
         self.assertIsNone(config.google_drive_api_key)
+        self.assertFalse(hasattr(config, "b2_app_key"))
 
     def test_drive_input_fails_closed_without_drive_api_key(self):
         config = ProductionConfig.from_env(
@@ -70,7 +74,7 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaisesRegex(PermanentWorkerError, "GOOGLE_DRIVE_API_KEY"):
-                DriveOrB2Downloader(config)._download_http(
+                DriveOrB2Downloader(config, SimpleRpc())._download_http(
                     "https://drive.google.com/file/d/drive-file/view",
                     Path(root),
                 )
@@ -176,56 +180,24 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         with self.assertRaises(PermanentWorkerError):
             ProductionConfig.from_env(values)
 
-    def test_b2_resume_verifies_remote_bytes_not_metadata_only(self):
+    def test_capability_resume_verifies_remote_bytes_not_metadata_only(self):
         payload = b"verified-png-payload"
+        digest = __import__("hashlib").sha256(payload).hexdigest()
 
-        class Body:
-            def __init__(self, value):
-                self.value = value
-
-            def read(self, size):
-                value, self.value = self.value[:size], self.value[size:]
-                return value
-
-            def close(self):
-                return None
-
-        class Client:
-            def head_object(self, **_kwargs):
-                import hashlib
+        class SimpleRpc:
+            def storage_capability(self, *_args, **_kwargs):
                 return {
-                    "Metadata": {
-                        "job_id": "job-1",
-                        "task_id": "42",
-                        "frame": "1",
-                        "bytes": str(len(payload)),
-                        "sha256": hashlib.sha256(payload).hexdigest(),
-                    }
+                    "exists": True,
+                    "method": "GET",
+                    "url": "https://s3.us-west-004.backblazeb2.com/signed",
+                    "headers": {},
+                    "expires_in_seconds": 120,
+                    "bytes": len(payload),
+                    "sha256": digest,
                 }
 
-            def get_object(self, **_kwargs):
-                return {"Body": Body(payload)}
-
-        store = object.__new__(ProductionB2CheckpointStore)
-        store.config = SimpleNamespace(b2_bucket="bucket")
-        store.client = Client()
-        store._client_error = Exception
-        value = ProductionConfig.from_env(
-            {
-                "CWS_BACKEND_URL": "https://backend.example",
-                "CWS_WORKER_ID": "worker-a",
-                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
-                "CWS_WORKSPACE": "C:/CWS/work",
-                "CWS_B2_ENDPOINT": "s3.example",
-                "CWS_B2_BUCKET": "bucket",
-                "CWS_B2_KEY_ID": "key-id",
-                "CWS_B2_APP_KEY": "app-key",
-                "CWS_B2_OUTPUT_PREFIX": "renders",
-                "CWS_GOOGLE_DRIVE_API_KEY": "drive-key",
-            }
-        )
-        spec = ProductionRpcAdapter(FakeClient([]), value).config
-        del spec
+        store = ProductionB2CheckpointStore(SimpleRpc())
+        store._remote_digest = lambda _capability: (len(payload), digest)
         from worker_engine import JobSpec
         job_spec = JobSpec.from_mapping({
             "job_id": "job-1", "task_id": "42", "attempt_id": "9",
@@ -234,8 +206,19 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
             "output_format": "png",
         })
         self.assertTrue(store.is_verified(job_spec, 1))
-        store.client.get_object = lambda **_kwargs: {"Body": Body(b"tampered")}
+        store._remote_digest = lambda _capability: (8, "0" * 64)
         self.assertFalse(store.is_verified(job_spec, 1))
+
+    def test_storage_capability_rejects_non_backblaze_hosts(self):
+        with self.assertRaises(PermanentWorkerError):
+            _capability_url(
+                {
+                    "method": "GET",
+                    "url": "https://127.0.0.1/internal",
+                    "expires_in_seconds": 120,
+                },
+                "GET",
+            )
 
     def test_drive_and_assignment_validation_fail_closed(self):
         self.assertEqual(

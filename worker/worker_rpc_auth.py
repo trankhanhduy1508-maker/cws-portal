@@ -59,7 +59,11 @@ class WorkerRpcClient:
         self.timeout = timeout
 
     def call(self, operation: str, payload: Mapping[str, Any]) -> Any:
-        path = f"/worker/rpc/{operation}"
+        return self.call_path(f"/worker/rpc/{operation}", payload)
+
+    def call_path(self, path: str, payload: Mapping[str, Any]) -> Any:
+        if not path.startswith("/") or ".." in path.split("/"):
+            raise ValueError("invalid Worker gateway path")
         body = json.dumps(dict(payload), separators=(",", ":"), sort_keys=True).encode("utf-8")
         request = urllib.request.Request(
             f"{self.base_url}{path}", data=body, method="POST",

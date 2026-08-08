@@ -1,6 +1,25 @@
 # Current Status
 
-## Production E2E Roadmap V2.2 P1 — 2026-08-08
+## Production E2E Roadmap V2.3 P1 storage boundary — 2026-08-08
+
+- **CODE/UNIT VERIFIED**: the authenticated Worker gateway now issues
+  120-second, exact-object Backblaze B2 S3-compatible presigned GET/PUT
+  capabilities only after the requesting Worker is confirmed to own the
+  current task generation. Input is restricted to the claimed `.blend`/`.zip`;
+  output is restricted to assigned frames with attempt/generation/size/SHA-256
+  metadata.
+- **SECURITY BOUNDARY VERIFIED IN CODE**: long-lived B2 credentials remain in
+  Backend configuration. Worker keeps only its per-Worker HMAC credential under
+  DPAPI; no Supabase `service_role`, B2 key, shared fleet secret, manual
+  per-Worker B2 action or manual per-job action is required.
+- **WORKER CONTRACT UPDATED**: canonical Node Agent requests capabilities from
+  Backend, validates HTTPS Backblaze host/method/expiry/headers, streams bounded
+  transfers, and no longer requires `CWS_B2_*` runtime values.
+- **NEEDS RUNTIME VERIFICATION**: production deployment, a claimed task, real
+  B2 GET/PUT, persistent P2 heartbeat and P3 Blender run are not runtime PASS.
+- Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
+
+## Production E2E Roadmap V2.2 P1 — 2026-08-08 (SUPERSEDED BY V2.3)
 
 - **PRODUCTION IDENTITY VERIFIED**: MAY083 now has stable Worker ID
   `CWS-BAE2782D20525D46` in fleet 2 with RTX 2060 SUPER / 8192 MB metadata.
