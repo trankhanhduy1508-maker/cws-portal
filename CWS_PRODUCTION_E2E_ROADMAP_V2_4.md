@@ -4,6 +4,20 @@
 > Status: ACTIVE — supersedes V2.3 only where this document explicitly changes the customer Golden E2E order, archive support, Blender optimization, payment timing, preview and delivery gates.
 > Companion source of truth: `CWS_MVP_WORKFLOW_FINAL.md`, `CWS_SCALABILITY_RULES.md`, current code/config/runtime evidence.
 
+## Execution framework gate - 2026-08-08
+
+All future V2.4 changes, including production E2E fixes, must use the checked-
+in GitHub Spec Kit workflow:
+
+`Constitution -> Specify -> Clarify (when needed) -> Plan -> Tasks -> Analyze -> Implement -> Converge/Verify`
+
+The CWS constitution is `.specify/memory/constitution.md` and the session rule
+is in `AGENTS.md`. Spec Kit artifacts must reference this roadmap and the
+existing CWS workflow/architecture documents; they do not replace them. This
+governance integration does not alter the current production gate or create
+new infrastructure. Evidence:
+`reports/process/CWS_SPECKIT_INTEGRATION_2026-08-08.md`.
+
 ## Latest runtime gate — 2026-08-08
 
 - **PRODUCTION VERIFIED**: public Google Drive file links no longer depend on

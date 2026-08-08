@@ -1,5 +1,21 @@
 # Official Decisions
 
+## Mandatory GitHub Spec Kit execution framework - 2026-08-08
+
+**[ACTIVE]** Every CWS change must pass through the checked-in execution
+sequence `Constitution -> Specify -> Clarify (when needed) -> Plan -> Tasks ->
+Analyze -> Implement -> Converge/Verify`. GitHub Spec Kit is layered above the
+existing CWS documents; it does not replace the roadmap, workflow, schema,
+architecture, status, decisions, or runtime evidence that own their domains.
+The CWS constitution is `.specify/memory/constitution.md`, and `AGENTS.md`
+must make this workflow discoverable to every future Codex session.
+
+This decision changes agent execution only. It creates no runtime dependency,
+new project/service/resource, broad credential, or application refactor. A
+future change still requires the existing CWS evidence and source-of-truth
+sync gates before it can be reported DONE. Evidence:
+`reports/process/CWS_SPECKIT_INTEGRATION_2026-08-08.md`.
+
 ## Production browser runtime must fail closed — 2026-08-08
 
 **[ACTIVE]** The customer application has no mock authentication, mock job,

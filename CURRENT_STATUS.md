@@ -1,5 +1,21 @@
 # Current Status
 
+## GitHub Spec Kit governance integration - 2026-08-08
+
+- **IMPLEMENTED**: GitHub Spec Kit 0.16.1 was initialized in the existing
+  repository with the official Codex integration. Constitution:
+  `.specify/memory/constitution.md`; Codex skills:
+  `.agents/skills/speckit-*`; templates/scripts/workflow metadata:
+  `.specify/`.
+- **MANDATORY FOR FUTURE WORK**: `AGENTS.md` now requires
+  `Constitution -> Specify -> Clarify (when needed) -> Plan -> Tasks ->
+  Analyze -> Implement -> Converge/Verify` for every CWS change. The baseline
+  trace is in `specs/001-spec-kit-integration/`.
+- **SCOPE**: This integration changes repository governance only. No frontend,
+  backend, Worker, production configuration, or external resource was created
+  or refactored. Existing CWS documents remain authoritative.
+- **EVIDENCE**: `reports/process/CWS_SPECKIT_INTEGRATION_2026-08-08.md`.
+
 ## Full production integration retest — 2026-08-08
 
 - **NOT GOLDEN PASS / TRUE EXTERNAL BLOCKER**: one new trace,

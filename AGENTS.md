@@ -18,7 +18,7 @@ Mọi AI Agent phải đọc theo đúng thứ tự sau trước khi thực hi�
 | 1 | CWS_ROADMAP_MVP_V1.md | Roadmap chính thức |
 | 2 | CWS_MVP_WORKFLOW_FINAL.md | Workflow MVP |
 | 3 | CWS_DATABASE_SCHEMA.md | Database Schema |
-| 4 | CODEX_CONSTITUTION.md | Kiến trúc & nguyên tắc |
+| 4 | .specify/memory/constitution.md | CWS Constitution và execution gates |
 | 5 | CODEX_GLOBAL_RULES.md | Quy tắc chung |
 | 6 | AGENTS.md | Quy định vận hành AI |
 | 7 | CURRENT_STATUS.md | Tiến độ mới nhất |
@@ -38,6 +38,35 @@ DECISIONS
 CURRENT_STATUS
 >
 REPORT
+
+---
+
+# MANDATORY GITHUB SPEC KIT WORKFLOW
+
+GitHub Spec Kit is the required execution framework for every CWS change. It
+is layered above the CWS source-of-truth documents and does not replace them.
+The repository constitution is `.specify/memory/constitution.md`.
+
+No agent may accept a CWS idea, feature, workflow-affecting bug fix,
+architecture/database/Worker/payment/storage/security/UI/deployment/
+automation/roadmap change and jump directly to code. The required sequence is:
+
+`Constitution -> Specify -> Clarify (only when the repository cannot answer) -> Plan -> Tasks -> Analyze -> Implement -> Converge/Verify`
+
+Before Specify, the agent must state the goal, assumptions, risks, system
+impact, contradictions, and alternatives. Specify/Plan/Tasks must reference
+the applicable CWS documents above. Analyze is read-only and must check missing
+requirements, contradiction, task coverage, architecture/security/scale
+conflicts, fake/demo paths, and regression risk. Implement is allowed only
+after those artifacts exist. Converge/Verify must run the relevant tests,
+production E2E when applicable, and source-of-truth synchronization.
+
+`.agents/skills/speckit-*` contains the Codex-facing Spec Kit skills and
+`.specify/` contains the templates, scripts, workflow metadata, and
+constitution. The legacy paths `CODEX_CONSTITUTION.md` and
+`reports/CODEX_X_CHECKLIST.md` are not present in this checkout; agents must
+not invent or silently rely on them. Use the checked-in Spec Kit constitution
+and the actual evidence under `reports/` instead.
 
 ---
 
