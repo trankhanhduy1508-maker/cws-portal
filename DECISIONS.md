@@ -1,5 +1,19 @@
 # Official Decisions
 
+## Production browser runtime must fail closed — 2026-08-08
+
+**[ACTIVE]** The customer application has no mock authentication, mock job,
+mock progress, mock payment, or mock result module in any production build.
+If Supabase or Backend configuration is missing, the portal must show a clear
+error and must not create local customer/job state. ETA may be shown as a
+non-binding estimate, but no final customer price or payment is shown until a
+real Worker render has completed and the customer approves the review.
+
+**[ACTIVE]** A READY deployment, heartbeat, unit test, or local simulation is
+not Production E2E evidence. Only a customer-owned stored input, durable job
+and task assignment, physical Blender execution, verified B2 output, backend
+completion and customer-visible result may establish that claim.
+
 ## Customer upload ownership and Worker claim capability — 2026-08-08
 
 **[ACTIVE]** Customer upload and job creation require a valid Supabase customer

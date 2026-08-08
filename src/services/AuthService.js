@@ -3,53 +3,9 @@
 // thủ công, KHÔNG có form nhập username/password Google ở đây hay
 // bất kỳ đâu trong CWS — Google lo đăng nhập/xác minh/xin quyền,
 // Supabase Auth lo phiên đăng nhập, CWS chỉ ĐỌC session).
-//
-// mockGoogleLogin() KHÔNG còn là fallback tự động khi thiếu cấu
-// hình (lỗi đã gặp: thiếu .env khiến khách bị đăng nhập giả và nhảy
-// thẳng qua màn hình Google thật). Mock chỉ bật khi CHỦ ĐỘNG khai
-// báo VITE_ENABLE_MOCK_AUTH=true lúc chạy dev (import.meta.env.DEV) —
-// không bao giờ tự kích hoạt trên bản build production.
 // ============================================================
 
 import { supabase, IS_SUPABASE_CONFIGURED } from './supabaseClient';
-
-const MOCK_TOKEN_KEY = 'cws_mock_auth_token';
-const MOCK_CUSTOMER_KEY = 'cws_mock_auth_customer';
-
-const USE_MOCK_AUTH =
-  !IS_SUPABASE_CONFIGURED &&
-  import.meta.env.DEV &&
-  import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true';
-
-function getMockSession() {
-  try {
-    const token = localStorage.getItem(MOCK_TOKEN_KEY);
-    if (!token) return null;
-    const raw = localStorage.getItem(MOCK_CUSTOMER_KEY);
-    return { token, customer: raw ? JSON.parse(raw) : null };
-  } catch {
-    return null;
-  }
-}
-
-function storeMockSession(token, customer) {
-  try {
-    localStorage.setItem(MOCK_TOKEN_KEY, token);
-    localStorage.setItem(MOCK_CUSTOMER_KEY, JSON.stringify(customer));
-  } catch {
-    // localStorage có thể bị chặn (chế độ ẩn danh nghiêm ngặt) — không
-    // chặn luồng đăng nhập vì lỗi lưu trữ, chỉ mất phiên khi refresh.
-  }
-}
-
-function clearMockSession() {
-  try {
-    localStorage.removeItem(MOCK_TOKEN_KEY);
-    localStorage.removeItem(MOCK_CUSTOMER_KEY);
-  } catch {
-    // bỏ qua an toàn, xem storeMockSession()
-  }
-}
 
 /** Access token hiện tại (nếu đã đăng nhập) — đính vào Authorization
  * header khi RenderService.js gọi Backend. */
@@ -58,7 +14,6 @@ export async function getAccessToken() {
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   }
-  if (USE_MOCK_AUTH) return getMockSession()?.token ?? null;
   return null;
 }
 
@@ -66,8 +21,7 @@ export async function getAccessToken() {
  * Bắt đầu đăng nhập Google. Backend thật: Supabase Auth tự lo TOÀN
  * BỘ OAuth (redirect Google, xin quyền, tạo phiên) — hàm này chỉ
  * kích hoạt điều hướng, luôn trả về null (trang sẽ rời đi, quay lại
- * qua useAuth's onAuthStateChange khi Google redirect xong). Mock:
- * không có Google thật để chuyển hướng, tạo ngay 1 phiên demo.
+ * qua useAuth's onAuthStateChange khi Google redirect xong).
  */
 export async function startGoogleLogin() {
   if (IS_SUPABASE_CONFIGURED) {
@@ -78,12 +32,6 @@ export async function startGoogleLogin() {
     if (error) throw new Error(error.message || 'Không bắt đầu được đăng nhập Google');
     return null;
   }
-  if (USE_MOCK_AUTH) {
-    const { mockGoogleLogin } = await import('./mockBackend');
-    const { token, customer } = await mockGoogleLogin();
-    storeMockSession(token, customer);
-    return customer;
-  }
   throw new Error('Đăng nhập Google chưa được cấu hình. Vui lòng liên hệ quản trị viên.');
 }
 
@@ -92,7 +40,6 @@ export async function logout() {
     await supabase.auth.signOut();
     return;
   }
-  if (USE_MOCK_AUTH) clearMockSession();
 }
 
 /** Lắng nghe thay đổi trạng thái đăng nhập (đăng nhập/đăng xuất/token
@@ -105,7 +52,7 @@ export function onAuthStateChange(callback) {
     });
     return () => data.subscription.unsubscribe();
   }
-  callback(USE_MOCK_AUTH ? getMockSession()?.customer ?? null : null);
+  callback(null);
   return () => {};
 }
 
@@ -115,7 +62,6 @@ export async function getCurrentUser() {
     const { data } = await supabase.auth.getSession();
     return data.session?.user ?? null;
   }
-  if (USE_MOCK_AUTH) return getMockSession()?.customer ?? null;
   return null;
 }
 

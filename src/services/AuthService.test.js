@@ -1,15 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-// AuthService.js đọc IS_SUPABASE_CONFIGURED/import.meta.env.DEV/
-// VITE_ENABLE_MOCK_AUTH tại thời điểm IMPORT module — mỗi test cần
-// vi.resetModules() + mock lại './supabaseClient' trước khi import động,
-// để mô phỏng đúng các tổ hợp cấu hình khác nhau (bug thật: thiếu .env
-// khiến khách bị đăng nhập giả thay vì thấy lỗi rõ ràng).
+// AuthService.js reads IS_SUPABASE_CONFIGURED at import time. Each test
+// resets the module and mocks supabaseClient before dynamically importing it.
 
-async function loadAuthService({ configured, dev, enableMock }) {
+async function loadAuthService({ configured, dev }) {
   vi.resetModules();
   vi.stubEnv('DEV', dev);
-  vi.stubEnv('VITE_ENABLE_MOCK_AUTH', enableMock ? 'true' : '');
 
   vi.doMock('./supabaseClient', () => ({
     IS_SUPABASE_CONFIGURED: configured,
@@ -36,28 +32,15 @@ describe('AuthService.startGoogleLogin()', () => {
     const { startGoogleLogin } = await loadAuthService({
       configured: false,
       dev: false,
-      enableMock: false,
     });
 
     await expect(startGoogleLogin()).rejects.toThrow(/chưa được cấu hình/i);
   });
 
-  it('thiếu cấu hình Supabase nhưng đang dev VÀ chủ động bật VITE_ENABLE_MOCK_AUTH -> dùng mock (demo cục bộ)', async () => {
+  it('thiếu cấu hình Supabase trong dev vẫn fail rõ ràng; không có demo auth path', async () => {
     const { startGoogleLogin } = await loadAuthService({
       configured: false,
       dev: true,
-      enableMock: true,
-    });
-
-    const customer = await startGoogleLogin();
-    expect(customer).toMatchObject({ id: 'mock-customer-demo' });
-  });
-
-  it('dev nhưng KHÔNG bật VITE_ENABLE_MOCK_AUTH -> vẫn throw (mock không tự động bật chỉ vì đang dev)', async () => {
-    const { startGoogleLogin } = await loadAuthService({
-      configured: false,
-      dev: true,
-      enableMock: false,
     });
 
     await expect(startGoogleLogin()).rejects.toThrow(/chưa được cấu hình/i);
@@ -67,7 +50,6 @@ describe('AuthService.startGoogleLogin()', () => {
     const { startGoogleLogin } = await loadAuthService({
       configured: true,
       dev: false,
-      enableMock: false,
     });
     const { supabase } = await import('./supabaseClient');
 
@@ -90,7 +72,6 @@ describe('AuthService.getCurrentUser()', () => {
     const { getCurrentUser } = await loadAuthService({
       configured: false,
       dev: false,
-      enableMock: false,
     });
 
     await expect(getCurrentUser()).resolves.toBeNull();

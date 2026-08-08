@@ -8,8 +8,8 @@ import { JOB_STATUS, STAGE_SEQUENCE } from '../constants/renderConstants';
  * Hook điều phối vòng đời render từ lúc customer tạo job sau upload/profile.
  * Render chạy trước thanh toán; payment chỉ được tạo sau preview approval.
  * Khác biệt quan trọng so với thiết kế trước: job KHÔNG chạy
- * "trong" hook này — job chạy phía RenderService (mock hoặc Backend
- * thật), hook chỉ subscribe để nhận cập nhật. Nếu Component unmount
+ * "trong" hook này — job chạy phía Backend thật; hook chỉ subscribe để
+ * nhận cập nhật. Nếu Component unmount
  * rồi mount lại (vd chuyển màn hình rồi quay lại), job vẫn tiếp tục
  * chạy đúng, không bị mất tiến trình.
  */
@@ -100,8 +100,7 @@ export function useRenderJob() {
 
   const cancel = useCallback(async () => {
     if (jobId) await cancelJobApi(jobId);
-    // Trạng thái CANCELLED sẽ tự đến qua onUpdate (server/mock tự thông
-    // báo), không cần setState thủ công ở đây.
+    // Trạng thái CANCELLED đến từ cập nhật Backend, không tự gán ở client.
   }, [jobId]);
 
   /** Khách duyệt bản preview (status === REVIEW_READY) -> Backend sinh

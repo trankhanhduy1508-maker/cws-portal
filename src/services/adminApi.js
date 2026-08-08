@@ -1,7 +1,6 @@
 // ============================================================
 // adminApi — Dashboard Admin (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7).
-// Gọi thẳng Backend NestJS, KHÔNG qua mockBackend.js (Admin không có
-// khái niệm demo — chỉ dùng được khi đã cấu hình Backend thật).
+// Gọi thẳng Backend NestJS; Admin chỉ dùng được khi Backend thật được cấu hình.
 //
 // 2026-08-02 (Owner yêu cầu MFA bắt buộc, "Không tạo bypass"): mọi
 // request giờ đính kèm `Authorization: Bearer <access token Supabase>`

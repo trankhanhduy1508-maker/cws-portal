@@ -1,5 +1,21 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## P0 production real-path correction — 2026-08-08
+
+- **NOT DONE / NEEDS_REAL_RUNTIME**: the canonical frontend and backend are
+  deployed and MAY083 heartbeats, but no authenticated customer B2 upload or
+  `render_orders` row exists from the current production test window. Therefore
+  `Customer upload -> Worker claim -> Blender -> B2 -> Review -> Payment ->
+  Download` is **not** production verified.
+- **CODE/UNIT VERIFIED**: production bundles no longer contain a browser mock
+  auth/demo module; missing configuration fails closed. Customer-facing
+  pre-render copy no longer calls an estimate a price. This is a truthfulness
+  correction, not a Golden E2E claim.
+- **NEXT GATE**: one real customer-owned `.blend` or `.zip` upload through
+  `https://cws-portal.vercel.app`, then capture the durable job/task/attempt,
+  Worker Blender/B2 evidence and only then evaluate review/payment/download.
+- Evidence: `reports/evidence/CWS_PRODUCTION_DEMO_PATH_REALITY_AUDIT_2026-08-08.md`.
+
 ## Architecture V1 bounded enrollment — 2026-08-08
 
 - **P1A CODE/UNIT + PRODUCTION SCHEMA VERIFIED**: migration 026, Admin AAL2

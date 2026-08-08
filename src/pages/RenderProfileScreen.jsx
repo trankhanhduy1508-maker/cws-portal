@@ -19,7 +19,7 @@ export default function RenderProfileScreen({
           Chọn chế độ render
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
-          So sánh thời gian và chi phí giữa các chế độ
+          Chọn ưu tiên xử lý. Giá cuối chỉ hiển thị sau khi render hoàn tất.
         </p>
       </div>
 

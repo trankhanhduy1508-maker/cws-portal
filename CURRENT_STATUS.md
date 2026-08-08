@@ -1,5 +1,34 @@
 # Current Status
 
+## Production real-path correction — 2026-08-08
+
+- **RUNTIME EVIDENCE OVERRIDES PRIOR DONE LABELS**: Founder reports that the
+  canonical portal still behaves as a demo. Read-only production audit confirms
+  `https://cws-portal.vercel.app` serves canonical Vercel project `cws-portal`,
+  deployment `dpl_qp1rkkohBG5TYeWjWHZEFYnsuvZa`, commit
+  `136a241ca7e71965ddc87fa82bc930aba7689651`, and its bundle points at
+  `https://cws-portal.onrender.com`; `/health` returns 200.
+- **NOT PRODUCTION E2E PASS**: canonical Supabase has zero `input_uploads`
+  and zero `render_orders` created in the last seven days. Existing queued
+  tasks are historical Google Drive tasks, not customer-owned B2 uploads; they
+  are intentionally ineligible for the B2-only MAY083 Worker. There is no
+  runtime evidence of an authenticated customer upload, current job claim,
+  Blender PID, B2 output, review, payment, or download.
+- **WORKER PRESENCE ONLY**: MAY083 (`CWS-BAE2782D20525D46`) has a fresh
+  authenticated heartbeat and `ACTIVE_IDLE` state, but owns no active task.
+  This is not render evidence.
+- **P0 FIXED / CODE-TEST VERIFIED**: all browser mock-auth/demo code was
+  removed from the application source and production build; a missing Supabase
+  configuration now fails closed in every mode. Customer profile UI no longer
+  describes or presents pre-render cost as a final price. Frontend tests,
+  lint and production build pass. This correction does not itself prove E2E.
+- **BLOCKED FOR GOLDEN E2E**: the remaining required input is a real Google
+  customer session to upload one `.blend`/`.zip` through the canonical portal.
+  The agent has no reusable customer Bearer session and does not access browser
+  session secrets. Once such a customer job exists, MAY083 can claim the
+  B2-only task automatically; all post-claim stages remain NEEDS_VERIFICATION.
+- Evidence: `reports/evidence/CWS_PRODUCTION_DEMO_PATH_REALITY_AUDIT_2026-08-08.md`.
+
 ## Architecture V1 bounded Worker enrollment — 2026-08-08
 
 - **P1A CODE/UNIT VERIFIED**: Admin Google+TOTP/AAL2 can issue a hash-only

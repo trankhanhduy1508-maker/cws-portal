@@ -4,10 +4,11 @@ import { RENDER_PROFILES } from '../constants/renderConstants';
 
 /**
  * Gọi RenderService.estimateJob() cho TỪNG Render Profile (song song)
- * để hiển thị comparison card — mỗi profile có ETA/giá/hàng đợi riêng.
+ * để hiển thị comparison card — chỉ ETA/hàng đợi dự kiến trước render.
+ * Giá cuối chỉ có sau khi Worker render xong và customer duyệt preview.
  *
  * @param {Object|null} input - { fileRef, driveLink, fileSizeBytes } hoặc null nếu chưa sẵn sàng
- * @returns {{ estimates: Record<string, {etaSeconds, costVnd, queueSeconds}>, isLoading, error }}
+ * @returns {{ estimates: Record<string, {etaSeconds, queueSeconds}>, isLoading, error }}
  */
 export function useProfileEstimates(input) {
   const [estimates, setEstimates] = useState({});

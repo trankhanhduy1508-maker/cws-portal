@@ -138,8 +138,7 @@ export async function createJob({ input, profileId, idempotencyKey }) {
 }
 
 /**
- * Kênh realtime theo dõi 1 job — mock dùng pub-sub nội bộ (xem
- * mockBackend.js), Backend thật sẽ dùng WebSocket/SSE thật. Component
+ * Kênh realtime theo dõi một job qua WebSocket Backend. Component
  * gọi hàm này 1 lần, nhận lại unsubscribe() để dọn dẹp khi rời màn hình.
  *
  * Async vì cần lấy access token trước khi mở WebSocket (xem
