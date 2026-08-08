@@ -63,12 +63,29 @@ export class WorkerRpcService {
       };
     }
     if (operation === 'claim_next_resilient_task') {
+      const schemes = body.p_supported_input_schemes;
+      if (
+        !Array.isArray(schemes) ||
+        schemes.length < 1 ||
+        schemes.length > 2 ||
+        schemes.some(
+          (scheme) =>
+            typeof scheme !== 'string' ||
+            !['b2', 'google_drive'].includes(scheme),
+        ) ||
+        new Set(schemes).size !== schemes.length
+      ) {
+        throw new BadRequestException(
+          'Worker input capability allowlist is invalid',
+        );
+      }
       return {
         p_worker_id: workerId,
         p_worker_vram_mb: this.integer(
           body.p_worker_vram_mb,
           'p_worker_vram_mb',
         ),
+        p_supported_input_schemes: schemes,
       };
     }
     if (operation === 'get_claimed_task_spec') {

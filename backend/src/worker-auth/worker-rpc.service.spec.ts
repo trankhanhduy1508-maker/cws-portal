@@ -60,11 +60,36 @@ describe('WorkerRpcService', () => {
     await service.call('claim_next_resilient_task', 'worker-a', {
       p_worker_id: 'attacker',
       p_worker_vram_mb: 4096,
+      p_supported_input_schemes: ['b2'],
     });
     expect(supabase.rpc).toHaveBeenCalledWith('claim_next_resilient_task', {
       p_worker_id: 'worker-a',
       p_worker_vram_mb: 4096,
+      p_supported_input_schemes: ['b2'],
     });
+  });
+
+  it('rejects missing, duplicate, or unknown input capabilities', async () => {
+    const service = new WorkerRpcService({
+      getClient: () => ({ rpc: jest.fn() }),
+    } as never);
+    await expect(
+      service.call('claim_next_resilient_task', 'worker-a', {
+        p_worker_vram_mb: 4096,
+      }),
+    ).rejects.toThrow('input capability allowlist is invalid');
+    await expect(
+      service.call('claim_next_resilient_task', 'worker-a', {
+        p_worker_vram_mb: 4096,
+        p_supported_input_schemes: ['b2', 'b2'],
+      }),
+    ).rejects.toThrow('input capability allowlist is invalid');
+    await expect(
+      service.call('claim_next_resilient_task', 'worker-a', {
+        p_worker_vram_mb: 4096,
+        p_supported_input_schemes: ['https'],
+      }),
+    ).rejects.toThrow('input capability allowlist is invalid');
   });
 
   it('reads a claimed JobSpec only with the authenticated worker identity', async () => {

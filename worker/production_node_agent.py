@@ -273,10 +273,16 @@ class ProductionRpcAdapter:
             raise RetryableWorkerError("Worker state transition was rejected")
 
     def claim(self) -> JobSpec | None:
+        supported_input_schemes = ["b2"]
+        if self.config.google_drive_api_key:
+            supported_input_schemes.append("google_drive")
         claimed = _single_assignment(
             self.client.call(
                 "claim_next_resilient_task",
-                {"p_worker_vram_mb": self.config.worker_vram_mb},
+                {
+                    "p_worker_vram_mb": self.config.worker_vram_mb,
+                    "p_supported_input_schemes": supported_input_schemes,
+                },
             )
         )
         if claimed is None:

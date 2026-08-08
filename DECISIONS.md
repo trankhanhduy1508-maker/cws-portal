@@ -1,5 +1,21 @@
 # Official Decisions
 
+## Customer upload ownership and Worker claim capability — 2026-08-08
+
+**[ACTIVE]** Customer upload and job creation require a valid Supabase customer
+session. Backend records each B2 upload object key against the authenticated
+user in a service-role-only table and verifies ownership before dispatch. A
+client-supplied `fileRef` is never an authorization proof.
+
+**[ACTIVE]** Workers declare only the supported canonical input schemes (`b2`
+and optionally `google_drive`) on each authenticated claim. PostgreSQL performs
+source filtering in the same atomic `FOR UPDATE SKIP LOCKED` claim, so a
+B2-only Worker cannot consume unsupported Drive backlog.
+
+**[ACTIVE]** Internal Worker/fleet `SECURITY DEFINER` functions are Backend/
+database-internal APIs. Direct `PUBLIC`, `anon` or `authenticated` execution is
+forbidden; canonical Workers use the HMAC-authenticated Backend gateway.
+
 ## Worker RPC gateway-only boundary — 2026-08-08
 
 **[ACTIVE]** Production Worker control-plane RPCs are executable only through

@@ -5,6 +5,7 @@ import {
   Post,
   Req,
   UploadedFile,
+  UnauthorizedException,
   UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,10 @@ import { CwsTempUploadStorage } from './temp-upload.storage';
 import { UploadTimeoutInterceptor } from './upload-timeout.interceptor';
 import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
 import { ACCEPTED_INPUT_EXTENSIONS, getInputFormat } from './input-file.util';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { getOptionalCustomerId } from '../common/optional-auth.util';
+import { SupabaseService } from '../supabase/supabase.service';
+import { InputUploadsService } from './input-uploads.service';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -31,6 +36,8 @@ export class FilesController {
   constructor(
     private readonly b2StorageService: B2StorageService,
     private readonly googleDriveService: GoogleDriveService,
+    private readonly supabaseService: SupabaseService,
+    private readonly inputUploadsService: InputUploadsService,
   ) {}
 
   /**
@@ -43,7 +50,7 @@ export class FilesController {
    * Render.com free/starter tier.
    */
   @Post('files/upload')
-  @UseGuards(MvpRateLimitGuard)
+  @UseGuards(JwtAuthGuard, MvpRateLimitGuard)
   @UseInterceptors(
     UploadTimeoutInterceptor,
     FileInterceptor('file', {
@@ -72,6 +79,15 @@ export class FilesController {
     request.setTimeout(30 * 60 * 1000);
     if (!file)
       throw new BadRequestException('Thiếu file trong request (field "file")');
+    if (file.size <= 0 || file.originalname.length > 255) {
+      throw new BadRequestException('File rỗng hoặc tên file quá dài');
+    }
+
+    const customerId = await getOptionalCustomerId(
+      request,
+      this.supabaseService,
+    );
+    if (!customerId) throw new UnauthorizedException('Cần đăng nhập để upload');
 
     const ext = file.originalname
       .slice(file.originalname.lastIndexOf('.'))
@@ -83,6 +99,12 @@ export class FilesController {
     }
 
     const { key } = await this.b2StorageService.uploadFile(file);
+    await this.inputUploadsService.record(
+      key,
+      customerId,
+      file.originalname,
+      file.size,
+    );
     return {
       fileRef: key,
       fileName: file.originalname,

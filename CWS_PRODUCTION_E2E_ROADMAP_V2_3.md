@@ -161,6 +161,9 @@ Do not choose a mechanism based on assumption. Verify B2 API behavior first.
 - **NEEDS RUNTIME VERIFICATION**: deploy Backend and prove real claimed-task B2
   transfer before marking P1 PASS.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
+- **PRODUCTION SCHEMA VERIFIED**: customer upload keys are now bound to the
+  authenticated Supabase user; create-job rejects a key owned by another
+  customer. The internal ownership table is service-role-only.
 
 ---
 
@@ -189,6 +192,12 @@ PASS requires real evidence of:
 ---
 
 # P3 — REAL CLAIM -> STORAGE -> BLENDER -> STORAGE -> COMPLETION
+
+**Preparation update — 2026-08-08:** resilient claim now atomically filters
+queued work by the authenticated Worker's declared input schemes. MAY083 can
+advertise B2-only and cannot consume the historical Drive backlog. Backend and
+Node Agent deployment plus a controlled real B2 customer task remain
+`NEEDS_VERIFICATION`.
 
 ## Goal
 

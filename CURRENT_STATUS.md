@@ -1,5 +1,29 @@
 # Current Status
 
+## Architecture V1 P0/P1 reconciliation — 2026-08-08
+
+- **PRODUCTION SCHEMA VERIFIED**: additive migrations
+  `input_upload_ownership`, `worker_input_capability_claim` and
+  `internal_rpc_gateway_hardening` are applied to canonical Supabase.
+- **P0 SECURITY FIXED**: upload and job creation require authenticated Google/
+  Supabase customer identity. Backend binds each B2 upload key to its owner and
+  refuses cross-customer `fileRef` dispatch. Production ACL verification shows
+  `input_uploads` is inaccessible to `anon/authenticated` and available only to
+  Backend `service_role`.
+- **P0 WORKER RPC FIXED**: every remaining internal `SECURITY DEFINER` fleet
+  function is no longer executable by `anon/authenticated`; a production
+  catalog query returned zero exposed functions after migration.
+- **P1 CLAIM FIXED**: atomic resilient claim now receives a strict input-source
+  allowlist. A B2-only Worker cannot claim historical Google Drive tasks;
+  capability matching remains inside PostgreSQL `FOR UPDATE SKIP LOCKED`.
+- **CODE/UNIT VERIFIED**: Backend 37 suites / 190 tests + build, Worker 78/78,
+  Frontend 13/13 + lint/build PASS.
+- **NEXT / NEEDS_VERIFICATION**: deploy Backend/Frontend commit, verify
+  authenticated production upload ownership, create one controlled B2 task,
+  then run P3 autonomous claim → Blender → scoped B2 upload → completion.
+- Evidence:
+  `reports/security/CWS_ARCHITECTURE_V1_P0_P1_RECONCILIATION_2026-08-08.md`.
+
 ## Production E2E Roadmap V2.3 P1 storage boundary — 2026-08-08
 
 - **CODE/UNIT VERIFIED**: the authenticated Worker gateway now issues

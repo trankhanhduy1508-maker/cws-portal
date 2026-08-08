@@ -39,8 +39,12 @@ export async function uploadFile(file) {
   requireBackend();
   const formData = new FormData();
   formData.append('file', file);
+  const token = await getAccessToken();
+  if (!token) throw new Error('Cần đăng nhập Google trước khi tải file');
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-    method: 'POST', body: formData,
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
   });
   if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
   return res.json();

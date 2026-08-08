@@ -23,12 +23,15 @@ import { isAuthenticatedMfaAdmin } from '../common/guards/staff-auth.util';
 import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
 import { RequestChangesDto } from './dto/request-changes.dto';
 import { getInputFormat } from '../files/input-file.util';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { InputUploadsService } from '../files/input-uploads.service';
 
 @Controller('jobs')
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly supabaseService: SupabaseService,
+    private readonly inputUploadsService?: InputUploadsService,
   ) {}
   /** Chỉ Bearer token Admin thật đã hoàn tất MFA hợp lệ mới bỏ qua kiểm tra
    * chủ sở hữu job. Shared x-admin-key legacy không còn được chấp nhận. */
@@ -37,15 +40,19 @@ export class JobsController {
   }
 
   @Post()
-  @UseGuards(MvpRateLimitGuard)
+  @UseGuards(JwtAuthGuard, MvpRateLimitGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
     if (dto.fileRef && dto.fileName && !getInputFormat(dto.fileName)) {
       throw new BadRequestException('Chỉ hỗ trợ file .blend hoặc .zip');
     }
-    // Gắn customerId NẾU khách đã đăng nhập Google qua Supabase Auth
-    // (Bearer token hợp lệ) — KHÔNG bắt buộc, job vẫn tạo được cho khách
-    // chưa đăng nhập (xem lý do ở jwt-auth.guard.ts).
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
+    if (!customerId) throw new UnauthorizedException('Cần đăng nhập để tạo job');
+    if (dto.fileRef) {
+      if (!this.inputUploadsService) {
+        throw new UnauthorizedException('Upload ownership chưa được cấu hình');
+      }
+      await this.inputUploadsService.assertOwned(dto.fileRef, customerId);
+    }
     const idempotencyKey = req.header('Idempotency-Key');
     return this.jobsService.createOrder(dto, customerId, idempotencyKey);
   }

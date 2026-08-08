@@ -130,8 +130,38 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         self.assertEqual(
             client.calls,
             [
-                ("claim_next_resilient_task", {"p_worker_vram_mb": 0}),
+                (
+                    "claim_next_resilient_task",
+                    {
+                        "p_worker_vram_mb": 0,
+                        "p_supported_input_schemes": ["b2", "google_drive"],
+                    },
+                ),
                 ("get_claimed_task_spec", {"p_task_id": 42, "p_generation": 7}),
+            ],
+        )
+
+    def test_b2_only_worker_advertises_no_drive_capability(self):
+        config = ProductionConfig.from_env(
+            {
+                "CWS_BACKEND_URL": "https://backend.example",
+                "CWS_WORKER_ID": "worker-a",
+                "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+                "CWS_WORKSPACE": "C:/CWS/work",
+            }
+        )
+        client = FakeClient([[]])
+        self.assertIsNone(ProductionRpcAdapter(client, config).claim())
+        self.assertEqual(
+            client.calls,
+            [
+                (
+                    "claim_next_resilient_task",
+                    {
+                        "p_worker_vram_mb": 0,
+                        "p_supported_input_schemes": ["b2"],
+                    },
+                )
             ],
         )
 

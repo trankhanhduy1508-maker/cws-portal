@@ -1,5 +1,19 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Architecture V1 P0/P1 reconciliation — 2026-08-08
+
+- **DONE / PRODUCTION SCHEMA VERIFIED**: authenticated upload ownership table,
+  service-role-only ACL and cross-customer `fileRef` rejection are applied.
+- **DONE / PRODUCTION SECURITY VERIFIED**: direct `anon/authenticated`
+  execution of internal Worker/fleet `SECURITY DEFINER` RPCs is zero.
+- **DONE / CODE + SCHEMA VERIFIED**: resilient claim filters tasks by the
+  Worker's declared `b2`/`google_drive` capability while preserving atomic
+  lease/generation ownership.
+- **NEEDS_VERIFICATION**: application deployment and one real P3 customer B2
+  upload → Worker → Blender → output completion. No runtime PASS is claimed.
+- Evidence:
+  `reports/security/CWS_ARCHITECTURE_V1_P0_P1_RECONCILIATION_2026-08-08.md`.
+
 ## Production E2E V2.3 scalable storage boundary — 2026-08-08
 
 - **CODE/UNIT VERIFIED**: authenticated Workers obtain 120-second exact-object
