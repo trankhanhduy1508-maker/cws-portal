@@ -1,5 +1,23 @@
 # Current Status
 
+## Full production integration audit — 2026-08-08
+
+- **TRACE BLOCKED / NOT GOLDEN PASS**: correlation
+  `500cd7aa-dde9-44f3-80d3-ca9601b7fa5e` used the exact Owner Drive input.
+  GitHub main, canonical Vercel, Render health/auth boundary and Supabase
+  project wiring passed read-only probes. The first functional break was
+  Render `POST /drive/resolve`: HTTP 503 reported that
+  `GOOGLE_DRIVE_API_KEY`/Google Drive import is not configured. Direct Google
+  Drive API metadata without identity returned HTTP 403.
+- **NO CORRELATED JOB**: because Drive materialization failed, no input upload,
+  render order, task, B2 object, render, preview, payment or download exists
+  for this trace. Historical tasks and the Worker's current `ACTIVE_IDLE` state
+  were explicitly not reused as evidence.
+- **TRUE EXTERNAL BLOCKER**: the Google API credential must be configured in
+  the existing Render production environment/Google Cloud project. Codex has
+  no such credential and must not invent or weaken the capability. Full trace:
+  `reports/evidence/CWS_FULL_PRODUCTION_INTEGRATION_TRACE_2026-08-08.md`.
+
 ## Golden Production E2E V2.4 implementation — 2026-08-08
 
 - **IMPLEMENTED / CODE-TEST VERIFIED**: `.blend`, `.zip`, and `.rar` input
