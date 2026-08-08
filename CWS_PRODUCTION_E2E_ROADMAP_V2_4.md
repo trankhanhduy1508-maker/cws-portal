@@ -1,5 +1,19 @@
 # CWS PRODUCTION E2E ROADMAP V2.4
 
+## Worker resilience hardening — 2026-08-08
+
+- **CODE VERIFIED**: Spec Kit change `003-worker-resilience-hardening` adds
+  taxonomy-aware failure reporting, bounded operation retry, deterministic
+  backoff jitter and authenticated non-customer health probing while keeping
+  the existing Postgres claim/lease/generation contract.
+- **SIMULATION VERIFIED**: 10/25/50/100 Worker control-plane scenarios pass
+  unique claims, bounded transient handling, repeated failure quarantine,
+  non-security probe recovery and stale fencing.
+- **NOT PRODUCTION RUNTIME VERIFIED**: migration 027 and an authenticated
+  physical Worker runtime probe/failure trace remain pending. This section
+  does not change the Golden E2E gate or claim production readiness.
+- Evidence: `reports/evidence/CWS_WORKER_RESILIENCE_HARDENING_2026-08-08.md`.
+
 > Date: 2026-08-08
 > Status: ACTIVE — supersedes V2.3 only where this document explicitly changes the customer Golden E2E order, archive support, Blender optimization, payment timing, preview and delivery gates.
 > Companion source of truth: `CWS_MVP_WORKFLOW_FINAL.md`, `CWS_SCALABILITY_RULES.md`, current code/config/runtime evidence.

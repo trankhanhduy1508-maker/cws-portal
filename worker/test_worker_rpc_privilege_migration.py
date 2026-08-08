@@ -12,6 +12,7 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
                 "023_worker_rpc_gateway_only.sql",
                 "024_worker_input_capability_claim.sql",
                 "025_internal_rpc_gateway_hardening.sql",
+                "027_worker_resilience_policy.sql",
             )
         )
 
@@ -31,6 +32,8 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
             "report_worker_incident(text,bigint,text,text,text,text,jsonb)",
             "finalize_task_attempt(bigint,text,integer,text)",
             "handle_new_auth_user()",
+            "report_worker_failure(bigint,integer,text,text,text)",
+            "report_worker_probe(text,text,text)",
         }
         compact_sql = re.sub(r"\s+", "", sql)
         for signature in required:

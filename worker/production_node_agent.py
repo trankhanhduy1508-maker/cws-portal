@@ -54,6 +54,11 @@ from worker_engine import (
     RetryableWorkerError,
     WorkerEngine,
 )
+from resilience_policy import (
+    FailureCategory,
+    bounded_exponential_backoff,
+    stable_jitter_value,
+)
 from blender_bootstrap import resolve_blender
 from worker_rpc_auth import WorkerCredential, WorkerRpcClient
 from windows_credential_store import WindowsProtectedCredentialStore
@@ -322,6 +327,13 @@ class ProductionRpcAdapter:
     def worker_ping(self) -> None:
         self.client.call("worker_ping", {})
 
+    def probe(self, state: str, reason: str | None = None) -> str:
+        payload: dict[str, Any] = {"p_probe_state": state}
+        if reason:
+            payload["p_reason"] = reason[:240]
+        result = self.client.call("report_worker_probe", payload)
+        return str(result)
+
     def transition(self, state: str, task_id: int | None = None, reason: str | None = None) -> None:
         observed = _OBSERVED_STATES.get(state, state)
         if observed not in {"ACTIVE_IDLE", "PREPARING", "RENDERING", "RECOVERY", "CLEANUP"}:
@@ -390,15 +402,18 @@ class ProductionRpcAdapter:
         if result is not True:
             raise PermanentWorkerError("stale or duplicate completion rejected")
 
-    def fail(self, spec: JobSpec, error_type: str) -> None:
-        self.client.call(
-            "fail_task",
+    def fail(self, spec: JobSpec, failure_category: str, summary: str) -> None:
+        result = self.client.call(
+            "report_worker_failure",
             {
                 "p_task_id": int(spec.task_id),
                 "p_generation": spec.lease_generation,
-                "p_error_type": error_type,
+                "p_failure_category": failure_category,
+                "p_summary": summary[:500],
             },
         )
+        if str(result) == "rejected":
+            raise PermanentWorkerError("stale Worker failure report rejected")
 
     def storage_capability(
         self,
@@ -557,19 +572,37 @@ class DriveOrB2Downloader(ProjectDownloader):
         target.parent.mkdir(parents=True, exist_ok=True)
         partial = target.with_suffix(target.suffix + ".part")
         try:
-            capability = self.rpc.storage_capability("input_download", spec)
-            _download_capability(capability, partial, max_bytes=20 * 1024 * 1024 * 1024)
-            partial.replace(target)
-            self._validate_downloaded_file(target)
-            return target
+            for attempt in range(1, 4):
+                try:
+                    capability = self.rpc.storage_capability("input_download", spec)
+                    _download_capability(capability, partial, max_bytes=20 * 1024 * 1024 * 1024)
+                    partial.replace(target)
+                    self._validate_downloaded_file(target)
+                    return target
+                except PermanentWorkerError:
+                    raise
+                except Exception as exc:
+                    partial.unlink(missing_ok=True)
+                    if attempt == 3:
+                        raise RetryableWorkerError(
+                            "B2 project download failed", FailureCategory.STORAGE_TRANSIENT
+                        ) from exc
+                    time.sleep(
+                        bounded_exponential_backoff(
+                            0.5,
+                            attempt,
+                            8.0,
+                            jitter_value=stable_jitter_value(self.config.worker_id, attempt),
+                        )
+                    )
         except PermanentWorkerError:
             partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
             raise
-        except Exception as exc:
+        except RetryableWorkerError:
             partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
-            raise RetryableWorkerError("B2 project download failed") from exc
+            raise
 
     def download(self, spec: JobSpec, destination: Path) -> Path:
         if spec.project_uri.startswith("b2://"):
@@ -703,7 +736,11 @@ class ProductionReporter(Reporter):
         self.rpc.complete(spec)
 
     def fail(self, spec: JobSpec, category: str, message: str) -> None:
-        self.rpc.fail(spec, "permanent" if category == "permanent" else "transient")
+        try:
+            normalized = FailureCategory(category.upper()).value
+        except ValueError:
+            normalized = FailureCategory.NETWORK_TRANSIENT.value
+        self.rpc.fail(spec, normalized, message)
 
 
 class ProductionAttemptGuard(AttemptGuard):
@@ -778,6 +815,36 @@ class ProductionNodeAgentRuntime:
         self.last_claim = spec
         return Job(spec.task_id, spec) if spec is not None else None
 
+    def _probe_local_runtime(self) -> None:
+        """Run only lightweight host checks; never consume a customer task."""
+        self.config.workspace.mkdir(parents=True, exist_ok=True)
+        probe_path = self.config.workspace / ".cws-health-probe"
+        probe_path.write_text("ok", encoding="ascii")
+        probe_path.unlink(missing_ok=True)
+        if not self.blender_exe.is_file():
+            raise PermanentWorkerError(
+                "Blender executable is unavailable", FailureCategory.WORKER_HOST_ERROR
+            )
+
+    def _attempt_health_probe(self) -> bool:
+        if not hasattr(self.rpc, "probe"):
+            return False
+        try:
+            state = self.rpc.probe("PROBING", "authenticated startup/recovery probe")
+            if state == "blocked":
+                return False
+            if state != "probing":
+                return False
+            try:
+                self._probe_local_runtime()
+            except Exception as exc:
+                self.rpc.probe("FAILED", type(exc).__name__)
+                return False
+            return self.rpc.probe("OK", "backend auth, workspace and Blender checks passed") == "healthy"
+        except Exception as exc:
+            _LOGGER.warning("Worker health probe failed: %s", type(exc).__name__)
+            return False
+
     def _prepare(self, job: Job) -> None:
         JobSpec.from_mapping(job.payload.__dict__)
 
@@ -835,6 +902,7 @@ class ProductionNodeAgentRuntime:
                 min(self.config.startup_jitter_seconds, self.config.poll_seconds),
             )
         )
+        self._attempt_health_probe()
         agent = NodeAgent(
             poll_job=self._poll,
             heartbeat=self._heartbeat,
@@ -848,18 +916,27 @@ class ProductionNodeAgentRuntime:
             non_blocking_heartbeat=True,
             runtime_policy=RuntimePolicy(state_observer=self._report_state),
         )
-        poll_backoff = self.config.poll_seconds
+        poll_attempt = 0
         try:
             while True:
                 try:
                     agent.tick()
-                    poll_backoff = self.config.poll_seconds
+                    poll_attempt = 0
                 except Exception as exc:
                     # Network/cloud failures must not kill the supervisor. The
                     # backend lease timeout remains the recovery authority.
                     _LOGGER.warning("Node Agent tick failed: %s", type(exc).__name__)
-                    time.sleep(min(poll_backoff, 60.0))
-                    poll_backoff = min(poll_backoff * 2.0, 60.0)
+                    poll_attempt += 1
+                    time.sleep(
+                        bounded_exponential_backoff(
+                            self.config.poll_seconds,
+                            poll_attempt,
+                            60.0,
+                            jitter_value=stable_jitter_value(
+                                self.config.worker_id, poll_attempt
+                            ),
+                        )
+                    )
                 time.sleep(self.config.poll_seconds)
         finally:
             agent.close()
@@ -879,6 +956,7 @@ class ProductionNodeAgentRuntime:
                 ),
             )
         )
+        self._attempt_health_probe()
         self.rpc.transition("ACTIVE_IDLE", reason="heartbeat_only")
         backoff = self.config.heartbeat_seconds
         while True:

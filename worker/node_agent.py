@@ -14,6 +14,7 @@ import threading
 from typing import Callable, Optional, Any
 
 from node_agent_runtime_policy import RuntimePolicy
+from resilience_policy import bounded_exponential_backoff
 
 
 class NodeState(str, Enum):
@@ -186,9 +187,14 @@ class NodeAgent:
             if self.retry_count < self.max_retries and self.last_result.status == "retryable":
                 self.retry_count += 1
                 self.handle = None
-                base_delay = self.retry_backoff_seconds * (2 ** (self.retry_count - 1))
-                jitter = base_delay * self.retry_jitter_ratio * self.random_value()
-                self.retry_ready_at = self.now() + base_delay + jitter
+                delay = bounded_exponential_backoff(
+                    self.retry_backoff_seconds,
+                    self.retry_count,
+                    max(3600.0, self.retry_backoff_seconds * (2 ** self.max_retries)),
+                    jitter_ratio=self.retry_jitter_ratio,
+                    jitter_value=self.random_value(),
+                )
+                self.retry_ready_at = self.now() + delay
                 self._transition(NodeState.PREPARING, "retry")
             else:
                 self._transition(NodeState.CLEANUP, "retry_exhausted")

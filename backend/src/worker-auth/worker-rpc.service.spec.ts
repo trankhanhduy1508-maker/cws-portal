@@ -143,4 +143,54 @@ describe('WorkerRpcService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
+
+  it('validates taxonomy and binds fenced failure reports to the authenticated Worker', async () => {
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: 'requeued', error: null }),
+    };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await service.call('report_worker_failure', 'worker-a', {
+      p_worker_id: 'attacker',
+      p_task_id: 42,
+      p_generation: 7,
+      p_failure_category: 'STORAGE_TRANSIENT',
+      p_summary: 'temporary storage timeout',
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith('report_worker_failure', {
+      p_worker_id: 'worker-a',
+      p_task_id: 42,
+      p_generation: 7,
+      p_failure_category: 'STORAGE_TRANSIENT',
+      p_summary: 'temporary storage timeout',
+    });
+    await expect(
+      service.call('report_worker_failure', 'worker-a', {
+        p_task_id: 42,
+        p_generation: 7,
+        p_failure_category: 'WORKER_HOST_ERROR\nSQL',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('validates the authenticated probe lifecycle', async () => {
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: 'probing', error: null }),
+    };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await service.call('report_worker_probe', 'worker-a', {
+      p_worker_id: 'attacker',
+      p_probe_state: 'PROBING',
+      p_reason: 'startup',
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith('report_worker_probe', {
+      p_worker_id: 'worker-a',
+      p_probe_state: 'PROBING',
+      p_reason: 'startup',
+    });
+    await expect(
+      service.call('report_worker_probe', 'worker-a', {
+        p_probe_state: 'ADMIN',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

@@ -1,5 +1,35 @@
 # Official Decisions
 
+## Worker resilience remains inside the existing scheduler boundary — 2026-08-08
+
+**[ACTIVE]** CWS adopts only small resilience patterns at the existing Worker
+and Backend boundaries. The system retains PostgreSQL `FOR UPDATE SKIP LOCKED`
+claim, `Job -> Task -> Worker -> Lease -> Generation -> Output` ownership,
+stable per-Worker identity, task-scoped storage capabilities and generation
+fencing. OmniRoute is explicitly rejected as a production dependency or
+scheduler replacement.
+
+**[ACTIVE]** Failure taxonomy is
+`CUSTOMER_INPUT_ERROR`, `CAPABILITY_MISMATCH`, `BLENDER_RENDER_ERROR`,
+`WORKER_HOST_ERROR`, `STORAGE_TRANSIENT`, `BACKEND_TRANSIENT`,
+`NETWORK_TRANSIENT`, and `SECURITY_VIOLATION`. Only repeated host/render
+failures affect Worker health; security fails closed. Existing
+`health_state` is reused with additive `PROBING` recovery. Thresholds are
+three open host/render occurrences for `DEGRADED` and five for
+`QUARANTINED`; successful non-security probe returns `OK`.
+
+**[ACTIVE]** Retry authority remains split: operation retry is bounded and
+jittered in the Worker adapter; the canonical production Node Agent keeps
+`max_retries=0` because Backend/Postgres owns task retry/failover through
+`jobs.max_retry_attempts`, stale leases and generation fencing. These tiers
+must not be merged.
+
+This decision adds no broker, scheduler service, AI runtime, project or broad
+credential. Migration `worker_migrations/027_worker_resilience_policy.sql`
+is additive and service-role-only through the existing authenticated gateway.
+Evidence: `reports/process/CWS_WORKER_RESILIENCE_ANALYZE_2026-08-08.md` and
+`reports/evidence/CWS_WORKER_RESILIENCE_HARDENING_2026-08-08.md`.
+
 ## Mandatory GitHub Spec Kit execution framework - 2026-08-08
 
 **[ACTIVE]** Every CWS change must pass through the checked-in execution

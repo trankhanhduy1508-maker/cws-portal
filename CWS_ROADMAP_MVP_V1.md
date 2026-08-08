@@ -1,5 +1,17 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Worker resilience hardening — 2026-08-08
+
+- **CODE VERIFIED**: existing PostgreSQL claim/lease/generation architecture
+  now has additive taxonomy-aware failure reporting, bounded operation retry,
+  deterministic reconnect jitter and authenticated lightweight Worker probing.
+- **SIMULATION VERIFIED**: 10/25/50/100 Worker control-plane scenarios pass
+  unique claims, stale-generation rejection and bounded recovery checks.
+- **NOT PRODUCTION RUNTIME VERIFIED**: canonical Supabase migration 027 and a
+  physical authenticated Worker probe/failure run remain outstanding; this
+  milestone does not claim fleet production readiness.
+- Evidence: `reports/evidence/CWS_WORKER_RESILIENCE_HARDENING_2026-08-08.md`.
+
 ## P0 production real-path correction — 2026-08-08
 
 - **NOT DONE / NEEDS_REAL_RUNTIME**: the canonical frontend and backend are

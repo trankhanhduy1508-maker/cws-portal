@@ -17,6 +17,8 @@ const RPC_NAMES = new Set([
   'fail_task',
   'update_task_stage',
   'report_worker_state_transition',
+  'report_worker_failure',
+  'report_worker_probe',
 ]);
 
 const WORKER_STATES = new Set([
@@ -26,6 +28,19 @@ const WORKER_STATES = new Set([
   'RECOVERY',
   'CLEANUP',
 ]);
+
+const FAILURE_CATEGORIES = new Set([
+  'CUSTOMER_INPUT_ERROR',
+  'CAPABILITY_MISMATCH',
+  'BLENDER_RENDER_ERROR',
+  'WORKER_HOST_ERROR',
+  'STORAGE_TRANSIENT',
+  'BACKEND_TRANSIENT',
+  'NETWORK_TRANSIENT',
+  'SECURITY_VIOLATION',
+]);
+
+const PROBE_STATES = new Set(['PROBING', 'OK', 'FAILED']);
 
 @Injectable()
 export class WorkerRpcService {
@@ -127,6 +142,56 @@ export class WorkerRpcService {
         transition.p_reason = body.p_reason;
       }
       return transition;
+    }
+    if (operation === 'report_worker_probe') {
+      if (
+        typeof body.p_probe_state !== 'string' ||
+        !PROBE_STATES.has(body.p_probe_state)
+      ) {
+        throw new BadRequestException('Worker probe state is invalid');
+      }
+      if (
+        body.p_reason !== undefined &&
+        (typeof body.p_reason !== 'string' || body.p_reason.length > 240)
+      ) {
+        throw new BadRequestException('Worker probe reason is invalid');
+      }
+      const probe: WorkerRpcBody = {
+        p_worker_id: workerId,
+        p_probe_state: body.p_probe_state,
+      };
+      if (body.p_reason !== undefined) probe.p_reason = body.p_reason;
+      return probe;
+    }
+    if (operation === 'report_worker_failure') {
+      if (
+        !Number.isInteger(body.p_task_id) ||
+        !Number.isInteger(body.p_generation)
+      ) {
+        throw new BadRequestException(
+          'Worker task and generation are required',
+        );
+      }
+      if (
+        typeof body.p_failure_category !== 'string' ||
+        !FAILURE_CATEGORIES.has(body.p_failure_category)
+      ) {
+        throw new BadRequestException('Worker failure category is invalid');
+      }
+      if (
+        body.p_summary !== undefined &&
+        (typeof body.p_summary !== 'string' || body.p_summary.length > 500)
+      ) {
+        throw new BadRequestException('Worker failure summary is invalid');
+      }
+      const failure: WorkerRpcBody = {
+        p_worker_id: workerId,
+        p_task_id: Number(body.p_task_id),
+        p_generation: Number(body.p_generation),
+        p_failure_category: body.p_failure_category,
+      };
+      if (body.p_summary !== undefined) failure.p_summary = body.p_summary;
+      return failure;
     }
     if (
       !Number.isInteger(body.p_task_id) ||

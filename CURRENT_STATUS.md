@@ -1,5 +1,22 @@
 # Current Status
 
+## Worker resilience hardening — 2026-08-08
+
+- **IMPLEMENTED / CODE VERIFIED**: Spec Kit change
+  `specs/003-worker-resilience-hardening/` adds the eight-category failure
+  taxonomy, bounded operation retry with deterministic jitter, fenced failure
+  reporting, existing `health_state` thresholds and lightweight
+  `PROBING -> OK` recovery. PostgreSQL atomic claim, lease/generation fencing,
+  task-scoped storage and Worker identity boundaries are unchanged.
+- **SIMULATION VERIFIED**: targeted 10/25/50/100 Worker scenarios show unique
+  claims, bounded storage retry, `DEGRADED -> QUARANTINED` on repeated
+  host/render failures, non-security probe recovery and security fail-closed.
+- **NOT PRODUCTION RUNTIME VERIFIED**: migration 027 and authenticated
+  physical Worker probe/failure flow have not been applied/run against
+  canonical production in this worktree. No production resilience PASS is
+  claimed. Evidence:
+  `reports/evidence/CWS_WORKER_RESILIENCE_HARDENING_2026-08-08.md`.
+
 ## GitHub Spec Kit governance integration - 2026-08-08
 
 - **IMPLEMENTED**: GitHub Spec Kit 0.16.1 was initialized in the existing

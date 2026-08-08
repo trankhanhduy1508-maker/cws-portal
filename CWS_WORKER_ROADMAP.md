@@ -1,5 +1,19 @@
 # CWS WORKER ROADMAP
 
+## Resilience policy hardening — 2026-08-08
+
+- **CODE VERIFIED**: reused `health_state`/`worker_incidents` and the existing
+  atomic claim/fencing contract. Added explicit failure taxonomy, bounded
+  operation retry, deterministic poll jitter, fenced task failure reporting
+  and `PROBING` health recovery; no scheduler or broker was added.
+- **SIMULATION VERIFIED**: 10/25/50/100 Worker scenarios cover startup,
+  unique claims, B2 transient retry, repeated render/host failures, probing,
+  security quarantine and stale completion rejection.
+- **NOT PRODUCTION RUNTIME VERIFIED**: migration 027 has not yet been applied
+  to canonical Supabase and no physical authenticated Worker failure/probe run
+  was performed. Evidence:
+  `reports/evidence/CWS_WORKER_RESILIENCE_HARDENING_2026-08-08.md`.
+
 ## Input validation correction — 2026-08-08
 
 - **FIXED**: production Node Agent accepts Blender-native Zstandard-compressed

@@ -192,7 +192,7 @@ class WorkerEngineTests(unittest.TestCase):
         )
         self.assertEqual(
             classify_blender_failure(1, "CUDA out of memory on render node"),
-            FailureCategory.RETRYABLE,
+            FailureCategory.WORKER_HOST_ERROR,
         )
 
     def test_dynamic_job_runs_all_frames_and_cleans_workspace(self):

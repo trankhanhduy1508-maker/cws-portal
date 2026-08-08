@@ -20,7 +20,6 @@ import subprocess
 import threading
 import tempfile
 import zipfile
-from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +27,7 @@ from job_object import WindowsJobObject
 from typing import Any, Mapping, Protocol, Sequence
 
 from path_boundary import reject_reparse_points
+from resilience_policy import FailureCategory
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -40,18 +40,26 @@ _MAX_ARCHIVE_COMPRESSION_RATIO = 1_000
 class WorkerEngineError(RuntimeError):
     """A job attempt cannot continue safely."""
 
+    default_category = FailureCategory.WORKER_HOST_ERROR
+
+    def __init__(self, message: str, category: FailureCategory | str | None = None):
+        super().__init__(message)
+        self.failure_category = (
+            category if isinstance(category, FailureCategory)
+            else FailureCategory(str(category).upper()) if category else self.default_category
+        )
+
 
 class RetryableWorkerError(WorkerEngineError):
     """The control plane may retry this attempt under its policy."""
+
+    default_category = FailureCategory.NETWORK_TRANSIENT
 
 
 class PermanentWorkerError(WorkerEngineError):
     """The project/spec is not safe or valid for this attempt."""
 
-
-class FailureCategory(str, Enum):
-    RETRYABLE = "retryable"
-    PERMANENT = "permanent"
+    default_category = FailureCategory.CUSTOMER_INPUT_ERROR
 
 
 def classify_blender_failure(returncode: int | None, output: str) -> FailureCategory:
@@ -65,8 +73,10 @@ def classify_blender_failure(returncode: int | None, output: str) -> FailureCate
     text = output.lower()
     permanent_markers = ("cannot read file", "missing", "no such file", "invalid blend")
     if any(marker in text for marker in permanent_markers):
-        return FailureCategory.PERMANENT
-    return FailureCategory.RETRYABLE
+        return FailureCategory.CUSTOMER_INPUT_ERROR
+    if "out of memory" in text or "gpu" in text or "cuda" in text:
+        return FailureCategory.WORKER_HOST_ERROR
+    return FailureCategory.BLENDER_RENDER_ERROR
 
 
 @dataclass(frozen=True)
@@ -194,7 +204,7 @@ class FilesystemCheckpointStore:
     def _paths(self, spec: JobSpec, frame: int) -> tuple[Path, Path]:
         task_root = (self.root / spec.task_id).resolve()
         if not _inside(self.root, task_root):
-            raise PermanentWorkerError("checkpoint path escaped root")
+            raise PermanentWorkerError("checkpoint path escaped root", FailureCategory.SECURITY_VIOLATION)
         return (task_root / f"frame_{frame:04d}.{spec.output_format}",
                 task_root / f"frame_{frame:04d}.json")
 
@@ -296,10 +306,10 @@ def _safe_archive_member(name: str) -> Path:
         or normalized.startswith('/')
         or re.match(r'^[A-Za-z]:($|/)', normalized)
     ):
-        raise PermanentWorkerError('archive contains an unsafe path')
+        raise PermanentWorkerError('archive contains an unsafe path', FailureCategory.SECURITY_VIOLATION)
     parts = normalized.split('/')
     if any(part in ('', '.', '..') or ':' in part for part in parts):
-        raise PermanentWorkerError('archive contains a path traversal entry')
+        raise PermanentWorkerError('archive contains a path traversal entry', FailureCategory.SECURITY_VIOLATION)
     return Path(*parts)
 
 
@@ -314,7 +324,7 @@ def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Pa
 
     extraction_root = (job_root / 'project_archive').resolve()
     if not _inside(job_root, extraction_root):
-        raise PermanentWorkerError('archive extraction escaped job workspace')
+        raise PermanentWorkerError('archive extraction escaped job workspace', FailureCategory.SECURITY_VIOLATION)
     extraction_root.mkdir(parents=True, exist_ok=True)
     seen: set[str] = set()
     total_bytes = 0
@@ -331,7 +341,7 @@ def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Pa
                 seen.add(key)
                 mode = (info.external_attr >> 16) & 0o170000
                 if mode == 0o120000:
-                    raise PermanentWorkerError('archive symlinks are not allowed')
+                    raise PermanentWorkerError('archive symlinks are not allowed', FailureCategory.SECURITY_VIOLATION)
                 if info.is_dir():
                     (extraction_root / relative).mkdir(parents=True, exist_ok=True)
                     continue
@@ -347,7 +357,7 @@ def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Pa
                     raise PermanentWorkerError('archive expands beyond the safety limit')
                 target = (extraction_root / relative).resolve()
                 if not _inside(extraction_root, target):
-                    raise PermanentWorkerError('archive path escaped extraction root')
+                    raise PermanentWorkerError('archive path escaped extraction root', FailureCategory.SECURITY_VIOLATION)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 written = 0
                 with archive.open(info, 'r') as source, target.open('xb') as output:
@@ -357,7 +367,10 @@ def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Pa
                             break
                         written += len(chunk)
                         if written > _MAX_ARCHIVE_MEMBER_BYTES:
-                            raise PermanentWorkerError('archive member expanded beyond the safety limit')
+                            raise PermanentWorkerError(
+                                'archive member expanded beyond the safety limit',
+                                FailureCategory.SECURITY_VIOLATION,
+                            )
                         output.write(chunk)
                 total_bytes += written
     except zipfile.BadZipFile as exc:
@@ -406,7 +419,7 @@ def _parse_rar_listing(output: str) -> dict[str, int]:
         entry_type = record.get('Type', '').lower()
         attributes = record.get('Attributes', '')
         if entry_type in {'link', 'symlink', 'hardlink'} or 'l' in attributes.lower():
-            raise PermanentWorkerError('RAR links are not allowed')
+            raise PermanentWorkerError('RAR links are not allowed', FailureCategory.SECURITY_VIOLATION)
         if relative.suffix.lower() in {'.rar', '.zip'}:
             raise PermanentWorkerError('nested archives are not allowed')
         if entry_type in {'d', 'folder', 'directory'} or name.endswith(('\\', '/')):
@@ -441,7 +454,7 @@ def _extract_rar(downloaded: Path, job_root: Path) -> Path:
         raise PermanentWorkerError('RAR input requires the managed 7-Zip runtime')
     extraction_root = (job_root / 'project_archive').resolve()
     if not _inside(job_root, extraction_root):
-        raise PermanentWorkerError('archive extraction escaped job workspace')
+        raise PermanentWorkerError('archive extraction escaped job workspace', FailureCategory.SECURITY_VIOLATION)
     try:
         listing = subprocess.run(
             [extractor, 'l', '-slt', '-bd', str(downloaded)], capture_output=True, text=True,
@@ -471,7 +484,7 @@ def _extract_rar(downloaded: Path, job_root: Path) -> Path:
         if normalized not in declared_files:
             raise PermanentWorkerError('RAR extraction created an unexpected file')
         if path.is_symlink():
-            raise PermanentWorkerError('RAR extraction created a symlink')
+            raise PermanentWorkerError('RAR extraction created a symlink', FailureCategory.SECURITY_VIOLATION)
         size = path.stat().st_size
         if size != declared_files[normalized]:
             raise PermanentWorkerError('RAR extracted size does not match archive metadata')
@@ -497,9 +510,13 @@ class BasicPreflight:
         available_vram = int(self.capabilities.get("vram_mb", 0))
         available_ram = int(self.capabilities.get("ram_mb", 0))
         if spec.required_vram_mb and available_vram < spec.required_vram_mb:
-            raise PermanentWorkerError("node VRAM capability is insufficient")
+            raise PermanentWorkerError(
+                "node VRAM capability is insufficient", FailureCategory.CAPABILITY_MISMATCH
+            )
         if spec.required_ram_mb and available_ram < spec.required_ram_mb:
-            raise PermanentWorkerError("node RAM capability is insufficient")
+            raise PermanentWorkerError(
+                "node RAM capability is insufficient", FailureCategory.CAPABILITY_MISMATCH
+            )
 
 
 class BasicOutputValidator:
@@ -508,7 +525,9 @@ class BasicOutputValidator:
 
     def validate(self, output: Path) -> None:
         if not output.is_file() or output.stat().st_size < self.minimum_bytes:
-            raise RetryableWorkerError(f"invalid render output: {output.name}")
+            raise RetryableWorkerError(
+                f"invalid render output: {output.name}", FailureCategory.BLENDER_RENDER_ERROR
+            )
 
 
 class OutputIntegrityValidator(BasicOutputValidator):
@@ -533,13 +552,19 @@ class OutputIntegrityValidator(BasicOutputValidator):
                 chunk_type = stream.read(4)
                 ihdr = stream.read(13) if length == 13 and chunk_type == b"IHDR" else b""
         except OSError as exc:
-            raise RetryableWorkerError(f"cannot read render output: {output.name}") from exc
+            raise RetryableWorkerError(
+                f"cannot read render output: {output.name}", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
         if signature != self._PNG_SIGNATURE or len(ihdr) != 13:
-            raise RetryableWorkerError(f"invalid PNG output: {output.name}")
+            raise RetryableWorkerError(
+                f"invalid PNG output: {output.name}", FailureCategory.BLENDER_RENDER_ERROR
+            )
         width = int.from_bytes(ihdr[0:4], "big")
         height = int.from_bytes(ihdr[4:8], "big")
         if width < 1 or height < 1:
-            raise RetryableWorkerError(f"invalid PNG dimensions: {output.name}")
+            raise RetryableWorkerError(
+                f"invalid PNG dimensions: {output.name}", FailureCategory.BLENDER_RENDER_ERROR
+            )
 
 
 class BlenderSafePreparer:
@@ -588,13 +613,19 @@ class BlenderSafePreparer:
                 env=env, cwd=str(report.parent), check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            raise RetryableWorkerError("Blender optimization analysis failed") from exc
+            raise RetryableWorkerError(
+                "Blender optimization analysis failed", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
         if result.returncode != 0 or not report.is_file():
-            raise RetryableWorkerError("Blender optimization analyzer failed")
+            raise RetryableWorkerError(
+                "Blender optimization analyzer failed", FailureCategory.BLENDER_RENDER_ERROR
+            )
         try:
             return json.loads(report.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise RetryableWorkerError("Blender optimization analysis was invalid") from exc
+            raise RetryableWorkerError(
+                "Blender optimization analysis was invalid", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
 
     @classmethod
     def _protected_projection(cls, analysis: Mapping[str, Any]) -> dict[str, Any]:
@@ -624,13 +655,19 @@ class BlenderSafePreparer:
             from blender_optimizer import run as run_safe_optimizer
             plan_path = run_safe_optimizer(self.blender_exe, project, working_copy, apply=True)
         except (OSError, subprocess.TimeoutExpired, RuntimeError, ValueError) as exc:
-            raise RetryableWorkerError("safe Blender optimizer failed") from exc
+            raise RetryableWorkerError(
+                "safe Blender optimizer failed", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
         if not working_copy.is_file() or not plan_path.is_file():
-            raise RetryableWorkerError("safe optimizer did not produce a working copy")
+            raise RetryableWorkerError(
+                "safe optimizer did not produce a working copy", FailureCategory.BLENDER_RENDER_ERROR
+            )
         try:
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise RetryableWorkerError("safe optimizer plan was invalid") from exc
+            raise RetryableWorkerError(
+                "safe optimizer plan was invalid", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
         if plan.get("schema_version") != "cws.optimization-plan.v1" or plan.get("applied") is not True:
             raise PermanentWorkerError("safe optimizer plan failed validation")
 
@@ -676,7 +713,9 @@ class BlenderCliRenderer:
 
     def render(self, spec: JobSpec, project: Path, frame: int, output: Path) -> Path:
         if not self.executable.is_file():
-            raise RetryableWorkerError("Blender executable is unavailable")
+            raise RetryableWorkerError(
+                "Blender executable is unavailable", FailureCategory.WORKER_HOST_ERROR
+            )
         output.parent.mkdir(parents=True, exist_ok=True)
         pattern = str(output.parent / "frame_####")
         command = [str(self.executable), "--background", str(project),
@@ -707,10 +746,14 @@ class BlenderCliRenderer:
             stdout, stderr = process.communicate(timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
             self._terminate_tree(process)
-            raise RetryableWorkerError("Blender render timed out") from exc
+            raise RetryableWorkerError(
+                "Blender render timed out", FailureCategory.BLENDER_RENDER_ERROR
+            ) from exc
         except Exception as exc:
             self._terminate_tree(process)
-            raise RetryableWorkerError("could not attach Blender process to Job Object") from exc
+            raise RetryableWorkerError(
+                "could not attach Blender process to Job Object", FailureCategory.WORKER_HOST_ERROR
+            ) from exc
         finally:
             stop_metrics.set()
             if metrics_thread is not None:
@@ -721,10 +764,12 @@ class BlenderCliRenderer:
         if result.returncode != 0:
             category = classify_blender_failure(result.returncode, f"{result.stdout}\n{result.stderr}")
             error = PermanentWorkerError if category is FailureCategory.PERMANENT else RetryableWorkerError
-            raise error(f"Blender failed with exit code {result.returncode}")
+            raise error(f"Blender failed with exit code {result.returncode}", category)
         rendered = output.parent / f"frame_{frame:04d}.png"
         if not rendered.is_file():
-            raise RetryableWorkerError("Blender completed without expected output")
+            raise RetryableWorkerError(
+                "Blender completed without expected output", FailureCategory.BLENDER_RENDER_ERROR
+            )
         return rendered
 
 
@@ -761,11 +806,15 @@ class WorkerEngine:
         self.workspace_root.mkdir(parents=True, exist_ok=True)
         job_root = (self.workspace_root / spec.task_id).resolve()
         if not _inside(self.workspace_root, job_root):
-            raise PermanentWorkerError("job workspace escaped workspace root")
+            raise PermanentWorkerError(
+                "job workspace escaped workspace root", FailureCategory.SECURITY_VIOLATION
+            )
         try:
             reject_reparse_points(self.workspace_root, self.workspace_root / spec.task_id)
         except ValueError as exc:
-            raise PermanentWorkerError("job workspace contains a reparse point") from exc
+            raise PermanentWorkerError(
+                "job workspace contains a reparse point", FailureCategory.SECURITY_VIOLATION
+            ) from exc
         job_root.mkdir(parents=True, exist_ok=True)
         try:
             self._guard(spec, "CLAIMED")
@@ -774,10 +823,14 @@ class WorkerEngine:
             project = self.downloader.download(spec, job_root)
             project = project.resolve()
             if not _inside(job_root, project):
-                raise PermanentWorkerError("downloaded project escaped job workspace")
+                raise PermanentWorkerError(
+                    "downloaded project escaped job workspace", FailureCategory.SECURITY_VIOLATION
+                )
             project = resolve_project_input(spec, project, job_root).resolve()
             if not _inside(job_root, project):
-                raise PermanentWorkerError("resolved project escaped job workspace")
+                raise PermanentWorkerError(
+                    "resolved project escaped job workspace", FailureCategory.SECURITY_VIOLATION
+                )
             self.reporter.stage(spec, "PREFLIGHT")
             self.preflight.inspect(spec, project)
             self.reporter.stage(spec, "PREPARING")
@@ -785,7 +838,9 @@ class WorkerEngine:
                 self.reporter.stage(spec, "OPTIMIZING")
                 project = self.preparer.prepare(project, job_root).resolve()
                 if not _inside(job_root, project):
-                    raise PermanentWorkerError("optimized project escaped job workspace")
+                    raise PermanentWorkerError(
+                        "optimized project escaped job workspace", FailureCategory.SECURITY_VIOLATION
+                    )
             total = spec.frame_end - spec.frame_start + 1
             for frame in range(spec.frame_start, spec.frame_end + 1):
                 self._guard(spec, "RENDERING")
@@ -811,12 +866,17 @@ class WorkerEngine:
             self._guard(spec, "COMPLETING")
             self.reporter.complete(spec)
         except (PermanentWorkerError, RetryableWorkerError) as exc:
-            category = "permanent" if isinstance(exc, PermanentWorkerError) else "retryable"
-            self.reporter.fail(spec, category, str(exc))
+            self.reporter.fail(spec, exc.failure_category.value, str(exc))
             raise
         except Exception as exc:
-            self.reporter.fail(spec, "retryable", f"unexpected engine error: {type(exc).__name__}")
-            raise RetryableWorkerError("unexpected engine error") from exc
+            self.reporter.fail(
+                spec,
+                FailureCategory.WORKER_HOST_ERROR.value,
+                f"unexpected engine error: {type(exc).__name__}",
+            )
+            raise RetryableWorkerError(
+                "unexpected engine error", FailureCategory.WORKER_HOST_ERROR
+            ) from exc
         finally:
             if job_root.exists() and _inside(self.workspace_root, job_root):
                 shutil.rmtree(job_root)
