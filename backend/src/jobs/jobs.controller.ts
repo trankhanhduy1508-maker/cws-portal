@@ -25,6 +25,7 @@ import { RequestChangesDto } from './dto/request-changes.dto';
 import { getInputFormat } from '../files/input-file.util';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { InputUploadsService } from '../files/input-uploads.service';
+import { GoogleDriveService } from '../files/google-drive.service';
 
 @Controller('jobs')
 export class JobsController {
@@ -32,6 +33,7 @@ export class JobsController {
     private readonly jobsService: JobsService,
     private readonly supabaseService: SupabaseService,
     private readonly inputUploadsService?: InputUploadsService,
+    private readonly googleDriveService?: GoogleDriveService,
   ) {}
   /** Chỉ Bearer token Admin thật đã hoàn tất MFA hợp lệ mới bỏ qua kiểm tra
    * chủ sở hữu job. Shared x-admin-key legacy không còn được chấp nhận. */
@@ -47,6 +49,25 @@ export class JobsController {
     }
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     if (!customerId) throw new UnauthorizedException('Cần đăng nhập để tạo job');
+    if (dto.driveLink) {
+      if (!this.googleDriveService || !this.inputUploadsService) {
+        throw new UnauthorizedException('Google Drive import chưa được cấu hình');
+      }
+      const imported = await this.googleDriveService.materializeToB2(dto.driveLink);
+      dto = {
+        ...dto,
+        driveLink: null,
+        fileRef: imported.key,
+        fileName: imported.fileName,
+        fileSizeBytes: imported.fileSizeBytes,
+      };
+      await this.inputUploadsService.record(
+        imported.key,
+        customerId,
+        imported.fileName,
+        imported.fileSizeBytes,
+      );
+    }
     if (dto.fileRef) {
       if (!this.inputUploadsService) {
         throw new UnauthorizedException('Upload ownership chưa được cấu hình');

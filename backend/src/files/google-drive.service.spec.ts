@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
 import { GoogleDriveService } from './google-drive.service';
+import { B2StorageService } from './b2-storage.service';
 
 describe('GoogleDriveService', () => {
   let service: GoogleDriveService;
@@ -14,6 +15,7 @@ describe('GoogleDriveService', () => {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue(null) }, // không cấu hình API key
         },
+        { provide: B2StorageService, useValue: { uploadFile: jest.fn() } },
       ],
     }).compile();
 
@@ -32,19 +34,16 @@ describe('GoogleDriveService', () => {
   });
 
   describe('trích file ID hợp lệ', () => {
-    it('chấp nhận link dạng /file/d/<id>/view', async () => {
-      const result = await service.resolve(
+    it('từ chối Drive file khi Backend chưa có trusted Google Drive capability', async () => {
+      await expect(service.resolve(
         'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view?usp=drivesdk',
-      );
-      // Không có API key -> honest fallback null, không bịa dữ liệu giả
-      expect(result).toEqual({ fileName: null, fileSizeBytes: null });
+      )).rejects.toThrow(/Google Drive import/);
     });
 
-    it('chấp nhận link dạng ?id=<id>', async () => {
-      const result = await service.resolve(
+    it('từ chối link dạng ?id=<id> khi Backend chưa cấu hình', async () => {
+      await expect(service.resolve(
         'https://drive.google.com/open?id=1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ',
-      );
-      expect(result).toEqual({ fileName: null, fileSizeBytes: null });
+      )).rejects.toThrow(/Google Drive import/);
     });
   });
 
@@ -66,8 +65,10 @@ describe('GoogleDriveService', () => {
   describe('kiểm tra quyền truy cập (CWS_ROADMAP_MVP_V1.md Giai đoạn 2 — "Kiểm tra quyền truy cập"/"Hướng dẫn sửa quyền")', () => {
     let serviceWithApiKey: GoogleDriveService;
     let fetchSpy: jest.SpyInstance;
+    let b2Storage: { uploadFile: jest.Mock };
 
     beforeEach(async () => {
+      b2Storage = { uploadFile: jest.fn().mockResolvedValue({ key: 'uploads/drive-project.blend' }) };
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           GoogleDriveService,
@@ -75,6 +76,7 @@ describe('GoogleDriveService', () => {
             provide: ConfigService,
             useValue: { get: jest.fn().mockReturnValue('fake-api-key') },
           },
+          { provide: B2StorageService, useValue: b2Storage },
         ],
       }).compile();
       serviceWithApiKey = module.get(GoogleDriveService);
@@ -112,6 +114,28 @@ describe('GoogleDriveService', () => {
         fileName: 'Titan Station.blend',
         fileSizeBytes: 104857600,
       });
+    });
+
+    it('materializes verified Drive input to B2 before a B2-only Worker can claim it', async () => {
+      const bytes = Buffer.concat([Buffer.from('BLENDER'), Buffer.from([45, 118, 50])]);
+      fetchSpy
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ name: 'scene.blend', size: String(bytes.length) }),
+        } as Response)
+        .mockResolvedValueOnce(new Response(bytes, { headers: { 'content-length': String(bytes.length) } }));
+
+      await expect(serviceWithApiKey.materializeToB2(
+        'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view',
+      )).resolves.toEqual({
+        key: 'uploads/drive-project.blend',
+        fileName: 'scene.blend',
+        fileSizeBytes: bytes.length,
+      });
+      expect(b2Storage.uploadFile).toHaveBeenCalledWith(expect.objectContaining({
+        originalname: 'scene.blend',
+        size: bytes.length,
+      }));
     });
 
     it('Google Drive API lỗi khác 404 (vd 500/quota) -> KHÔNG chặn cứng, trả null thay vì bịa dữ liệu (không phải lỗi quyền, không nên hiện nhầm thông báo "kiểm tra quyền")', async () => {

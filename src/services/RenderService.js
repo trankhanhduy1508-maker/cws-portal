@@ -65,7 +65,10 @@ export async function submitGoogleDrive(rawLink) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ driveLink }),
   });
-  if (!res.ok) throw new Error('Không đọc được thông tin file từ Google Drive');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || `Không đọc được thông tin file từ Google Drive (${res.status})`);
+  }
   const data = await res.json();
   return { fileRef: null, driveLink: data.resolvedDriveLink || driveLink, ...data };
 }
