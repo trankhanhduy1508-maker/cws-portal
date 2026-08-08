@@ -37,7 +37,7 @@
 
 - [x] T017 Update `CURRENT_STATUS.md`, `CWS_ROADMAP_MVP_V1.md`, `CWS_WORKER_ROADMAP.md`, `DECISIONS.md` if the additive contract is an architecture decision, and the active V2.4 roadmap.
 - [x] T018 Write evidence under `reports/` distinguishing CODE VERIFIED, SIMULATION VERIFIED and PRODUCTION RUNTIME VERIFIED.
-- [ ] T019 Commit only the focused change (preserving unrelated dirty worktree files), push `main`, and record the commit SHA.
+- [x] T019 Commit only the focused change (preserving unrelated dirty worktree files), push `main`, and record the commit SHA (`b68aa08`).
 
 ## Dependencies
 

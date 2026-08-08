@@ -6,8 +6,8 @@
 requirements, plan decisions and implementation tasks in
 `specs/003-worker-resilience-hardening/`.
 
-The only remaining unchecked item before commit is T019, the delivery action
-to commit/push and record the final SHA. It is not an implementation gap.
+T019 delivery is committed locally as `b68aa08`; push verification is the
+remaining delivery check. It is not an implementation gap.
 
 ## Checks
 
@@ -18,7 +18,8 @@ to commit/push and record the final SHA. It is not an implementation gap.
 - Spec: FR-001..FR-010, user stories and acceptance scenarios checked.
 - Plan: existing claim/fencing/storage/identity boundary preserved; additive
   migration and rollback path present.
-- Tasks: T001..T018 completed; T019 is commit/push delivery only.
+- Tasks: T001..T019 completed; commit `b68aa08` contains only the focused
+  change and leaves unrelated dirty files unstaged.
 - Checklist: 19/19 complete.
 - Production evidence wording: explicitly remains `NOT PRODUCTION RUNTIME
   VERIFIED` because migration 027 and an authenticated physical Worker run
