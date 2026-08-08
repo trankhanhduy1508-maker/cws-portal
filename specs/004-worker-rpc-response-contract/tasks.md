@@ -8,5 +8,5 @@
 - [x] T004 Run Worker and backend regression tests.
 - [x] T005 Deploy/restart through the existing canonical Worker path and run real MAY083
   probe, heartbeat and B2-only claim verification.
-- [ ] T006 Update production evidence, CURRENT_STATUS and active roadmaps;
+- [x] T006 Update production evidence, CURRENT_STATUS and active roadmaps;
   commit and push main.
