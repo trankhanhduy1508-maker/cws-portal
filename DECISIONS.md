@@ -418,3 +418,22 @@ responses are rejected and removed. This protects the real Blender path from
 Drive/CDN error payloads without trusting MIME or filename alone.
 
 Evidence: `reports/worker/CWS_OFFICIAL_BLENDER_FIXTURE_VERIFICATION_2026-08-07.md`.
+
+## Physical Worker stable identity provisioning — 2026-08-08
+
+**[ACTIVE]** A trusted operator provisions a physical Windows host through the
+existing per-worker identity contract. When no prior ID exists, the tool derives
+a stable non-secret ID from SHA-256(`cws-worker-v1:` + normalized Windows
+MachineGuid); the raw MachineGuid is never stored in Supabase, logs or Git.
+Provisioning must run after a host image is specialized; a pre-provisioned
+DPAPI store/ID must never be copied into a golden image.
+Provisioning atomically creates the `workers` registry row and upserts only the
+credential hash/expiry in `worker_identities`; plaintext exists only inside the
+same-user Windows DPAPI store. Re-provisioning rotates that one Worker without
+changing any fleet-wide secret. This does not revive unauthenticated
+self-registration or caller-trusted `worker_id`.
+
+Scoped B2 credentials remain separate per-host runtime configuration. A Worker
+without both B2 values must fail preflight and must not claim work.
+
+Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.

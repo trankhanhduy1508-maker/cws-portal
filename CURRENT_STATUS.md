@@ -1,5 +1,24 @@
 # Current Status
 
+## Production E2E Roadmap V2.2 P1 — 2026-08-08
+
+- **PRODUCTION IDENTITY VERIFIED**: MAY083 now has stable Worker ID
+  `CWS-BAE2782D20525D46` in fleet 2 with RTX 2060 SUPER / 8192 MB metadata.
+  Its unique token is DPAPI-protected on MAY083; production stores only the
+  SHA-256 verifier and an expiry/revocation record.
+- **AUTHENTICATED RUNTIME EVIDENCE**: a signed request through the canonical
+  Backend Worker RPC gateway returned success and production
+  `workers.last_seen_at` advanced to `2026-08-08 02:49:11.367046+00`.
+  This proves identity/RPC wiring, but is not a claim or render PASS.
+- **LOCAL PREFLIGHT PARTIAL**: Blender 5.2.0 LTS, GPU detection, Python 3.12,
+  boto3 runtime and credential ACL are verified. Non-secret production config
+  is present. The temporary hash-only SQL artifact was removed after apply.
+- **OBJECTIVE BLOCKER**: MAY083 has no scoped production B2 credential;
+  `CWS_B2_KEY_ID` and `CWS_B2_APP_KEY` are absent in process/user/machine env,
+  the Worker package and local CWS stores. Canonical Node Agent fails closed at
+  `missing production configuration: CWS_B2_KEY_ID`, so P1/P2/P3 are not DONE.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.
+
 ## Production E2E Roadmap V2.2 P0 — 2026-08-08
 
 - **RUNTIME VERIFIED / DONE**: production migrations 020/021/022, required
@@ -9,8 +28,8 @@
   `worker_rpc_gateway_only` (`20260808023827`); `service_role` remains allowed
   for the authenticated Backend gateway and all covered functions have pinned
   `search_path`.
-- **NEXT**: P1 one-command physical Worker provisioning for MAY083. Production
-  still has 0 Worker identities, 0 leases and 0 fresh heartbeats.
+- **SUPERSEDED BY P1 ABOVE**: production no longer has zero Worker identities;
+  the first MAY083 identity is provisioned and B2 is the next real gate.
 - Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P0_REALITY_CHECK_2026-08-08.md`.
 
 ## Production worker auto-provision gate — 2026-08-07

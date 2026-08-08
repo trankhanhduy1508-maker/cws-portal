@@ -142,6 +142,19 @@ On MAY083 (first test machine):
 - scoped B2 credential configured
 - Node Agent preflight passes
 
+## Runtime progress — 2026-08-08
+
+- DONE: stable MAY083 ID `CWS-BAE2782D20525D46`, fleet/GPU registry row,
+  per-worker token, DPAPI store, ACL, hash-only production identity and expiry.
+- DONE: non-secret backend/workspace/B2 bucket+prefix/Blender/Python runtime
+  configuration and authenticated Backend gateway ping.
+- VERIFIED: Blender 5.2.0 LTS and boto3 import on MAY083.
+- BLOCKED: scoped `CWS_B2_KEY_ID` + `CWS_B2_APP_KEY` are not available on the
+  machine or through any connected credential manager. P1 remains PARTIAL and
+  canonical Node Agent claim is intentionally not started without them.
+
+Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.
+
 ---
 
 # P2 — FIRST PRODUCTION HEARTBEAT

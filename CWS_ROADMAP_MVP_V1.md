@@ -462,3 +462,14 @@ Google Login
   another project; an authorized operator must compare env/Git settings and
   remove only confirmed unused duplicates.
 - Evidence: `reports/deployment/CWS_VERCEL_PROJECT_CONSOLIDATION_AUDIT_2026-08-07.md`.
+
+# Production E2E V2.2 P1 provisioning — 2026-08-08
+
+- P1 **PARTIAL / PRODUCTION VERIFIED**: MAY083 identity
+  `CWS-BAE2782D20525D46`, DPAPI token, production verifier row, Blender 5.2.0,
+  Python/boto3 and authenticated Worker gateway ping are verified.
+- P1 **BLOCKED** only on a scoped production B2 key pair absent from this host;
+  no service-role key, shared fleet secret or placeholder was introduced.
+- P2/P3 remain **NOT VERIFIED**: no canonical Node Agent claim, Blender render,
+  B2 upload or completion is claimed from the identity-only ping.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.
