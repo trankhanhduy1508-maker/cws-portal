@@ -1,77 +1,95 @@
 # CWS Full Production Integration Trace — 2026-08-08
 
-## Audit result
+## Result
 
-**GOLDEN PASS: NO.** The single trace stops at the first broken functional
-boundary: canonical Render backend → Google Drive materialization. No feature
-was developed and no production state was faked or mutated.
+**GOLDEN E2E: FAIL — TRUE EXTERNAL BLOCKER at customer authentication.**
 
-## Correlation
+This is one new trace. The exact Drive input was materialized once by the
+canonical Render backend into B2. The trace then stopped at the first
+downstream boundary that requires a real customer Supabase session. No job,
+task, payment, PAID state, or historical task was invented or reused.
 
-- Correlation ID: `500cd7aa-dde9-44f3-80d3-ca9601b7fa5e`
-- Trace job ID: `NOT_CREATED` (the exact Drive request failed before a job could
-  be created; the audit correlation ID is not a fake production job ID)
+## Correlation and IDs
+
+- `correlation_id`: `660d1f04-4971-4b61-a3db-7e5ac90c3757`
+- `job_id`: `NOT_CREATED`
+- `task_id`: `NOT_CREATED`
+- `worker_id`: `CWS-BAE2782D20525D46` (not assigned to this trace)
 - Exact input:
   `https://drive.google.com/file/d/1evCyfEKjwFv-4ty-v4xAU_J29vOK3Yh0/view?usp=drivesdk`
-- Audit start: `2026-08-08T09:39:34Z`
+- Production code commit: `e4ca558041658ceec67f34642aae27b535a8129b`
+- Trace window: `2026-08-08T10:16:55Z`–`2026-08-08T10:19:56Z`
 
-## One-chain evidence
+## Single-chain evidence
 
-| Boundary | Upstream → downstream | Config/URL | Runtime evidence, ID, timestamp | Status |
+| Link | Upstream → downstream | Config / URL | Runtime evidence, IDs, timestamp | Status |
 |---|---|---|---|---|
-| GitHub main | GitHub → deployment source | `origin/main` | `5d5b89ea8bd7a876e63f0dcce97dee812560ab95`, commit `fix loop: drive Golden E2E until production pass`, `2026-08-08 16:22:56 +0700`; fetched read-only | PASS |
-| Vercel canonical | GitHub/Vercel → browser bundle | `https://cws-portal.vercel.app/` | HTTP `200`, `Server: Vercel`, Vercel ID `sin1::7q5fd-1786181469756-bfcbab004b82`, `2026-08-08T09:31:10Z`; title `cws-portal` | PASS |
-| Vercel → Render | Browser bundle → API/WS | Bundle `index-c0GPGeO_.js` contains `https://cws-portal.onrender.com` and `wss://cws-portal.onrender.com`; no `mockBackend`/demo marker; `.rar` and payment markers present | Bundle fetched read-only, 596770 bytes, `2026-08-08T09:34Z` | PASS |
-| Render canonical | Vercel → backend health | `https://cws-portal.onrender.com/health` | `200 {"status":"ok","service":"cws-backend"}`, `rndr-id=a216307f-bf6f-458e`, `2026-08-08T09:39:50.107Z` | PASS |
-| Render auth boundary | Customer → `/jobs` | `GET https://cws-portal.onrender.com/jobs` | HTTP `401`, `Cần đăng nhập để xem danh sách job`, `2026-08-08T09:39:50.427Z` | PASS |
-| Supabase production | Vercel public config → Supabase | `https://ynhxlxetwuiyejcjypsi.supabase.co` | Production bundle contains the expected project URL. REST with public publishable key reached project; `render_orders` and `payments` returned `[]`; `input_uploads` denied anon with `42501` (RLS/privilege boundary); `2026-08-08T09:41Z` | PASS (connectivity/config), no correlated job |
-| Exact Drive input | Customer input → Drive | Exact URL above | Drive page HTTP `200`, HTML response 74070 bytes, `2026-08-08T09:31:22Z`; this does not prove backend materialization | PASS (link reachable) |
-| Drive API capability | Backend → Google Drive API | `https://www.googleapis.com/drive/v3/files/1evCyfEKjwFv-4ty-v4xAU_J29vOK3Yh0?fields=name,size` | HTTP `403`: `Method doesn't allow unregistered callers ... Please use API Key or other form of API consumer identity`, `2026-08-08T09:38Z` | BROKEN |
-| Production materialization | `POST /drive/resolve` → B2/input upload | `https://cws-portal.onrender.com/drive/resolve`, body `{"driveLink":"<exact URL>"}` | HTTP `503`: `Google Drive import chưa được cấu hình. Hãy tải file .blend/.zip/.rar trực tiếp hoặc liên hệ CWS.`, `2026-08-08T09:40:35.453Z` | BROKEN — first functional break |
-| B2 input | Drive materialization → B2 input | Existing canonical B2 config, job-scoped Worker capability | No correlated `input_upload`/B2 object because materialization returned 503 | NOT VERIFIED |
-| render_order | B2 input → Supabase `render_orders` | Canonical production Supabase | No job ID was created for this correlation; anonymous REST view returned `[]` | NOT VERIFIED |
-| durable task | render_order → task | Canonical task/RPC path | No correlated task. Public `tasks` showed only historical `CWS-CHUNKLIVE` frame 101–103 done, not this trace | NOT VERIFIED |
-| Worker identity | task → `CWS-BAE2782D20525D46` | Canonical Supabase `workers` row | Exact Worker query returned `status=idle`, `current_task_id=null`, `observed_state=ACTIVE_IDLE`, `last_seen_at=2026-08-08T09:42:07.323099+00:00`; not correlated to this trace | NOT VERIFIED |
-| production_node_agent | Worker claim → Node Agent | Existing canonical Worker contract | No claim/lease/generation for correlation; no task existed to claim | NOT VERIFIED |
-| worker_engine | Node Agent → engine | Existing canonical Worker Engine | No correlated engine log/stage/progress | NOT VERIFIED |
-| Blender PID | worker_engine → Blender | Blender CLI/background with autoexec off | No correlated Blender PID, executable/version, exit code, or process log | NOT VERIFIED |
-| working copy | Blender preflight → safe optimizer | Immutable original/analyzer/working-copy contract | No correlated optimizer manifest or original/working-copy hash pair | NOT VERIFIED |
-| real render | Blender → frame output | Real production Blender | No correlated render or real progress | NOT VERIFIED |
-| B2 locked final | validated output → B2 `final/` | Existing canonical B2 | No correlated final object, remote `HeadObject`, lock proof, or size/hash | NOT VERIFIED |
-| previews | final/frame output → `review/` | Existing CWS watermark path | No correlated 3–5 preview keys or signed URLs | NOT VERIFIED |
-| final price/QR | runtime → payment record | Canonical MB QR env/config | No correlated runtime seconds, final amount, payment ID, QR URL, or reference | NOT VERIFIED |
-| SePay | payment reference/amount → webhook | Existing SePay live/test routes | No payment record/reference existed for this correlation; no webhook sent | NOT VERIFIED |
-| PAID | SePay → payment/order state | Existing idempotent matcher | No correlated payment or PAID transition; no database mutation performed | NOT VERIFIED |
-| authorized download | PAID → signed B2 delivery | Existing `/jobs/:id/download` | No correlated final URL or download request | NOT VERIFIED |
-| cleanup/idle | delivery → Worker idle | `CWS-BAE2782D20525D46` | Worker was already `ACTIVE_IDLE` with no current task, but no correlated cleanup occurred | NOT VERIFIED |
+| GitHub main | source → deploy | `origin/main`, commit `e4ca558041658ceec67f34642aae27b535a8129b` | `fix: materialize public Drive links without API key`, pushed `2026-08-08T17:16:02+07:00` | PASS |
+| Vercel canonical | GitHub/Vercel → customer portal | `https://cws-portal.vercel.app/` | HTTP `200`, `2026-08-08T10:20:12Z`; served current production bundle `index-DiNmMe21.js` | PASS |
+| Vercel → Render | portal → API/WS | Bundle endpoint is `https://cws-portal.onrender.com`; WS endpoint is `wss://cws-portal.onrender.com` | Current bundle fetched from canonical site; no alternate backend used | PASS |
+| Render canonical | portal → backend | `https://cws-portal.onrender.com/health` | HTTP `200`, `rndr-id=2aa64f7a-3ffd-4428`, body `{"status":"ok","service":"cws-backend"}`, `2026-08-08T10:20:13.341Z` | PASS |
+| Supabase production | portal/backend → auth/database | `https://ynhxlxetwuiyejcjypsi.supabase.co` | Current portal bundle uses this project; exact Worker read returned `status=idle`, `observed_state=ACTIVE_IDLE`, `current_task_id=null`, `last_seen_at=2026-08-08T10:19:42.535463Z` | PASS (connectivity/config; no trace row) |
+| Drive input | customer link → Google Drive | exact URL above | Public Drive source was reachable. Local direct downloader probe observed warning page with `uuid`; final response was `125259706` bytes, `PhongNguRender5.blend`, `2026-08-08T10:15Z` | PASS |
+| Drive materialization | Drive → backend → B2 input | `POST https://cws-portal.onrender.com/drive/resolve` with `{"driveLink":"<exact URL>"}` | HTTP `201`, Render `rndr-id=4ea66d12-bc34-455f`, response `fileName=PhongNguRender5.blend`, `fileSizeBytes=125259706`, `fileRef=uploads/efdc5d88-f611-4f2f-8057-b696fa863ea2-PhongNguRender5.blend`, `2026-08-08T10:18:07Z`. This endpoint returns only after the canonical B2 upload call succeeds. | PASS |
+| B2 input ownership | B2 ref → `input_uploads` | B2 key above; ownership is recorded during authenticated job creation | No `input_uploads` row was created because the next request was rejected before ownership/job creation | NOT VERIFIED |
+| render_order | B2 input → Supabase `render_orders` | `POST https://cws-portal.onrender.com/jobs` | Exact request used the returned `fileRef`, `fileName`, `fileSizeBytes`, `profileId=standard`, and trace idempotency key. Response HTTP `401`, `Thiếu Bearer token`, `2026-08-08T10:18:39.980Z`; `job_id=NOT_CREATED` | BROKEN — first downstream blocker |
+| durable task | render_order → task | canonical backend scheduler/RPC | No render order, therefore no correlated task | NOT VERIFIED |
+| Worker claim | task → `CWS-BAE2782D20525D46` | canonical Worker RPC/B2-only capability | Worker was `ACTIVE_IDLE` with no current task, but had no correlated task to claim | NOT VERIFIED |
+| production_node_agent | claim → node agent | canonical Worker contract | No claim/lease/generation for this correlation | NOT VERIFIED |
+| worker_engine | node agent → engine | canonical worker engine | No correlated engine stage/progress | NOT VERIFIED |
+| Blender PID | engine → Blender CLI/background | customer autoexec remains off | No correlated Blender process | NOT VERIFIED |
+| optimized working copy | immutable original → analyzer → optimizer → validation | safe Blender optimization contract | No correlated original/working-copy hashes or optimizer manifest | NOT VERIFIED |
+| real render | Blender → output | canonical render path | No correlated real render/progress/output | NOT VERIFIED |
+| locked final | validated output → B2 final | canonical locked output path | No correlated final artifact, remote verification, or lock evidence | NOT VERIFIED |
+| previews | output → 3–5 CWS-watermarked previews | canonical preview path | No correlated preview keys or signed URLs | NOT VERIFIED |
+| price/QR/payment | runtime → price + payment record + MB QR | canonical MB account config | No job/payment, therefore no runtime price, payment code, QR, or reference | NOT VERIFIED |
+| SePay | reference + amount → webhook matcher | canonical SePay test/live route | No payment reference existed; no webhook was sent | NOT VERIFIED |
+| PAID/unlock | SePay → PAID → authorized B2 download | canonical payment/unlock path | No PAID transition or download URL | NOT VERIFIED |
+| cleanup/idle | delivery → Worker idle | `CWS-BAE2782D20525D46` | Worker is idle, but not as cleanup for this trace | NOT VERIFIED |
 
 ## True external blocker
 
-1. **Blocked link:** Render canonical backend → Google Drive materialization.
-2. **Real request/response:** exact `POST /drive/resolve` returned HTTP `503`
-   with `Google Drive import chưa được cấu hình`; direct Google Drive API call
-   returned HTTP `403` requiring an API key/identity.
-3. **Missing config:** backend source maps `GOOGLE_DRIVE_API_KEY` to
-   `googleDriveApiKey` and fail-closes when absent (`backend/src/config/
-   configuration.ts`, `backend/src/files/google-drive.service.ts`).
-4. **Why Codex cannot resolve it:** the required Google API credential belongs
-   to the existing Render production environment and Google Cloud project. It
-   is not present in the workspace/session, cannot be invented, and must not be
-   exposed or replaced with a weaker untrusted download path. No production
-   environment mutation was attempted.
+1. **Blocked link:** customer authentication → `POST /jobs`.
+2. **Real request:**
 
-Final read-only re-probe with the same exact body at `2026-08-08T09:44:42.691Z`
-returned the same HTTP `503` and message, confirming the blocker was not a
-transient response.
+   ```http
+   POST https://cws-portal.onrender.com/jobs
+   Content-Type: application/json
+   Idempotency-Key: golden-660d1f04-4971-4b61-a3db-7e5ac90c3757
 
-Because the break occurs before input materialization, continuing downstream
-would require inventing a job/task or reusing an unrelated historical task,
-which is forbidden by this audit.
+   {"fileRef":"uploads/efdc5d88-f611-4f2f-8057-b696fa863ea2-PhongNguRender5.blend","fileName":"PhongNguRender5.blend","fileSizeBytes":125259706,"profileId":"standard"}
+   ```
 
-## Audit method limits
+   Real response: HTTP `401`, `{"message":"Thiếu Bearer token"}` at
+   `2026-08-08T10:18:39.980Z`.
+3. **Missing config/input:** a real Supabase customer OAuth session/access
+   token. The endpoint intentionally requires `JwtAuthGuard` and a customer
+   ID before creating a job; the public publishable key is not a customer
+   identity and cannot be substituted.
+4. **Why Codex cannot resolve it:** obtaining a real customer Google OAuth
+   session requires the customer to authenticate in the existing browser
+   session/account. No customer credential or reusable Bearer token is in the
+   workspace, and fabricating a JWT, using the publishable key as a user, or
+   altering production auth would invalidate the Golden E2E and violate the
+   no-fake-auth rule.
 
-The browser automation CLI named by the local verification skill is not
-installed in this workspace. Canonical Vercel, Render, Drive, Google API and
-Supabase probes were instead executed through read-only HTTPS requests with
-TLS verification disabled only for this diagnostic environment; no secret
-values were printed and no production rows were changed.
+The earlier missing `GOOGLE_DRIVE_API_KEY` blocker is fixed: public file links
+now use direct streaming Drive download (`uc` → warning-page `uuid` →
+`drive.usercontent.google.com`) and one B2 materialization. The exact file is
+Zstandard-compressed native `.blend` (`28 b5 2f fd`); backend and production
+node-agent signature validation now accept that Blender-supported form. The
+legacy `cws_worker_full.py` was not changed.
+
+## Verification notes
+
+- Backend Google Drive unit tests: `9/9`; backend build: PASS.
+- Frontend build and lint: PASS.
+- Worker production-node-agent tests: `16/16`.
+- Local exact-file direct materialization probe downloaded and validated all
+  `125259706` bytes with a fake B2 sink only; this is not production Golden
+  evidence and did not mutate production.
+- No historical job/task was reused, no database row was edited to `PAID`, no
+  payment was faked, and no second production Drive materialization was
+  requested after the successful `fileRef` response.
+- Browser automation CLI was unavailable in this workspace; canonical HTTPS
+  probes were used. No secret values were printed.

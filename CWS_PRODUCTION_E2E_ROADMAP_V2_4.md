@@ -4,6 +4,21 @@
 > Status: ACTIVE — supersedes V2.3 only where this document explicitly changes the customer Golden E2E order, archive support, Blender optimization, payment timing, preview and delivery gates.
 > Companion source of truth: `CWS_MVP_WORKFLOW_FINAL.md`, `CWS_SCALABILITY_RULES.md`, current code/config/runtime evidence.
 
+## Latest runtime gate — 2026-08-08
+
+- **PRODUCTION VERIFIED**: public Google Drive file links no longer depend on
+  `GOOGLE_DRIVE_API_KEY`. The canonical backend streams the public `uc` flow,
+  handles the large-file warning `uuid`, follows only Google download hosts,
+  enforces timeout/status/2GB/signature checks, and materializes once to B2.
+- **PRODUCTION EVIDENCE**: exact Owner input returned HTTP 201 with
+  `fileName=PhongNguRender5.blend`, `fileSizeBytes=125259706`, and B2 ref
+  `uploads/efdc5d88-f611-4f2f-8057-b696fa863ea2-PhongNguRender5.blend` under
+  correlation `660d1f04-4971-4b61-a3db-7e5ac90c3757`.
+- **FIRST REMAINING GATE**: creating the customer-owned job requires a real
+  Supabase customer Bearer token; production returned HTTP 401 for the exact
+  new job request. No job/task/payment state was fabricated. Full evidence:
+  `reports/evidence/CWS_FULL_PRODUCTION_INTEGRATION_TRACE_2026-08-08.md`.
+
 # 0. OWNER CORRECTION — NON-NEGOTIABLE BUSINESS ORDER
 
 Canonical customer path is now:

@@ -1,22 +1,29 @@
 # Current Status
 
-## Full production integration audit — 2026-08-08
+## Full production integration retest — 2026-08-08
 
-- **TRACE BLOCKED / NOT GOLDEN PASS**: correlation
-  `500cd7aa-dde9-44f3-80d3-ca9601b7fa5e` used the exact Owner Drive input.
-  GitHub main, canonical Vercel, Render health/auth boundary and Supabase
-  project wiring passed read-only probes. The first functional break was
-  Render `POST /drive/resolve`: HTTP 503 reported that
-  `GOOGLE_DRIVE_API_KEY`/Google Drive import is not configured. Direct Google
-  Drive API metadata without identity returned HTTP 403.
-- **NO CORRELATED JOB**: because Drive materialization failed, no input upload,
-  render order, task, B2 object, render, preview, payment or download exists
-  for this trace. Historical tasks and the Worker's current `ACTIVE_IDLE` state
-  were explicitly not reused as evidence.
-- **TRUE EXTERNAL BLOCKER**: the Google API credential must be configured in
-  the existing Render production environment/Google Cloud project. Codex has
-  no such credential and must not invent or weaken the capability. Full trace:
+- **NOT GOLDEN PASS / TRUE EXTERNAL BLOCKER**: one new trace,
+  correlation `660d1f04-4971-4b61-a3db-7e5ac90c3757`, used the exact Owner
+  Drive input. The canonical backend now returned HTTP 201 and materialized
+  the exact `PhongNguRender5.blend` (`125259706` bytes) once into B2:
+  `uploads/efdc5d88-f611-4f2f-8057-b696fa863ea2-PhongNguRender5.blend`.
+- **FIRST DOWNSTREAM BREAK**: the returned ref was submitted to the canonical
+  `POST /jobs` with a new trace idempotency key, but production returned HTTP
+  401 `Thiếu Bearer token`. Therefore `job_id=NOT_CREATED`,
+  `task_id=NOT_CREATED`; no worker/render/payment state was fabricated or
+  reused.
+- **External action required**: a real customer must complete Google OAuth in
+  the existing canonical portal session so the portal has a Supabase customer
+  access token. The public publishable key is not a customer identity and
+  cannot be used as a fake Bearer token. Evidence:
   `reports/evidence/CWS_FULL_PRODUCTION_INTEGRATION_TRACE_2026-08-08.md`.
+- **FIXED IN PRODUCTION**: public Drive MVP no longer requires
+  `GOOGLE_DRIVE_API_KEY`; it uses bounded streaming `uc`/warning-page UUID →
+  `drive.usercontent.google.com`, one B2 materialization, safe filename/status/
+  redirect/size/signature checks, and no worker-side Drive download. The exact
+  input is a native Zstandard-compressed `.blend`; backend and production
+  node-agent validators accept that Blender-supported form. Legacy
+  `cws_worker_full.py` was not changed.
 
 ## Golden Production E2E V2.4 implementation — 2026-08-08
 

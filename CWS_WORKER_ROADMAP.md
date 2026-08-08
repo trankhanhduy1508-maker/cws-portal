@@ -1,5 +1,18 @@
 # CWS WORKER ROADMAP
 
+## Input validation correction — 2026-08-08
+
+- **FIXED**: production Node Agent accepts Blender-native Zstandard-compressed
+  `.blend` files (`28 b5 2f fd`) in the B2-only validation/detection path, in
+  addition to the ASCII `BLENDER` and gzip forms. The exact Owner input was
+  observed in this form after canonical Drive materialization.
+- This does not enable Worker-side Drive downloads; production Workers still
+  claim only canonical B2 input capabilities. Legacy `cws_worker_full.py` was
+  not changed.
+- Runtime trace is blocked before task creation by missing real customer
+  Supabase authentication, not by the Worker path:
+  `reports/evidence/CWS_FULL_PRODUCTION_INTEGRATION_TRACE_2026-08-08.md`.
+
 ## Production auto-provision gate — 2026-08-07
 
 - **READ-ONLY VERIFIED**: Supabase production has 29 Worker registry rows, 0
