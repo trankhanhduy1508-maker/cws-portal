@@ -6,8 +6,8 @@
 requirements, plan decisions and implementation tasks in
 `specs/003-worker-resilience-hardening/`.
 
-T019 delivery is committed locally as `b68aa08`; push verification is the
-remaining delivery check. It is not an implementation gap.
+T019 delivery is complete: implementation commit `b68aa08` and final pushed
+HEAD `9bc5d3b`. It is not an implementation gap.
 
 ## Checks
 
