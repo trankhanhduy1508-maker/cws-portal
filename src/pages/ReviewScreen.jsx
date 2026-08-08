@@ -5,14 +5,9 @@ import StepDots from '../components/StepDots';
 import Button from '../components/Button';
 import { getJobPreview, requestJobChanges } from '../services/RenderService';
 
-/** Khách xem 3-5 ảnh preview (đã watermark "CWS RENDER") và bấm duyệt
- * trước khi Backend đóng gói + mở link tải file gốc (CWS_ROADMAP_MVP_V1.md,
- * Giai đoạn 4 — "Khách chỉ xem preview, chưa được tải file gốc"). Khách
- * cũng có thể yêu cầu chỉnh sửa thay vì duyệt (CWS_MVP_WORKFLOW_FINAL.md,
- * mục Review) — job vẫn ở REVIEW_READY sau đó, admin liên hệ khách thủ
- * công để xử lý (re-render/hoàn tiền là quyết định nghiệp vụ, không tự
- * động hoá ở đây). */
-export default function ReviewScreen({ jobId, fileName, onApprove }) {
+/** Khách xem 3-5 ảnh preview đã watermark. Full output đã được khóa trên B2
+ * trước payment; customer approval không phải prerequisite. */
+export default function ReviewScreen({ jobId, fileName, onApprove, allowChanges = true }) {
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -96,9 +91,11 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
 
       {approveError && <p style={{ textAlign: 'center', fontSize: 13.5, color: '#D64545' }}>{approveError}</p>}
 
-      <Button variant="primary" icon={CheckCircle2} disabled={isApproving || isLoading} onClick={handleApprove}>
-        {isApproving ? 'Đang xử lý...' : 'Duyệt kết quả này'}
-      </Button>
+      {onApprove && (
+        <Button variant="primary" icon={CheckCircle2} disabled={isApproving || isLoading} onClick={handleApprove}>
+          {isApproving ? 'Đang xử lý...' : 'Duyệt kết quả này'}
+        </Button>
+      )}
 
       {requestSent && (
         <p style={{ textAlign: 'center', fontSize: 13.5, color: '#2E7D32' }}>
@@ -106,7 +103,7 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
         </p>
       )}
 
-      {!requestSent && !showRequestForm && (
+      {allowChanges && !requestSent && !showRequestForm && (
         <Button
           variant="secondary"
           icon={MessageSquareWarning}
@@ -117,7 +114,7 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
         </Button>
       )}
 
-      {!requestSent && showRequestForm && (
+      {allowChanges && !requestSent && showRequestForm && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <textarea
             value={note}
@@ -142,7 +139,7 @@ export default function ReviewScreen({ jobId, fileName, onApprove }) {
       )}
 
       <p style={{ textAlign: 'center', fontSize: 12, color: '#9a9aa0' }}>
-        File gốc chỉ mở tải sau khi bạn duyệt bản xem trước ở trên.
+        Full output đã được upload và khoá trên B2; chỉ mở tải sau khi SePay xác nhận đúng số tiền và reference.
       </p>
     </StepCard>
   );

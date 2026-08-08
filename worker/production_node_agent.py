@@ -43,6 +43,7 @@ from node_agent_runtime_policy import RuntimePolicy
 from worker_engine import (
     AttemptGuard,
     BasicPreflight,
+    BlenderSafePreparer,
     BlenderCliRenderer,
     CheckpointStore,
     JobSpec,
@@ -128,7 +129,11 @@ class ProductionConfig:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "ProductionConfig":
-        values = env or os.environ
+        # An explicitly supplied empty mapping is a deliberate isolated
+        # configuration in tests/bootstrap checks; do not silently fall back
+        # to the process environment and accidentally accept production
+        # credentials.
+        values = os.environ if env is None else env
 
         def required(name: str) -> str:
             value = values.get(name, "").strip()
@@ -454,6 +459,8 @@ class DriveOrB2Downloader(ProjectDownloader):
                 raise PermanentWorkerError("downloaded .blend is not a Blender file")
             if suffix == ".zip" and prefix[:4] == b"PK\x03\x04":
                 return
+            if suffix == ".rar" and prefix[:7] == b"Rar!\x1a\x07\x00":
+                return
             raise PermanentWorkerError("downloaded project has an invalid file signature")
         except (OSError, EOFError, gzip.BadGzipFile) as exc:
             raise PermanentWorkerError("downloaded project could not be validated") from exc
@@ -506,7 +513,7 @@ class DriveOrB2Downloader(ProjectDownloader):
         except PermanentWorkerError:
             partial.unlink(missing_ok=True)
             target.unlink(missing_ok=True)
-            for candidate in (destination / "input.blend", destination / "input.zip"):
+            for candidate in (destination / "input.blend", destination / "input.zip", destination / "input.rar"):
                 candidate.unlink(missing_ok=True)
             raise
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
@@ -525,6 +532,8 @@ class DriveOrB2Downloader(ProjectDownloader):
             return ".blend"
         if prefix[:4] == b"PK\x03\x04":
             return ".zip"
+        if prefix[:7] == b"Rar!\x1a\x07\x00":
+            return ".rar"
         raise PermanentWorkerError("downloaded project has an invalid file signature")
 
     def _download_b2(self, spec: JobSpec, destination: Path) -> Path:
@@ -534,8 +543,8 @@ class DriveOrB2Downloader(ProjectDownloader):
         if parsed.scheme != "b2" or not key or ".." in key.split("/"):
             raise PermanentWorkerError("invalid B2 project URI")
         suffix = Path(key).suffix.lower()
-        if suffix not in {".blend", ".zip"}:
-            raise PermanentWorkerError("B2 input must be .blend or .zip")
+        if suffix not in {".blend", ".zip", ".rar"}:
+            raise PermanentWorkerError("B2 input must be .blend, .zip or .rar")
         target = destination / f"input{suffix}"
         target.parent.mkdir(parents=True, exist_ok=True)
         partial = target.with_suffix(target.suffix + ".part")
@@ -789,6 +798,10 @@ class ProductionNodeAgentRuntime:
                 validator=OutputIntegrityValidator(),
                 reporter=ProductionReporter(self.rpc),
                 guard=ProductionAttemptGuard(self.rpc),
+                preparer=BlenderSafePreparer(
+                    self.blender_exe,
+                    Path(__file__).with_name("blender_scene_analyzer.py"),
+                ),
             )
             engine.run(spec)
 

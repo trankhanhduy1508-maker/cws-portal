@@ -3,8 +3,9 @@ import StepCard from '../components/StepCard';
 import StepDots from '../components/StepDots';
 import { formatPriceVnd } from '../utils/timeUtils';
 
-/** Hiển thị SAU KHI khách đã duyệt preview (CWS_MVP_WORKFLOW_FINAL.md:
- * "Khách duyệt → Sinh QR → Webhook xác nhận → PAID → Mở tải") — thuần
+/** Hiển thị sau khi render, full output lock và preview thật
+ * (CWS_MVP_WORKFLOW_FINAL.md: "Render-first → B2 locked → Preview →
+ * Final price + QR → SePay → PAID → Mở tải") — thuần
  * hiển thị, không có nút "xác nhận đã thanh toán" nào: xác nhận CHỈ đến
  * từ webhook ngân hàng, khách chỉ quét mã rồi chờ. Job tự chuyển sang
  * màn tải file khi Backend phát hiện webhook PAID (qua job.status).

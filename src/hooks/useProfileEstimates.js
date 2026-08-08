@@ -5,7 +5,7 @@ import { RENDER_PROFILES } from '../constants/renderConstants';
 /**
  * Gọi RenderService.estimateJob() cho TỪNG Render Profile (song song)
  * để hiển thị comparison card — chỉ ETA/hàng đợi dự kiến trước render.
- * Giá cuối chỉ có sau khi Worker render xong và customer duyệt preview.
+ * Giá cuối chỉ có sau khi Worker render xong, full output lock và preview thật.
  *
  * @param {Object|null} input - { fileRef, driveLink, fileSizeBytes } hoặc null nếu chưa sẵn sàng
  * @returns {{ estimates: Record<string, {etaSeconds, queueSeconds}>, isLoading, error }}

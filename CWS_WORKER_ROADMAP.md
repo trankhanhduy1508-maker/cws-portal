@@ -176,6 +176,24 @@
 
 ## Production Node Agent adapter preparation - 2026-08-07
 
+## Golden E2E V2.4 worker contract - 2026-08-08
+
+- **CODE/UNIT VERIFIED**: canonical `production_node_agent.py` accepts
+  `.blend`, `.zip`, and `.rar`; RAR inspection/extraction uses managed 7-Zip
+  argument vectors only, bounded declared/actual sizes and ratios, and rejects
+  traversal, links, duplicate paths and nested archives.
+- **CODE/UNIT VERIFIED**: customer Blend preparation is immutable original →
+  read-only Blender analyzer → working copy → safe optimizer → analyzer
+  validation → render. The original SHA-256 is checked before and after; no
+  quality or render-engine tradeoff is applied without policy/benchmark.
+- **CODE/UNIT VERIFIED**: customer Blender commands use background mode and
+  `--disable-autoexec`; Worker has no B2 account key or Supabase service role,
+  only job-scoped storage capabilities.
+- **PRODUCTION GATE**: physical canonical Worker, managed 7-Zip, real B2
+  capability, Blender process, progress/checkpoint/output and cleanup still
+  require the exact Drive Golden task. Do not mark this roadmap PASS from unit
+  tests or a heartbeat.
+
 - **CODE/UNIT VERIFIED**: `worker/production_node_agent.py` is the canonical
   authenticated loop for dynamic JobSpec claim, Drive/B2 download, generic
   Engine execution, Blender Job Object containment, progress, checkpoint and

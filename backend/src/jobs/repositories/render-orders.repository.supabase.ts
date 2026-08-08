@@ -231,6 +231,51 @@ export class SupabaseRenderOrdersRepository implements IRenderOrdersRepository {
     return data ? rowToDomain(data as RenderOrderRow) : null;
   }
 
+  async updateLockedResult(
+    id: string,
+    result: {
+      downloadUrl: string;
+      durationSec: number;
+      resultSizeBytes: number;
+    },
+  ): Promise<RenderOrder | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .update({
+        download_url: result.downloadUrl,
+        duration_sec: result.durationSec,
+        result_size_bytes: result.resultSizeBytes,
+        is_placeholder: false,
+      })
+      .eq('id', id)
+      .in('status', [JobStatus.RENDERING, JobStatus.REVIEW_READY, JobStatus.AWAITING_PAYMENT])
+      .select()
+      .maybeSingle();
+    if (error) {
+      this.logger.error(`updateLockedResult(${id}) thất bại: ${error.message}`);
+      throw new Error(`Không lưu được final output bị khoá: ${error.message}`);
+    }
+    return data ? rowToDomain(data as RenderOrderRow) : null;
+  }
+
+  async unlockResult(id: string): Promise<RenderOrder | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .update({ status: JobStatus.FINISHED, stage_progress: 1 })
+      .eq('id', id)
+      .eq('status', JobStatus.AWAITING_PAYMENT)
+      .not('download_url', 'is', null)
+      .select()
+      .maybeSingle();
+    if (error) {
+      this.logger.error(`unlockResult(${id}) thất bại: ${error.message}`);
+      throw new Error(`Không mở khoá final output: ${error.message}`);
+    }
+    return data ? rowToDomain(data as RenderOrderRow) : null;
+  }
+
   async markCancelled(id: string): Promise<RenderOrder | null> {
     const { data, error } = await this.supabaseService
       .getClient()

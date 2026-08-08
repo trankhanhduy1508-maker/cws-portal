@@ -10,7 +10,10 @@ describe('JobsController.listAll authorization', () => {
 
   const adminToken = `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ aal: 'aal2' })).toString('base64url')}.signature`;
 
-  function makeController(authUser: { id: string } | null, role: 'admin' | 'customer' | null) {
+  function makeController(
+    authUser: { id: string } | null,
+    role: 'admin' | 'customer' | null,
+  ) {
     const jobsService = {
       listAll: jest.fn().mockResolvedValue([order]),
     };
@@ -45,15 +48,24 @@ describe('JobsController.listAll authorization', () => {
 
   it('lists all jobs for an authenticated AAL2 admin, not the admin user customer scope', async () => {
     const { controller, listAll } = makeController({ id: 'staff-1' }, 'admin');
-    const result = await controller.listAll({ headers: { authorization: `Bearer ${adminToken}` }, query: {} } as never);
+    const result = await controller.listAll({
+      headers: { authorization: `Bearer ${adminToken}` },
+      query: {},
+    } as never);
 
     expect(result).toHaveLength(1);
     expect(listAll).toHaveBeenCalledWith(null);
   });
 
   it('keeps authenticated customer history scoped to that customer', async () => {
-    const { controller, listAll } = makeController({ id: 'customer-1' }, 'customer');
-    const result = await controller.listAll({ headers: { authorization: 'Bearer customer-token' }, query: {} } as never);
+    const { controller, listAll } = makeController(
+      { id: 'customer-1' },
+      'customer',
+    );
+    const result = await controller.listAll({
+      headers: { authorization: 'Bearer customer-token' },
+      query: {},
+    } as never);
 
     expect(result).toHaveLength(1);
     expect(listAll).toHaveBeenCalledWith('customer-1');
@@ -62,9 +74,9 @@ describe('JobsController.listAll authorization', () => {
   it('denies anonymous list access instead of exposing all jobs', async () => {
     const { controller, listAll } = makeController(null, null);
 
-    await expect(controller.listAll({ headers: {}, query: {} } as never)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      controller.listAll({ headers: {}, query: {} } as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(listAll).not.toHaveBeenCalled();
   });
 

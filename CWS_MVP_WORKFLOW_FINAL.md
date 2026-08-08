@@ -41,17 +41,21 @@ Render
     ↓
 Hiển thị % tiến độ thật
     ↓
-Tạo 3–5 ảnh preview có watermark
+    Validate output thật
     ↓
-Khách duyệt
+    Upload FULL OUTPUT lên B2 và LOCKED
     ↓
-Sinh MB QR
+    Tạo 3–5 ảnh preview có watermark thật
+    ↓
+    Tính FINAL PRICE + tạo payment record/payment code
+    ↓
+    Sinh MB QR với amount + payment reference chính xác
     ↓
 Webhook xác nhận thanh toán
     ↓
 Payment = PAID
     ↓
-Mở link tải Backblaze B2
+    Unlock link tải Backblaze B2 có authorization
     ↓
 Khách tải file gốc
     ↓
@@ -238,5 +242,15 @@ Theo dõi:
 
 MVP chỉ hoàn thành khi toàn bộ luồng chạy end-to-end:
 
-Google Login → Customer Profile → Job → Upload → Render → Progress →
-Preview → MB QR → Webhook → PAID → Download → COMPLETED.
+Google Login → Customer Profile → Job → Upload → Render → Progress → Validate →
+B2 FULL OUTPUT LOCKED → 3–5 watermark previews → FINAL PRICE + QR →
+SePay exact reference/amount + idempotency → PAID → unlock B2 → Download →
+Cleanup → Worker Idle.
+
+## Canonical payment ordering (supersedes older approval wording)
+
+The production order is **RENDER FIRST → B2 FULL OUTPUT LOCKED → WATERMARK
+PREVIEW → FINAL PRICE + QR → SEPAY VERIFY → UNLOCK B2**. Customer preview
+approval is not required before payment creation. The final B2 object remains
+unavailable through the customer API until the matching payment is genuinely
+`PAID`; no database edit or fake payment may unlock it.

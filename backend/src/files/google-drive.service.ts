@@ -19,7 +19,7 @@ const FILE_LINK_PATTERN = /\/file\/d\/([\w-]+)/;
 const OPEN_ID_PATTERN = /[?&]id=([\w-]+)/;
 const FOLDER_LINK_PATTERN = /\/folders\/([\w-]+)/;
 const GOOGLE_DRIVE_HOST_PATTERN = /^https:\/\/drive\.google\.com\//;
-const SUPPORTED_PROJECT_PATTERN = /\.(blend|zip)$/i;
+const SUPPORTED_PROJECT_PATTERN = /\.(blend|zip|rar)$/i;
 const MAX_INPUT_BYTES = 2 * 1024 * 1024 * 1024;
 
 type ResolvedDriveFile = {
@@ -92,8 +92,8 @@ export class GoogleDriveService {
       if (candidates.length !== 1) {
         throw new BadRequestException(
           candidates.length === 0
-            ? 'Folder must contain exactly one .blend or .zip project.'
-            : 'Folder contains multiple .blend/.zip projects; selection is ambiguous.',
+            ? 'Folder must contain exactly one .blend, .zip or .rar project.'
+            : 'Folder contains multiple .blend/.zip/.rar projects; selection is ambiguous.',
         );
       }
       const file = candidates[0];
@@ -106,15 +106,9 @@ export class GoogleDriveService {
 
     const fileId = this.extractFileId(driveLink);
     if (!apiKey) {
-      // A Drive URL must not be accepted as a render input merely because its
-      // syntax is valid. The canonical Worker is B2-only unless an explicit
-      // Drive capability exists; creating an order here would leave it queued
-      // forever and make the portal look as if it were rendering. Fail before
-      // job creation until the trusted Backend can verify/materialize the file.
-      void fileId;
       this.logger.warn('GOOGLE_DRIVE_API_KEY is not configured; rejecting Drive input.');
       throw new ServiceUnavailableException(
-        'Google Drive import chưa được cấu hình. Hãy tải file .blend/.zip trực tiếp hoặc liên hệ CWS.',
+        'Google Drive import chưa được cấu hình. Hãy tải file .blend/.zip/.rar trực tiếp hoặc liên hệ CWS.',
       );
     }
     const url =
@@ -147,7 +141,7 @@ export class GoogleDriveService {
     const fileId = this.extractFileId(driveLink);
     const fileName = metadata.fileName ?? '';
     if (!getInputFormat(fileName)) {
-      throw new BadRequestException('Google Drive chỉ hỗ trợ file .blend hoặc .zip');
+      throw new BadRequestException('Google Drive chỉ hỗ trợ file .blend, .zip hoặc .rar');
     }
     if (!metadata.fileSizeBytes || metadata.fileSizeBytes > MAX_INPUT_BYTES) {
       throw new BadRequestException('Kích thước file Google Drive không hợp lệ hoặc vượt giới hạn 2GB');
@@ -190,7 +184,11 @@ export class GoogleDriveService {
         path: tempPath,
         originalname: fileName,
         size: written,
-        mimetype: getInputFormat(fileName) === 'zip' ? 'application/zip' : 'application/octet-stream',
+        mimetype: getInputFormat(fileName) === 'zip'
+          ? 'application/zip'
+          : getInputFormat(fileName) === 'rar'
+            ? 'application/vnd.rar'
+            : 'application/octet-stream',
       } as Express.Multer.File);
       return { key: uploaded.key, fileName, fileSizeBytes: written };
     } finally {
@@ -218,6 +216,7 @@ export class GoogleDriveService {
     }
     if (getInputFormat(fileName) === 'blend' && prefix.subarray(0, 7).toString() === 'BLENDER') return;
     if (getInputFormat(fileName) === 'zip' && prefix.subarray(0, 4).toString() === 'PK\u0003\u0004') return;
-    throw new BadRequestException('File Google Drive không phải .blend/.zip hợp lệ');
+    if (getInputFormat(fileName) === 'rar' && prefix.subarray(0, 7).toString() === 'Rar!\u001a\u0007\u0000') return;
+    throw new BadRequestException('File Google Drive không phải .blend/.zip/.rar hợp lệ');
   }
 }

@@ -8,7 +8,8 @@ from pathlib import Path
 from worker_engine import (BasicOutputValidator, BasicPreflight, JobSpec,
                            FailureCategory, PermanentWorkerError,
                            FilesystemCheckpointStore, RetryableWorkerError, WorkerEngine,
-                           OutputIntegrityValidator, classify_blender_failure)
+                           OutputIntegrityValidator, classify_blender_failure,
+                           _parse_rar_listing)
 from worker_engine import BlenderCliRenderer
 
 
@@ -60,6 +61,14 @@ class Reporter:
     def progress(self, spec, frame, total): self.events.append(("progress", frame, total))
     def complete(self, spec): self.events.append(("complete", spec.task_id))
     def fail(self, spec, category, message): self.events.append(("fail", category))
+
+
+class RecordingPreparer:
+    def prepare(self, project, job_root):
+        target = job_root / "working_copy" / "project.blend"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(project.read_bytes())
+        return target
 
 
 class Guard:
@@ -297,6 +306,48 @@ class WorkerEngineTests(unittest.TestCase):
                         Path(tmp), ZipDownloader(members), BasicPreflight(), Renderer(),
                         Checkpoints(), BasicOutputValidator(10), Reporter(),
                     ).run(spec(frame_end=1))
+
+    def test_rar_listing_rejects_archive_bomb_and_links(self):
+        archive_header = "Path = fixture.rar\nType = Rar5\n\n"
+        bomb = archive_header + (
+            "Path = scene.blend\nType = \nSize = 2000000\nPacked Size = 1\n\n"
+        )
+        with self.assertRaisesRegex(PermanentWorkerError, "compression ratio"):
+            _parse_rar_listing(bomb)
+
+        link = archive_header + (
+            "Path = scene.blend\nType = Link\nSize = 10\nPacked Size = 10\n\n"
+        )
+        with self.assertRaisesRegex(PermanentWorkerError, "links"):
+            _parse_rar_listing(link)
+
+    def test_rar_listing_rejects_traversal_and_nested_archive(self):
+        header = "Path = fixture.rar\nType = Rar5\n\n"
+        traversal = header + "Path = ../scene.blend\nSize = 10\nPacked Size = 10\n\n"
+        with self.assertRaisesRegex(PermanentWorkerError, "path traversal"):
+            _parse_rar_listing(traversal)
+        nested = header + "Path = assets/project.zip\nSize = 10\nPacked Size = 10\n\n"
+        with self.assertRaisesRegex(PermanentWorkerError, "nested"):
+            _parse_rar_listing(nested)
+
+    def test_safe_preparation_renders_only_working_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source.blend"
+            source.write_bytes(b"immutable blend")
+            seen = []
+
+            class RendererThatRecords(Renderer):
+                def render(self, current_spec, project, frame, output):
+                    seen.append(project)
+                    return super().render(current_spec, project, frame, output)
+
+            WorkerEngine(
+                Path(tmp) / "work", Downloader(), BasicPreflight(),
+                RendererThatRecords(), Checkpoints(), BasicOutputValidator(10),
+                Reporter(), preparer=RecordingPreparer(),
+            ).run(spec(frame_end=1))
+            self.assertEqual(seen[0].name, "project.blend")
+            self.assertNotEqual(seen[0].parent.name, "task-1")
 
     def test_zip_symlink_entry_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

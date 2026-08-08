@@ -2,11 +2,8 @@
 // 1 nguồn sự thật duy nhất, không lặp lại định nghĩa ở nhiều nơi.
 
 // ============================================================
-// JOB STATUS — vòng đời 1 job TỪ SAU KHI TẠO job (không cần thanh toán
-// trước — render MIỄN PHÍ, khách chỉ trả tiền để MỞ TẢI file gốc sau
-// khi đã duyệt bản xem trước, đúng CWS_MVP_WORKFLOW_FINAL.md: Job →
-// Upload → Render → Preview → Khách duyệt → Sinh QR → Webhook → PAID
-// → Mở tải).
+// JOB STATUS — vòng đời 1 job: Upload → Render → Validate → B2 full output
+// locked → watermark preview → final price/QR → SePay → PAID → unlock.
 // ============================================================
 export const JOB_STATUS = {
   IDLE: 'idle',
@@ -90,8 +87,8 @@ export const RENDER_PROFILES = [
 ];
 
 // ============================================================
-// PAYMENT — MVP chỉ dùng MB Bank QR (CWS_ROADMAP_MVP_V1.md, Giai đoạn
-// 5), sinh SAU khi khách duyệt preview — không có lựa chọn phương thức
+// PAYMENT — MVP chỉ dùng MB Bank QR, sinh SAU khi render/output lock/preview
+// thật — không có lựa chọn phương thức
 // nào để chọn (chỉ 1 phương thức duy nhất), nên không cần hằng số
 // PAYMENT_METHOD/PAYMENT_METHODS nữa.
 // ============================================================
@@ -110,7 +107,7 @@ export const PAYMENT_STATUS_LABEL = {
 };
 
 // Định dạng file được chấp nhận — đổi ở đây khi Backend hỗ trợ thêm định dạng
-export const ACCEPTED_FILE_EXTENSIONS = ['.blend', '.zip'];
+export const ACCEPTED_FILE_EXTENSIONS = ['.blend', '.zip', '.rar'];
 export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB, điều chỉnh khi có giới hạn thật từ Backend
 
 // Nguồn file đầu vào — người dùng chọn 1 trong 2

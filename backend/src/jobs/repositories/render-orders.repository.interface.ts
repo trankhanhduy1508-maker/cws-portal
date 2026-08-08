@@ -30,11 +30,21 @@ export interface IRenderOrdersRepository {
       isPlaceholder: boolean;
     },
   ): Promise<RenderOrder | null>;
+  /** Store the already-uploaded final output while keeping it locked. */
+  updateLockedResult(
+    id: string,
+    result: {
+      downloadUrl: string;
+      durationSec: number;
+      resultSizeBytes: number;
+    },
+  ): Promise<RenderOrder | null>;
+  /** Unlock the previously stored final output after a verified PAID payment. */
+  unlockResult(id: string): Promise<RenderOrder | null>;
   markCancelled(id: string): Promise<RenderOrder | null>;
   attachInternalJobId(id: string, internalJobId: string): Promise<void>;
-  /** Khách vừa duyệt preview — gắn payment mới sinh + giá THẬT vừa tính
-   * (PricingService) + chuyển sang chờ thanh toán (JobsService.approve(),
-   * CWS_MVP_WORKFLOW_FINAL.md). */
+  /** Gắn payment mới sinh + giá THẬT vừa tính (PricingService) + chuyển
+   * sang chờ thanh toán sau khi output lock và previews hoàn tất. */
   attachPayment(
     id: string,
     paymentId: string,

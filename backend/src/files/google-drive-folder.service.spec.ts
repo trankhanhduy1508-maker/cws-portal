@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { GoogleDriveService } from './google-drive.service';
+import { B2StorageService } from './b2-storage.service';
 
 describe('GoogleDriveService folder projects', () => {
   let service: GoogleDriveService;
@@ -11,6 +12,7 @@ describe('GoogleDriveService folder projects', () => {
       providers: [
         GoogleDriveService,
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('test-key') } },
+        { provide: B2StorageService, useValue: {} },
       ],
     }).compile();
     service = module.get(GoogleDriveService);

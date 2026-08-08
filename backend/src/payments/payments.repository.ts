@@ -133,6 +133,24 @@ export class PaymentsRepository {
     return data ? rowToDomain(data as PaymentRow) : null;
   }
 
+  /** Idempotency lookup for the one-payment-intent-per-job contract. The
+   * partial unique index in migration 017 is still the concurrency boundary;
+   * this read makes ordinary scheduler/HTTP retries return the same intent. */
+  async findByJobId(jobId: string): Promise<PaymentRecord | null> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(TABLE)
+      .select('*')
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`findByJobId(${jobId}) thất bại: ${error.message}`);
+      throw new Error(`Không đọc được payment theo job: ${error.message}`);
+    }
+    return data ? rowToDomain(data as PaymentRow) : null;
+  }
+
   async updateStatus(
     paymentId: string,
     status: PaymentStatus,
@@ -185,7 +203,9 @@ export class PaymentsRepository {
       .eq('customer_id', customerId)
       .maybeSingle();
     if (error) {
-      this.logger.error(`isOwnedByCustomer(${paymentId}) failed: ${error.message}`);
+      this.logger.error(
+        `isOwnedByCustomer(${paymentId}) failed: ${error.message}`,
+      );
       throw new Error('Không kiểm tra được quyền truy cập payment');
     }
     return Boolean(data);

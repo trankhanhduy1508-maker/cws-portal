@@ -7,7 +7,9 @@ mock progress, mock payment, or mock result module in any production build.
 If Supabase or Backend configuration is missing, the portal must show a clear
 error and must not create local customer/job state. ETA may be shown as a
 non-binding estimate, but no final customer price or payment is shown until a
-real Worker render has completed and the customer approves the review.
+real Worker render has completed, the full output is locked on B2, and real
+watermarked previews exist. The final price/payment is then shown without a
+customer-approval gate.
 
 **[ACTIVE]** A READY deployment, heartbeat, unit test, or local simulation is
 not Production E2E evidence. Only a customer-owned stored input, durable job
@@ -150,12 +152,13 @@ Hibernate, shutdown hoặc thay đổi power policy ngoài contract. Admin khôn
 hiển thị customer jobs, render progress, preview, payment hay download.
 
 **[ACTIVE]** Customer portal (`/`) là flow render độc lập:
-submit/upload → job → render/progress → render hoàn tất → preview → customer
-approve → tính và hiển thị số tiền thanh toán runtime → payment → webhook
-verified/PAID → unlock/download output. Không tạo payment, không yêu cầu
-payment và không hiển thị số tiền cần thanh toán trước khi render hoàn tất.
-Backend `JobsService.approve()` là boundary tạo payment sau `REVIEW_READY`;
-`finalizeDelivery()` chỉ đóng gói/mở download sau `PAID`.
+submit/upload → job → render/progress → validate output → upload FULL OUTPUT
+vào B2 ở trạng thái LOCKED → tạo 3–5 preview watermark thật → tính giá runtime
+→ tạo payment record/payment code/MB QR → SePay kiểm tra đúng reference + amount
+và idempotency → PAID → unlock/download output. Không tạo payment trước khi
+render, validate, full-output lock và preview hoàn tất. `JobsService`
+`createPaymentAfterRender()` là boundary tạo payment; `finalizeDelivery()` chỉ
+unlock output đã upload sau PAID, không render/package/upload lại.
 
 **[SUPERSEDED — thay thế bởi quyết định MFA 2026-08-02 ở trên]** Bảo vệ
 Admin Portal chỉ bằng 1 shared secret tĩnh (`x-admin-key`) không gắn
@@ -173,7 +176,13 @@ Payment
 
 **[ACTIVE]** No PayPal.
 
-**[ACTIVE]** Official workflow order (confirmed 2026-08-01, already implemented — see CreateJobDto/JobsService.createOrder/JobsService.approve): Upload/Drive link -> confirm render -> create real Job in database -> Worker picks up Job -> Render -> generate watermarked Preview -> customer views Preview -> customer approves -> only then request payment -> confirm PAID -> unlock Final Output -> customer Download.
+**[ACTIVE — supersedes the older customer-approval wording on 2026-08-08]**
+Official workflow order: Upload/Drive link -> create real Job -> Worker picks up
+Job -> real Blender render/progress -> validate output -> upload FULL OUTPUT to
+B2 LOCKED -> generate 3–5 real watermarked previews -> compute FINAL PRICE ->
+create payment record/payment code/MB QR -> SePay verifies exact reference and
+amount with idempotency -> PAID -> unlock authorized B2 download -> customer
+download. Customer preview approval is not a prerequisite for payment.
 
 **[ACTIVE]** Payment must never be required before Render/Preview.
 
@@ -372,10 +381,10 @@ isolated staging preflight before production application.
 
 **[ACTIVE]** Payment details are customer-owned data: `GET /payments/:id`
 requires the linked job owner or a server-verified Admin AAL2 session. Direct
-payment creation/confirmation endpoints are Admin AAL2-only; customer payment
-creation remains exclusively inside `JobsService.approve()` after
-`REVIEW_READY`. This prevents public payment spam, payment existence leakage
-and client-controlled state transitions.
+payment creation/confirmation endpoints are Admin AAL2-only; the scheduler
+creates payment exclusively inside `JobsService.createPaymentAfterRender()`
+after the locked final output and real previews exist. This prevents public
+payment spam, payment existence leakage and client-controlled state transitions.
 
 **[ACTIVE]** MVP abuse protection uses bounded in-process limits on expensive
 upload, Drive resolve, job and payment-detail routes, plus strict DTO bounds and
@@ -397,23 +406,36 @@ lightweight CSS 3D CWS mark. Three.js is intentionally not added before MVP
 runtime verification: the effect is decorative, while the existing customer
 state machine and render-before-payment gate remain unchanged.
 
-## ZIP project input boundary - 2026-08-07
+## ZIP/RAR project input boundary - 2026-08-08
 
-**[ACTIVE]** MVP accepts `.blend` directly or `.zip` containing exactly one
-`.blend`. The generic Worker extracts ZIPs only inside the per-attempt
-workspace, preserves relative asset paths, rejects traversal/symlink/ambiguous
-archives, and never recursively extracts nested archives. Existing
-`render_orders.project_name` remains the input-name metadata; no duplicate
-database column is introduced. Production B2 and physical Worker ZIP runtime
+**[ACTIVE]** MVP accepts `.blend` directly, `.zip`, or `.rar` containing exactly
+one `.blend`. The generic Worker extracts archives only inside the per-attempt
+workspace, preserves relative asset paths, rejects traversal, links/reparse
+points, duplicate/ambiguous entries, nested archives and bounded archive-bomb
+sizes/ratios. RAR uses managed 7-Zip through an argument vector with no shell.
+Existing `render_orders.project_name` remains input-name metadata; no duplicate
+database column is introduced. Production B2 and physical Worker archive runtime
 remain separate verification gates.
+
+## Safe customer Blend optimization boundary - 2026-08-08
+
+**[ACTIVE]** Every customer `.blend` follows immutable original -> read-only
+Blender analyzer -> working copy -> safe optimizer -> analyzer validation ->
+render. The original is hash-checked before and after preparation and is never
+passed to a mutating optimizer. The approved optimizer may only apply the
+harmless working-copy policy already covered by code/tests; it must not reduce
+samples, resolution, subdivision, texture/asset quality, volumetrics or change
+the render engine without a separately approved benchmark/policy. Customer
+files run with Blender CLI/background and `--disable-autoexec`.
 
 ## Runtime pricing boundary - 2026-08-07
 
-**[ACTIVE]** After render completion and preview approval, customer price is
+**[ACTIVE]** After render completion, locked full-output upload and real preview
+generation, customer price is
 computed from recorded Worker runtime using a 6,000 VND/worker-hour host
 baseline multiplied by 2.5. If verified execution/heartbeat runtime is absent
-or invalid, approval must fail closed; no demo or minimum fallback price may be
-created. Production payment remains gated on this runtime-derived amount.
+or invalid, payment creation must fail closed; no demo or minimum fallback price
+may be created. Production payment remains gated on this runtime-derived amount.
 
 ## Production Node Agent bridge - 2026-08-07
 

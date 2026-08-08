@@ -94,10 +94,9 @@ describe('JobsService.estimate()', () => {
 });
 
 /**
- * Test cho sửa mismatch nghiêm trọng nhất (audit 2026-07-30): thanh
- * toán phải diễn ra SAU khi khách duyệt preview, không phải trước khi
- * tạo job (CWS_MVP_WORKFLOW_FINAL.md). approve() sinh payment;
- * finalizeDelivery() chỉ đóng gói khi payment thật sự PAID.
+ * Render-first contract: full output is locked before payment; approve()
+ * remains only as a backwards-compatible payment endpoint. finalizeDelivery()
+ * only unlocks an already-uploaded result after a real PAID state.
  */
 describe('JobsService.approve() / finalizeDelivery()', () => {
   let service: JobsService;
@@ -107,6 +106,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     markPaymentPaid: jest.Mock;
     updateStatus: jest.Mock;
     updateResult: jest.Mock;
+    unlockResult: jest.Mock;
   };
   let mockGateway: { getJobMeta: jest.Mock; adminCancelJob: jest.Mock };
   let mockPackagingService: { packageRenderResult: jest.Mock };
@@ -150,6 +150,7 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
       markPaymentPaid: jest.fn().mockResolvedValue(undefined),
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateResult: jest.fn(),
+      unlockResult: jest.fn(),
     };
     mockGateway = {
       getJobMeta: jest.fn().mockResolvedValue({ totalFrames: 48, fps: 24 }),
@@ -205,10 +206,23 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
 
   it('approve() không tạo payment lần hai khi job đã chờ thanh toán', async () => {
     mockRepository.findById.mockResolvedValue(
-      baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-existing' }),
+      baseOrder({
+        status: JobStatus.AWAITING_PAYMENT,
+        paymentId: 'pay-existing',
+      }),
     );
 
-    await expect(service.approve('job-1')).rejects.toThrow(BadRequestException);
+    (mockPaymentsService as any).getPublicDetails = jest.fn().mockResolvedValue({
+      paymentId: 'pay-existing',
+      paymentCode: 'EXISTING1',
+      transferContent: 'CWS CWS-AAAAAAAA EXISTING1',
+      qrImageUrl: 'https://qr/existing',
+      amountVnd: 72000,
+    });
+
+    await expect(service.approve('job-1')).resolves.toMatchObject({
+      payment: { paymentId: 'pay-existing' },
+    });
     expect(mockPricingService.computeFinalPriceVnd).not.toHaveBeenCalled();
     expect(mockPaymentsService.createIntent).not.toHaveBeenCalled();
   });
@@ -264,13 +278,17 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     expect(mockPackagingService.packageRenderResult).not.toHaveBeenCalled();
   });
 
-  it('finalizeDelivery() đóng gói + mở tải khi payment đã PAID, dùng fps thật từ Worker', async () => {
+  it('finalizeDelivery() chỉ mở tải output đã khóa khi payment đã PAID', async () => {
     mockRepository.findById.mockResolvedValue(
-      baseOrder({ status: JobStatus.AWAITING_PAYMENT, paymentId: 'pay-1' }),
+      baseOrder({
+        status: JobStatus.AWAITING_PAYMENT,
+        paymentId: 'pay-1',
+        downloadUrl: 'https://b2/final.zip',
+        resultSizeBytes: 123,
+      }),
     );
     mockPaymentsService.getStatus.mockResolvedValue(PaymentStatus.PAID);
-    mockGateway.getJobMeta.mockResolvedValue({ totalFrames: 48, fps: 30 });
-    mockRepository.updateResult.mockResolvedValue(
+    mockRepository.unlockResult.mockResolvedValue(
       baseOrder({
         status: JobStatus.FINISHED,
         downloadUrl: 'https://b2/final.zip',
@@ -280,12 +298,9 @@ describe('JobsService.approve() / finalizeDelivery()', () => {
     const result = await service.finalizeDelivery('job-1');
 
     expect(mockRepository.markPaymentPaid).toHaveBeenCalledWith('job-1');
-    expect(mockGateway.getJobMeta).toHaveBeenCalledWith('internal-1');
-    expect(mockPackagingService.packageRenderResult).toHaveBeenCalledWith(
-      'internal-1',
-      'job-1',
-      30,
-    );
+    expect(mockRepository.unlockResult).toHaveBeenCalledWith('job-1');
+    expect(mockGateway.getJobMeta).not.toHaveBeenCalled();
+    expect(mockPackagingService.packageRenderResult).not.toHaveBeenCalled();
     expect(result?.status).toBe(JobStatus.FINISHED);
     expect(result?.downloadUrl).toBe('https://b2/final.zip');
   });
@@ -429,7 +444,10 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
 
   it('cancel() báo Worker Fleet huỷ task qua internalJobId (không phải render_orders.id) — bug đã sửa: trước đây cancel() không hề báo Worker', async () => {
     mockRepository.findById.mockResolvedValue(
-      baseOrder({ status: JobStatus.REVIEW_READY, internalJobId: 'internal-1' }),
+      baseOrder({
+        status: JobStatus.REVIEW_READY,
+        internalJobId: 'internal-1',
+      }),
     );
     mockRepository.markCancelled.mockResolvedValue(
       baseOrder({ status: JobStatus.CANCELLED }),
@@ -455,7 +473,10 @@ describe('JobsService — kiểm tra quyền sở hữu job (IDOR fix)', () => {
 
   it('cancel() vẫn trả về job đã huỷ dù RPC báo Worker Fleet lỗi (không chặn khách nhìn thấy trạng thái huỷ)', async () => {
     mockRepository.findById.mockResolvedValue(
-      baseOrder({ status: JobStatus.REVIEW_READY, internalJobId: 'internal-1' }),
+      baseOrder({
+        status: JobStatus.REVIEW_READY,
+        internalJobId: 'internal-1',
+      }),
     );
     mockRepository.markCancelled.mockResolvedValue(
       baseOrder({ status: JobStatus.CANCELLED }),

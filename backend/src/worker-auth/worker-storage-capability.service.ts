@@ -137,10 +137,10 @@ export class WorkerStorageCapabilityService {
       parsed.protocol !== 'b2:' ||
       !this.safeKey(key) ||
       !key.startsWith('uploads/') ||
-      !/\.(blend|zip)$/i.test(key)
+      !/\.(blend|zip|rar)$/i.test(key)
     ) {
       throw new BadRequestException(
-        'claimed task input is not an allowed B2 object',
+        'claimed task input is not an allowed B2 object (.blend/.zip/.rar)',
       );
     }
     return key;

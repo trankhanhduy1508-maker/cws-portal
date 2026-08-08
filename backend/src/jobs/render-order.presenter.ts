@@ -22,7 +22,7 @@ export interface RenderOrderPublicJson {
   paymentStatus: string;
   estimate: { etaSeconds: number; costVnd: number; queueSeconds: number };
   /** Giá THẬT tính sau khi render xong theo runtime Worker thật — null
-   * cho tới khi khách duyệt preview (JobsService.approve()). Đây mới
+   * cho tới khi payment thật sự PAID và order đã unlock. Đây mới
    * là số tiền thật sự trong QR, KHÔNG phải `estimate.costVnd`. */
   finalPriceVnd: number | null;
   workerRuntimeSeconds: number | null;
@@ -51,7 +51,9 @@ export function toPublicJson(order: RenderOrder): RenderOrderPublicJson {
     finalPriceVnd: order.finalPriceVnd,
     workerRuntimeSeconds: order.workerRuntimeSeconds,
     createdAt: order.createdAt,
-    downloadUrl: order.downloadUrl,
+    // The final object can already exist in B2 before payment, but its raw
+    // URL is never customer-visible until the order is unlocked.
+    downloadUrl: order.status === 'finished' ? order.downloadUrl : null,
     durationSec: order.durationSec,
     resultSizeBytes: order.resultSizeBytes,
     isPlaceholder: order.isPlaceholder,

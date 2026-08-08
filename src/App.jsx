@@ -35,7 +35,8 @@ import { getDownloadUrl } from './services/RenderService';
 // chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
 // nên KHÔNG phải 1 SCREEN riêng trước Processing nữa — nó là 1 trạng
 // thái con của Processing (job.status === AWAITING_PAYMENT), giống
-// REVIEW_READY/FINISHED. History có thể mở từ bất kỳ đâu qua nút ở header.
+// REVIEW_READY/FINISHED. Payment được tạo sau render/preview, không chờ
+// customer approve. History có thể mở từ bất kỳ đâu qua nút ở header.
 const SCREEN = {
   LANDING: 'landing',
   PROFILE: 'profile',
@@ -216,9 +217,8 @@ function CustomerPortalApp() {
     }
   }, [isResolving, resolvedInfo, linkError, handleContinueFromUpload]);
 
-  // ---- Bước 2: Render Profile -> Processing (tạo job NGAY, render miễn
-  // phí — thanh toán chỉ diễn ra sau khi khách duyệt preview, xem
-  // job.status === AWAITING_PAYMENT bên dưới). ----
+  // ---- Bước 2: Render Profile -> Processing (tạo job NGAY; payment chỉ
+  // được tạo sau render, validate, full-output lock và preview thật). ----
   const handleContinueToProcessing = useCallback(() => {
     setScreen(SCREEN.PROCESSING);
     job.start({ input: resolvedInput, profileId: selectedProfileId });
@@ -342,21 +342,19 @@ function CustomerPortalApp() {
             key="review"
             jobId={job.jobId}
             fileName={activeProjectName}
-            onApprove={job.approve}
+            onApprove={null}
           />
         )}
 
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.AWAITING_PAYMENT && (
-          <PaymentScreen
-            key="payment"
-            // SỬA LỖI (31/07/2026): KHÔNG fallback về estimates[...] (ước
-            // tính heuristic trước render) nữa — nếu paymentInfo (giá
-            // THẬT vừa tính từ approve()) chưa tải xong, PaymentScreen tự
-            // hiện "đang tải" thay vì hiện nhầm số ước tính SAI cho khách.
-            amountVnd={job.paymentInfo?.amountVnd}
-            transferContent={job.paymentInfo?.transferContent}
-            qrImageUrl={job.paymentInfo?.qrImageUrl}
-          />
+          <div key="payment-flow" style={{ display: 'grid', gap: 16, width: '100%' }}>
+            <ReviewScreen jobId={job.jobId} fileName={activeProjectName} onApprove={null} allowChanges={false} />
+            <PaymentScreen
+              amountVnd={job.paymentInfo?.amountVnd}
+              transferContent={job.paymentInfo?.transferContent}
+              qrImageUrl={job.paymentInfo?.qrImageUrl}
+            />
+          </div>
         )}
 
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.FINISHED && (

@@ -45,7 +45,7 @@ export class JobsController {
   @UseGuards(JwtAuthGuard, MvpRateLimitGuard)
   async create(@Body() dto: CreateJobDto, @Req() req: Request) {
     if (dto.fileRef && dto.fileName && !getInputFormat(dto.fileName)) {
-      throw new BadRequestException('Chỉ hỗ trợ file .blend hoặc .zip');
+      throw new BadRequestException('Chỉ hỗ trợ file .blend, .zip hoặc .rar');
     }
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     if (!customerId) throw new UnauthorizedException('Cần đăng nhập để tạo job');
@@ -167,8 +167,9 @@ export class JobsController {
     return { images };
   }
 
-  /** Khách duyệt bản preview -> sinh QR MB Bank, chờ webhook xác nhận
-   * PAID rồi mới đóng gói + mở link tải (xem JobsService.finalizeDelivery()). */
+  /** Backward-compatible payment endpoint. Render completion already locks
+   * the full output, creates previews and prepares QR; this route only
+   * returns payment details for an authorized caller. */
   @Post(':id/approve')
   @HttpCode(200)
   async approve(@Param('id') id: string, @Req() req: Request) {

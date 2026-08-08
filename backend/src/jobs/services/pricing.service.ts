@@ -10,8 +10,8 @@ const WORKER_STARTUP_SECONDS = 10 * 60;
  * Worker đã tham gia job — KHÔNG dùng ước tính heuristic trước render
  * (`JobsService.estimate()` chỉ để hiển thị ETA/hàng đợi lúc chọn
  * Render Profile, KHÔNG phải giá cuối cùng khách phải trả — giá thật
- * chỉ tính tại `JobsService.approve()`, sau khi biết chắc job đã render
- * xong với runtime thật).
+ * chỉ tính tại `JobsService.createPaymentAfterRender()`, sau khi biết chắc
+ * job đã render xong với runtime thật, full output đã khóa và preview thật.
  *
  * Công thức: cộng dồn runtime của TỪNG task (claimedAt → lastHeartbeat),
  * cộng thêm 10 phút khởi động cho MỖI Worker khác nhau (không phải mỗi

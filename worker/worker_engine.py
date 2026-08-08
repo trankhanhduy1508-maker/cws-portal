@@ -157,6 +157,12 @@ class Renderer(Protocol):
     def render(self, spec: JobSpec, project: Path, frame: int, output: Path) -> Path: ...
 
 
+class BlendPreparer(Protocol):
+    """Prepare an immutable customer project without mutating the source."""
+
+    def prepare(self, project: Path, job_root: Path) -> Path: ...
+
+
 class CheckpointStore(Protocol):
     def is_verified(self, spec: JobSpec, frame: int) -> bool: ...
     def put(self, spec: JobSpec, frame: int, output: Path) -> None: ...
@@ -298,11 +304,13 @@ def _safe_archive_member(name: str) -> Path:
 
 
 def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Path:
-    """Use a .blend directly or safely extract exactly one .blend from ZIP."""
+    """Use a .blend directly or safely extract exactly one .blend from an archive."""
     if downloaded.suffix.lower() == '.blend':
         return downloaded
+    if downloaded.suffix.lower() == '.rar':
+        return _extract_rar(downloaded, job_root)
     if downloaded.suffix.lower() != '.zip':
-        raise PermanentWorkerError('input must be a .blend file or .zip archive')
+        raise PermanentWorkerError('input must be a .blend file or .zip/.rar archive')
 
     extraction_root = (job_root / 'project_archive').resolve()
     if not _inside(job_root, extraction_root):
@@ -367,6 +375,116 @@ def resolve_project_input(spec: JobSpec, downloaded: Path, job_root: Path) -> Pa
     return blend_files[0]
 
 
+def _parse_rar_listing(output: str) -> dict[str, int]:
+    """Return normalized file members and declared unpacked sizes."""
+    records: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for line in output.splitlines():
+        if not line.strip():
+            if current:
+                records.append(current)
+                current = {}
+            continue
+        key, separator, value = line.partition(' = ')
+        if separator:
+            current[key] = value
+    if current:
+        records.append(current)
+    members = [record for record in records if record.get('Type', '').lower() not in {'rar', 'rar5'}]
+    if not members or len(members) > _MAX_ARCHIVE_ENTRIES:
+        raise PermanentWorkerError('RAR has an invalid number of entries')
+    seen: set[str] = set()
+    declared_total = 0
+    declared_files: dict[str, int] = {}
+    for record in members:
+        name = record.get('Path', '')
+        relative = _safe_archive_member(name)
+        normalized = relative.as_posix().lower()
+        if normalized in seen:
+            raise PermanentWorkerError('RAR contains duplicate paths')
+        seen.add(normalized)
+        entry_type = record.get('Type', '').lower()
+        attributes = record.get('Attributes', '')
+        if entry_type in {'link', 'symlink', 'hardlink'} or 'l' in attributes.lower():
+            raise PermanentWorkerError('RAR links are not allowed')
+        if relative.suffix.lower() in {'.rar', '.zip'}:
+            raise PermanentWorkerError('nested archives are not allowed')
+        if entry_type in {'d', 'folder', 'directory'} or name.endswith(('\\', '/')):
+            continue
+        try:
+            size = int(record.get('Size', ''))
+            packed = int(record.get('Packed Size', ''))
+        except ValueError as exc:
+            raise PermanentWorkerError('RAR member size metadata is invalid') from exc
+        if size < 0 or packed < 0 or size > _MAX_ARCHIVE_MEMBER_BYTES:
+            raise PermanentWorkerError('RAR member is too large')
+        if size > 1024 * 1024 and (packed == 0 or size / packed > _MAX_ARCHIVE_COMPRESSION_RATIO):
+            raise PermanentWorkerError('RAR compression ratio is unsafe')
+        declared_total += size
+        if declared_total > _MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+            raise PermanentWorkerError('RAR expands beyond the safety limit')
+        declared_files[normalized] = size
+    return declared_files
+
+
+def _extract_rar(downloaded: Path, job_root: Path) -> Path:
+    """RAR extraction via managed 7-Zip with declared-size bomb limits.
+
+    7-Zip is invoked with an argument vector (never a shell).  The listing is
+    inspected before extraction so an archive cannot claim a small compressed
+    size while expanding past the same bounded limits used by ZIP.  A second
+    filesystem walk verifies that the extractor did not create links, reparse
+    points, unexpected paths or more bytes than were declared.
+    """
+    extractor = shutil.which('7z.exe') or shutil.which('7z')
+    if not extractor:
+        raise PermanentWorkerError('RAR input requires the managed 7-Zip runtime')
+    extraction_root = (job_root / 'project_archive').resolve()
+    if not _inside(job_root, extraction_root):
+        raise PermanentWorkerError('archive extraction escaped job workspace')
+    try:
+        listing = subprocess.run(
+            [extractor, 'l', '-slt', '-bd', str(downloaded)], capture_output=True, text=True,
+            timeout=60, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RetryableWorkerError('RAR inspection failed') from exc
+    if listing.returncode != 0:
+        raise PermanentWorkerError('input is not a valid RAR archive')
+
+    declared_files = _parse_rar_listing(listing.stdout)
+
+    extraction_root.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        [extractor, 'x', '-y', '-bd', '-spf-', '-snl-', '-sni-', f'-o{extraction_root}', str(downloaded)],
+        capture_output=True, text=True, timeout=15 * 60, check=False,
+    )
+    if result.returncode != 0:
+        raise PermanentWorkerError('RAR extraction failed')
+    reject_reparse_points(extraction_root)
+    actual_files = [path for path in extraction_root.rglob('*') if path.is_file()]
+    actual_total = 0
+    actual_names: set[str] = set()
+    for path in actual_files:
+        relative = _safe_archive_member(path.relative_to(extraction_root).as_posix())
+        normalized = relative.as_posix().lower()
+        if normalized not in declared_files:
+            raise PermanentWorkerError('RAR extraction created an unexpected file')
+        if path.is_symlink():
+            raise PermanentWorkerError('RAR extraction created a symlink')
+        size = path.stat().st_size
+        if size != declared_files[normalized]:
+            raise PermanentWorkerError('RAR extracted size does not match archive metadata')
+        actual_names.add(normalized)
+        actual_total += size
+    if actual_total > _MAX_ARCHIVE_UNCOMPRESSED_BYTES or actual_names != set(declared_files):
+        raise PermanentWorkerError('RAR extracted content exceeded the safety contract')
+    blends = [p for p in extraction_root.rglob('*') if p.is_file() and p.suffix.lower() == '.blend']
+    if len(blends) != 1:
+        raise PermanentWorkerError(f'RAR must contain exactly one .blend file (found {len(blends)})')
+    return blends[0]
+
+
 class BasicPreflight:
     """Safe filesystem-only preflight; it never executes customer code."""
 
@@ -422,6 +540,107 @@ class OutputIntegrityValidator(BasicOutputValidator):
         height = int.from_bytes(ihdr[4:8], "big")
         if width < 1 or height < 1:
             raise RetryableWorkerError(f"invalid PNG dimensions: {output.name}")
+
+
+class BlenderSafePreparer:
+    """Analyzer -> working copy -> policy optimizer -> validation pipeline.
+
+    The downloaded project is treated as immutable input.  The only Blender
+    file ever passed to the render loop is the validated working copy.  The
+    helper scripts are shipped with CWS and are invoked with auto-execution
+    disabled, so customer-provided Python in a .blend is never enabled.
+    """
+
+    _PROTECTED_ANALYSIS_FIELDS = (
+        "render_engine", "resolution", "objects", "meshes", "mesh_vertices",
+        "mesh_polygons", "lights", "cameras", "textures", "texture_estimated_bytes",
+        "missing_assets", "subdivision", "volume_nodes",
+    )
+    _PROTECTED_CYCLES_FIELDS = (
+        "samples", "use_denoising", "use_adaptive_sampling", "adaptive_threshold",
+        "max_bounces", "diffuse_bounces", "glossy_bounces", "transmission_bounces",
+        "volume_bounces", "transparent_bounces",
+    )
+
+    def __init__(self, blender_exe: Path, analyzer_script: Path, timeout_seconds: int = 300):
+        self.blender_exe = blender_exe.resolve()
+        self.analyzer_script = analyzer_script.resolve()
+        self.timeout_seconds = timeout_seconds
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _analyze(self, project: Path, report: Path) -> dict[str, Any]:
+        env = os.environ.copy()
+        env["CWS_ANALYZER_OUTPUT"] = str(report)
+        command = [
+            str(self.blender_exe), "--background", "--disable-autoexec",
+            "--python-exit-code", "1", str(project), "--python", str(self.analyzer_script),
+        ]
+        try:
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=self.timeout_seconds,
+                env=env, cwd=str(report.parent), check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RetryableWorkerError("Blender optimization analysis failed") from exc
+        if result.returncode != 0 or not report.is_file():
+            raise RetryableWorkerError("Blender optimization analyzer failed")
+        try:
+            return json.loads(report.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RetryableWorkerError("Blender optimization analysis was invalid") from exc
+
+    @classmethod
+    def _protected_projection(cls, analysis: Mapping[str, Any]) -> dict[str, Any]:
+        projection = {key: analysis.get(key) for key in cls._PROTECTED_ANALYSIS_FIELDS}
+        cycles = analysis.get("cycles")
+        if isinstance(cycles, Mapping):
+            projection["cycles"] = {key: cycles.get(key) for key in cls._PROTECTED_CYCLES_FIELDS}
+        else:
+            projection["cycles"] = cycles
+        return projection
+
+    def prepare(self, project: Path, job_root: Path) -> Path:
+        if not project.is_file() or project.suffix.lower() != ".blend":
+            raise PermanentWorkerError("safe optimization requires a .blend project")
+        original_digest = self._sha256(project)
+        original_report = job_root / "optimization_original.json"
+        original_analysis = self._analyze(project, original_report)
+        if self._sha256(project) != original_digest:
+            raise PermanentWorkerError("customer .blend changed during analysis")
+
+        working_dir = (job_root / "working_copy").resolve()
+        if not _inside(job_root, working_dir):
+            raise PermanentWorkerError("working copy escaped job workspace")
+        working_dir.mkdir(parents=True, exist_ok=True)
+        working_copy = working_dir / "project.blend"
+        try:
+            from blender_optimizer import run as run_safe_optimizer
+            plan_path = run_safe_optimizer(self.blender_exe, project, working_copy, apply=True)
+        except (OSError, subprocess.TimeoutExpired, RuntimeError, ValueError) as exc:
+            raise RetryableWorkerError("safe Blender optimizer failed") from exc
+        if not working_copy.is_file() or not plan_path.is_file():
+            raise RetryableWorkerError("safe optimizer did not produce a working copy")
+        try:
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RetryableWorkerError("safe optimizer plan was invalid") from exc
+        if plan.get("schema_version") != "cws.optimization-plan.v1" or plan.get("applied") is not True:
+            raise PermanentWorkerError("safe optimizer plan failed validation")
+
+        working_report = job_root / "optimization_working.json"
+        working_analysis = self._analyze(working_copy, working_report)
+        if self._protected_projection(original_analysis) != self._protected_projection(working_analysis):
+            raise PermanentWorkerError("optimizer changed a protected render-quality setting")
+        if self._sha256(project) != original_digest:
+            raise PermanentWorkerError("customer .blend was modified by safe optimization")
+        return working_copy
 
 
 class BlenderCliRenderer:
@@ -515,7 +734,8 @@ class WorkerEngine:
     def __init__(self, workspace_root: Path, downloader: ProjectDownloader,
                  preflight: Preflight, renderer: Renderer,
                  checkpoints: CheckpointStore, validator: OutputValidator,
-                 reporter: Reporter, guard: AttemptGuard | None = None):
+                 reporter: Reporter, guard: AttemptGuard | None = None,
+                 preparer: BlendPreparer | None = None):
         self.workspace_root = workspace_root.resolve()
         self.downloader = downloader
         self.preflight = preflight
@@ -524,6 +744,7 @@ class WorkerEngine:
         self.validator = validator
         self.reporter = reporter
         self.guard = guard
+        self.preparer = preparer
 
     def _guard(self, spec: JobSpec, state: str) -> None:
         if self.guard is None:
@@ -560,6 +781,11 @@ class WorkerEngine:
             self.reporter.stage(spec, "PREFLIGHT")
             self.preflight.inspect(spec, project)
             self.reporter.stage(spec, "PREPARING")
+            if self.preparer is not None:
+                self.reporter.stage(spec, "OPTIMIZING")
+                project = self.preparer.prepare(project, job_root).resolve()
+                if not _inside(job_root, project):
+                    raise PermanentWorkerError("optimized project escaped job workspace")
             total = spec.frame_end - spec.frame_start + 1
             for frame in range(spec.frame_start, spec.frame_end + 1):
                 self._guard(spec, "RENDERING")

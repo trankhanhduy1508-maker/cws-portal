@@ -28,7 +28,7 @@ export default function UploadScreen({
           Gửi file của bạn
         </h2>
         <p style={{ fontSize: 14, color: '#6B6B70' }}>
-          Hỗ trợ file Blender (.blend) hoặc thư mục dự án đóng gói (.zip)
+          Hỗ trợ file Blender (.blend) hoặc thư mục dự án đóng gói (.zip, .rar)
         </p>
       </div>
 

@@ -19,10 +19,9 @@ type ArchiverModule = {
 // to CommonJS. A real dynamic import keeps production startup compatible with
 // both module systems; a static import would make `dist/main.js` fail before
 // the app can serve health checks.
-const importEsm = new Function(
-  'specifier',
-  'return import(specifier)',
-) as (specifier: string) => Promise<ArchiverModule>;
+const importEsm = new Function('specifier', 'return import(specifier)') as (
+  specifier: string,
+) => Promise<ArchiverModule>;
 
 /**
  * Đóng gói kết quả render thành file cuối khách tải về. Ưu tiên ghép
@@ -61,10 +60,18 @@ export class PackagingService {
     // "video" 1 frame là vô nghĩa (chỉ vài chục mili-giây, tệ hơn hẳn
     // so với giao thẳng file ảnh) — bỏ qua bước dựng video, rơi thẳng
     // về .zip như render nhiều frame không dựng được video.
-    const videoBuffer = frames.length > 1 ? await this.tryBuildVideo(internalJobId, frames, fps) : null;
+    const videoBuffer =
+      frames.length > 1
+        ? await this.tryBuildVideo(internalJobId, frames, fps)
+        : null;
     if (videoBuffer) {
-      const videoKey = `results/${renderOrderId}.mp4`;
-      const downloadUrl = await this.b2StorageService.uploadBuffer(videoKey, videoBuffer, 'video/mp4');
+      const videoKey = `final/${renderOrderId}.mp4`;
+      this.validateFinalOutput(videoBuffer, 'video/mp4');
+      const downloadUrl = await this.b2StorageService.uploadBuffer(
+        videoKey,
+        videoBuffer,
+        'video/mp4',
+      );
       this.logger.log(
         `Đã ghép ${frames.length} frame thành ${videoKey} (${videoBuffer.length} bytes)`,
       );
@@ -76,19 +83,28 @@ export class PackagingService {
 
   /** Tải frame theo lô (FRAME_FETCH_CONCURRENCY cùng lúc) thay vì bắn
    * hết tất cả request 1 lượt — xem ghi chú ở hằng số phía trên. */
-  private async fetchFramesLimited(frameKeys: string[]): Promise<{ key: string; buffer: Buffer }[]> {
-    const results: { key: string; buffer: Buffer }[] = new Array(frameKeys.length);
+  private async fetchFramesLimited(
+    frameKeys: string[],
+  ): Promise<{ key: string; buffer: Buffer }[]> {
+    const results: { key: string; buffer: Buffer }[] = new Array(
+      frameKeys.length,
+    );
     let nextIndex = 0;
 
     async function worker(b2: B2StorageService): Promise<void> {
       while (nextIndex < frameKeys.length) {
         const index = nextIndex++;
-        results[index] = { key: frameKeys[index], buffer: await b2.getObjectBuffer(frameKeys[index]) };
+        results[index] = {
+          key: frameKeys[index],
+          buffer: await b2.getObjectBuffer(frameKeys[index]),
+        };
       }
     }
 
     const workerCount = Math.min(FRAME_FETCH_CONCURRENCY, frameKeys.length);
-    await Promise.all(Array.from({ length: workerCount }, () => worker(this.b2StorageService)));
+    await Promise.all(
+      Array.from({ length: workerCount }, () => worker(this.b2StorageService)),
+    );
 
     return results;
   }
@@ -140,13 +156,36 @@ export class PackagingService {
     await donePromise;
 
     const zipBuffer = Buffer.concat(chunks);
-    const zipKey = `results/${renderOrderId}.zip`;
-    const downloadUrl = await this.b2StorageService.uploadBuffer(zipKey, zipBuffer, 'application/zip');
+    this.validateFinalOutput(zipBuffer, 'application/zip');
+    const zipKey = `final/${renderOrderId}.zip`;
+    const downloadUrl = await this.b2StorageService.uploadBuffer(
+      zipKey,
+      zipBuffer,
+      'application/zip',
+    );
 
     this.logger.log(
       `Đã đóng gói ${frames.length} frame thành ${zipKey} (${zipBuffer.length} bytes)`,
     );
 
     return { downloadUrl, resultSizeBytes: zipBuffer.length };
+  }
+
+  /** Validate the exact object that will be uploaded, not only the input
+   * frames. A successful archiver/ffmpeg process alone is not delivery
+   * evidence. Keep this structural and bounded; full decode belongs to the
+   * render/preview validators. */
+  private validateFinalOutput(buffer: Buffer, contentType: 'video/mp4' | 'application/zip'): void {
+    if (buffer.length < 200) {
+      throw new Error('Final render output is empty or too small');
+    }
+    if (contentType === 'application/zip') {
+      const isZip = buffer.subarray(0, 4).equals(Buffer.from('PK\x03\x04'))
+        || buffer.subarray(0, 4).equals(Buffer.from('PK\x05\x06'));
+      if (!isZip) throw new Error('Final ZIP output has an invalid signature');
+      return;
+    }
+    const isMp4 = buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+    if (!isMp4) throw new Error('Final MP4 output has an invalid signature');
   }
 }

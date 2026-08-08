@@ -63,7 +63,9 @@ export class SchedulerService {
     try {
       activeOrders = await this.ordersRepository.findActiveOrders();
     } catch (err) {
-      this.logger.error(`Không đọc được danh sách order đang xử lý: ${String(err)}`);
+      this.logger.error(
+        `Không đọc được danh sách order đang xử lý: ${String(err)}`,
+      );
       this.tickInFlight = false;
       return;
     }
@@ -74,13 +76,16 @@ export class SchedulerService {
       const onlineWorkers = activeOrders.some((order) => order.internalJobId)
         ? await this.workerFleetGateway.countOnlineWorkers()
         : 0;
-      let taskSnapshots: Map<string, {
-        frameStart: number;
-        frameEnd: number;
-        status: string;
-        lastLog: string | null;
-        workerId: string | null;
-      }[]> | null = null;
+      let taskSnapshots: Map<
+        string,
+        {
+          frameStart: number;
+          frameEnd: number;
+          status: string;
+          lastLog: string | null;
+          workerId: string | null;
+        }[]
+      > | null = null;
       try {
         taskSnapshots = await this.workerFleetGateway.getTasksForJobs(
           activeOrders
@@ -91,7 +96,9 @@ export class SchedulerService {
         // Keep the pre-batch per-order path available if a large batch query
         // hits a transient API/URL limit; one bad batch must not hide every
         // order's state transition.
-        this.logger.error(`Batch task snapshot lỗi, fallback per order: ${String(err)}`);
+        this.logger.error(
+          `Batch task snapshot lỗi, fallback per order: ${String(err)}`,
+        );
       }
 
       for (const order of activeOrders) {
@@ -126,13 +133,15 @@ export class SchedulerService {
     }[],
   ): Promise<void> {
     if (!order.internalJobId) {
-      this.logger.warn(`Order ${order.id} chưa có internalJobId — bỏ qua tick này`);
+      this.logger.warn(
+        `Order ${order.id} chưa có internalJobId — bỏ qua tick này`,
+      );
       return;
     }
 
-    // Render đã xong từ trước, chỉ còn chờ webhook ngân hàng xác nhận
-    // PAID (CWS_MVP_WORKFLOW_FINAL.md) — không cần đọc lại tasks Worker
-    // Fleet nữa cho các order ở trạng thái này.
+    // Render đã xong từ trước, final output đã ở B2 nhưng vẫn locked; chỉ
+    // còn chờ webhook ngân hàng xác nhận PAID để unlock. Không render/upload
+    // lại ở nhánh này.
     if (order.status === JobStatus.AWAITING_PAYMENT) {
       const finalized = await this.jobsService.finalizeDelivery(order.id);
       if (finalized) {
@@ -141,22 +150,27 @@ export class SchedulerService {
           'Thanh toán thành công',
           `Job "${order.projectName}" đã thanh toán xong, file gốc đã sẵn sàng tải.`,
         );
-        this.logger.log(`Order ${order.id}: thanh toán PAID, đã đóng gói + mở tải`);
+        this.logger.log(
+          `Order ${order.id}: thanh toán PAID, đã unlock output đã khóa`,
+        );
       }
       return;
     }
 
     const internalJobId = order.internalJobId;
-    const tasks = taskSnapshot ?? (await this.workerFleetGateway.getTasks(internalJobId));
+    const tasks =
+      taskSnapshot ?? (await this.workerFleetGateway.getTasks(internalJobId));
     const onlineWorkers =
-      onlineWorkersSnapshot ?? (await this.workerFleetGateway.countOnlineWorkers());
+      onlineWorkersSnapshot ??
+      (await this.workerFleetGateway.countOnlineWorkers());
 
     // Bước 1: nếu probe task (frame 1-1) đã "done" và total_frames đã
     // biết, mà vẫn CHỈ có 1 task duy nhất — tự động tạo các task còn
     // lại (đúng việc Dy từng làm tay cho CWS-JOB5).
     const probeDone = tasks.length === 1 && tasks[0].status === 'done';
     if (probeDone) {
-      const totalFrames = await this.workerFleetGateway.getTotalFrames(internalJobId);
+      const totalFrames =
+        await this.workerFleetGateway.getTotalFrames(internalJobId);
       if (totalFrames && totalFrames > 1) {
         await this.workerFleetGateway.createRemainingTasks(
           internalJobId,
@@ -188,7 +202,11 @@ export class SchedulerService {
     }
 
     if (anyActive) {
-      await this.updateStatus(order, JobStatus.RENDERING, this.computeProgress(tasks));
+      await this.updateStatus(
+        order,
+        JobStatus.RENDERING,
+        this.computeProgress(tasks),
+      );
       return;
     }
 
@@ -221,7 +239,8 @@ export class SchedulerService {
 
   private async maybeAttemptWake(orderId: string): Promise<void> {
     const lastAttempt = this.lastWakeAttemptAt.get(orderId) ?? 0;
-    if (Date.now() - lastAttempt < SchedulerService.WAKE_RETRY_COOLDOWN_MS) return;
+    if (Date.now() - lastAttempt < SchedulerService.WAKE_RETRY_COOLDOWN_MS)
+      return;
 
     this.lastWakeAttemptAt.set(orderId, Date.now());
     const result = await this.wakeService.tryWakeAnyCandidate();
@@ -242,9 +261,14 @@ export class SchedulerService {
    */
   private async markFailed(
     order: RenderOrder,
-    tasks: { status: string; lastLog: string | null; workerId: string | null }[],
+    tasks: {
+      status: string;
+      lastLog: string | null;
+      workerId: string | null;
+    }[],
   ): Promise<void> {
-    if (order.status === JobStatus.ERROR || order.status === JobStatus.FINISHED) return;
+    if (order.status === JobStatus.ERROR || order.status === JobStatus.FINISHED)
+      return;
 
     const failedTasks = tasks.filter((t) => t.status === 'failed');
     for (const task of failedTasks) {
@@ -262,33 +286,46 @@ export class SchedulerService {
       'Render thất bại',
       `Job "${order.projectName}" gặp lỗi khi render và không thể tiếp tục. Vui lòng thử tạo lại job.`,
     );
-    this.logger.error(`Order ${order.id}: ${failedTasks.length} task thất bại, chuyển sang ERROR`);
+    this.logger.error(
+      `Order ${order.id}: ${failedTasks.length} task thất bại, chuyển sang ERROR`,
+    );
   }
 
   /**
-   * Render xong (tất cả task done) — dừng ở REVIEW_READY, KHÔNG tự đóng
-   * gói/mở link tải. CWS_ROADMAP_MVP_V1.md Giai đoạn 4: khách phải xem
-   * qua 3-5 ảnh preview watermark và bấm duyệt (JobsService.approve())
-   * trước khi có file cuối — đóng gói tự động ở đây là đúng lỗ hổng đã
-   * bị phát hiện khi audit (final output lộ ra không qua cổng duyệt nào).
+   * Render xong (tất cả task done): validate/frame checkpoints đã hoàn tất;
+   * package/upload FULL OUTPUT vào B2 `final/` locked, tạo preview thật,
+   * rồi tạo giá/payment/QR. Không chờ customer approve và không upload lại
+   * sau PAID.
    */
-  private async moveToReview(order: RenderOrder, internalJobId: string): Promise<void> {
+  private async moveToReview(
+    order: RenderOrder,
+    internalJobId: string,
+  ): Promise<void> {
+    if (order.status === JobStatus.REVIEW_READY) {
+      if (!order.paymentId) {
+        await this.jobsService.createPaymentAfterRender(order.id);
+      }
+      return;
+    }
     if (
-      order.status === JobStatus.REVIEW_READY ||
       order.status === JobStatus.PACKAGING ||
       order.status === JobStatus.FINISHED
     ) {
       return;
     }
 
+    await this.jobsService.prepareLockedOutput(order.id);
     await this.previewService.generateReviewPreview(internalJobId, order.id);
     await this.updateStatus(order, JobStatus.REVIEW_READY, 1);
+    await this.jobsService.createPaymentAfterRender(order.id);
     await this.storageService.notify(
       order.id,
-      'Render xong, mời bạn duyệt',
-      `Job "${order.projectName}" đã render xong. Xem 3-5 ảnh xem trước và bấm duyệt để mở tải file gốc.`,
+      'Render xong, chờ thanh toán',
+      `Job "${order.projectName}" đã render xong. Full output đã được khoá trên B2; xem preview có watermark và thanh toán theo QR để mở tải.`,
     );
 
-    this.logger.log(`Order ${order.id}: render xong, đã tạo preview — chờ khách duyệt`);
+    this.logger.log(
+      `Order ${order.id}: render xong, full output locked, preview + payment ready`,
+    );
   }
 }

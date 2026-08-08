@@ -216,9 +216,9 @@ export async function getJobPreview(jobId) {
   }
 }
 
-/** Khách duyệt bản preview -> Backend sinh QR MB Bank ngay trong response
- * này (field `payment`); đóng gói + mở link tải chỉ diễn ra SAU khi
- * webhook xác nhận PAID (job tự chuyển AWAITING_PAYMENT -> FINISHED). */
+/** Legacy payment endpoint. The scheduler normally creates QR after render,
+ * full-output lock and previews; this route only returns payment details for
+ * an authorized caller. PAID alone unlocks the existing B2 output. */
 export async function approveJob(jobId) {
   requireBackend();
   {

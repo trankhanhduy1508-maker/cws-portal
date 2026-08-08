@@ -6,7 +6,8 @@ import { JOB_STATUS, STAGE_SEQUENCE } from '../constants/renderConstants';
 
 /**
  * Hook điều phối vòng đời render từ lúc customer tạo job sau upload/profile.
- * Render chạy trước thanh toán; payment chỉ được tạo sau preview approval.
+ * Render chạy trước thanh toán; payment chỉ được tạo sau output lock và
+ * preview thật, không cần preview approval.
  * Khác biệt quan trọng so với thiết kế trước: job KHÔNG chạy
  * "trong" hook này — job chạy phía Backend thật; hook chỉ subscribe để
  * nhận cập nhật. Nếu Component unmount
@@ -58,7 +59,7 @@ export function useRenderJob() {
   }
 
   /** Tạo job NGAY — render miễn phí, không cần paymentId (thanh toán chỉ
-   * diễn ra sau khi khách duyệt preview, xem approve() bên dưới). */
+   * diễn ra sau render/output lock/preview, xem payment details từ Backend). */
   const start = useCallback(async ({ input, profileId }) => {
     setStatus(JOB_STATUS.QUEUED);
     setStageProgress(0);
@@ -103,10 +104,8 @@ export function useRenderJob() {
     // Trạng thái CANCELLED đến từ cập nhật Backend, không tự gán ở client.
   }, [jobId]);
 
-  /** Khách duyệt bản preview (status === REVIEW_READY) -> Backend sinh
-   * QR MB Bank ngay trong response này (không cần gọi thêm API nào) —
-   * trạng thái job mới (AWAITING_PAYMENT rồi FINISHED sau khi webhook
-   * xác nhận) tự đến qua onUpdate/onComplete như các bước khác. */
+  /** Legacy compatibility endpoint; the scheduler normally creates payment
+   * after render/output lock/preview and the hook fetches its details. */
   const approve = useCallback(async () => {
     if (!jobId) return;
     const res = await approveJob(jobId);

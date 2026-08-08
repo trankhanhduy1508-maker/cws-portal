@@ -194,19 +194,18 @@ bất kỳ dòng code nào ở Portal.
   CLI nếu môi trường chạy Backend có cài ffmpeg (xem mục 4b) — rơi về
   `.zip` chứa frame PNG như trước nếu không có ffmpeg/ghép thất bại,
   không chặn việc bàn giao.
-- Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
-  gỡ hoàn toàn. **Render là MIỄN PHÍ** — thanh toán chỉ diễn ra SAU khi
-  khách duyệt bản preview (`POST /jobs/:id/approve` tính GIÁ THẬT theo
-  runtime Worker thật rồi mới sinh QR trong response, job chuyển
-  `awaiting_payment`), KHÔNG chặn việc tạo job/render. Webhook thật
-  (`POST /payments/webhook`) đối chiếu storage_code + payment_code + số
-  tiền. Ảnh VietQR quét được ĐÃ dựng
-  thật khi có `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` (env) —
-  chỉ còn thiếu webhook thật từ ngân hàng gọi vào (cần thao tác phía
-  ngân hàng/cổng trung gian, chưa nối).
-- Preview/duyệt: render xong dừng ở `review_ready`, tạo 3-5 ảnh
-  preview watermark thật. Khách duyệt → `awaiting_payment` (chờ webhook)
-  → webhook PAID → `packaging` → `finished` (mở `downloadUrl`). Tải file
+ - Thanh toán: chỉ còn MB Bank QR (`qr_bank`) — Wallet/Stripe/PayPal đã
+   gỡ hoàn toàn. **Render-first**: sau render thật, validate, upload FULL
+   OUTPUT vào B2 LOCKED và tạo preview watermark, Scheduler tính GIÁ THẬT
+   theo runtime Worker rồi tạo payment record/QR; không chờ customer approve.
+   Webhook SePay (`POST /payments/webhook/sepay`) đối chiếu chính xác
+   reference/content + amount và idempotency. Ảnh VietQR chỉ được tạo khi
+   `MB_BANK_ACCOUNT_NUMBER`/`MB_BANK_ACCOUNT_NAME` canonical đã có; không
+   bịa thông tin tài khoản.
+ - Preview/payment: render xong validate và upload full output `final/` vào
+   B2 ở trạng thái locked, tạo 3-5 ảnh preview watermark thật, chuyển
+   `review_ready` rồi `awaiting_payment` sau khi đã có payment. Webhook PAID
+   chỉ unlock result đã có → `finished` (mở download redirect). Tải file
   PHẢI qua `GET /jobs/:id/download` (có ghi log), không dùng thẳng
   `downloadUrl` raw. Khách có thể `POST /jobs/:id/request-changes` để
   yêu cầu chỉnh sửa thay vì duyệt (chỉ ghi nhận, không tự động

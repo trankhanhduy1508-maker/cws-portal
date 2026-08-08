@@ -109,7 +109,6 @@ export class JobsService {
     if (!dto.driveLink && !dto.fileRef) {
       throw new Error('Cần có driveLink hoặc fileRef để tạo job');
     }
-
     if (!idempotencyKey || !/^[A-Za-z0-9._~-]{16,128}$/.test(idempotencyKey)) {
       throw new BadRequestException(
         'Thiếu hoặc sai Idempotency-Key (16-128 ký tự an toàn)',
@@ -197,9 +196,8 @@ export class JobsService {
     } catch (error) {
       // A concurrent retry may win the unique database insert. Re-read the
       // durable row and return it instead of creating/dispatching a duplicate.
-      const raced = await this.ordersRepository.findByIdempotencyKey(
-        idempotencyKey,
-      );
+      const raced =
+        await this.ordersRepository.findByIdempotencyKey(idempotencyKey);
       if (!raced) throw error;
       if (raced.requestFingerprint !== requestFingerprint) {
         throw new ForbiddenException(
@@ -347,17 +345,36 @@ export class JobsService {
     return order;
   }
 
+  /** Upload the full rendered result before payment, but keep the delivery
+   * route locked until the payment record becomes PAID. */
+  async prepareLockedOutput(id: string): Promise<RenderOrder> {
+    const order = await this.getById(id);
+    if (order.downloadUrl) return order;
+    if (!order.internalJobId) {
+      throw new BadRequestException(`Job ${id} thiếu internalJobId — không thể upload final output`);
+    }
+    const { fps } = await this.workerFleetGateway.getJobMeta(order.internalJobId);
+    const { downloadUrl, resultSizeBytes } = await this.packagingService.packageRenderResult(
+      order.internalJobId,
+      order.id,
+      fps,
+    );
+    const updated = await this.ordersRepository.updateLockedResult(id, {
+      downloadUrl,
+      durationSec: Math.max(1, Math.round((Date.now() - order.createdAt) / 1000)),
+      resultSizeBytes,
+    });
+    if (!updated) throw new NotFoundException(`Không lưu được final output của job ${id}`);
+    return updated;
+  }
+
   /**
-   * Khách duyệt bản preview (CWS_MVP_WORKFLOW_FINAL.md, mục Review:
-   * "Đồng ý → Sinh QR thanh toán"). Giá đưa vào QR là giá THẬT tính từ
-   * runtime Worker thật (PricingService) — KHÔNG dùng
-   * `order.estimate.costVnd` (chỉ là ước tính trước render, hiển thị
-   * lúc chọn Render Profile). KHÔNG đóng gói/mở tải ngay — chỉ SAU KHI
-   * webhook xác nhận PAID (xem finalizeDelivery()) mới mở tải. Gọi
-   * trước đó (khi order chưa ở REVIEW_READY) là lỗi rõ ràng, không âm
-   * thầm bỏ qua.
+   * Render-first payment boundary.  The Scheduler calls this only after the
+   * locked B2 output and real watermarked previews exist.  The old customer
+   * approve endpoint delegates here for compatibility, but approval is no
+   * longer a prerequisite for creating payment.
    */
-  async approve(
+  async createPaymentAfterRender(
     id: string,
     customerId: string | null = null,
     isAdmin = false,
@@ -373,9 +390,22 @@ export class JobsService {
   }> {
     const order = await this.getById(id);
     this.assertOwnership(order, customerId, isAdmin);
+    if (order.paymentId) {
+      const existing = await this.paymentsService.getPublicDetails(order.paymentId, customerId, isAdmin);
+      return {
+        order,
+        payment: {
+          paymentId: existing.paymentId,
+          paymentCode: existing.paymentCode,
+          transferContent: existing.transferContent,
+          qrImageUrl: existing.qrImageUrl,
+          amountVnd: existing.amountVnd,
+        },
+      };
+    }
     if (order.status !== JobStatus.REVIEW_READY) {
       throw new BadRequestException(
-        `Job ${id} chưa sẵn sàng để duyệt (trạng thái hiện tại: ${order.status})`,
+        `Job ${id} chưa sẵn sàng tạo payment (trạng thái hiện tại: ${order.status})`,
       );
     }
     if (!order.internalJobId) {
@@ -413,49 +443,37 @@ export class JobsService {
     };
   }
 
+  /** Backward-compatible endpoint name; it no longer gates payment creation. */
+  async approve(
+    id: string,
+    customerId: string | null = null,
+    isAdmin = false,
+  ) {
+    return this.createPaymentAfterRender(id, customerId, isAdmin);
+  }
+
   /**
-   * Webhook đã xác nhận PAID cho payment của job này (gọi từ
-   * SchedulerService.tick() khi phát hiện 1 job AWAITING_PAYMENT) — đến
-   * đây mới thật sự đóng gói kết quả cuối + mở link tải
-   * (CWS_MVP_WORKFLOW_FINAL.md, mục Bàn giao). Trả về `null` (KHÔNG
-   * throw) khi payment CHƯA PAID — đây là trạng thái bình thường ở mỗi
-   * tick trong lúc khách chưa chuyển khoản xong, không phải lỗi.
+   * Webhook đã xác nhận PAID cho payment của job này.  The final object was
+   * already uploaded under `final/` before payment; this method only flips
+   * the delivery state and must never render or upload again.
    */
   async finalizeDelivery(id: string): Promise<RenderOrder | null> {
     const order = await this.getById(id);
+    if (order.status === JobStatus.FINISHED) return order;
     if (order.status !== JobStatus.AWAITING_PAYMENT || !order.paymentId)
       return null;
 
     const paymentStatus = await this.paymentsService.getStatus(order.paymentId);
     if (paymentStatus !== PaymentStatus.PAID) return null;
 
-    if (!order.internalJobId) {
+    if (!order.downloadUrl || !order.resultSizeBytes) {
       throw new BadRequestException(
-        `Job ${id} thiếu internalJobId — không thể đóng gói`,
+        `Job ${id} thiếu locked final output — không thể mở tải`,
       );
     }
 
     await this.ordersRepository.markPaymentPaid(id);
-    await this.ordersRepository.updateStatus(id, JobStatus.PACKAGING, 0);
-
-    const { fps } = await this.workerFleetGateway.getJobMeta(
-      order.internalJobId,
-    );
-    const { downloadUrl, resultSizeBytes } =
-      await this.packagingService.packageRenderResult(
-        order.internalJobId,
-        order.id,
-        fps,
-      );
-
-    const durationSec = Math.round((Date.now() - order.createdAt) / 1000);
-
-    const updated = await this.ordersRepository.updateResult(id, {
-      downloadUrl,
-      durationSec,
-      resultSizeBytes,
-      isPlaceholder: false,
-    });
+    const updated = await this.ordersRepository.unlockResult(id);
     if (!updated) throw new NotFoundException(`Không tìm thấy job ${id}`);
     return updated;
   }

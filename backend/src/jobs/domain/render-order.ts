@@ -72,8 +72,8 @@ export interface RenderOrder {
 }
 
 /** Input để tạo 1 RenderOrder mới — khớp shape Portal gửi lên qua POST /jobs.
- * KHÔNG có paymentId: thanh toán chỉ diễn ra SAU khi khách duyệt preview
- * (CWS_MVP_WORKFLOW_FINAL.md), không phải điều kiện để tạo job. */
+ * KHÔNG có paymentId: thanh toán chỉ diễn ra SAU khi render, validate, full
+ * output lock và watermark previews hoàn tất, không phải điều kiện tạo job. */
 export interface CreateRenderOrderInput {
   fileRef: string | null;
   driveLink: string | null;

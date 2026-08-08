@@ -1,5 +1,27 @@
 # Current Status
 
+## Golden Production E2E V2.4 implementation — 2026-08-08
+
+- **IMPLEMENTED / CODE-TEST VERIFIED**: `.blend`, `.zip`, and `.rar` input
+  validation; bounded ZIP/RAR extraction with traversal/link/nested-archive/
+  archive-bomb defenses; immutable-original Blender analyzer → working-copy
+  safe optimizer → validation → render; Blender CLI/background with customer
+  autoexec disabled; locked full-output packaging before payment; 3–5 real
+  watermark preview generation; runtime price + canonical MB QR fail-closed;
+  exact SePay reference/amount matcher with notification idempotency; PAID-only
+  B2 unlock with no post-PAID rerender/reupload.
+- **LOCAL VERIFICATION**: backend 38/38 suites and 196/196 tests pass;
+  frontend tests/build pass; worker engine archive/optimizer test suite passes.
+  This is not production E2E evidence.
+- **NOT GOLDEN E2E PASS**: the exact Drive input and current authenticated
+  customer session were not executed through the production chain in this run.
+  Existing production blockers remain the live Google Drive capability, B2
+  scoped runtime configuration, canonical physical Worker/managed 7-Zip,
+  canonical MB account configuration and real SePay sandbox event.
+- **Source documents**: `CODEX_GOLDEN_E2E_V2_4_DIRECTIVE_2026-08-08.md` and
+  `CWS_PRODUCTION_E2E_ROADMAP_V2_4.md` now record the authoritative V2.4 chain.
+  Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_4_IMPLEMENTATION_2026-08-08.md`.
+
 ## Production real-path correction — 2026-08-08
 
 - **RUNTIME EVIDENCE OVERRIDES PRIOR DONE LABELS**: Founder reports that the

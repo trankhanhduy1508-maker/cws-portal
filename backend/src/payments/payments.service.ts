@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PaymentsRepository } from './payments.repository';
@@ -33,8 +34,9 @@ export class PaymentsService {
   }
 
   /**
-   * `jobContext` gắn payment với 1 job cụ thể (JobsService.approve() —
-   * CWS_MVP_WORKFLOW_FINAL.md: QR chỉ sinh SAU khi khách duyệt preview)
+   * `jobContext` gắn payment với 1 job cụ thể (JobsService
+   * createPaymentAfterRender() — QR chỉ sinh sau khi render, validate,
+   * full-output lock và watermark previews)
    * để transferContent chứa storage_code và webhook đối chiếu được cả
    * 2 mã. Không bắt buộc — POST /payments gọi trực tiếp (không qua job)
    * vẫn hoạt động, chỉ không có storage_code trong nội dung chuyển khoản.
@@ -50,6 +52,24 @@ export class PaymentsService {
     amountVnd: number;
     qrImageUrl: string | null;
   }> {
+    if (jobContext && typeof this.paymentsRepository.findByJobId === 'function') {
+      const existing = await this.paymentsRepository.findByJobId(jobContext.jobId);
+      if (existing) {
+        if (existing.amountVnd !== dto.amountVnd) {
+          throw new BadRequestException(
+            `Job ${jobContext.jobId} đã có payment với số tiền khác; không tạo intent thứ hai`,
+          );
+        }
+        return {
+          paymentId: existing.paymentId,
+          status: existing.status,
+          paymentCode: existing.paymentCode,
+          transferContent: existing.transferContent,
+          amountVnd: existing.amountVnd,
+          qrImageUrl: existing.qrImageUrl,
+        };
+      }
+    }
     const provider = this.providers[dto.method];
     if (!provider) {
       throw new BadRequestException(
@@ -69,6 +89,11 @@ export class PaymentsService {
       dto.amountVnd,
       jobContext?.storageCode ?? null,
     );
+    if (jobContext && !qrImageUrl) {
+      throw new ServiceUnavailableException(
+        'MB Bank QR chưa có STK/tên tài khoản canonical trong deployment',
+      );
+    }
     const paymentId = randomUUID();
 
     const record: PaymentRecord = {
@@ -127,7 +152,13 @@ export class PaymentsService {
     if (!record)
       throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
     if (!isAdmin) {
-      if (!customerId || !(await this.paymentsRepository.isOwnedByCustomer(paymentId, customerId))) {
+      if (
+        !customerId ||
+        !(await this.paymentsRepository.isOwnedByCustomer(
+          paymentId,
+          customerId,
+        ))
+      ) {
         throw new NotFoundException(`Không tìm thấy payment ${paymentId}`);
       }
     }
@@ -205,7 +236,9 @@ export class PaymentsService {
     transferContent: string,
     amountVnd: number,
   ): Promise<{ paymentId: string; status: PaymentStatus }> {
-    const match = transferContent.match(/CWS\s+(\S+)\s+([A-Za-z0-9]+)/);
+    const match = /^CWS\s+([A-Za-z0-9._~-]+)\s+([A-Za-z0-9]+)$/i.exec(
+      transferContent.trim(),
+    );
     if (!match) {
       throw new BadRequestException(
         `Nội dung chuyển khoản không đúng định dạng "CWS {storage_code} {payment_code}": "${transferContent}"`,

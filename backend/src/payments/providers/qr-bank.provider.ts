@@ -47,7 +47,7 @@ export class QrBankProvider implements IPaymentProvider {
       infer: true,
     });
 
-    const qrImageUrl = accountNumber
+    const qrImageUrl = accountNumber && accountName
       ? this.buildVietQrUrl(
           accountNumber,
           accountName,

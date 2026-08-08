@@ -12,14 +12,11 @@ export enum JobStatus {
   ALLOCATING_WORKERS = 'allocating_workers',
   WORKERS_CONNECTED = 'workers_connected',
   RENDERING = 'rendering',
-  /** Render xong, đã có 3-5 ảnh preview watermark — chờ khách bấm duyệt
-   * (CWS_ROADMAP_MVP_V1.md, Giai đoạn 4) trước khi đóng gói/mở tải. */
+  /** Render xong, full output đã khóa trên B2, đã có 3-5 preview watermark
+   * và payment details đang được/đã tạo. */
   REVIEW_READY = 'review_ready',
-  /** Khách đã duyệt preview — QR MB Bank đã sinh (JobsService.approve()),
-   * chờ webhook ngân hàng xác nhận PAID (CWS_MVP_WORKFLOW_FINAL.md:
-   * "Khách duyệt → Sinh QR → Webhook → PAID → Mở link tải"). Render đã
-   * xong từ TRƯỚC bước này — thanh toán không chặn việc render, chỉ
-   * chặn việc MỞ TẢI file gốc. */
+  /** Full output đã khóa và payment record/QR đã sinh, chờ webhook ngân hàng
+   * xác nhận PAID. Render đã xong từ trước; chỉ trạng thái mở tải bị khóa. */
   AWAITING_PAYMENT = 'awaiting_payment',
   PACKAGING = 'packaging',
   FINISHED = 'finished',

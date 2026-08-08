@@ -104,17 +104,14 @@ Alias — chỉ trả `{ status, stageProgress }`.
 khi job ở `review_ready` trở về sau. Response: `{ "images": [{ "url", "displayOrder" }] }`.
 
 ### POST /jobs/:id/approve
-Khách duyệt bản preview — CHỈ hợp lệ khi `status === review_ready`.
-Tính GIÁ THẬT (`PricingService.computeFinalPriceVnd()`) dựa trên
-runtime thật của từng Worker đã tham gia job (đọc `tasks.claimed_at`/
-`tasks.last_heartbeat`, KHÔNG dùng `estimate.costVnd` — số đó chỉ là
-ước tính heuristic hiển thị trước render). Công thức: mỗi Worker
-`(runtime + 10 phút khởi động)`, cộng dồn mọi Worker, đổi ra giờ,
-x 6.000đ/giờ, x 2. Sinh 1 payment mới (QR MB Bank) với giá thật này
-NGAY trong response, chuyển job sang `awaiting_payment`. KHÔNG đóng
-gói/mở tải ngay — chỉ khi webhook xác nhận PAID (SchedulerService phát
-hiện qua tick, gọi `JobsService.finalizeDelivery()`) job mới chuyển
-tiếp `packaging` → `finished` kèm `downloadUrl`.
+Backward-compatible payment-details endpoint. Production Scheduler already
+validates the real render, uploads the FULL OUTPUT to B2 locked, creates 3–5
+watermarked previews and creates one payment record/QR. This route is not a
+customer-approval prerequisite; it returns the existing authorized payment
+details (or creates the same render-first payment during the narrow
+`review_ready` boundary). Price uses `PricingService.computeFinalPriceVnd()`
+from real Worker runtime, never `estimate.costVnd`. PAID only unlocks the
+existing B2 object; `finalizeDelivery()` never rerenders or uploads after PAID.
 
 Response: toàn bộ field của job (như `GET /jobs/:id`, bao gồm
 `finalPriceVnd`/`workerRuntimeSeconds` mới) + field `payment`:
