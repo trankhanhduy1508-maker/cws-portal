@@ -13,6 +13,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Write-Warning 'Recovery-only path: normal Architecture V1 enrollment uses enroll_worker_identity.ps1 with a one-time Backend ticket.'
 $store = [IO.Path]::GetFullPath($StorePath)
 $sql = [IO.Path]::GetFullPath($SqlOut)
 $directory = [IO.Path]::GetDirectoryName($store)

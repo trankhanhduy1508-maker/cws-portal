@@ -1,5 +1,16 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Architecture V1 bounded enrollment — 2026-08-08
+
+- **P1A CODE/UNIT + PRODUCTION SCHEMA VERIFIED**: migration 026, Admin AAL2
+  batch ticket issuance and Windows DPAPI redemption remove per-Worker SQL
+  edits without introducing a shared enrollment/B2/database secret.
+- **100-WORKER PREPARATION VERIFIED IN CODE**: one batch supports 100 stable
+  IDs and deterministic startup jitter reduces synchronized heartbeat/claim.
+- **NEEDS PHYSICAL VERIFICATION**: enroll a second real host through the new
+  path and run P3 with a customer-owned B2 task. This is not Golden E2E PASS.
+- Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.
+
 ## Architecture V1 P0/P1 reconciliation — 2026-08-08
 
 - **DONE / PRODUCTION SCHEMA VERIFIED**: authenticated upload ownership table,

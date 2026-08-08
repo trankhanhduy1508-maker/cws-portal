@@ -475,3 +475,22 @@ Backblaze's official S3-compatible API documents presigned URL support for
 upload and download. Native `b2_get_upload_url` was rejected because its
 reusable bucket upload token is broader and may remain valid for up to 24
 hours. Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
+
+## Bounded Worker enrollment through Backend — 2026-08-08
+
+**[ACTIVE; SUPERSEDES per-Worker SQL provisioning as the normal fleet path]**
+Normal Worker 2–100 enrollment uses short-lived one-time tickets issued only by
+an Admin Google OAuth session with TOTP/AAL2. A ticket is bound to one stable
+Worker ID and consumed atomically. The final credential is generated on the
+Worker, stored under same-user Windows DPAPI/ACL, and only its SHA-256 verifier
+reaches Backend/Postgres. Lost-response retry is idempotent only for the exact
+same Worker/credential; existing identities cannot be overwritten by an
+enrollment ticket.
+
+There is no global enrollment secret, manual database edit, B2 credential or
+Supabase service role on a Worker. A compromised Worker cannot issue tickets
+and therefore cannot create fleet identities. The existing offline SQL helper
+is retained only as recovery/reference and is no longer the canonical normal
+fleet-growth procedure.
+
+Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.

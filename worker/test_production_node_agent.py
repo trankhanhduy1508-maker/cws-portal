@@ -9,6 +9,7 @@ from production_node_agent import (
     ProductionB2CheckpointStore,
     _capability_url,
     _single_assignment,
+    _stable_startup_jitter,
 )
 from worker_engine import PermanentWorkerError
 
@@ -268,7 +269,15 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
                 raise KeyboardInterrupt
 
         runtime.rpc = Rpc()
-        runtime.config = type("Config", (), {"heartbeat_seconds": 15})()
+        runtime.config = type(
+            "Config",
+            (),
+            {
+                "heartbeat_seconds": 15,
+                "startup_jitter_seconds": 0,
+                "worker_id": "worker-a",
+            },
+        )()
         with patch("production_node_agent.time.sleep"):
             with self.assertRaises(KeyboardInterrupt):
                 runtime.run_heartbeat_only()
@@ -276,6 +285,14 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
             runtime.rpc.calls,
             [("transition", "ACTIVE_IDLE", "heartbeat_only"), ("ping",)],
         )
+
+    def test_100_worker_startup_is_stably_staggered(self):
+        first = [_stable_startup_jitter(f"CWS-{index:03d}", 5.0) for index in range(100)]
+        second = [_stable_startup_jitter(f"CWS-{index:03d}", 5.0) for index in range(100)]
+        self.assertEqual(first, second)
+        self.assertGreater(max(first) - min(first), 4.0)
+        self.assertGreaterEqual(len({int(value * 10) for value in first}), 30)
+        self.assertEqual(_stable_startup_jitter("CWS-A", 0), 0)
 
     def test_drive_and_assignment_validation_fail_closed(self):
         self.assertEqual(

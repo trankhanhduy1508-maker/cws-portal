@@ -1,10 +1,11 @@
-"""Offline provisioning helper for one CWS Worker identity.
+"""Recovery-only offline provisioning helper for one CWS Worker identity.
 
 Default behavior writes the token into a Windows DPAPI store and writes only
 the SHA-256 hash as SQL. It never prints the plaintext token. Run this on the
 Worker host under the dedicated least-privilege service account; apply the SQL
 through the approved backend/database process, never by pasting a token into
-chat, Git, or logs.
+chat, Git, or logs. Normal Architecture V1 fleet growth must use
+``enroll_worker_identity.py`` and the Backend ticket flow instead of SQL.
 """
 
 from __future__ import annotations

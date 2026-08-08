@@ -87,6 +87,7 @@ class ProductionConfig:
     worker_ram_mb: int
     poll_seconds: float
     heartbeat_seconds: float
+    startup_jitter_seconds: float
     render_timeout_seconds: int
 
     @classmethod
@@ -131,6 +132,16 @@ class ProductionConfig:
                 raise PermanentWorkerError(f"{name} must be positive")
             return result
 
+        def bounded_nonnegative_float(name: str, default: float, maximum: float) -> float:
+            raw = values.get(name, str(default)).strip()
+            try:
+                result = float(raw)
+            except ValueError as exc:
+                raise PermanentWorkerError(f"{name} must be a number") from exc
+            if result < 0 or result > maximum:
+                raise PermanentWorkerError(f"{name} must be between 0 and {maximum}")
+            return result
+
         workspace = Path(required("CWS_WORKSPACE"))
         explicit_blender = values.get("CWS_BLENDER_EXE", "").strip()
         return cls(
@@ -151,6 +162,9 @@ class ProductionConfig:
             worker_ram_mb=integer("CWS_WORKER_RAM_MB", 0),
             poll_seconds=positive_float("CWS_WORKER_POLL_SECONDS", 5.0),
             heartbeat_seconds=positive_float("CWS_WORKER_HEARTBEAT_SECONDS", 20.0),
+            startup_jitter_seconds=bounded_nonnegative_float(
+                "CWS_WORKER_STARTUP_JITTER_SECONDS", 5.0, 30.0
+            ),
             render_timeout_seconds=positive_integer("CWS_RENDER_TIMEOUT_SECONDS", 3600),
         )
 
@@ -165,6 +179,14 @@ def _single_assignment(value: Any) -> Mapping[str, Any] | None:
     if not isinstance(value, Mapping):
         raise PermanentWorkerError("claim RPC returned an invalid assignment")
     return value
+
+
+def _stable_startup_jitter(worker_id: str, maximum_seconds: float) -> float:
+    """Deterministically stagger fleet boot without a shared coordinator."""
+    if maximum_seconds <= 0:
+        return 0.0
+    bucket = int(hashlib.sha256(worker_id.encode("utf-8")).hexdigest()[:8], 16)
+    return maximum_seconds * bucket / 0xFFFFFFFF
 
 
 def _capability_url(capability: Mapping[str, Any], method: str) -> str:
@@ -750,6 +772,12 @@ class ProductionNodeAgentRuntime:
         self.last_claim = None
 
     def run_forever(self) -> None:
+        time.sleep(
+            _stable_startup_jitter(
+                self.config.worker_id,
+                min(self.config.startup_jitter_seconds, self.config.poll_seconds),
+            )
+        )
         agent = NodeAgent(
             poll_job=self._poll,
             heartbeat=self._heartbeat,
@@ -785,6 +813,15 @@ class ProductionNodeAgentRuntime:
         This is a bounded operational mode for maintenance/readiness windows;
         normal production rendering continues to use ``run_forever``.
         """
+        time.sleep(
+            _stable_startup_jitter(
+                self.config.worker_id,
+                min(
+                    self.config.startup_jitter_seconds,
+                    self.config.heartbeat_seconds,
+                ),
+            )
+        )
         self.rpc.transition("ACTIVE_IDLE", reason="heartbeat_only")
         backoff = self.config.heartbeat_seconds
         while True:

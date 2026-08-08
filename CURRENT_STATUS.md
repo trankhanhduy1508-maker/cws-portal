@@ -1,5 +1,29 @@
 # Current Status
 
+## Architecture V1 bounded Worker enrollment — 2026-08-08
+
+- **P1A CODE/UNIT VERIFIED**: Admin Google+TOTP/AAL2 can issue a hash-only
+  batch of 1–100 short-lived, one-time tickets bound to stable Worker IDs.
+  Windows enrollment generates the final credential locally, stores it with
+  DPAPI/ACL and atomically redeems through Backend; no per-Worker SQL edit,
+  global fleet secret, B2 key or Supabase service role is used.
+- **PRODUCTION SCHEMA VERIFIED**: migration 026 is applied. Ticket RLS/grants
+  are service-role-only; `anon/authenticated` cannot read tickets or execute
+  consume. A rollback-scoped transaction verified first consume, idempotent
+  same-credential retry and rejection of changed-credential replay. Zero real
+  tickets were issued; MAY083's existing identity remains unchanged.
+- **100-WORKER CODE SIMULATION VERIFIED**: stable ID-derived startup jitter
+  spreads heartbeat/claim startup over five seconds. Worker suite is 85/85;
+  Backend is 38 suites / 195 tests and build PASS.
+- **DEPLOYMENT/RUNTIME VERIFIED FOR PREVIOUS MILESTONE**: Vercel production is
+  READY on `5cee323f04388ef3df56bcf63c423290b4c53f34`; live Backend rejects
+  anonymous upload with 401. Authenticated MAY083 B2-only `--once` refreshed
+  heartbeat and claimed no incompatible Drive backlog.
+- **NEXT / NEEDS_VERIFICATION**: deploy enrollment endpoint, then P3 requires
+  one real authenticated customer `.blend`/`.zip` B2 upload/task. No physical
+  second-Worker enrollment or Blender/B2 completion is claimed.
+- Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.
+
 ## Architecture V1 P0/P1 reconciliation — 2026-08-08
 
 - **PRODUCTION SCHEMA VERIFIED**: additive migrations
@@ -18,9 +42,9 @@
   capability matching remains inside PostgreSQL `FOR UPDATE SKIP LOCKED`.
 - **CODE/UNIT VERIFIED**: Backend 37 suites / 190 tests + build, Worker 78/78,
   Frontend 13/13 + lint/build PASS.
-- **NEXT / NEEDS_VERIFICATION**: deploy Backend/Frontend commit, verify
-  authenticated production upload ownership, create one controlled B2 task,
-  then run P3 autonomous claim → Blender → scoped B2 upload → completion.
+- **DEPLOYED/READ-ONLY VERIFIED**: Vercel production is READY on commit
+  `5cee323f04388ef3df56bcf63c423290b4c53f34`; Backend anonymous upload now
+  returns 401. A real customer ownership smoke still requires a Google session.
 - Evidence:
   `reports/security/CWS_ARCHITECTURE_V1_P0_P1_RECONCILIATION_2026-08-08.md`.
 

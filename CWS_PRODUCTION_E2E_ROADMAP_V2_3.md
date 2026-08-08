@@ -129,6 +129,16 @@ MAY083 may continue using the already-provisioned stable per-Worker identity/HMA
 
 The enrollment design must remain automatable for later Workers.
 
+### Implementation status — 2026-08-08
+
+- **CODE/UNIT + PRODUCTION SCHEMA VERIFIED**: migration 026 and Backend expose
+  an Admin AAL2 batch issuer (1–100 per request) plus one-time Worker redeem.
+  Tickets are short-lived and Worker-ID-bound; final credentials are generated
+  locally and DPAPI-protected. No manual database row edit or fleet-wide
+  enrollment secret is required.
+- **NEEDS PHYSICAL VERIFICATION**: a second physical Worker has not redeemed a
+  real ticket. Existing MAY083 identity remains valid and unchanged.
+
 ## P1B — Replace per-Worker B2 secret dependency
 
 Codex must inspect the current Worker/backend B2 implementation and Backblaze B2 capabilities, then implement the smallest safe architecture where long-lived storage credentials stay server-side and the Worker receives only job-scoped/minimum storage access.
@@ -375,4 +385,7 @@ Do not create new Vercel projects, Supabase projects, B2 buckets, Render service
 
 # IMMEDIATE NEXT TASK
 
-**Do not ask Founder to create a per-Worker B2 key yet. First audit the current B2 Worker/backend path and implement the smallest verified server-side/job-scoped storage authorization model that removes the per-Worker manual B2-key requirement. Then continue P2 -> P3 -> P4 -> P5 -> P6 without AI/manual runtime intervention.**
+**P1 storage and bounded enrollment are code/schema verified and P2 heartbeat
+is runtime verified. Continue P3 using one real authenticated customer-owned B2
+upload/task: autonomous claim -> scoped download -> Blender -> scoped upload ->
+fenced completion. Do not create a fake job or add per-Worker B2 credentials.**
