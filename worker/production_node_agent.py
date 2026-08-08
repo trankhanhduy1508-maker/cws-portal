@@ -467,7 +467,7 @@ class DriveOrB2Downloader(ProjectDownloader):
         uri = spec.project_uri
         parsed = urllib.parse.urlparse(uri)
         key = parsed.path.lstrip("/")
-        if parsed.scheme != "b2" or not parsed.netloc or not key or ".." in key.split("/"):
+        if parsed.scheme != "b2" or not key or ".." in key.split("/"):
             raise PermanentWorkerError("invalid B2 project URI")
         suffix = Path(key).suffix.lower()
         if suffix not in {".blend", ".zip"}:

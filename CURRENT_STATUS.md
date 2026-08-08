@@ -22,11 +22,18 @@
   route and receives the expected 400 because it owns no current assignment.
   A signed `worker_ping` advanced production `last_seen_at` to
   `2026-08-08 03:57:49.917489+00` and `status=idle`.
-- **P2 DEFECT FIXED / DEPLOY PENDING**: idle state reporting returned 400
+- **P2 DEFECT RUNTIME VERIFIED**: idle state reporting returned 400
   because the Backend gateway incorrectly required task/generation for
   `report_worker_state_transition`. The gateway now accepts taskless
   `ACTIVE_IDLE`, strictly allowlists states, and rejects forged task/reason
-  fields. Runtime re-verification follows the next Render deployment.
+  fields. After deployment, authenticated MAY083 transition passed and
+  production recorded `observed_state=ACTIVE_IDLE` at
+  `2026-08-08 04:03:10.083518+00`. Persistent autonomous heartbeat is still
+  **NEEDS_VERIFICATION**; this single transition is not a P2 completion claim.
+- **P3 INPUT CONTRACT FIXED/CODE VERIFIED**: the capability issuer now accepts
+  the repository's canonical uploaded-file URI (`b2://uploads/<key>`) while
+  limiting input to `uploads/` `.blend`/`.zip` objects. Other prefixes such as
+  `final/` are rejected. Production B2 transfer remains unverified.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
 
 ## Production E2E Roadmap V2.2 P1 — 2026-08-08 (SUPERSEDED BY V2.3)

@@ -84,8 +84,16 @@ Canonical boundary:
 - P2 exposed a separate real defect: the gateway rejected taskless
   `report_worker_state_transition(ACTIVE_IDLE)` with HTTP 400. The fix adds a
   strict state allowlist and optional positive task ID for this operation;
-  targeted regression tests pass. Production state transition is pending the
-  deployment containing that follow-up fix.
+  targeted regression tests pass. After deployment, the same authenticated
+  request passed and production recorded MAY083 as `status=idle`,
+  `observed_state=ACTIVE_IDLE`, `current_task_id=null`, with transition time
+  `2026-08-08 04:03:10.083518+00`.
+- The existing job dispatch convention produces
+  `b2://uploads/<uuid>-<filename>`. Input capability parsing now supports that
+  exact convention (and bucket-qualified legacy form), remains restricted to
+  the `uploads/` prefix, and rejects `final/` or other prefixes. Unit coverage
+  proves both acceptance and rejection. No production B2 object exists yet, so
+  real transfer remains **NOT VERIFIED**.
 
 ## Supabase boundary
 

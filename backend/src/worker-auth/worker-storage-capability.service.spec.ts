@@ -58,6 +58,32 @@ describe('WorkerStorageCapabilityService', () => {
     expect(getSignedUrl).toHaveBeenCalledTimes(1);
   });
 
+  it('supports the canonical upload-key URI without exposing another prefix', async () => {
+    const uploadSpec = {
+      ...spec,
+      project_uri: 'b2://uploads/abc123-scene.blend',
+    };
+    const { service } = makeService([uploadSpec]);
+    await expect(
+      service.issue('worker-a', {
+        action: 'input_download',
+        task_id: 42,
+        generation: 3,
+      }),
+    ).resolves.toMatchObject({ object_key: 'uploads/abc123-scene.blend' });
+
+    const { service: rejected } = makeService([
+      { ...uploadSpec, project_uri: 'b2://final/other-customer.blend' },
+    ]);
+    await expect(
+      rejected.issue('worker-a', {
+        action: 'input_download',
+        task_id: 42,
+        generation: 3,
+      }),
+    ).rejects.toThrow('claimed task input is not an allowed B2 object');
+  });
+
   it('signs only the exact claimed frame with integrity metadata', async () => {
     const { service } = makeService();
     const result = await service.issue('worker-a', {

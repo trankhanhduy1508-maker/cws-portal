@@ -123,11 +123,20 @@ export class WorkerStorageCapabilityService {
     } catch {
       throw new BadRequestException('claimed task input is not a B2 object');
     }
-    const key = parsed.pathname.replace(/^\/+/, '');
+    const path = parsed.pathname.replace(/^\/+/, '');
+    const host = parsed.hostname.toLowerCase();
+    const key =
+      host === this.bucket.toLowerCase()
+        ? path
+        : host === 'uploads'
+          ? `uploads/${path}`
+          : parsed.hostname === ''
+            ? path
+            : '';
     if (
       parsed.protocol !== 'b2:' ||
-      parsed.hostname.toLowerCase() !== this.bucket.toLowerCase() ||
       !this.safeKey(key) ||
+      !key.startsWith('uploads/') ||
       !/\.(blend|zip)$/i.test(key)
     ) {
       throw new BadRequestException(
