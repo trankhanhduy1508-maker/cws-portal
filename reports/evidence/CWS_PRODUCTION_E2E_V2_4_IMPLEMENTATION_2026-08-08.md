@@ -58,6 +58,10 @@ are now present and record the authoritative V2.4 order and gates.
   Schannel `SEC_E_NO_CREDENTIALS` / “underlying connection was closed”. This
   prevents a verified external production trace from this session; it does not
   establish a Golden PASS.
+- The scoped implementation commit `46d1d5e` and resolved concurrent-doc merge
+  `2fd90ea` were pushed to the existing `origin/main`. The push succeeded, but
+  Vercel CLI identity probing did not complete in this shell; deployment status
+  therefore remains trigger-confirmed rather than runtime-confirmed.
 - The repository status already records that a reusable authenticated
   customer session, real current customer upload, B2 runtime output, and live
   payment event are not available. See the prior production audit linked from

@@ -21,6 +21,12 @@
 - **Source documents**: `CODEX_GOLDEN_E2E_V2_4_DIRECTIVE_2026-08-08.md` and
   `CWS_PRODUCTION_E2E_ROADMAP_V2_4.md` now record the authoritative V2.4 chain.
   Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_4_IMPLEMENTATION_2026-08-08.md`.
+- **DEPLOY TRIGGERED**: scoped implementation commit `46d1d5e` plus the
+  concurrent V2.4 documentation merge `2fd90ea` were pushed successfully to
+  the existing `origin/main`; no new Vercel/Render/Supabase/B2 resource was
+  created. Vercel CLI identity and direct HTTPS probes could not be completed
+  in this shell because of runtime network/TLS credential errors, so this is
+  deployment-trigger evidence, not a production runtime PASS.
 
 ## Production real-path correction — 2026-08-08
 
