@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from worker_rpc_auth import WorkerCredential, WorkerRpcClient, build_auth_headers, canonical_request
@@ -35,6 +36,39 @@ class WorkerRpcAuthTests(unittest.TestCase):
             self.assertEqual(request.headers["X-cws-worker-id"], "worker-a")
             self.assertIn("Worker ", request.headers["Authorization"])
 
+    def test_rpc_client_accepts_plain_text_success_response(self):
+        client = WorkerRpcClient(
+            "https://backend.example", WorkerCredential("worker-a", "A" * 40)
+        )
+        with patch("worker_rpc_auth.urllib.request.urlopen") as opener:
+            response = opener.return_value.__enter__.return_value
+            response.read.return_value = b"healthy"
+            self.assertEqual(client.call("report_worker_probe", {}), "healthy")
+
+    def test_rpc_client_keeps_empty_success_response_as_none(self):
+        client = WorkerRpcClient(
+            "https://backend.example", WorkerCredential("worker-a", "A" * 40)
+        )
+        with patch("worker_rpc_auth.urllib.request.urlopen") as opener:
+            response = opener.return_value.__enter__.return_value
+            response.read.return_value = b""
+            self.assertIsNone(client.call("worker_ping", {}))
+
+    def test_rpc_client_keeps_http_errors_fail_closed(self):
+        client = WorkerRpcClient(
+            "https://backend.example", WorkerCredential("worker-a", "A" * 40)
+        )
+        error = urllib.error.HTTPError(
+            "https://backend.example/worker/rpc/worker_ping",
+            401,
+            "unauthorized",
+            {},
+            None,
+        )
+        with patch("worker_rpc_auth.urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(RuntimeError):
+                client.call("worker_ping", {})
+
     def test_storage_capability_path_is_hmac_signed_without_new_secret(self):
         credential = WorkerCredential("worker-a", "A" * 40)
         client = WorkerRpcClient("https://backend.example", credential)
@@ -53,3 +87,4 @@ class WorkerRpcAuthTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+Ð

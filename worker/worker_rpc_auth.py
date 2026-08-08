@@ -75,4 +75,14 @@ class WorkerRpcClient:
                 raw = response.read()
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
             raise RuntimeError("Worker RPC request failed") from exc
-        return json.loads(raw.decode("utf-8")) if raw else None
+        if not raw:
+            return None
+        decoded = raw.decode("utf-8")
+        try:
+            return json.loads(decoded)
+        except json.JSONDecodeError:
+            # Nest/Fastify may serialize a successful string RPC result as a
+            # plain-text body (for example, the production probe returns
+            # `healthy`). Preserve the existing JSON contract while accepting
+            # that valid successful response form.
+            return decoded

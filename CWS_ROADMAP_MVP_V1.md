@@ -1,5 +1,17 @@
 # CWS_ROADMAP_MVP_V1.md
 
+## Worker resilience production runtime verification â€” 2026-08-08
+
+- **PARTIAL PRODUCTION RUNTIME VERIFIED**: migration 027 and its RPC grants
+  are read-back verified in canonical Supabase; MAY083 performs authenticated
+  probe/heartbeat and the real B2-only atomic claim request.
+- **BLOCKED BEFORE LEASE**: no production `b2://` task exists. Existing queued
+  Drive tasks are correctly ineligible for the B2-only Worker. The exact
+  materialized input still needs a real customer-authenticated `POST /jobs`.
+- Lease/generation fencing, Blender/output and stale completion remain
+  **NEEDS_VERIFICATION** until that real task exists.
+- Evidence: `reports/evidence/CWS_WORKER_RESILIENCE_PRODUCTION_RUNTIME_2026-08-08.md`.
+
 ## Worker resilience hardening â€” 2026-08-08
 
 - **CODE VERIFIED**: existing PostgreSQL claim/lease/generation architecture
@@ -261,294 +273,4 @@
 -   source/ â€” DONE (route `POST /files/upload`)
 -   review/ â€” NEEDS_VERIFICATION (cÆ¡ cháº¿ tá»“n táº¡i trong schema `storage_objects.review_path`/`review_images`, chÆ°a xÃ¡c nháº­n cÃ³ dá»¯ liá»‡u tháº­t Ä‘i qua)
 -   final/ â€” DONE (Ä‘Ã³ng gÃ³i + signed URL xÃ¡c nháº­n báº±ng HTTP tháº­t)
--   logs/ â€” DONE (`worker_logs` báº£ng tá»“n táº¡i, route Ä‘á»c log tá»“n táº¡i)
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 2 -- Luá»“ng khÃ¡ch hÃ ng [NEEDS_VERIFICATION]
-
--   Google Login â€” DONE
--   Táº¡o Customer Profile â€” DONE
--   Táº¡o Job â€” NEEDS_VERIFICATION (code + unit test PASS, unit test mock E2E PASS; **chÆ°a cÃ³ 1 job tháº­t nÃ o Ä‘Æ°á»£c táº¡o qua UI tháº­t bá»Ÿi khÃ¡ch hÃ ng Ä‘Ã£ Ä‘Äƒng nháº­p tháº­t** â€” xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`)
--   DÃ¡n Google Drive / OneDrive / Dropbox â€” DONE (`POST /drive/resolve` xÃ¡c nháº­n tráº£ response tháº­t trÃªn production, 2026-08-01)
--   Kiá»ƒm tra quyá»n truy cáº­p â€” DONE (2026-08-02: `GoogleDriveService.resolve()` Ä‘Ã£ Ä‘Ãºng â€” Google Drive API tráº£ 404 cho file private khi dÃ¹ng API key, code báº¯t Ä‘Ãºng case nÃ y; thÃªm unit test mock fetch xÃ¡c nháº­n hÃ nh vi, phÃ¢n biá»‡t rÃµ vá»›i lá»—i API khÃ¡c (500/quota) khÃ´ng bá»‹ hiá»ƒu nháº§m thÃ nh lá»—i quyá»n)
--   HÆ°á»›ng dáº«n sá»­a quyá»n náº¿u cáº§n â€” DONE (thÃ´ng bÃ¡o lá»—i tiáº¿ng Viá»‡t rÃµ rÃ ng: "kiá»ƒm tra láº¡i quyá»n chia sáº» (chá»n Báº¥t ká»³ ai cÃ³ link)")
--   Tá»± táº£i file lÃªn B2 â€” DONE (xÃ¡c nháº­n báº±ng HTTP tháº­t, `POST /files/upload`, 2026-08-02)
--   Sinh Storage Code â€” DONE
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 3 -- Render [NEEDS_VERIFICATION]
-
--   Worker nháº­n Job â€” NEEDS_VERIFICATION (sá»­a 2026-08-03, Owner uá»· quyá»n trá»±c tiáº¿p: **P0 "Worker khÃ´ng claim job MVP chung" Ä‘Ã£ fix á»Ÿ má»©c code + DB evidence tháº­t** â€” migration 014 thÃªm RPC `claim_next_generic_task` (Ã¡p dá»¥ng tháº­t lÃªn production, test claim+revert thÃ nh cÃ´ng trÃªn 1 trong 6 job MVP tháº­t Ä‘ang chá» tá»« 2026-07-27), `cws_worker_full.py` nay thá»­ claim job MVP tháº­t SAU KHI háº¿t `JOB_IDS_MULTI`. Váº«n NEEDS_VERIFICATION vÃ¬ chÆ°a cháº¡y runtime tháº­t trÃªn mÃ¡y Windows+Blender â€” xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`)
--   Chuáº©n bá»‹ mÃ´i trÆ°á»ng â€” NEEDS_VERIFICATION (cÃ¹ng lÃ½ do trÃªn: code xong, chÆ°a cÃ³ mÃ¡y tháº­t Ä‘á»ƒ cháº¡y)
--   Render â€” NEEDS_VERIFICATION (chÆ°a tá»«ng cháº¡y vá»›i Worker váº­t lÃ½ tháº­t trong mÃ´i trÆ°á»ng agent; **`--enable-autoexec` Ä‘Ã£ fix 2026-08-03**: chá»‰ báº­t cho job Owner tá»± chá»n (JOB_IDS_MULTI, khÃ´ng Ä‘á»•i hÃ nh vi), **táº¯t háº³n cho job MVP khÃ¡ch tá»± upload** (claim qua Ä‘Æ°á»ng má»›i) â€” xem `reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`)
--   Cáº­p nháº­t % tiáº¿n Ä‘á»™ tháº­t â€” NEEDS_VERIFICATION (cÆ¡ cháº¿ code tá»“n táº¡i, chÆ°a verify runtime)
--   BÃ¡o lá»—i náº¿u cÃ³ â€” NEEDS_VERIFICATION (cÆ¡ cháº¿ code tá»“n táº¡i, chÆ°a verify runtime)
-
-BLOCKED (1 lÃ½ do khÃ¡ch quan cÃ²n láº¡i, Ä‘Ã£ giáº£m tá»« 2 xuá»‘ng 1 sau fix
-2026-08-03): khÃ´ng cÃ³ mÃ¡y Worker Windows+Python+Blender váº­t lÃ½ trong
-mÃ´i trÆ°á»ng agent Ä‘á»ƒ cháº¡y runtime tháº­t â€” code Ä‘Ã£ sáºµn sÃ ng claim job MVP
-chung (khÃ´ng cÃ²n cáº§n Owner quyáº¿t Ä‘á»‹nh kiáº¿n trÃºc, Ä‘Ã£ fix theo hÆ°á»›ng
-"thÃªm RPC má»›i, khÃ´ng Ä‘á»•i hÃ nh vi Fleet cÅ©"). B2 credential hardcode
-(`cws_worker_full.py`) váº«n BLOCKED â€” key hiá»‡n táº¡i test tháº­t tráº£ vá» 401
-Unauthorized tá»« Backblaze, cáº§n Owner xÃ¡c nháº­n key Ä‘ang cháº¡y tháº­t + táº¡o
-key má»›i giá»›i háº¡n quyá»n. Xem `reports/MVP_CORE_FLOW_E2E_STATUS_2026-08-02.md`,
-`reports/worker/CWS_WORKER_READINESS_AUDIT_2026-08-02.md` +
-`reports/worker/CWS_P0_SECURITY_FIX_2026-08-03.md`.
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 4 -- Preview [NEEDS_VERIFICATION]
-
-## Video
-
--   TrÃ­ch 3--5 frame Ä‘áº¡i diá»‡n â€” NEEDS_VERIFICATION
--   Watermark láº·p chÃ©o "CWS RENDER" â€” NEEDS_VERIFICATION
-
-## HÃ¬nh áº£nh
-
--   Chá»n 3--5 áº£nh Ä‘áº¡i diá»‡n â€” NEEDS_VERIFICATION
--   Watermark láº·p chÃ©o â€” NEEDS_VERIFICATION
-
-KhÃ¡ch chá»‰ xem preview, chÆ°a Ä‘Æ°á»£c táº£i file gá»‘c. Phá»¥ thuá»™c Giai Ä‘oáº¡n 3
-(Render) chÆ°a cÃ³ evidence runtime tháº­t â€” khÃ´ng thá»ƒ tá»± verify Preview
-tÃ¡ch rá»i khá»i 1 láº§n Render tháº­t.
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 5 -- Thanh toÃ¡n [DONE â€” Sandbox; NEEDS_VERIFICATION â€” Live]
-
--   Táº¡o QR MB Bank â€” DONE
--   Ná»™i dung chuyá»ƒn khoáº£n: CWS {storage_code} {payment_code} â€” DONE
--   Webhook tá»± xÃ¡c nháº­n â€” DONE qua SePay **Test Mode/Sandbox** (evidence
-    HTTP + DB tháº­t, 2026-08-02, `reports/payments/CWS_SEPAY_SANDBOX_VERIFICATION_2026-08-02.md`).
-    **Live (giao dá»‹ch MB Bank tháº­t) â€” NEEDS_VERIFICATION**, cáº§n Owner:
-    liÃªn káº¿t tÃ i khoáº£n MB Bank tháº­t trÃªn SePay + táº¡o Webhook Live +
-    set `SEPAY_WEBHOOK_HMAC_SECRET` trÃªn Render.
--   Payment = PAID â€” DONE (Sandbox, evidence tháº­t)
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 6 -- BÃ n giao [DONE â€” cÆ¡ cháº¿; NEEDS_VERIFICATION â€” gáº¯n vá»›i 1 job tháº­t]
-
--   Kiá»ƒm tra file final â€” DONE (gate `status===FINISHED` + `downloadUrl`)
--   Tá»± má»Ÿ link Backblaze B2 â€” DONE (signed URL AWS4-HMAC-SHA256, TTL 300s, xÃ¡c nháº­n báº±ng HTTP tháº­t 2026-08-02, `reports/payments/CWS_PAID_OUTPUT_UNLOCK_VERIFICATION_2026-08-02.md`)
--   KhÃ¡ch táº£i file â€” DONE (audit log `downloads` xÃ¡c nháº­n ghi Ä‘Ãºng; ownership check xÃ¡c nháº­n cháº·n Ä‘Ãºng qua HTTP tháº­t â€” anonymous/khÃ¡c chá»§ â†’ 403)
--   Job COMPLETED â€” NEEDS_VERIFICATION khi gáº¯n liá»n vá»›i 1 job tháº­t Ä‘i háº¿t chuá»—i (cÆ¡ cháº¿ Ä‘Ã£ DONE, nhÆ°ng chÆ°a cÃ³ 1 láº§n cháº¡y ná»‘i tiáº¿p tháº­t tá»« Renderâ†’Previewâ†’Approveâ†’Paymentâ†’Ä‘Ã¢y, xem Giai Ä‘oáº¡n 3)
-
-------------------------------------------------------------------------
-
-# Giai Ä‘oáº¡n 7 -- Trang quáº£n trá»‹ [NEEDS_VERIFICATION â€” Google OAuth + MFA runtime]
-
-Audit láº¡i `AdminScreen.jsx` (689 dÃ²ng) 2026-08-02: ná»™i dung dashboard Ä‘Ã£
-Ä‘áº§y Ä‘á»§, khÃ´ng cáº§n viáº¿t láº¡i â€” chá»‰ thiáº¿u lá»›p xÃ¡c thá»±c Ä‘Ãºng chuáº©n (Ä‘Ã£ bá»•
-sung, xem dÆ°á»›i).
-
--   Tá»•ng sá»‘ Worker â€” CODE/UNIT VERIFIED (`GET /fleet/workers`, dá»¯ liá»‡u tháº­t)
--   Worker Online â€” CODE/UNIT VERIFIED (backend derives tá»« heartbeat freshness â‰¤180s)
--   Worker Offline â€” CODE/UNIT VERIFIED (backend derives tá»« heartbeat stale >180s)
--   Äang chá» / Idle Saver â€” CODE/UNIT VERIFIED (`nodeState === ACTIVE_IDLE`, state cÃ³ trong Node Agent contract)
--   Äang Render â€” CODE/UNIT VERIFIED (`nodeState === BUSY`, backend map tá»« Worker state contract)
--   Customer CRM â€” CODE/UNIT VERIFIED (`GET /customers/crm`, aggregate server-side tá»« `customer_profiles`, `render_orders`, `payments`; production AAL2 session pending)
--   Customer jobs/render/payment UI trong `/#admin` â€” SUPERSEDED; CRM lÃ  khu vá»±c chÄƒm sÃ³c khÃ¡ch riÃªng, customer render flow váº«n á»Ÿ `/`
-
-**Authentication + Authorization + MFA (2026-08-06, CODE/UNIT VERIFIED; production runtime pending, xem `reports/admin/CWS_ADMIN_GOOGLE_OAUTH_AAL2_2026-08-06.md`):**
-- Bá» hoÃ n toÃ n nhÃ¡nh `x-admin-key` lÃ m bypass trong `RoleGuard` (route Admin Portal chÃ­nh) â€” theo Ä‘Ãºng yÃªu cáº§u "KhÃ´ng táº¡o bypass".
-- Báº¯t buá»™c Supabase session tháº­t (Google OAuth, tÃ i khoáº£n Google Ä‘Æ°á»£c cáº¥p role qua `staff_roles`) + MFA (TOTP) CHÃNH THá»¨C cá»§a Supabase Auth (`supabase.auth.mfa.*`, khÃ´ng tá»± lÆ°u/quáº£n lÃ½ TOTP secret).
-- Backend enforce láº¡i báº±ng cÃ¡ch Ä‘á»c claim `aal` (Authenticator Assurance Level) tá»« chÃ­nh access token Ä‘Ã£ Ä‘Æ°á»£c `client.auth.getUser()` xÃ¡c thá»±c â€” `aal !== 'aal2'` â†’ tá»« chá»‘i, khÃ´ng tin tÆ°á»Ÿng Frontend.
-- 6 ká»‹ch báº£n báº£o máº­t báº¯t buá»™c Ä‘á»u cÃ³ unit test PASS (`role.guard.spec.ts`): anonymous â†’ DENY, customer authenticated â†’ DENY, admin chÆ°a MFA â†’ DENY, admin + MFA (aal2) â†’ PASS, gá»i API trá»±c tiáº¿p thiáº¿u MFA assurance â†’ DENY, cross-role/privilege escalation â†’ DENY.
-- Frontend: `StaffMfaLogin.jsx` â€” Google OAuth â†’ kiá»ƒm tra staff role â†’ tá»± Ä‘á»™ng enroll (QR do Supabase sinh) náº¿u chÆ°a cÃ³ factor, hoáº·c challenge mÃ£ 6 sá»‘ náº¿u Ä‘Ã£ cÃ³; bearer token chá»‰ giá»¯ trong memory.
-- Backend: `GET /staff/mfa-status` chá»‰ xÃ¡c nháº­n staff identity trÆ°á»›c MFA; má»i Admin/Host data route váº«n qua `RoleGuard` vÃ  báº¯t buá»™c `aal2`. KhÃ´ng cÃ³ `x-admin-key` bypass.
-
-**PRODUCTION_VERIFICATION_PENDING**: production route and bundle are live;
-real Google provider â†’ staff role â†’ TOTP â†’ AAL2 session still requires a human
-Admin account and has not been claimed.
-
-**HUMAN_VERIFICATION_PENDING**: chÆ°a cÃ³ tÃ i khoáº£n Admin/Host tháº­t nÃ o
-Ä‘Æ°á»£c Owner táº¡o qua Supabase Dashboard (`staff_roles`) Ä‘á»ƒ tá»± cháº¡y thá»­
-enroll QR that báº±ng Authenticator app tháº­t â€” logic Ä‘Ã£ Ä‘Ãºng theo tÃ i
-liá»‡u chÃ­nh thá»©c Supabase + unit test, nhÆ°ng **chÆ°a Ä‘Æ°á»£c Owner xÃ¡c nháº­n
-báº±ng 1 láº§n Ä‘Äƒng nháº­p tháº­t**. ÄÃ¢y lÃ  bÆ°á»›c duy nháº¥t cáº§n Owner, má»i pháº§n
-Ä‘á»™c láº­p khÃ¡c Ä‘Ã£ hoÃ n táº¥t.
-
-------------------------------------------------------------------------
-
-# KhÃ´ng lÃ m trong MVP
-
--   MoMo
--   Stripe
--   PayPal
--   Facebook Login (Ä‘Ã£ gá»¡ khá»i MVP)
--   OTP
--   Zalo Login
--   AI ETA
--   Marketplace
--   Multi-region
--   Video preview Ä‘áº§y Ä‘á»§
--   Enterprise Security
-
-------------------------------------------------------------------------
-
-# Production verification follow-up â€” 2026-08-06
-
-- Production after Founder CORS fix: Render `/health` HTTP 200; CORS preflight from `https://cws-portal.vercel.app` returns HTTP 204 with matching allow-origin and no credentials grant. Vercel bundle serves the fleet/CRM patch markers and points to `https://cws-portal.onrender.com`.
-- Supabase Google authorize initiation: HTTP 302 to Google with production callback/redirect target.
-- Render `/staff/mfa-status`: HTTP 401 without credentials, confirming the route is live and protected. Real Google â†’ staff_roles â†’ TOTP â†’ aal2 â†’ Admin API remains human verification pending.
-- Next owner gate: repair/trigger Render deployment, then execute one real staff OAuth + Authenticator smoke test. Customer physical Worker â†’ Render â†’ Preview â†’ Payment â†’ Download remains NEEDS_VERIFICATION.
-- Admin Fleet UI scope is CODE/UNIT VERIFIED: chá»‰ gá»i `GET /fleet/workers` vÃ  map `online`/`nodeState === ACTIVE_IDLE`; production runtime awaits Render deployment + real AAL2 session.
-- Fresh read-only probes: Vercel public bundle contains fleet/CRM markers and no old `Tiáº¿p tá»¥c thanh toÃ¡n` CTA; Render `/health` is HTTP 200 and `/staff/mfa-status` is HTTP 401 without credentials. No authenticated Admin PASS is claimed.
-- 2026-08-06 Render crash evidence: backend fails closed at boot because the effective CORS environment input is `*`; set `CORS_ORIGINS=https://cws-portal.vercel.app` and remove any legacy `CORS_ORIGIN=*` before redeploy. See `reports/security/CWS_RENDER_CORS_CRASH_2026-08-06.md`.
-- Historical pre-fix probe: `/health` HTTP 200, CORS preflight exposed `*`, and `/staff/mfa-status` was HTTP 404; this was resolved by the Founder Render configuration update above.
-- 2026-08-06 CRM implementation: `GET /customers/crm` reads existing customer profiles, render orders, and paid payment rows; no duplicate schema or secrets. Backend/frontend tests and builds pass; real CRM data requires an Admin AAL2 session.
-- 2026-08-06 production evidence: Vercel CRM UI deployment is READY; Render `/customers/crm` now returns HTTP 401 without credentials and `/health` 200 after auto-deploy. Route protection is verified; Admin AAL2 CRM data read remains NEEDS_VERIFICATION.
-- 2026-08-06 counter/aggregate hardening: Fleet `ACTIVE_IDLE/BUSY/OFFLINE` counters use a canonical frontend helper with tests; CRM paid/non-paid/orphan/latest-job/lifecycle aggregation has direct unit coverage. Backend 141/141 and frontend 9/9 pass.
-- 2026-08-06 Scheduler hardening: state-order regression coverage confirms render completion stops at `REVIEW_READY` and payment finalization is gated by `AWAITING_PAYMENT`; backend 141/141 PASS. Physical Worker runtime remains NEEDS_VERIFICATION.
-- 2026-08-06 Worker/Security audit: staging project download now has HTTPS + explicit host allowlist + redirect rejection with Worker 38/38 PASS. This does not change the production NO-GO decision: Worker identity/RPC authentication, hostile Blend isolation, and physical Windows/GPU E2E remain blocked.
-- 2026-08-06 security follow-up: `JobsController` no longer accepts the
-  legacy shared admin key for cross-customer job access; Bearer + staff role +
-  `aal2` is the only Admin path. Regression test added.
-
-# Scale audit follow-up â€” 2026-08-06
-
-- Scheduler now prevents overlapping ticks and reuses one fleet presence snapshot per tick.
-- Payment one-intent-per-Job migration is prepared but requires duplicate preflight in isolated staging before application.
-- 100/1,000 and 1,000/10,000 capacity remain unmeasured in real infrastructure. Evidence: `reports/scaling/CWS_CAPACITY_AND_CONCURRENCY_AUDIT_2026-08-06.md`.
-- Upload memory bottleneck is mitigated in code with disk-backed streaming and cleanup; scheduler task reads are batched at 200 Job IDs per query. Runtime capacity remains NEEDS_VERIFICATION in isolated staging.
-
-# Functional/security verification follow-up â€” 2026-08-06
-
-- Local functional verification is green: frontend 9/9, backend 161/161 plus E2E `/health` 1/1, Worker 48/48, builds pass and frontend lint passes. Backend lint remains blocked by pre-existing repo-wide CRLF/Prettier violations; no bulk format was applied.
-- TestSprite CLI integration was attempted; cloud execution is blocked only by missing `TESTSPRITE_API_KEY` and target configuration.
-- Strix execution is blocked on this machine by missing Docker/runtime and approved LLM credential; no third-party security PASS is claimed.
-- Fixed the backend E2E harness and CommonJS/ESM `archiver` packaging boundary. Details: `reports/security/CWS_TESTSPRITE_STRIX_FUNCTIONAL_SECURITY_AUDIT_2026-08-06.md`.
-- Backend dependency audit remains a release risk: 5 high and 12 moderate findings, with breaking upgrade path; do not use `npm audit fix --force`.
-- Upload object-key path/control-character hardening is code/unit verified; dependency remediation remains blocked on an isolated Nest 11 canary.
-
-# Definition of Done
-
-``` text
-Google Login
-â†’ Customer Profile
-â†’ Táº¡o Job
-â†’ Kiá»ƒm tra link
-â†’ Upload B2
-â†’ Worker Render
-â†’ % Progress
-â†’ Preview Watermark
-â†’ MB QR
-â†’ Webhook
-â†’ Payment = PAID
-â†’ Má»Ÿ link B2
-â†’ KhÃ¡ch táº£i file
-â†’ COMPLETED
-```
-
-# Load and persistence boundary follow-up - 2026-08-06
-
-- `backend/test/load-simulation.e2e-spec.ts`: simulated real-Nest HTTP flow
-  passes 10/25/50/100 customers with worker shortage and one bounded
-  failover/fencing scenario per applicable run.
-- This is **simulated load**, not production/staging capacity evidence.
-- MVP persistence decision: Supabase/PostgreSQL remains durable source of
-  truth; no Redis is added until isolated staging measures a real bottleneck.
-- Remaining scale gate: isolated staging with Supabase/RLS/B2/physical Worker
-  and connection/latency metrics. Evidence:
-  `reports/scaling/CWS_100_CUSTOMER_BACKEND_LOAD_SIMULATION_2026-08-06.md`.
-
-# Production one-job E2E gate - 2026-08-06
-
-- Canonical `main` is ready at `b630987`; Vercel production currently points to
-  older `95abec7`. Redeploy is blocked by Vercel daily API quota, not by code
-  or build failure.
-- Read-only UI/backend/CORS checks pass; physical Worker â†’ Blender â†’ B2 â†’ real
-  payment â†’ download remains `NEEDS_VERIFICATION`.
-- Evidence: `reports/evidence/CWS_PRODUCTION_DEPLOYMENT_AND_E2E_READINESS_2026-08-06.md`.
-
-# Production real-path audit â€” 2026-08-07
-
-- **CODE/READ-ONLY VERIFIED**: canonical Vercel production serves the real backend/WebSocket path; the explicit development mock-auth branch is disabled in the live bundle.
-- **BLOCKED/NEEDS_VERIFICATION**: production has no `worker_identities`, no fresh heartbeat and no lease, so Blender/B2 physical E2E cannot start.
-- Evidence: `reports/evidence/CWS_PRODUCTION_REAL_PATH_AUDIT_2026-08-07_ADDENDUM.md`.
-
-# Physical Worker readiness â€” 2026-08-07
-
-- **CODE/LOCAL VERIFIED**: MAY083 package contains the canonical Node Agent,
-  generic Worker Engine and Blender 5.2.0; production claim/heartbeat/spec and
-  completion RPCs exist.
-- **BLOCKED/NEEDS_VERIFICATION**: no production worker identity, DPAPI store,
-  B2/Drive runtime configuration or fresh heartbeat exists on the host.
-- Evidence: `reports/evidence/CWS_PRODUCTION_PHYSICAL_WORKER_READINESS_AUDIT_2026-08-07.md`.
-
-# Job retry correctness - 2026-08-06
-
-- `POST /jobs` idempotency contract is **CODE/UNIT VERIFIED** with additive
-  migration 018, frontend key propagation, concurrent conflict handling and
-  10/25/50/100 load-harness regression.
-- Staging/production migration application and runtime verification remain
-  **NEEDS_VERIFICATION**.
-- Isolated capacity test is **BLOCKED** in the current session because no
-  staging Supabase/B2/Worker credentials or staging DB tool is available.
-
-# API security hardening - 2026-08-06
-
-- Payment detail BOLA protection, Admin-AAL2-only direct payment mutation,
-  bounded abuse limits, strict DTO bounds, Google API timeout/redirect
-  rejection and API security headers are **CODE/UNIT VERIFIED**.
-- Dependency remediation remains **BLOCKED/NEEDS_VERIFICATION** pending an
-  isolated Nest 11 canary; no breaking or forced upgrade was applied.
-- Authenticated Supabase/RLS, B2, live webhook, physical Worker and deployment
-  runtime remain **NEEDS_VERIFICATION**.
-- Evidence: `reports/security/CWS_API_SECURITY_HARDENING_AUDIT_2026-08-06.md`.
-
-# NestJS 11 dependency canary - 2026-08-07
-
-- Isolated Nest 11.1.28 canary: **TEST/BUILD VERIFIED** (172/172); no
-  production package or lockfile change.
-- Canary `js-yaml` 5.2.3 override: **AUDIT VERIFIED** (0 findings). Production
-  remains on Nest 10 with 5 High + 12 Moderate until isolated staging and
-  major-upgrade approval are complete.
-- Canary lint remains **NEEDS_VERIFICATION** because of existing repo-wide
-  Prettier violations, not a Nest runtime/build failure.
-- Authenticated staging E2E remains **BLOCKED** by missing staging credentials,
-  database tooling, B2 and physical Worker/payment access.
-
-# Premium dark UI refresh - 2026-08-07
-
-- Customer shell and core MVP screens received a presentation-only dark
-  responsive theme and lightweight CSS 3D CWS mark.
-- Render-before-payment business logic was preserved. Frontend tests 9/9,
-  lint and build PASS; browser/production visual verification remains open.
-- Evidence: `reports/product/CWS_UI_PREMIUM_DARK_REFRESH_2026-08-07.md`.
-
-# Vercel production HEAD verification - 2026-08-07
-
-- Correct Vercel project/domain/production branch confirmed read-only.
-- Production is READY on canonical `main` commit
-  `2f1215a3c55e233c2cbc7d3533f0cf0d32d8f8b4`; root web smoke returned HTTP
-  200. Authenticated customer/Admin, Worker, B2 and live payment remain
-  runtime gates.
-
-# Vercel project consolidation audit â€” 2026-08-07
-
-- Canonical production remains the existing `cws-portal` project serving
-  `https://cws-portal.vercel.app`.
-- Six duplicate CWS projects were observed in the same Vercel team. Repo and
-  GitHub Actions audit found no project-creation automation; live metadata is
-  consistent with repeated Dashboard Git imports of the same `main` repo.
-- Deletion/disconnect is **BLOCKED** in this session because Vercel write
-  access and encrypted environment comparison are unavailable. Do not create
-  another project; an authorized operator must compare env/Git settings and
-  remove only confirmed unused duplicates.
-- Evidence: `reports/deployment/CWS_VERCEL_PROJECT_CONSOLIDATION_AUDIT_2026-08-07.md`.
-
-# Production E2E V2.2 P1 provisioning â€” 2026-08-08
-
-- P1 **PARTIAL / PRODUCTION VERIFIED**: MAY083 identity
-  `CWS-BAE2782D20525D46`, DPAPI token, production verifier row, Blender 5.2.0,
-  Python/boto3 and authenticated Worker gateway ping are verified.
-- The V2.2 per-Worker B2 key blocker is **SUPERSEDED** by V2.3 job-scoped
-  Backend-issued storage capabilities; no B2 credential belongs on this host.
-- P2/P3 remain **NOT VERIFIED**: no canonical Node Agent claim, Blender render,
-  B2 upload or completion is claimed from the identity-only ping.
-- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_2_P1_MAY083_PROVISIONING_2026-08-08.md`.
+/m»ç[h‘éì¶»§q«^u•¹ĞÑ…Í¬°±…ÍĞÍ••¸…¹¡•…±Ñ ¸4(´AÉ½‘ÕÑ¥½¸É½ÕÑ”€½…‘µ¥¹€¹½Ü¡…ÌMAÉ•İÉ¥Ñ”…¹Á…Ñ¡¹…µ”•¹ÑÉäìÉÕ¹Ñ¥µ”‘•Á±½ä½5Ù•É¥™¥…Ñ¥½¸É•µ…¥¹ÌU9YI%%¸4(´Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}9=}9Q}5%9}1Q}Y%M%	%1%Qe|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(4(4(Œ€ÈÁ¸9½‘”•¹Ğ±¥™•å±”¡…É‘•¹¥¹œƒŠP€ÈÀÈØ´Àà´ÀÔ4(4(´İ½É­•È½¹½‘•}…•¹Ğ¹Áå€¹½Ü¡…Ì•áÁ±¥¥ĞÑÉ…¹Í¥Ñ¥½¸É•…Í½¹Ì°¥¹©•Ñ•ÉÕ¹Ñ¥µ”Á½±¥ä°‰½Õ¹‘•¹½¸µ‰±½­¥¹œ•áÁ½¹•¹Ñ¥…°É•ÑÉä‰…­½™˜…¹É•ÑÉäÉ•Í•Ğ…™Ñ•È±•…¹ÕÀ¸4(´İ½É­•È½¹½‘•}…•¹Ñ}ÉÕ¹Ñ¥µ•}Á½±¥ä¹Áå€•µ¥ÑÌµ½¹¥Ñ½Èµ½™˜½½¸‰½Õ¹‘…Éä¡½½­Ì½¹”ì¥Ğ‘½•Ì¹½Ğ…±°Á½İ•ÈA%Ì½ÈÍ±••ÀÑ¡”A¸4(´Y•É¥™¥…Ñ¥½¸èÁå}½µÁ¥±”AMLì½™™±¥¹”ÍÕ¥Ñ”€¨¨ÄÄ¼ÄÄAML¨¨¸4(´Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}9=}9Q}1%e1}!I9%9|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(´IÕ¹Ñ¥µ”ÁÉ½•ÍÌÍÕÁ•ÉÙ¥Í¥½¸°	±•¹‘•È½ÈÍÑ…¥¹œ°É•…°¡•…ÉÑ‰•…Ğ½±•…Í”°]¥¹‘½İÌ¥Í½±…Ñ¥½¸°™…¥±½Ù•È…¹ÁÉ½‘ÕÑ¥½¸‘•Á±½åµ•¹ĞÉ•µ…¥¸U9YI%%½	1=-¸4(4(Œ€ÈÁ¸]¥¹‘½İÌÍÑ…¥¹œÙ•É¥™¥…Ñ¥½¸ƒŠP€ÈÀÈØ´Àà´ÀÔ4(4(´AåÑ¡½¸€Ì¸ÄÈ¸Ü…¹	±•¹‘•È€Ô¸È¸À1QLÍ…™”1$É•¹‘•Èİ¥Ñ ‘¥Í…‰±”µ…ÕÑ½•á•ŒèI0IU9Q%5YI%%¸4(´MÕÁ…‰…Í”½¹¹•Ñ¥Ù¥Ñä½¹±äèI0IU9Q%5YI%%…Ğ!QQ@É•…¡…‰¥±¥Ñäì…ÕÑ¡•¹Ñ¥…Ñ•ÍÑ…¥¹œ¡•…ÉÑ‰•…Ğ¹½Ğ…ÑÑ•µÁÑ•¸4(´…¹½¹¥…°]½É­•È€Ä¸Äà¸ÀÍÁ…İ¸è	1=-‰•…ÕÍ”ÕÉÉ•¹Ğ]¥¹‘½İÌ¡•­½ÕĞ±…­ÌİÍ}İ½É­•É}™Õ±°¹Áä…¹µ…¹¥™•ÍĞ¥Ì¹½Ğ…¹½¹¥…°¸4(´ÈÉ•…µ½¹±äè	1=-İ¥Ñ !QQ@€ĞÀÄì¹¼İÉ¥Ñ”½‘•±•Ñ”¸4(´9½‘”•¹ĞƒŠH¡•…ÉÑ‰•…ĞƒŠH]½É­•ÈƒŠHÈƒŠH±•…¹ÕÀÉ•µ…¥¹Ì	1=-½U9YI%%¸4(´Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}]%9=]M}MQ%9}YI%%Q%=9|ÈÀÈØ´Àà´ÀÔ¹µ¸4(4(4(Œ€ÈÁ¸•¹•É¥Œ]½É­•È¹¥¹”½ÉÉ•Ñ¥½¸ƒŠP€ÈÀÈØ´Àà´ÀÔ4(4(´1•…äİÍ}İ½É­•É}™Õ±°¹ÁäƒGŒƒGÃ†îŒƒG†î5ŒƒG†îÍ…±Ù…”­¹½İ±•‘”ì­£Ñ¹œÉ•ÍÑ½É”½½ÁäÛ€­£Ñ¹œÉ¸³€­§†êı¸ÑËéŒƒGµ ¸4(´‘‘•İ½É­•È½İ½É­•É}•¹¥¹”¹ÁäÛ€İ½É­•È½Ñ•ÍÑ}İ½É­•É}•¹¥¹”¹Áä¸4(´)½ˆ·†îm¤£†î$ÑÉÕç†î¸)½‰MÁ•Œ½Q…Í­MÁ•ŒƒG†îe¹œì­£Ñ¹œ¡…Éµ½‘”©½ˆ½ÕÍÑ½µ•È½™É…µ”½È½‰©•Ğ¸4(´9½‘”•¹Ğ½İ¹ÌA±¥™•å±”½ÍÕÁ•ÉÙ¥Í¥½¸ì	…­•¹½İ¹Ì…ÍÍ¥¹µ•¹Ğ½±•…Í”½ÁÉ¥½É¥Ñä½É•ÑÉä½‰¥±±¥¹œì]½É­•È½İ¹Ì½¹”•á•ÕÑ¥½¸…ÑÑ•µÁĞ¸4(´¹¥¹”Ñ•ÍĞè€Ğ¼ĞAMLì=½U9%PYI%%¸4(´1•…äÍ…±Ù…”µ…ÑÉ¥àèÉ•Á½ÉÑÌ½İ½É­•È½]M}]=I-I}1e}M1Y}5QI%a|ÈÀÈØ´Àà´ÀÔ¹µ¸4(4(4(ŒŒ@ÀÍÑ…ÑÕÌÕÁ‘…Ñ”ƒŠP€ÈÀÈØ´Àà´ÀÔ4(4)=ÕÑÁÕĞ¥¹Ñ•É¥Ñä¥Ì¥µÁ±•µ•¹Ñ•¥¸Ñ¡”•¹•É¥Œ]½É­•È¹¥¹”¸A9½ÕÑÁÕÑÌ…É”ÍÑÉÕÑÕÉ…±±ä¡•­•‰•™½É”¡•­Á½¥¹Ğ½ÕÁ±½…ìÑ•ÍÑÌ…É”€ÈÈ¼ÈÈAML¸Õ±°È½ÁÉ½‘ÕÑ¥½¸ÉÕ¹Ñ¥µ”Ù•É¥™¥…Ñ¥½¸É•µ…¥¹Ì‰±½­•‰äÍÑ…¥¹œ¥¹Ñ•É…Ñ¥½¸É•‘•¹Ñ¥…±Ì½•¹‘Á½¥¹ÑÌ¸4(4(4(ŒŒ@ÀÍÑ…ÑÕÌÕÁ‘…Ñ”ƒŠPÑ¥µ•½ÕĞ±•…¹ÕÀ€ ÈÀÈØ´Àà´ÀÔ¤4(4)	±•¹‘•ÈÍÕ‰ÁÉ½•ÍÌÑ¥µ•½ÕĞ¹½Ü±•…¹ÌÕÀÑ¡”½İ¹•ÁÉ½•ÍÌÑÉ•”½¸]¥¹‘½İÌ…¹ÁÉ•Í•ÉÙ•ÌÉ•ÑÉä±…ÍÍ¥™¥…Ñ¥½¸¸½µÁ¥±”€¬½µ‰¥¹•ÍÕ¥Ñ”€ÈÈ¼ÈÈAMLì±¥Ù”Ñ¥µ•µ½ÕĞ	±•¹‘•ÈÙ•É¥™¥…Ñ¥½¸É•µ…¥¹ÌÕ¹Ù•É¥™¥•¸4(4(4(ŒŒ@ÀÍÑ…ÑÕÌÕÁ‘…Ñ”ƒŠP…Á…‰¥±¥ÑäÁÉ•™±¥¡Ğ€ ÈÀÈØ´Àà´ÀÔ¤4(4)•¹•É¥Œ]½É­•ÈÁÉ•™±¥¡Ğ¹½Ü•¹™½É•Ì‘å¹…µ¥Œµ¥¹¥µÕ´YI4½I4É•ÅÕ¥É•µ•¹ÑÌ™É½´)½‰MÁ•Œ……¥¹ÍĞÑ¡”9½‘”µÁÉ½Ù¥‘•…Á…‰¥±¥ÑäÁÉ½™¥±”¸Q•ÍÑÌè€ÈĞ¼ÈĞAMLìÁ¡åÍ¥…°…Á…‰¥±¥Ñä‘¥Í½Ù•ÉäÉ•µ…¥¹ÌÕ¹Ù•É¥™¥•¸4(4(4(ŒŒIÕ¹Ñ¥µ”¥¹Ñ•É…Ñ¥½¸ÍÑ…ÑÕÌƒŠP€ÈÀÈØ´Àà´ÀÔ4(4)]¥¹‘½İÌÍ…™”ÍÑ…¥¹œ¡…ÌÙ•É¥™¥•Ñ¡”±½…°9½‘”•¹ĞƒŠH•¹•É¥Œ]½É­•ÈƒŠH	±•¹‘•ÈƒŠHÙ…±¥‘…Ñ¥½¸ƒŠH¡•­Á½¥¹ĞƒŠH±•…¹ÕÀƒŠHQ%Y}%1±½½À°¥¹±Õ‘¥¹œÉ…Í É•½Ù•Éä…¹Ñ¥µ•½ÕĞ±•…¹ÕÀ¸MÕÁ…‰…Í”½È¥¹Ñ•É…Ñ¥½¸É•µ…¥¹Ì‰±½­•‰ä…‰Í•¹ĞÍÑ…¥¹œµÍ…™”É•‘•¹Ñ¥…±Ì½•¹‘Á½¥¹ÑÌ¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}]=I-I}]%9=]M}IU9Q%5}%9QIQ%=9|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(4(4(ŒŒMÑ…¥¹œÉ¥¹Ñ•É…Ñ¥½¸ÕÁ‘…Ñ”ƒŠP€ÈÀÈØ´Àà´ÀÔ4(4)É•‘•¹Ñ¥…°µ…Ñ•MÕÁ…‰…Í”½È…‘…ÁÑ•ÉÌ…É”ÁÉ•Á…É•İ¥Ñ ¹¼ÁÉ½‘ÕÑ¥½¸™…±±‰…¬½È‘•ÍÑÉÕÑ¥Ù”…Á…‰¥±¥Ñä¸Õ±°ÉÉ•µ…¥¹Ì‰±½­•‰äµ¥ÍÍ¥¹œÍÑ…¥¹œÉ•‘•¹Ñ¥…±Ì…¹½µÁ±•Ñ”…ÍÍ¥¹µ•¹Ğ)½‰MÁ•Œ½¹ÑÉ…Ğ¸4(4(ŒŒMÑ…¥¹œ‰±½­•È…Õ‘¥ĞƒŠP€ÈÀÈØ´Àà´ÀÔ4(4)5…¡¥¹”µÍ…™”•¹Ø¥¹ÍÁ•Ñ¥½¸™½Õ¹¹¼ÍÑ…¥¹œÙ…±Õ•Ì¸MÕÁ…‰…Í”½¹¹•Ñ½È•áÁ½Í•Ì¹¼Í•Á…É…Ñ”ÍÑ…¥¹œÁÉ½©•ĞìÑ¡”•á¥ÍÑ¥¹œ±…¥´IA½¹ÑÉ…Ğ¥Ì¥¹½µÁ±•Ñ”™½È„‘å¹…µ¥Œ)½‰MÁ•Œ¸ÈÍÑ…¥¹œ•¹‘Á½¥¹Ğ½‰Õ­•Ğ½­•ä…É”…±Í¼…‰Í•¹Ğ¸=İ¹•È¥¹ÁÕÑÌ…¹•á…Ğ…ÍÍ¥¹µ•¹Ğ…±Ñ•É¹…Ñ¥Ù•ÌèÉ•Á½ÉÑÌ½İ½É­•È½]M}MQ%9}	1=-I}U%Q|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(4(ŒŒU10ÍÑ…¥¹œÉƒŠPI0IU9Q%5YI%%ƒŠP€ÈÀÈØ´Àà´ÀÔ4(4)Q¡”¥Í½±…Ñ•ÍÑ…¥¹œÁ…Ñ ¥Ì¹½ÜÙ•É¥™¥••¹µÑ¼µ•¹è…ÍÍ¥¹µ•¹Ğ½™•¹¥¹œ•¹•É…Ñ¥½¸ƒŠH9½‘”•¹Ğ¡¥±•¹•É¥Œ]½É­•ÈƒŠHÉ•…°	±•¹‘•ÈÉ•¹‘•ÈƒŠH¥¹Ñ•É¥Ñä½¡•­Á½¥¹ĞƒŠHÈÍÑ…¥¹œ!­M!´ÈÔØÙ•É¥™¥…Ñ¥½¸ƒŠHMÕÁ…‰…Í”½µÁ±•Ñ¥½¸ƒŠH±•…¹ÕÀƒŠHQ%Y}%1€¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}MQ%9}U11}É}I1}IU9Q%5}YI%%|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(ŒŒ@À™½±±½ÜµÕÀƒŠP€ÈÀÈØ´Àà´ÀÔ4(4(´5Õ±Ñ¤µ¹½‘”½™…¥±½Ù•Èè€¨©I0IU9Q%5YI%%¨¨¥¸ÍÑ…¥¹œ°¥¹±Õ‘¥¹œÍÑ…±”Ñ…­•½Ù•È…¹•¹•É…Ñ¥½¸™•¹¥¹œ¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}5U1Q%}9=}%1=YI}I1}IU9Q%5}YI%%|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(´‘µ¥¸±••ĞÉ•…°ÉÕ¹Ñ¥µ”è€¨©	1=-½U9YI%%¨¨Á•¹‘¥¹œÍÑ…¥¹œÍÑ…™˜µÉ½±”½0ÈÍ•ÑÕÀ…¹‘•Á±½å•É½ÕÑ”Ù•É¥™¥…Ñ¥½¸¸4(´!½ÍÑ¥±”€¹‰±•¹‘€¥Í½±…Ñ¥½¸è€¨©U9YI%%½	1=-¨¨Á•¹‘¥¹œ„‘¥ÍÁ½Í…‰±”]¥¹‘½İÌM…¹‘‰½àµ…Á…‰±”¡½ÍĞ¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}!=MQ%1}	19}%M=1Q%=9}A=|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(´AÉ½‘ÕÑ¥½¸É½±±½ÕĞÉ•…‘¥¹•ÍÌè€¨©9<µ<¨¨¸Ù¥‘•¹”½¡•­±¥ÍĞèÉ•Á½ÉÑÌ½İ½É­•È½]M}AI=UQ%=9}I=11=UQ}I%9MM|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(´‘µ¥¸I	ÍÑ…¥¹œÍ¡•µ„¥Ì…ÁÁ±¥•…¹Ù•É¥™¥•ìÉ•…°‘µ¥¸U$É•µ…¥¹Ì€¨©	1=-½U9YI%%¨¨Á•¹‘¥¹œ=İ¹•ÈÕÑ ½5Í•ÑÕÀ¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}5%9}1Q}MQ%9}UQ!}	1=-I|ÈÀÈØ´Àà´ÀÔ¹µ‘€¸4(´%Í½±…Ñ¥½¸A=¡…ÌÁ…ÉÑ¥…°)½ˆ=‰©•ĞÉÕ¹Ñ¥µ”•Ù¥‘•¹”°‰ÕĞ™¥±•ÍåÍÑ•´½¹•Ñİ½É¬‰½Õ¹‘…Éä¥Ì€¨©U9YI%%½	1=-¨¨ìÁÉ½‘ÕÑ¥½¸É•µ…¥¹Ì€¨©9<µ<¨¨¸4(4(ŒŒ@ÄÉ•±¥…‰¥±¥Ñä™½±±½ÜµÕÀƒŠP€ÈÀÈØ´Àà´ÀØ4(4(´9½‘”•¹ĞÉ•ÑÉä‰…­½™˜¹½ÜÍÕÁÁ½ÉÑÌ‰½Õ¹‘•½ÁĞµ¥¸©¥ÑÑ•Èİ¥Ñ ‘•Ñ•Éµ¥¹¥ÍÑ¥ŒÑ•ÍÑÌì‘•™…Õ±ĞÑ¥µ¥¹œ¥ÌÕ¹¡…¹•¸Ù¥‘•¹”èÉ•Á½ÉÑÌ½İ½É­•È½]M}9=}9Q})%QQI}!I9%9|ÈÀÈØ´Àà´ÀØ¹µ‘€¸4(´Må¹¡É½¹½ÕÌÉ•µ½Ñ”$½<°ÁÉ½‘ÕÑ¥½¸M4½)½ˆ=‰©•Ğ¥¹Ñ•É…Ñ¥½¸°¥Í½±…Ñ¥½¸°½‰Í•ÉÙ…‰¥±¥Ñä°É½±±‰…¬°…¹ÁÉ½‘ÕÑ¥½¸…ÕÑ¡•¹Ñ¥…Ñ¥½¸É•µ…¥¸½Á•¸…Ñ•Ì¸((ŒŒ…Á…¥Ñä½½¹ÕÉÉ•¹ä™½±±½ÜµÕÀƒŠP€ÈÀÈØ´Àà´ÀØ((´]½É­•ÈÁÕ±°µ±…¥´É•µ…¥¹Ì‘…Ñ…‰…Í”µÍ•É¥…±¥é•İ¥Ñ =HUAQM-%@1=-€°…Á…‰¥±¥Ñä¡•­Ì°‰½Õ¹‘•É•ÑÉä°…¹•¹•É…Ñ¥½¸™•¹¥¹œ¸(´1½…°Í…±”Í¥µÕ±…Ñ¥½¸½Ù•ÉÌ¡•…ÉÑ‰•…Ğ½™…¥±ÕÉ”‰ÕÉÍÑÌ½¹±äìMÕÁ…‰…Í”½È°Á¡åÍ¥…°]½É­•È°…¹ÁÉ½‘ÕÑ¥½¸…Á…¥ÑäÉ•µ…¥¸Õ¹Ù•É¥™¥•¸(´9•áĞ]½É­•ÈÍ…±”…Ñ”¥Ì¥Í½±…Ñ•ÍÑ…¥¹œ±½…İ¥Ñ €ÄÀÀ¼Ä°ÀÀÀÍå¹Ñ¡•Ñ¥Œ¥‘•¹Ñ¥Ñ¥•Ì‰•™½É”…¹ä€Ä°ÀÀÀ¼ÄÀ°ÀÀÀÉ•‘•Í¥¸¸(´Må¹Ñ¡•Ñ¥Œ¡•…ÉÑ‰•…Ğ©¥ÑÑ•È°É•½¹¹•ĞÍÑ½É´…¹‰½Õ¹‘•™…¥±½Ù•ÈÍ¥µÕ±…Ñ¥½¸…É”¥¹±Õ‘•¥¸Ñ•ÍÑÌ½Í…±¥¹œ½İÍ}…Á…¥Ñå}Í¥µÕ±…Ñ¥½¸¹Áå€ì¹¼MÕÁ…‰…Í”İÉ¥Ñ”…Á…¥Ñä¥Ì±…¥µ•¸((ŒŒ•¹•É¥Œ]½É­•È¡…É‘•¹¥¹œ™½±±½ÜµÕÀ€´€ÈÀÈØ´Àà´ÀØ((´İ½É­•É}•¹¥¹”¹Áå€ÍÑÉ•…µÌ™¥±•ÍåÍÑ•´¡•­Á½¥¹Ğ½Á¥•Ì¥¸‰½Õ¹‘•¡Õ¹­Ì…¹É•µ½Ù•ÌÑ•µÁ½É…Éä™¥±•Ì½¸¥¹Ñ•ÉÉÕÁÑ•İÉ¥Ñ•Ì¸(´ÑÑ•µÁĞ™•¹¥¹œ¥Ì¡•­•¥µµ•‘¥…Ñ•±ä‰•™½É”¡•­Á½¥¹ĞÍÑ½É…”İÉ¥Ñ•Ì°¥¸…‘‘¥Ñ¥½¸Ñ¼Ñ¡”Á½ÍĞµ¡•­Á½¥¹ĞÙ•É¥™¥…Ñ¥½¸Õ…É¸(´Y•É¥™¥…Ñ¥½¸èÁåÑ¡½¸€µ´Õ¹¥ÑÑ•ÍĞ‘¥Í½Ù•È€µÌİ½É­•È€µÀ€Ñ•ÍÑ|¨¹Áä€€´€¨¨Ğä¼ĞäAML¨¨¸(´I•µ…¥¹¥¹œ…Ñ”è…ÕÑ¡•¹Ñ¥…Ñ•ÍÑ…¥¹œ½Á¡åÍ¥…°]½É­•ÈÉÕ¹Ñ¥µ”İ¥Ñ É•…°±•…Í”É•Ù½…Ñ¥½¸…¹È‰•¡…Ù¥½È¸
