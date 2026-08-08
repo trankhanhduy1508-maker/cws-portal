@@ -166,6 +166,14 @@ Do not choose a mechanism based on assumption. Verify B2 API behavior first.
 
 # P2 — AUTONOMOUS HEARTBEAT
 
+**Status: RUNTIME VERIFIED — 2026-08-08.** Canonical Node Agent PID 3208 on
+MAY083 runs an explicit maintenance/readiness `--heartbeat-only` mode. Supabase
+recorded fresh authenticated heartbeats across multiple cycles, `status=idle`,
+`observed_state=ACTIVE_IDLE`, no current task. This mode never claims work; P3
+must replace it with normal runtime for the controlled Golden task.
+
+Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_3_P2_AUTONOMOUS_HEARTBEAT_2026-08-08.md`.
+
 ## Goal
 
 Prove MAY083 is authenticated and visible to production without AI keeping it alive.

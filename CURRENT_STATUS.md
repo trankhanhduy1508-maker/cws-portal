@@ -34,6 +34,14 @@
   the repository's canonical uploaded-file URI (`b2://uploads/<key>`) while
   limiting input to `uploads/` `.blend`/`.zip` objects. Other prefixes such as
   `final/` are rejected. Production B2 transfer remains unverified.
+- **P2 AUTONOMOUS HEARTBEAT RUNTIME VERIFIED**: canonical
+  `production_node_agent.py --heartbeat-only` is running independently as PID
+  3208 on MAY083. Two production reads more than one heartbeat cycle apart show
+  `last_seen_at` advancing from `2026-08-08 04:10:26.544626+00` to
+  `2026-08-08 04:11:29.66472+00`, with `status=idle`,
+  `observed_state=ACTIVE_IDLE`, `current_task_id=null`. This mode intentionally
+  does not claim; normal claim/render is P3.
+- Evidence: `reports/evidence/CWS_PRODUCTION_E2E_V2_3_P2_AUTONOMOUS_HEARTBEAT_2026-08-08.md`.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
 
 ## Production E2E Roadmap V2.2 P1 — 2026-08-08 (SUPERSEDED BY V2.3)

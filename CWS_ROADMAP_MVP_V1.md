@@ -12,8 +12,10 @@
 - **P2 FIXED/CODE VERIFIED**: Backend now permits authenticated taskless
   `ACTIVE_IDLE` reporting while allowlisting Worker states; this removes the
   production 400 that left MAY083's observed state stale after a valid ping.
-- **P2 PARTIAL RUNTIME VERIFIED**: MAY083 reached `ACTIVE_IDLE` in production;
-  persistent autonomous heartbeat is not yet verified.
+- **P2 RUNTIME VERIFIED**: MAY083 reached `ACTIVE_IDLE` in production;
+  canonical PID 3208 then maintained fresh authenticated heartbeats across
+  multiple cycles without Codex issuing pings. P2 heartbeat is runtime PASS;
+  P3 normal claim/render remains separate.
 - **P3 CODE VERIFIED**: job-scoped input authorization understands canonical
   `b2://uploads/<key>` upload references and rejects non-input prefixes.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
