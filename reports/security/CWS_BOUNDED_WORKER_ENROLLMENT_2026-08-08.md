@@ -60,6 +60,17 @@ an anon/authenticated policy.
   assertions.
 - 100 deterministic Worker IDs spread startup heartbeat/claim over the
   configured five-second window; no coordinator or new infrastructure is used.
+- Local Nest E2E load harness was reconciled with mandatory customer auth and
+  upload ownership. 10/25/50/100 scenarios PASS; the 100-job run recorded zero
+  submission errors, zero duplicate claims, one bounded failover and one stale
+  completion rejection. This remains simulated local evidence.
+
+## Deployment smoke
+
+After `f276193` was pushed, canonical Render served `/health` with 200. The new
+ticket endpoint rejected anonymous issuance with 401, and malformed redemption
+also returned 401. These fail-closed probes issued no ticket and changed no
+Worker identity.
 
 ## Runtime boundary
 

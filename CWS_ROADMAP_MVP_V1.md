@@ -7,6 +7,8 @@
   edits without introducing a shared enrollment/B2/database secret.
 - **100-WORKER PREPARATION VERIFIED IN CODE**: one batch supports 100 stable
   IDs and deterministic startup jitter reduces synchronized heartbeat/claim.
+- **LOCAL SIMULATED LOAD VERIFIED**: auth/ownership-aware Nest scenarios at
+  10/25/50/100 customers PASS; this is not a staging/production capacity claim.
 - **NEEDS PHYSICAL VERIFICATION**: enroll a second real host through the new
   path and run P3 with a customer-owned B2 task. This is not Golden E2E PASS.
 - Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.

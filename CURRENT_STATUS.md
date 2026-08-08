@@ -19,9 +19,16 @@
   READY on `5cee323f04388ef3df56bcf63c423290b4c53f34`; live Backend rejects
   anonymous upload with 401. Authenticated MAY083 B2-only `--once` refreshed
   heartbeat and claimed no incompatible Drive backlog.
-- **NEXT / NEEDS_VERIFICATION**: deploy enrollment endpoint, then P3 requires
-  one real authenticated customer `.blend`/`.zip` B2 upload/task. No physical
-  second-Worker enrollment or Blender/B2 completion is claimed.
+- **BACKEND DEPLOYED/RUNTIME GUARDS VERIFIED**: live `/health=200`; anonymous
+  ticket issuance and malformed redemption both return 401. No ticket or test
+  identity was created by these smoke checks.
+- **LOCAL NEST LOAD REGRESSION VERIFIED**: authenticated, ownership-bound
+  10/25/50/100-customer scenarios PASS. At 100 jobs: 0 submit errors, 0
+  duplicate claims, one failover and one stale completion rejection. This is
+  simulated local evidence, not production capacity PASS.
+- **NEXT / NEEDS_VERIFICATION**: P3 requires one real authenticated customer
+  `.blend`/`.zip` B2 upload/task. No physical second-Worker enrollment or
+  Blender/B2 completion is claimed.
 - Evidence: `reports/security/CWS_BOUNDED_WORKER_ENROLLMENT_2026-08-08.md`.
 
 ## Architecture V1 P0/P1 reconciliation — 2026-08-08

@@ -13,6 +13,7 @@ import { JobStatus } from '../src/jobs/domain/job-status.enum';
 import { StorageService } from '../src/storage/storage.service';
 import { PreviewService } from '../src/storage/preview.service';
 import { SchedulerService } from '../src/scheduler/scheduler.service';
+import { InputUploadsService } from '../src/files/input-uploads.service';
 
 type LoadTask = {
   jobId: string;
@@ -171,7 +172,8 @@ class LoadWorkerGateway {
 
   async failAndReassign(jobId: string): Promise<void> {
     const task = this.tasks.get(jobId);
-    if (!task || task.status !== 'active') throw new Error('active task required');
+    if (!task || task.status !== 'active')
+      throw new Error('active task required');
     const staleGeneration = task.generation;
     task.status = 'queued';
     task.workerId = null;
@@ -203,14 +205,17 @@ class LoadWorkerGateway {
 
   async completeAll(): Promise<void> {
     for (const task of this.tasks.values()) {
-      if (task.status === 'active') this.complete(task.jobId, task.generation, task.workerId!);
+      if (task.status === 'active')
+        this.complete(task.jobId, task.generation, task.workerId!);
     }
   }
 }
 
 function percentile(values: number[], p: number): number {
   const ordered = [...values].sort((a, b) => a - b);
-  return ordered[Math.min(ordered.length - 1, Math.floor(ordered.length * p))] ?? 0;
+  return (
+    ordered[Math.min(ordered.length - 1, Math.floor(ordered.length * p))] ?? 0
+  );
 }
 
 describe('CWS real Nest load simulation (safe, no external writes)', () => {
@@ -227,7 +232,14 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       .overrideProvider(SupabaseService)
       .useValue({
         getClient: () => ({
-          auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+          auth: {
+            getUser: async (token: string) => ({
+              data: {
+                user: token?.startsWith('load-') ? { id: token } : null,
+              },
+              error: null,
+            }),
+          },
         }),
       })
       .overrideProvider(RENDER_ORDERS_REPOSITORY)
@@ -241,6 +253,18 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       })
       .overrideProvider(PreviewService)
       .useValue({ generateReviewPreview: async () => undefined })
+      .overrideProvider(InputUploadsService)
+      .useValue({
+        assertOwned: async (fileRef: string, customerId: string) => {
+          const duplicate = /duplicate-(\d+)\.blend$/.exec(fileRef);
+          if (duplicate && customerId === `load-duplicate-${duplicate[1]}`)
+            return;
+          const input = /input-(\d+)-(\d+)\.blend$/.exec(fileRef);
+          if (input && customerId === `load-user-${input[1]}-${input[2]}`)
+            return;
+          throw new Error('synthetic upload ownership mismatch');
+        },
+      })
       .compile();
     app = module.createNestApplication();
     // The harness represents independent customers behind distinct test
@@ -274,20 +298,26 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       let rampErrors = 0;
       for (let offset = 0; offset < customers; offset += 10) {
         const rampBatch = await Promise.all(
-          Array.from({ length: Math.min(10, customers - offset) }, async (_, batchIndex) => {
-            const customerIndex = offset + batchIndex;
-            const started = performance.now();
-            const response = await fetch(`${baseUrl}/jobs/estimate`, {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'x-forwarded-for': `198.51.100.${customerIndex + 1}`,
-              },
-              body: JSON.stringify({ profileId: 'standard', fileSizeBytes: 1024 }),
-            });
-            rampLatencies.push(performance.now() - started);
-            return response.status;
-          }),
+          Array.from(
+            { length: Math.min(10, customers - offset) },
+            async (_, batchIndex) => {
+              const customerIndex = offset + batchIndex;
+              const started = performance.now();
+              const response = await fetch(`${baseUrl}/jobs/estimate`, {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/json',
+                  'x-forwarded-for': `198.51.100.${customerIndex + 1}`,
+                },
+                body: JSON.stringify({
+                  profileId: 'standard',
+                  fileSizeBytes: 1024,
+                }),
+              });
+              rampLatencies.push(performance.now() - started);
+              return response.status;
+            },
+          ),
         );
         rampErrors += rampBatch.filter((status) => status !== 200).length;
       }
@@ -303,8 +333,9 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              'x-forwarded-for': '198.51.100.250',
+              authorization: `Bearer load-duplicate-${customers}`,
               'Idempotency-Key': `load-duplicate-key-${customers.toString().padStart(3, '0')}`,
+              'x-forwarded-for': '198.51.100.250',
             },
             body: JSON.stringify(duplicatePayload),
           }).then(async (response) => ({
@@ -315,7 +346,8 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       );
       const duplicateReturnedSameJob =
         duplicateResponses.every((response) => response.status === 201) &&
-        new Set(duplicateResponses.map((response) => response.body.jobId)).size === 1;
+        new Set(duplicateResponses.map((response) => response.body.jobId))
+          .size === 1;
       orders.orders.clear();
       workers.tasks.clear();
       const submissionLatencies: number[] = [];
@@ -323,15 +355,18 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       const submitted: Array<{
         status: number;
         body: { jobId?: string };
+        customerToken?: string;
         error?: string;
       }> = await Promise.all(
         Array.from({ length: customers }, async (_, index) => {
           try {
+            const customerToken = `load-user-${customers}-${index}`;
             const started = performance.now();
             const response = await fetch(`${baseUrl}/jobs`, {
               method: 'POST',
               headers: {
                 'content-type': 'application/json',
+                authorization: `Bearer ${customerToken}`,
                 'Idempotency-Key': `load-${customers}-${index.toString().padStart(3, '0')}-key-x`,
                 'x-forwarded-for': `198.51.100.${index + 1}`,
               },
@@ -345,7 +380,7 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
             });
             const body = (await response.json()) as { jobId?: string };
             submissionLatencies.push(performance.now() - started);
-            return { status: response.status, body };
+            return { status: response.status, body, customerToken };
           } catch (error) {
             return { status: 0, body: {}, error: String(error) };
           }
@@ -365,9 +400,17 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       expect(new Set(jobIds).size).toBe(customers);
 
       const refreshResponses = await Promise.all(
-        jobIds.map((id) => fetch(`${baseUrl}/jobs/${id}/status`)),
+        submitted
+          .filter((response) => response.status === 201 && response.body.jobId)
+          .map((response) =>
+            fetch(`${baseUrl}/jobs/${response.body.jobId}/status`, {
+              headers: { authorization: `Bearer ${response.customerToken}` },
+            }),
+          ),
       );
-      expect(refreshResponses.every((response) => response.status === 200)).toBe(true);
+      expect(
+        refreshResponses.every((response) => response.status === 200),
+      ).toBe(true);
 
       const schedulerStarted = performance.now();
       await scheduler.tick();
@@ -375,13 +418,17 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
 
       const claimStarted = performance.now();
       const claimResults = await Promise.all(
-        Array.from({ length: Math.max(customers, workers.onlineWorkers * 3) }, (_, index) =>
-          workers.claim(`load-worker-${index % workers.onlineWorkers}`),
+        Array.from(
+          { length: Math.max(customers, workers.onlineWorkers * 3) },
+          (_, index) =>
+            workers.claim(`load-worker-${index % workers.onlineWorkers}`),
         ),
       );
       const assignmentLatency = performance.now() - claimStarted;
       expect(claimResults.filter(Boolean).length).toBe(customers);
-      expect(new Set(claimResults.filter(Boolean).map((task) => task!.jobId)).size).toBe(customers);
+      expect(
+        new Set(claimResults.filter(Boolean).map((task) => task!.jobId)).size,
+      ).toBe(customers);
 
       await scheduler.tick();
       if (customers >= 25) await workers.failAndReassign(jobIds[0]);
@@ -389,13 +436,16 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
       await scheduler.tick();
 
       const finalOrders = await orders.findAll();
-      const completed = finalOrders.filter((order) => order.status === JobStatus.REVIEW_READY).length;
+      const completed = finalOrders.filter(
+        (order) => order.status === JobStatus.REVIEW_READY,
+      ).length;
       const endMemory = process.memoryUsage().rss;
       const report = {
         customers,
         workerCapacity: workers.onlineWorkers,
         submitted: submitted.length,
-        submissionErrors: submitted.filter((response) => response.status >= 400).length,
+        submissionErrors: submitted.filter((response) => response.status >= 400)
+          .length,
         refreshed: refreshResponses.length,
         completedReviewReady: completed,
         duplicateClaims: workers.duplicateClaims,
@@ -409,13 +459,25 @@ describe('CWS real Nest load simulation (safe, no external writes)', () => {
         rampUpErrors: rampErrors,
         rampUpP95Ms: Number(percentile(rampLatencies, 0.95).toFixed(2)),
         duplicateSubmissionReturnedSameJob: duplicateReturnedSameJob,
-        p50SubmissionMs: Number(percentile(submissionLatencies, 0.5).toFixed(2)),
-        p95SubmissionMs: Number(percentile(submissionLatencies, 0.95).toFixed(2)),
-        p99SubmissionMs: Number(percentile(submissionLatencies, 0.99).toFixed(2)),
+        p50SubmissionMs: Number(
+          percentile(submissionLatencies, 0.5).toFixed(2),
+        ),
+        p95SubmissionMs: Number(
+          percentile(submissionLatencies, 0.95).toFixed(2),
+        ),
+        p99SubmissionMs: Number(
+          percentile(submissionLatencies, 0.99).toFixed(2),
+        ),
         assignmentMs: Number(assignmentLatency.toFixed(2)),
         schedulerMs: Number(schedulerLatency.toFixed(2)),
-        rssDeltaMb: Number(((endMemory - startMemory) / 1024 / 1024).toFixed(2)),
-        result: completed === customers && workers.staleCompletionsRejected === (customers >= 25 ? 1 : 0) ? 'PASS' : 'FAIL',
+        rssDeltaMb: Number(
+          ((endMemory - startMemory) / 1024 / 1024).toFixed(2),
+        ),
+        result:
+          completed === customers &&
+          workers.staleCompletionsRejected === (customers >= 25 ? 1 : 0)
+            ? 'PASS'
+            : 'FAIL',
       };
       reports.push(report);
       console.log(`CWS_LOAD_SCENARIO ${JSON.stringify(report)}`);
