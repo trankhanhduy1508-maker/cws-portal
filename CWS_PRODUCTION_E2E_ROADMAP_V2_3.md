@@ -265,6 +265,21 @@ Do not switch to live payment merely to satisfy E2E testing.
 
 # P6 — GOLDEN PRODUCTION E2E + AI-OFF ACCEPTANCE
 
+## Business acceptance chain (mandatory)
+
+The same customer-owned production job must provide durable evidence for every
+link below; a compute-only render is not Golden E2E:
+
+`public Drive or upload -> Backend validation/materialization to B2 -> durable
+job/task -> fenced Worker claim -> Blender output -> B2 output -> watermarked
+preview -> runtime price/payment record/reference/QR -> authenticated,
+idempotent SePay PAID -> final signed delivery -> cleanup/audit`.
+
+No final asset may be exposed before PAID. The payment reference must be unique
+per payment, map server-side to exactly one customer/job/payment, and must not
+be a Worker identifier. Preview, pricing, webhook verification, delivery and
+cleanup are therefore required P6 evidence, not optional post-render work.
+
 One traceable production customer-facing job must prove the complete chain:
 
 1. customer opens canonical production site
