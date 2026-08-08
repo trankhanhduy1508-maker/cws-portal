@@ -17,6 +17,16 @@
   transfers, and no longer requires `CWS_B2_*` runtime values.
 - **NEEDS RUNTIME VERIFICATION**: production deployment, a claimed task, real
   B2 GET/PUT, persistent P2 heartbeat and P3 Blender run are not runtime PASS.
+- **PRODUCTION GATE PARTIAL**: Render serves `/health` 200 and the new storage
+  endpoint rejects anonymous access with 401; authenticated MAY083 reaches the
+  route and receives the expected 400 because it owns no current assignment.
+  A signed `worker_ping` advanced production `last_seen_at` to
+  `2026-08-08 03:57:49.917489+00` and `status=idle`.
+- **P2 DEFECT FIXED / DEPLOY PENDING**: idle state reporting returned 400
+  because the Backend gateway incorrectly required task/generation for
+  `report_worker_state_transition`. The gateway now accepts taskless
+  `ACTIVE_IDLE`, strictly allowlists states, and rejects forged task/reason
+  fields. Runtime re-verification follows the next Render deployment.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
 
 ## Production E2E Roadmap V2.2 P1 — 2026-08-08 (SUPERSEDED BY V2.3)

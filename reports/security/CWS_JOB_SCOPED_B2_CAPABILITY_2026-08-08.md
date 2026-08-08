@@ -71,6 +71,22 @@ Canonical boundary:
   was made.
 - Production B2 transfer and Blender E2E are **NOT VERIFIED** by these tests.
 
+## Production deployment probe
+
+- Render `/health`: HTTP 200.
+- Anonymous `POST /worker/storage-capability`: HTTP 401.
+- MAY083 HMAC/DPAPI-authenticated request to the same endpoint: HTTP 400 because
+  task/generation 1 is not currently claimed by MAY083. This proves the route
+  and authentication boundary are deployed and fail closed; it does not prove
+  a real B2 transfer.
+- Authenticated `worker_ping`: PASS; production `workers.last_seen_at` advanced
+  to `2026-08-08 03:57:49.917489+00`, `status=idle`.
+- P2 exposed a separate real defect: the gateway rejected taskless
+  `report_worker_state_transition(ACTIVE_IDLE)` with HTTP 400. The fix adds a
+  strict state allowlist and optional positive task ID for this operation;
+  targeted regression tests pass. Production state transition is pending the
+  deployment containing that follow-up fix.
+
 ## Supabase boundary
 
 No schema/migration change is required. Supabase documentation confirms secret

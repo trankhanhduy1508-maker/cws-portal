@@ -83,4 +83,39 @@ describe('WorkerRpcService', () => {
       p_generation: 7,
     });
   });
+
+  it('allows an authenticated idle transition without a task or generation', async () => {
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: true, error: null }),
+    };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await service.call('report_worker_state_transition', 'worker-a', {
+      p_worker_id: 'attacker',
+      p_to_state: 'ACTIVE_IDLE',
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'report_worker_state_transition',
+      {
+        p_worker_id: 'worker-a',
+        p_to_state: 'ACTIVE_IDLE',
+      },
+    );
+  });
+
+  it('rejects forged or unknown Worker state transition fields', async () => {
+    const supabase = { rpc: jest.fn() };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await expect(
+      service.call('report_worker_state_transition', 'worker-a', {
+        p_to_state: 'ADMIN',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.call('report_worker_state_transition', 'worker-a', {
+        p_to_state: 'RENDERING',
+        p_task_id: '42',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
 });

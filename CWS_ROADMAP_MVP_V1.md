@@ -9,6 +9,9 @@
   its DPAPI-protected HMAC identity and needs no `CWS_B2_*` secret/configuration.
 - **NEEDS_VERIFICATION**: deploy Backend and prove real capability download,
   Blender output upload, completion and P2-P6 production runtime.
+- **P2 FIXED/CODE VERIFIED**: Backend now permits authenticated taskless
+  `ACTIVE_IDLE` reporting while allowlisting Worker states; this removes the
+  production 400 that left MAY083's observed state stale after a valid ping.
 - Evidence: `reports/security/CWS_JOB_SCOPED_B2_CAPABILITY_2026-08-08.md`.
 
 ## Production E2E Roadmap V2.2 P0 — 2026-08-08 [DONE]
