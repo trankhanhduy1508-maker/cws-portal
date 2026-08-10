@@ -1,6 +1,6 @@
 # CWS AGENTS
 
-> Version: 3.2 — mandatory grounding + staleness gates 2026-08-10.
+> Version: 3.3 — grounding, staleness, and Founder idea gates 2026-08-10.
 
 ## Model Policy
 Before selecting/delegating a model, read `MODEL_POLICY.md`. It is the model-routing source of truth.
@@ -10,13 +10,14 @@ Before selecting/delegating a model, read `MODEL_POLICY.md`. It is the model-rou
 2. `CWS_GROUNDING_POLICY.md` — **mandatory evidence-grounding gate before trusting any material claim**.
 3. `CWS_STALENESS_GUARD.md` — **mandatory semantic-drift check before trusting roadmap or other governing prose**.
 4. `CWS_ROADMAP.md` — **single canonical roadmap** for product/production direction and milestone status.
-5. `CWS_MVP_WORKFLOW_FINAL.md` — customer business workflow.
-6. `DECISIONS.md` — active product/architecture/security/payment decisions.
-7. `PROJECT_CONTEXT.md` — compact current product/architecture context.
-8. `CWS_DATABASE_SCHEMA.md` + applied migrations — data model/runtime schema truth.
-9. `.specify/memory/constitution.md` — governing execution principles.
-10. `CWS_EXECUTION_FUNNEL.md` — Reality/Diagnosis/Root Cause/One Bottleneck gate.
-11. Relevant architecture/scale docs, code, tests and current evidence under `reports/`.
+5. `FOUNDER_IDEA_VAULT.md` — dormant future initiatives and evidence-backed activation gates; memory only, not active roadmap.
+6. `CWS_MVP_WORKFLOW_FINAL.md` — customer business workflow.
+7. `DECISIONS.md` — active product/architecture/security/payment decisions.
+8. `PROJECT_CONTEXT.md` — compact current product/architecture context.
+9. `CWS_DATABASE_SCHEMA.md` + applied migrations — data model/runtime schema truth.
+10. `.specify/memory/constitution.md` — governing execution principles.
+11. `CWS_EXECUTION_FUNNEL.md` — Reality/Diagnosis/Root Cause/One Bottleneck gate.
+12. Relevant architecture/scale docs, code, tests and current evidence under `reports/`.
 
 ### Grounding gate — mandatory
 Before Diagnosis, Root Cause, Specify, architecture/security/payment/product recommendations, implementation based on a factual assumption, or any DONE/production claim, apply `CWS_GROUNDING_POLICY.md`.
@@ -40,10 +41,24 @@ If a material instruction appears obsolete because of newer Owner decisions, cod
 
 File age alone is not proof that a document is stale.
 
+### Founder idea gate — mandatory
+`FOUNDER_IDEA_VAULT.md` preserves future Founder ideas that must not distract the active CWS roadmap.
+
+For every major scale/runtime verification cycle and during Pre-DONE review, check whether new grounded evidence satisfies any `DORMANT` idea's activation gate.
+
+If a gate is satisfied:
+- do not implement the idea automatically;
+- report `FOUNDER IDEA GATE REACHED — <IDEA-ID>`;
+- cite the runtime evidence that satisfies the trigger;
+- ask Founder for explicit approval before planning/implementation;
+- only after approval may the idea enter the normal CWS execution funnel.
+
+If the gate is not satisfied, keep the idea `DORMANT` and do not divert work from the current CWS bottleneck.
+
 ### Conflict rules
 - Current real runtime/code/schema evidence overrides assumptions and stale historical prose.
 - More recent explicit Owner decision overrides older conflicting decisions.
-- `CWS_ROADMAP.md` is the only active roadmap; versioned roadmap files are historical and must not be recreated as competing sources.
+- `CWS_ROADMAP.md` is the only active roadmap; `FOUNDER_IDEA_VAULT.md` is not a roadmap and cannot create current work by itself.
 - `CWS_MVP_WORKFLOW_FINAL.md` owns customer business ordering.
 - `DECISIONS.md` owns explicit active decisions.
 - When active documents conflict, ground the facts, invoke `CWS_STALENESS_GUARD.md`, stop affected implementation, report, and reconcile first.
@@ -51,7 +66,7 @@ File age alone is not proof that a document is stale.
 ## Mandatory execution funnel
 Every CWS idea/change must pass:
 
-`Grounding -> Staleness Check -> Reality -> Diagnosis -> Root Cause -> One Current Bottleneck -> Constitution -> Specify -> Clarify (when needed) -> Plan -> Tasks -> Analyze -> Implement -> Converge/Verify -> Grounding Sweep -> Staleness Sweep`
+`Grounding -> Staleness Check -> Reality -> Diagnosis -> Root Cause -> One Current Bottleneck -> Constitution -> Specify -> Clarify (when needed) -> Plan -> Tasks -> Analyze -> Implement -> Converge/Verify -> Grounding Sweep -> Staleness Sweep -> Founder Idea Gate Check`
 
 Do not jump directly from idea/screenshot/bug report to code.
 
@@ -99,7 +114,7 @@ Binding rules:
 ## Definition of Done
 A change is DONE only with:
 
-`Implementation + Tests + Evidence + Source-of-Truth Sync + Grounding Sweep + Staleness Sweep + Commit`
+`Implementation + Tests + Evidence + Source-of-Truth Sync + Grounding Sweep + Staleness Sweep + Founder Idea Gate Check + Commit`
 
 For production-workflow claims, distinguish:
 - `CODE VERIFIED`
@@ -120,7 +135,8 @@ After completed work update, as applicable:
 
 Before DONE:
 1. run the Pre-DONE Grounding Sweep from `CWS_GROUNDING_POLICY.md`;
-2. run the Converge/Verify staleness sweep from `CWS_STALENESS_GUARD.md`.
+2. run the Converge/Verify staleness sweep from `CWS_STALENESS_GUARD.md`;
+3. check `FOUNDER_IDEA_VAULT.md` against newly produced grounded evidence.
 
 If evidence is insufficient, downgrade to `NEEDS_VERIFICATION`/`BLOCKED` instead of guessing. If the completed change made an active document inaccurate, sync it in the same cycle or issue a Founder alert when product intent is ambiguous.
 
@@ -148,3 +164,4 @@ Use only:
 - Do not create a new repository/project/service/bucket/database/payment project without explicit Owner approval.
 - Do not recreate deleted versioned roadmaps as active instructions.
 - Historical evidence may refer to old roadmap names; that is acceptable because evidence is immutable history, not current direction.
+- Dormant ideas in `FOUNDER_IDEA_VAULT.md` are preserved memory, not permission to implement them.
