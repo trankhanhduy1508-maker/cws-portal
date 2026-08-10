@@ -5,4 +5,4 @@
 - [x] T3 Create `CWS_STALENESS_GUARD.md`.
 - [x] T4 Update `AGENTS.md` read order and reconciliation rules.
 - [x] T5 Add a learning/evidence note.
-- [ ] T6 Verify documentation-only diff and merge to main.
+- [x] T6 Verify documentation-only diff and merge to main.
