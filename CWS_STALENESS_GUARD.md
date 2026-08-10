@@ -2,13 +2,16 @@
 
 > Mandatory semantic-drift gate for every AI agent working on CWS.
 
+## Dependency: ground before judging staleness
+Before this guard decides that a document is stale, apply `CWS_GROUNDING_POLICY.md` to the material claims involved. Staleness must be based on current evidence, not intuition or memory.
+
 ## Purpose
 CWS changes quickly. A document can remain syntactically valid while its product direction, status, architecture assumptions, workflow order, or implementation guidance has become obsolete. Agents must detect that drift before using the document as authority.
 
 ## Mandatory timing
 Run this guard:
-1. at the start of every work cycle, immediately after reading `CURRENT_STATUS.md` and before trusting `CWS_ROADMAP.md` or other governing docs;
-2. whenever newer code/schema/runtime evidence conflicts with prose;
+1. at the start of every work cycle, after `CURRENT_STATUS.md` and `CWS_GROUNDING_POLICY.md`, before trusting `CWS_ROADMAP.md` or other governing docs;
+2. whenever newer grounded code/schema/runtime evidence conflicts with prose;
 3. after any explicit Owner decision that changes product/workflow/architecture direction;
 4. during Converge/Verify before a task is declared DONE.
 
@@ -26,7 +29,7 @@ A document is **SUSPECTED STALE** when one or more of these are true:
 **File age alone is NOT proof of staleness.** A six-month-old invariant may still be correct; a one-hour-old document may already be wrong after a later decision.
 
 ## Required comparison set
-For the current task, compare the relevant instruction against:
+For the current task, compare the relevant instruction against grounded evidence from:
 - latest explicit Owner decisions recorded in `DECISIONS.md`;
 - `CURRENT_STATUS.md`;
 - canonical `CWS_ROADMAP.md`;
@@ -36,6 +39,8 @@ For the current task, compare the relevant instruction against:
 - newest relevant production/runtime evidence under `reports/`;
 - current architecture/security/scale docs for the affected boundary.
 
+If a supposed conflict is only an inference/hypothesis, label it accordingly and do not automatically rewrite product intent.
+
 ## Severity and behavior
 
 ### BLOCKING STALE-DOC ALERT
@@ -44,7 +49,7 @@ Use when the suspected stale instruction can materially change the current task,
 The agent MUST:
 1. stop implementation that depends on the suspect instruction;
 2. report the conflict to the Founder;
-3. show the old instruction, the newer conflicting evidence/decision, and why both cannot be true;
+3. show the old instruction, the newer grounded evidence/decision, and why both cannot be true;
 4. propose the smallest reconciliation;
 5. wait for Founder confirmation when product intent cannot be proven from existing authoritative evidence.
 
@@ -62,6 +67,7 @@ STALE-DOC ALERT — [BLOCKING | NON-BLOCKING]
 Suspect file/section: <path + section>
 Old instruction: <short summary>
 Conflicting newer source: <decision/evidence/code/schema path>
+Grounding level: <FACT | INFERENCE | HYPOTHESIS | UNKNOWN>
 Why it looks stale: <1-3 sentences>
 Impact if followed: <what would go wrong>
 Recommended reconciliation: <smallest change>
@@ -92,4 +98,4 @@ Before DONE, ask:
 If YES, sync the affected active docs in the same work cycle. Historical reports remain historical and should not be rewritten merely to look current.
 
 ## Core rule
-**Never let an old document pull CWS back into an old architecture. Detect drift first, report it, reconcile the active source of truth, then continue.**
+**Ground the facts first. Then detect drift. Never let an old document pull CWS back into an old architecture.**
