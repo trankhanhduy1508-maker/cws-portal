@@ -1,0 +1,42 @@
+.admin-shell { min-height: 100vh; display: flex; background: #f4f6fb; color: #172033; font-family: Inter, sans-serif; }
+.admin-sidebar { width: 236px; flex: 0 0 236px; background: #111827; color: #cbd5e1; padding: 24px 14px; box-sizing: border-box; }
+.admin-brand { display: flex; align-items: center; gap: 10px; color: #fff; font: 600 20px 'Space Grotesk', sans-serif; padding: 0 12px 28px; }
+.admin-brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: #3b5bff; color: #fff; font-size: 14px; }
+.admin-nav { display: grid; gap: 4px; }
+.admin-nav button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 12px; border: 0; border-radius: 9px; background: transparent; color: #94a3b8; text-align: left; cursor: pointer; font: 500 13px Inter, sans-serif; }
+.admin-nav button:hover, .admin-nav button[aria-current="page"] { background: #1e293b; color: #fff; }
+.admin-main { min-width: 0; flex: 1; padding: 28px 34px 48px; }
+.admin-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 28px; }
+.admin-eyebrow { color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.admin-title { margin: 4px 0 0; font: 600 28px 'Space Grotesk', sans-serif; letter-spacing: -.02em; }
+.admin-actions { display: flex; gap: 8px; }
+.admin-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #dbe1ea; border-radius: 8px; background: #fff; color: #243047; padding: 9px 12px; cursor: pointer; font: 600 12px Inter, sans-serif; }
+.admin-btn:hover { border-color: #9aa9ff; color: #2540cc; }
+.admin-btn--primary { border-color: #3b5bff; background: #3b5bff; color: #fff; }
+.admin-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.admin-card { border: 1px solid #e2e7ef; border-radius: 12px; background: #fff; box-shadow: 0 3px 16px rgba(15, 23, 42, .04); }
+.admin-stat { padding: 18px; }
+.admin-stat-label { color: #64748b; font-size: 12px; }
+.admin-stat-value { margin-top: 8px; font: 600 26px 'Space Grotesk', sans-serif; }
+.admin-stat-meta { margin-top: 4px; color: #94a3b8; font-size: 11px; }
+.admin-section { margin-top: 18px; padding: 18px; }
+.admin-section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.admin-section h2 { margin: 0; font: 600 16px 'Space Grotesk', sans-serif; }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 700px; font-size: 12px; }
+.admin-table th { padding: 10px 12px; color: #64748b; background: #f8fafc; text-align: left; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.admin-table td { padding: 12px; border-top: 1px solid #edf0f5; vertical-align: middle; }
+.admin-table tr:hover td { background: #fbfcff; }
+.admin-muted { color: #94a3b8; }
+.admin-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.admin-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 8px; background: #eef2f7; color: #475569; font-size: 11px; font-weight: 700; }
+.admin-pill--good { background: #dcfce7; color: #166534; }
+.admin-pill--warn { background: #fef3c7; color: #92400e; }
+.admin-pill--bad { background: #fee2e2; color: #991b1b; }
+.admin-alert { margin-bottom: 16px; border: 1px solid #fecaca; border-radius: 9px; padding: 11px 13px; background: #fff1f2; color: #9f1239; font-size: 13px; }
+.admin-empty { padding: 24px; color: #94a3b8; text-align: center; }
+.admin-form { display: grid; grid-template-columns: 1fr 140px 140px auto; gap: 10px; align-items: end; }
+.admin-field { display: grid; gap: 6px; color: #64748b; font-size: 11px; font-weight: 700; }
+.admin-field input { min-width: 0; border: 1px solid #dbe1ea; border-radius: 8px; padding: 10px; color: #172033; font: 12px Inter, sans-serif; }
+@media (max-width: 900px) { .admin-sidebar { width: 190px; flex-basis: 190px; } .admin-main { padding: 22px 18px 38px; } .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-form { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .admin-shell { display: block; } .admin-sidebar { width: 100%; padding: 14px; } .admin-brand { padding: 0 8px 14px; } .admin-nav { display: flex; overflow-x: auto; } .admin-nav button { min-width: max-content; } .admin-topbar { align-items: flex-start; flex-direction: column; } .admin-grid { grid-template-columns: 1fr 1fr; } }
