@@ -10,4 +10,4 @@
 - [x] T8 Remove obsolete roadmap files after folding valid content into canonical roadmap.
 - [x] T9 Add engineering/documentation learning log.
 - [x] T10 Analyze active docs for stale roadmap authority and approval-gate wording; governance docs now point to one roadmap and explicitly forbid the approval gate.
-- [ ] T11 Compare branch against main and merge only documentation changes.
+- [x] T11 Compare branch against main and merge only documentation changes.
