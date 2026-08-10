@@ -1,20 +1,32 @@
 # CWS AGENTS
 
-> Version: 3.0 — source-of-truth reconciliation 2026-08-10.
+> Version: 3.1 — mandatory staleness guard 2026-08-10.
 
 ## Model Policy
 Before selecting/delegating a model, read `MODEL_POLICY.md`. It is the model-routing source of truth.
 
 ## Source of Truth — mandatory read order
 1. `CURRENT_STATUS.md` — current phase, current task, next verified bottleneck.
-2. `CWS_ROADMAP.md` — **single canonical roadmap** for product/production direction and milestone status.
-3. `CWS_MVP_WORKFLOW_FINAL.md` — customer business workflow.
-4. `DECISIONS.md` — active product/architecture/security/payment decisions.
-5. `PROJECT_CONTEXT.md` — compact current product/architecture context.
-6. `CWS_DATABASE_SCHEMA.md` + applied migrations — data model/runtime schema truth.
-7. `.specify/memory/constitution.md` — governing execution principles.
-8. `CWS_EXECUTION_FUNNEL.md` — Reality/Diagnosis/Root Cause/One Bottleneck gate.
-9. Relevant architecture/scale docs, code, tests and current evidence under `reports/`.
+2. `CWS_STALENESS_GUARD.md` — **mandatory semantic-drift check before trusting roadmap or other governing prose**.
+3. `CWS_ROADMAP.md` — **single canonical roadmap** for product/production direction and milestone status.
+4. `CWS_MVP_WORKFLOW_FINAL.md` — customer business workflow.
+5. `DECISIONS.md` — active product/architecture/security/payment decisions.
+6. `PROJECT_CONTEXT.md` — compact current product/architecture context.
+7. `CWS_DATABASE_SCHEMA.md` + applied migrations — data model/runtime schema truth.
+8. `.specify/memory/constitution.md` — governing execution principles.
+9. `CWS_EXECUTION_FUNNEL.md` — Reality/Diagnosis/Root Cause/One Bottleneck gate.
+10. Relevant architecture/scale docs, code, tests and current evidence under `reports/`.
+
+### Staleness gate — mandatory
+Before using any roadmap/workflow/decision/context/architecture instruction for implementation, apply `CWS_STALENESS_GUARD.md`.
+
+If a material instruction appears obsolete because of newer Owner decisions, code/schema/runtime evidence, or another active source of truth:
+- do not silently follow the old instruction;
+- issue the standard `STALE-DOC ALERT`;
+- if the conflict affects the current task, stop implementation that depends on it until reconciled or Founder-confirmed;
+- if unrelated to the current task, report it as non-blocking and continue only unrelated safe work.
+
+File age alone is not proof that a document is stale.
 
 ### Conflict rules
 - Current real runtime/code/schema evidence overrides assumptions and stale historical prose.
@@ -22,7 +34,7 @@ Before selecting/delegating a model, read `MODEL_POLICY.md`. It is the model-rou
 - `CWS_ROADMAP.md` is the only active roadmap; versioned roadmap files are historical and must not be recreated as competing sources.
 - `CWS_MVP_WORKFLOW_FINAL.md` owns customer business ordering.
 - `DECISIONS.md` owns explicit active decisions.
-- When active documents conflict, stop implementation and reconcile the documents first.
+- When active documents conflict, invoke `CWS_STALENESS_GUARD.md`, stop affected implementation, report, and reconcile first.
 
 ## Mandatory execution funnel
 Every CWS idea/change must pass:
@@ -72,7 +84,7 @@ Binding rules:
 ## Definition of Done
 A change is DONE only with:
 
-`Implementation + Tests + Evidence + Source-of-Truth Sync + Commit`
+`Implementation + Tests + Evidence + Source-of-Truth Sync + Staleness Sweep + Commit`
 
 For production-workflow claims, distinguish:
 - `CODE VERIFIED`
@@ -90,6 +102,8 @@ After completed work update, as applicable:
 - relevant workflow/architecture/API docs
 - evidence/report under `reports/`
 - engineering learning log/report with problems, root causes, fixes, failed approaches, completed work, lessons/rules, remaining risks and next verified bottleneck.
+
+Before DONE, run the Converge/Verify staleness sweep from `CWS_STALENESS_GUARD.md`. If the completed change made an active document inaccurate, sync it in the same cycle or issue a Founder alert when product intent is ambiguous.
 
 `CURRENT_STATUS.md` must stay short and current-only:
 - Current Phase
