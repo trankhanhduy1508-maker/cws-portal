@@ -7,15 +7,12 @@
 // ============================================================
 export const JOB_STATUS = {
   IDLE: 'idle',
-  QUEUED: 'queued',                     // đang chờ trong hàng đợi trước khi tìm máy
+  QUEUED: 'queued',
   SEARCHING_WORKERS: 'searching_workers',
   ALLOCATING_WORKERS: 'allocating_workers',
   WORKERS_CONNECTED: 'workers_connected',
   RENDERING: 'rendering',
   REVIEW_READY: 'review_ready',
-  /** Khách đã duyệt preview — QR MB Bank đã sinh, chờ webhook xác nhận
-   * PAID trước khi mở tải (KHÔNG chặn việc render, chỉ chặn việc tải
-   * file gốc — render đã xong từ trước bước này). */
   AWAITING_PAYMENT: 'awaiting_payment',
   PACKAGING: 'packaging',
   FINISHED: 'finished',
@@ -29,68 +26,24 @@ export const STAGE_SEQUENCE = [
   { key: JOB_STATUS.ALLOCATING_WORKERS, label: 'Đang phân bổ máy' },
   { key: JOB_STATUS.WORKERS_CONNECTED, label: 'Đã kết nối máy xử lý' },
   { key: JOB_STATUS.RENDERING, label: 'Đang render' },
-  { key: JOB_STATUS.REVIEW_READY, label: 'Chờ bạn duyệt bản xem trước' },
+  { key: JOB_STATUS.REVIEW_READY, label: 'Kết quả xem trước đã sẵn sàng' },
   { key: JOB_STATUS.AWAITING_PAYMENT, label: 'Chờ thanh toán' },
-  { key: JOB_STATUS.PACKAGING, label: 'Đang đóng gói kết quả' },
+  { key: JOB_STATUS.PACKAGING, label: 'Đang hoàn tất kết quả' },
   { key: JOB_STATUS.FINISHED, label: 'Hoàn thành' },
 ];
 
-// Nhãn hiển thị cho MỌI trạng thái có thể có của 1 job — dùng chung cho
-// Progress Screen (qua STAGE_SEQUENCE ở trên) lẫn Job Dashboard/History
-// (cần thêm cả ERROR/CANCELLED mà STAGE_SEQUENCE không có, vì đó không
-// phải "giai đoạn" mà là điểm kết thúc bất thường).
 export const JOB_STATUS_LABEL = {
   ...Object.fromEntries(STAGE_SEQUENCE.map((s) => [s.key, s.label])),
   [JOB_STATUS.ERROR]: 'Lỗi',
   [JOB_STATUS.CANCELLED]: 'Đã hủy',
 };
 
-// ============================================================
-// RENDER PROFILE — thay cho speed selector đơn giản trước đây. Mỗi
-// profile có hệ số riêng cho ETA/giá/hàng đợi — dùng để mock ước tính,
-// Backend thật sẽ thay bằng số liệu tính từ Scheduler/Worker Pool thật.
-// ============================================================
-export const RENDER_PROFILES = [
-  {
-    id: 'economy',
-    label: 'Economy',
-    tagline: 'Rẻ nhất, phù hợp render qua đêm',
-    durationMultiplier: 1.8,
-    costMultiplier: 0.6,
-    queueMultiplier: 2.2,
-  },
-  {
-    id: 'standard',
-    label: 'Standard',
-    tagline: 'Cân bằng giá và tốc độ',
-    durationMultiplier: 1.0,
-    costMultiplier: 1.0,
-    queueMultiplier: 1.0,
-    recommended: true,
-  },
-  {
-    id: 'priority',
-    label: 'Priority',
-    tagline: 'Ưu tiên máy xử lý, nhanh hơn',
-    durationMultiplier: 0.65,
-    costMultiplier: 1.6,
-    queueMultiplier: 0.4,
-  },
-  {
-    id: 'turbo',
-    label: 'Turbo',
-    tagline: 'Nhanh nhất, dùng tối đa số máy khả dụng',
-    durationMultiplier: 0.4,
-    costMultiplier: 2.4,
-    queueMultiplier: 0.1,
-  },
-];
+// Customer không chọn tốc độ/tier hay số Worker. Scheduler quyết định
+// tài nguyên tự động theo deadline và capacity thật.
 
 // ============================================================
 // PAYMENT — MVP chỉ dùng MB Bank QR, sinh SAU khi render/output lock/preview
-// thật — không có lựa chọn phương thức
-// nào để chọn (chỉ 1 phương thức duy nhất), nên không cần hằng số
-// PAYMENT_METHOD/PAYMENT_METHODS nữa.
+// thật — không có lựa chọn phương thức.
 // ============================================================
 export const PAYMENT_STATUS = {
   UNPAID: 'unpaid',
@@ -106,19 +59,14 @@ export const PAYMENT_STATUS_LABEL = {
   [PAYMENT_STATUS.FAILED]: 'Thanh toán thất bại',
 };
 
-// Định dạng file được chấp nhận — đổi ở đây khi Backend hỗ trợ thêm định dạng
 export const ACCEPTED_FILE_EXTENSIONS = ['.blend', '.zip', '.rar'];
-export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB, điều chỉnh khi có giới hạn thật từ Backend
+export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
 
-// Nguồn file đầu vào — người dùng chọn 1 trong 2
 export const FILE_SOURCE = {
   UPLOAD: 'upload',
   GOOGLE_DRIVE: 'google_drive',
 };
 
-// Chỉ nhận Google Drive file links trong Customer input contract.
-// Việc link có tồn tại/quyền truy cập hay không vẫn phải được Backend resolve
-// thật; frontend không coi URL tự thân là materialized input.
 export const GOOGLE_DRIVE_LINK_PATTERN =
   /^https:\/\/drive\.google\.com\/(file\/d\/[\w-]+|open\?id=[\w-]+|uc\?id=[\w-]+)/;
 export const SHARED_LINK_PATTERNS = [GOOGLE_DRIVE_LINK_PATTERN];
