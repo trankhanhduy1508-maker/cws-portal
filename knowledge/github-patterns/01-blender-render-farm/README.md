@@ -4,6 +4,14 @@
 > Snapshot: 2026-08-12
 > CWS mapping: Blender metadata/preflight, frame/task partitioning, render execution, Worker allocation, farm-scale scheduling.
 
+## Specialist references
+
+For Blender EEVEE / EEVEE Next work, also read:
+
+`knowledge/github-patterns/01-blender-render-farm/EEVEE_RENDERING.md`
+
+That note contains EEVEE-specific source ranking, engine/version compatibility, Worker eligibility, material-preservation rules, runtime evidence and animation/finalization guidance. It does **not** authorize switching render engines or adding external Blender forks/add-ons.
+
 ## Primary top-tier sources
 
 ### 1. `blender/blender` — official Blender mirror — ~18.7k stars
@@ -141,5 +149,7 @@ Read this note when working on:
 - Worker device eligibility;
 - render task failure semantics;
 - Adaptive Deadline Scheduler.
+
+If the task is EEVEE/EEVEE Next specific, also read `EEVEE_RENDERING.md` in this folder.
 
 Before code, still ground active CWS spec/schema/Worker implementation. External patterns are reference only.
