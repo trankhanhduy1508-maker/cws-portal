@@ -5,19 +5,31 @@
 ## Product / Roadmap
 
 ### [ACTIVE — 2026-08-10] One canonical roadmap
-`CWS_ROADMAP.md` is the only active CWS roadmap. Versioned roadmap files (`CWS_ROADMAP_MVP_V1.md`, Production E2E V2.2/V2.3/V2.4) are historical and must not be used or recreated as competing source-of-truth instructions.
+`CWS_ROADMAP.md` is the only active CWS roadmap. Versioned roadmap files are historical and must not be used or recreated as competing source-of-truth instructions.
 
-### [ACTIVE — 2026-08-10] Canonical customer input/job order
-Customer flow begins:
+### [ACTIVE — 2026-08-11] Customer login is the first operational gate
+Customer MVP operational flow begins with Google OAuth. Unauthenticated visitors may see product/marketing copy, but Upload/Drive submission is not an operational step until a valid customer session exists.
 
-`Google Login -> Upload/Google Drive -> backend materialize into canonical B2 storage -> validate content/signature + ownership -> create customer-owned Job -> Task/Worker execution`
+Canonical front-of-flow order:
 
-Do not create the production Job before the submitted input has been materialized/validated and bound to the authenticated customer.
+`Google Login -> authenticated Upload/Google Drive -> backend materialize into canonical B2 storage -> validate content/signature + ownership -> choose approved render mode -> create customer-owned Job -> Task/Worker execution`
+
+The previous “choose input first, login only when pressing Render” behavior is superseded.
 
 ### [ACTIVE] Customer authentication
 Customer MVP uses Google OAuth through Supabase Auth. No Facebook, Zalo or customer email/password flow. Customer identity and upload/job ownership are verified server-side.
 
 ## Customer Workflow / Pricing / Payment
+
+### [ACTIVE — 2026-08-11] Customer render-mode choice
+Customer chooses service/speed preference, never GPU/CPU hardware.
+
+Current public modes are:
+- Economy
+- Balanced/Standard
+- Priority
+
+Do not expose additional public modes without a new active product decision. Backend/internal compatibility identifiers may remain if required for existing data/contracts.
 
 ### [ACTIVE — 2026-08-10] Render-before-payment; no customer approval gate
 Canonical order:
@@ -37,8 +49,10 @@ Use SePay webhook for the main MVP payment-detection path. Sandbox/test and live
 
 ## Input / Blender / Output
 
-### [ACTIVE] Supported input
-Customer input supports `.blend`, `.zip`, `.rar`, and approved Google Drive file links. Extension alone is not trusted; content/signature and size/resource limits are enforced.
+### [ACTIVE — 2026-08-11] Supported public customer input
+Customer MVP input supports `.blend`, `.zip`, `.rar`, and approved Google Drive file links. OneDrive, Dropbox and arbitrary direct-link ingestion are not part of the public canonical workflow unless explicitly approved later and backed by real materialization/validation.
+
+Extension alone is not trusted; content/signature and size/resource limits are enforced.
 
 ### [ACTIVE] B2-first canonical materialization
 Production customer input is materialized into canonical B2 storage before Worker processing. Google Drive is an ingestion source, not a reason for every Worker to need a Drive API key.
@@ -59,7 +73,7 @@ Full output is validated and uploaded to B2 before payment, remains locked until
 ## Worker / Scheduler / Security
 
 ### [ACTIVE] Production runtime must work without AI
-Normal scheduling, Worker claim/heartbeat, render, progress, retries, storage, payment matching, delivery, cleanup and recovery cannot require ChatGPT/Codex/Founder intervention.
+Normal scheduling, Worker claim/heartbeat, render, progress, retries, storage, payment matching, delivery, cleanup and recovery cannot require ChatGPT/Codex/Founder/Admin intervention.
 
 ### [ACTIVE] Worker identity/enrollment
 Workers use stable system-managed identity with authenticated enrollment. Do not infer identity from hostname/GPU/registration age. No shared fleet secret or manual per-Worker DB edits as the normal scale path.
@@ -82,11 +96,12 @@ Worker operation retry is bounded and jittered. Task failover/retry authority re
 Admin is a separate frontend application and production hostname from the Customer Portal.
 
 - Customer frontend: `cws-portal.vercel.app`.
-- Admin frontend target: `cws-admin.vercel.app`.
+- Admin frontend: `cws-admin.vercel.app`.
 - Both frontends remain in the same canonical GitHub repository but build/deploy independently.
 - Admin must mount only the Admin UI tree; Customer UI must not be mounted or used as a routing fallback in the Admin build.
 - The split does **not** create a second backend, Supabase project, B2 bucket, Worker fleet, SePay integration, or business-data source of truth.
-- Keep the legacy Customer Portal `/admin` route only as a temporary rollback path until the separate Admin production hostname is verified; then retire or redirect it in a follow-up.
+
+Admin UX/MFA refinement is currently deferred while Customer Golden E2E is the active bottleneck.
 
 ### [ACTIVE] Admin authentication
 Admin/Host staff use Google OAuth through Supabase plus required Supabase TOTP/AAL2 and explicit staff role authorization. Customer authentication and Admin authentication are separate flows. A separate hostname is not an authorization bypass; backend role/AAL2 enforcement remains mandatory.
@@ -97,7 +112,7 @@ Customer profile data from the authenticated Google/Supabase account is availabl
 ## Architecture / Scale / Infrastructure
 
 ### [ACTIVE — 2026-08-11] Existing infrastructure with one explicitly approved Admin frontend project
-Use the existing canonical GitHub repo, Render service, Supabase project, Backblaze B2 resources, Worker environment and SePay setup. The Founder explicitly approved one additional Vercel frontend project for the separate Admin application (`cws-admin`). Do not create any other duplicate infrastructure without explicit Owner approval.
+Use the existing canonical GitHub repo, Render service, Supabase project, Backblaze B2 resources, Worker environment and SePay setup. The already-created `cws-admin` Vercel project is the only additional approved frontend resource. Do not create any other duplicate infrastructure without explicit Owner approval.
 
 ### [ACTIVE] Scale without manual operations
 Normal architecture should support growth toward 100/1,000/1,000,000 Workers without manual per-machine/per-job database configuration, copied storage secrets or AI runtime intervention. This is a design constraint, not a claim that those fleet sizes are currently deployed.
