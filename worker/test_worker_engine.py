@@ -406,6 +406,26 @@ class WorkerEngineTests(unittest.TestCase):
                 ).run(spec(frame_end=1))
             self.assertNotIn(("complete", "task-1"), reporter.events)
 
+    def test_reports_metadata_before_render_and_continues(self):
+        class MetadataPreflight:
+            def inspect(self, spec, project):
+                return {"frame_start": 5, "frame_end": 6, "total_frames": 2, "fps": 30.0}
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoints, reporter, metadata = Checkpoints(), Reporter(), []
+            WorkerEngine(
+                Path(tmp), Downloader(), MetadataPreflight(), Renderer(),
+                checkpoints, BasicOutputValidator(10), reporter,
+                metadata_reporter=lambda spec, value: metadata.append(
+                    ("metadata", value, list(checkpoints.puts))
+                ),
+            ).run(spec(frame_start=5, frame_end=6))
+            self.assertEqual(metadata[0][0], "metadata")
+            self.assertEqual(metadata[0][1]["frame_start"], 5)
+            self.assertEqual(metadata[0][2], [])
+            self.assertEqual(checkpoints.puts, [5, 6])
+            self.assertIn(("complete", "task-1"), reporter.events)
+
+
 
 if __name__ == "__main__":
     unittest.main()

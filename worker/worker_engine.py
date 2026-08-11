@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from job_object import WindowsJobObject
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
 from path_boundary import reject_reparse_points
 from resilience_policy import FailureCategory
@@ -160,7 +160,7 @@ class ProjectDownloader(Protocol):
 
 
 class Preflight(Protocol):
-    def inspect(self, spec: JobSpec, project: Path) -> None: ...
+    def inspect(self, spec: JobSpec, project: Path) -> Mapping[str, Any] | None: ...
 
 
 class Renderer(Protocol):
@@ -504,7 +504,7 @@ class BasicPreflight:
     def __init__(self, capabilities: Mapping[str, Any] | None = None):
         self.capabilities = capabilities or {}
 
-    def inspect(self, spec: JobSpec, project: Path) -> None:
+    def inspect(self, spec: JobSpec, project: Path) -> Mapping[str, Any] | None:
         if project.suffix.lower() != ".blend" or not project.is_file():
             raise PermanentWorkerError("project is not a readable .blend file")
         available_vram = int(self.capabilities.get("vram_mb", 0))
@@ -517,6 +517,7 @@ class BasicPreflight:
             raise PermanentWorkerError(
                 "node RAM capability is insufficient", FailureCategory.CAPABILITY_MISMATCH
             )
+        return None
 
 
 class BasicOutputValidator:
@@ -780,7 +781,8 @@ class WorkerEngine:
                  preflight: Preflight, renderer: Renderer,
                  checkpoints: CheckpointStore, validator: OutputValidator,
                  reporter: Reporter, guard: AttemptGuard | None = None,
-                 preparer: BlendPreparer | None = None):
+                 preparer: BlendPreparer | None = None,
+                 metadata_reporter: Callable[[JobSpec, Mapping[str, Any]], None] | None = None):
         self.workspace_root = workspace_root.resolve()
         self.downloader = downloader
         self.preflight = preflight
@@ -790,6 +792,7 @@ class WorkerEngine:
         self.reporter = reporter
         self.guard = guard
         self.preparer = preparer
+        self.metadata_reporter = metadata_reporter
 
     def _guard(self, spec: JobSpec, state: str) -> None:
         if self.guard is None:
@@ -832,7 +835,9 @@ class WorkerEngine:
                     "resolved project escaped job workspace", FailureCategory.SECURITY_VIOLATION
                 )
             self.reporter.stage(spec, "PREFLIGHT")
-            self.preflight.inspect(spec, project)
+            metadata = self.preflight.inspect(spec, project)
+            if metadata is not None and self.metadata_reporter is not None:
+                self.metadata_reporter(spec, metadata)
             self.reporter.stage(spec, "PREPARING")
             if self.preparer is not None:
                 self.reporter.stage(spec, "OPTIMIZING")
