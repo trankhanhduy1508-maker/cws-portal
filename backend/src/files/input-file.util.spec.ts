@@ -33,25 +33,32 @@ describe('hasValidInputSignature', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  it.each([
+  const validSignatures: Array<[string, Buffer]> = [
     ['scene.blend', Buffer.from('BLENDER-v305')],
     ['project.zip', Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00])],
     ['project.rar', Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00])],
-  ])('accepts a valid %s signature', async (fileName, bytes) => {
+  ];
+
+  it.each(validSignatures)('accepts a valid %s signature', async (fileName, bytes) => {
     const filePath = join(directory, fileName);
     await writeFile(filePath, bytes);
     await expect(hasValidInputSignature(filePath, fileName)).resolves.toBe(true);
   });
 
-  it.each([
+  const mismatchedSignatures: Array<[string, Buffer]> = [
     ['scene.blend', Buffer.from([0x50, 0x4b, 0x03, 0x04])],
     ['project.zip', Buffer.from('not-a-zip')],
     ['project.rar', Buffer.from('BLENDER-v305')],
-  ])('rejects a signature/content mismatch for %s', async (fileName, bytes) => {
-    const filePath = join(directory, fileName);
-    await writeFile(filePath, bytes);
-    await expect(hasValidInputSignature(filePath, fileName)).resolves.toBe(false);
-  });
+  ];
+
+  it.each(mismatchedSignatures)(
+    'rejects a signature/content mismatch for %s',
+    async (fileName, bytes) => {
+      const filePath = join(directory, fileName);
+      await writeFile(filePath, bytes);
+      await expect(hasValidInputSignature(filePath, fileName)).resolves.toBe(false);
+    },
+  );
 
   it('rejects a missing or unreadable file', async () => {
     await expect(
