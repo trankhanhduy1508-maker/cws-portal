@@ -1,6 +1,6 @@
 # CWS Roadmap — Canonical
 
-> **Single roadmap source of truth.** Updated 2026-08-10.
+> **Single roadmap source of truth.** Updated 2026-08-11.
 > Historical roadmap versions are not active instructions. Runtime evidence under `reports/` remains historical proof.
 
 ## 1. Product Goal
@@ -23,15 +23,17 @@ Build a production CWS MVP where a customer can submit a real Blender project, h
 - Final customer pricing keeps the approved **2.5x multiplier** over the verified cost basis. The underlying base rate/cost source is configuration/decision-driven; do not invent a new hard-coded base rate from this roadmap.
 
 ## 3. Canonical Architecture
-- Frontend: existing Vercel project / production portal.
-- Backend/API: existing Render.com service.
-- Database/Auth: existing Supabase project.
+- Customer frontend: existing Vercel project `cws-portal.vercel.app`.
+- Admin frontend: separate React/Vite build in the same repo, target Vercel hostname `cws-admin.vercel.app`; Admin build mounts only the Admin tree.
+- Backend/API: one existing Render.com service shared by Customer and Admin.
+- Database/Auth: one existing Supabase project; Customer Google OAuth and staff Google OAuth + TOTP/AAL2/role checks remain separate auth flows over the same provider.
 - Storage: existing Backblaze B2.
 - Render runtime: canonical Windows Node Agent + generic Worker Engine + Blender CLI/background.
 - Payment detection: SePay webhook; exact reference/content + amount; idempotent/fail-closed.
 - Worker control plane: authenticated Backend gateway; no Supabase service-role key on Workers.
 - Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing; no new broker/Redis until measurement proves a bottleneck.
 - Worker storage access: short-lived task/object-scoped capabilities; no long-lived per-Worker B2 keys.
+- Frontend isolation rule: Customer UI must not be used as an Admin fallback; the separate Admin hostname does not weaken backend authorization.
 
 ## 4. Execution / Governance
 Every CWS change follows:
@@ -44,16 +46,18 @@ Rules:
 - production evidence over simulation;
 - one current E2E bottleneck at a time;
 - existing infrastructure only unless Owner explicitly approves a new resource;
+- the Owner explicitly approved one additional Vercel frontend project named `cws-admin` on 2026-08-11; this does not authorize any other duplicate infrastructure;
 - update the engineering learning log after technical/documentation changes.
 
 ## 5. Current MVP Milestones
 
 ### M0 — Source-of-truth convergence
-**IN_PROGRESS (2026-08-10)**
+**IN_PROGRESS (2026-08-11)**
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
 - `PROJECT_CONTEXT.md`, workflow, decisions, constitution, and agent rules agree.
 - Obsolete roadmap versions removed from active repository instructions.
+- Customer/Admin frontend boundary reflects the Founder-approved separate Admin deployment.
 
 ### M1 — Customer identity + canonical input
 **CODE/SCHEMA PARTIALLY VERIFIED; PRODUCTION E2E NEEDS VERIFICATION**
@@ -114,4 +118,4 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
 
 ## 7. Current Priority
-Finish documentation convergence, then resume the **first real production E2E bottleneck** from `CURRENT_STATUS.md`. Do not open unrelated architecture or optimization work while that bottleneck remains unresolved except security/data-loss containment or explicit Owner reprioritization.
+Complete the Founder-approved separate Admin frontend deployment and production verification without duplicating backend/data infrastructure. After `cws-admin.vercel.app` is verified, return immediately to the first real Golden Production E2E bottleneck from `CURRENT_STATUS.md`.
