@@ -35,14 +35,14 @@ Converge the automatic deadline-planning workflow without redesigning the Worker
 ## Verified Current State
 - Customer Login Gate: implemented/synced.
 - Customer Input Validation Gate: implemented/synced to canonical paths.
-- Public customer-choice gate: removed from canonical Customer create flow.
-- Full legacy tier artifact cleanup: implementation branch prepared; requires CI/merge and DB migration application before production claims.
+- Customer render speed/tier runtime feature cleanup: **MERGED to canonical main in PR #33; GitHub CI #711 PASS**.
+- Obsolete DB column removal: migration exists in main but is **NEEDS_PRODUCTION_APPLICATION/VERIFICATION**; code merge alone does not prove the live Supabase schema changed.
 - Production Node Agent code: synced.
 - Windows auto-start/reboot persistence verification: deferred; not a blocker for the current Customer workflow slice.
 - Golden Production E2E: still **NOT PROVEN**.
 
 ## Current Workflow Mismatch To Remove
-Customer render resource selection must be fully automatic. No active frontend, API, DTO/domain, public response or persistence contract may depend on the removed customer tier feature.
+Customer render resource selection is fully automatic at the active code/API boundary. Do not recreate a customer tier/profile gate.
 
 The next scheduling bottleneck remains the not-yet-converged adaptive Task Graph / Deadline Scheduler path after the preceding metadata/runtime gate is verified at the required evidence level.
 
@@ -72,4 +72,4 @@ Still **NOT PROVEN**. Do not claim PASS from build/test/deployment state alone.
 Implementation must follow the CWS grounding/Spec Kit execution rules, run frontend + backend CI, use only existing approved infrastructure, and gather real customer/Worker/B2/SePay evidence.
 
 ## Last Updated
-2026-08-11 — Founder removed the customer render speed/tier feature entirely; Scheduler owns render capacity automatically under the approved deadline-driven workflow.
+2026-08-11 — Customer render speed/tier runtime feature removed from canonical main via PR #33; CI passed. Live DB migration and Golden Production E2E remain separate verification gates.
