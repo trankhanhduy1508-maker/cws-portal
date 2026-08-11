@@ -5,7 +5,7 @@ import {
 import { JOB_STATUS, STAGE_SEQUENCE } from '../constants/renderConstants';
 
 /**
- * Hook điều phối vòng đời render từ lúc customer tạo job sau upload/profile.
+ * Hook điều phối vòng đời render từ lúc customer tạo job sau input validation.
  * Render chạy trước thanh toán; payment chỉ được tạo sau output lock và
  * preview thật, không cần preview approval.
  * Khác biệt quan trọng so với thiết kế trước: job KHÔNG chạy
@@ -60,7 +60,7 @@ export function useRenderJob() {
 
   /** Tạo job NGAY — render miễn phí, không cần paymentId (thanh toán chỉ
    * diễn ra sau render/output lock/preview, xem payment details từ Backend). */
-  const start = useCallback(async ({ input, profileId }) => {
+  const start = useCallback(async ({ input }) => {
     setStatus(JOB_STATUS.QUEUED);
     setStageProgress(0);
     setResult(null);
@@ -74,7 +74,6 @@ export function useRenderJob() {
       }
       const { jobId: newJobId } = await createJob({
         input,
-        profileId,
         idempotencyKey: idempotencyKeyRef.current,
       });
       setJobId(newJobId);
