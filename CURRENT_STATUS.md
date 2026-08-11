@@ -29,7 +29,7 @@ Binding points:
 ## Current Task
 `specs/008-customer-standard-workflow/`
 
-Re-converge this spec around the new automatic deadline-planning workflow. The next implementation slice must remove the obsolete Render Profile gate and prepare the real path from validated input to one Job plus adaptive Task scheduling without redesigning the Worker security/ownership architecture.
+Ground and implement the next smallest slice of the automatic deadline-planning workflow: adaptive Task Graph / Deadline Scheduler behavior, without redesigning the Worker security/ownership architecture.
 
 ## Verified Current State
 - Customer Login Gate: implemented/synced.
@@ -39,22 +39,21 @@ Re-converge this spec around the new automatic deadline-planning workflow. The n
 - Golden Production E2E: still **NOT PROVEN**.
 
 ## Current Workflow Mismatch To Remove
-Current source still contains obsolete public render-profile UI/constants and estimate flow around Economy/Standard/Priority/Turbo. Those are now stale because the Founder has approved automatic capacity planning instead of customer speed selection.
+The obsolete public Render Profile gate has been removed from the Customer path. Historical/internal profile identifiers remain only where required for compatibility with persisted history and legacy estimate/storage contracts; the Customer create-job payload is profile-free.
 
-Do not simply hide the cards while leaving them as a required backend/job contract. Converge frontend, backend validation, tests and source-of-truth contracts so Start render proceeds without a public mode selection.
+The remaining workflow mismatch is the not-yet-converged adaptive Task Graph / Deadline Scheduler path.
 
 ## Next Required Convergence
-1. Remove public Render Profile/Mode gate from the Customer journey.
-2. Preserve validated/materialized customer-owned input as the only allowed input to Job creation.
-3. Create exactly one Job after Start render.
-4. Analyze frame/work range and create durable non-overlapping Tasks.
-5. Preserve PostgreSQL atomic claim + lease + generation fencing.
-6. Establish initial desired parallel capacity of 10 eligible Workers when possible.
-7. Capture real task/frame runtime observations from useful work already being rendered.
-8. Compute projected final completion with reserved finalization overhead.
-9. Scale desired Worker count upward when the 45-minute target is threatened, with configurable 20–30% safety capacity and integer round-up.
-10. Never allow concurrent duplicate active Task/frame ownership.
-11. Continue through real render/finalization, B2 lock, previews, pricing/payment and delivery.
+1. Preserve validated/materialized customer-owned input as the only allowed input to Job creation.
+2. Create exactly one Job after Start render.
+3. Analyze frame/work range and create durable non-overlapping Tasks.
+4. Preserve PostgreSQL atomic claim + lease + generation fencing.
+5. Establish initial desired parallel capacity of 10 eligible Workers when possible.
+6. Capture real task/frame runtime observations from useful work already being rendered.
+7. Compute projected final completion with reserved finalization overhead.
+8. Scale desired Worker count upward when the 45-minute target is threatened, with configurable 20–30% safety capacity and integer round-up.
+9. Never allow concurrent duplicate active Task/frame ownership.
+10. Continue through real render/finalization, B2 lock, previews, pricing/payment and delivery.
 
 ## Sequenced After Current Customer Gate
 - Continue Admin UI refinement.
