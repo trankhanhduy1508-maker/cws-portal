@@ -13,8 +13,7 @@ import {
 } from './repositories/render-orders.repository.interface';
 import { RenderOrder, JobEstimate } from './domain/render-order';
 import { JobStatus } from './domain/job-status.enum';
-import { RENDER_PROFILES, RenderProfileId } from './domain/render-profile';
-import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
+import { CreateJobDto } from './dto/create-job.dto';
 import { WorkerFleetGateway } from './worker-fleet.gateway';
 import {
   PACKAGING_SERVICE,
@@ -26,40 +25,8 @@ import { PaymentsService } from '../payments/payments.service';
 import { PaymentMethod, PaymentStatus } from '../payments/payment.types';
 import { PricingService } from './services/pricing.service';
 
-/** Thời hạn presigned URL cho ảnh preview — đủ dài để xem trong 1 phiên
- * (modal Admin, màn Review), tự động ký lại mỗi lần gọi GET .../preview
- * nên không cần thời hạn dài hơn. */
 const PREVIEW_URL_TTL_SECONDS = 1800;
-/** Thời hạn presigned URL cho file tải cuối — đủ để trình duyệt bắt đầu
- * tải xong (kể cả mạng chậm/file lớn), ngắn để giảm rủi ro nếu URL vô
- * tình lộ ra (log, lịch sử trình duyệt...). Ký lại mỗi lần gọi
- * GET /jobs/:id/download nên khách bấm tải lại lúc nào cũng có URL mới. */
 const DOWNLOAD_URL_TTL_SECONDS = 300;
-
-/**
- * Ước tính ETA/giá/hàng đợi — CHỦ Ý dùng cùng công thức heuristic thô
- * như mockBackend.js phía Portal (dựa trên dung lượng file), để hành
- * vi nhất quán giữa lúc demo (mock) và lúc chạy Backend thật lần đầu.
- * Đây KHÔNG phải công thức thật cuối cùng — khi có Render Optimizer/
- * Scene Analyzer phân tích thật (đã có sẵn 1 phần trong Worker), nên
- * thay thế hàm này bằng ước tính dựa trên phân tích scene thật.
- */
-function computeEstimate(
-  fileSizeBytes: number | null,
-  profileId: RenderProfileId,
-): JobEstimate {
-  const profile = RENDER_PROFILES[profileId];
-  const sizeMb = fileSizeBytes ? fileSizeBytes / (1024 * 1024) : 80;
-
-  const baseEtaSeconds = Math.max(180, sizeMb * 9);
-  const baseCostVnd = Math.max(15000, sizeMb * 380);
-
-  return {
-    etaSeconds: Math.round(baseEtaSeconds * profile.durationMultiplier),
-    costVnd: Math.round((baseCostVnd * profile.costMultiplier) / 1000) * 1000,
-    queueSeconds: 0, // Số liệu hàng đợi THẬT sẽ do SchedulerService tính (đọc số Worker online thật), không phải số ngẫu nhiên như bản mock.
-  };
-}
 
 @Injectable()
 export class JobsService {
@@ -77,30 +44,18 @@ export class JobsService {
     private readonly pricingService: PricingService,
   ) {}
 
-  async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
-    const baseEstimate = computeEstimate(
-      dto.fileSizeBytes ?? null,
-      dto.profileId ?? RenderProfileId.STANDARD,
-    );
-
-    // Hàng đợi thật: nếu số Worker online hiện tại là 0, báo hàng đợi
-    // ước tính dựa trên số lượng order đang active — đơn giản, trung
-    // thực hơn số ngẫu nhiên của bản mock trước đây.
+  private async buildQueueSnapshot(): Promise<JobEstimate> {
     const onlineWorkers = await this.workerFleetGateway.countOnlineWorkers();
     const activeOrders = await this.ordersRepository.findActiveOrders();
     const queueSeconds =
       onlineWorkers > 0 ? 0 : Math.min(activeOrders.length * 240, 3600);
 
-    return { ...baseEstimate, queueSeconds };
+    // No customer render tier/pre-render price heuristic. These fields remain
+    // only as a neutral compatibility snapshot until the adaptive scheduler
+    // exposes grounded ETA telemetry.
+    return { etaSeconds: 0, costVnd: 0, queueSeconds };
   }
 
-  /**
-   * Tạo job NGAY, không cần thanh toán trước — render là miễn phí, chỉ
-   * việc MỞ TẢI file gốc mới cần thanh toán (CWS_MVP_WORKFLOW_FINAL.md:
-   * Google Login → Job → Upload → Render → Preview → Khách duyệt →
-   * Sinh QR → Webhook → PAID → Mở tải). Payment chỉ được tạo sau, tại
-   * approve() — xem ghi chú ở đó.
-   */
   async createOrder(
     dto: CreateJobDto,
     customerId: string | null = null,
@@ -126,7 +81,6 @@ export class JobsService {
           software: dto.software ?? null,
           softwareVersion: dto.softwareVersion ?? null,
           notes: dto.notes ?? null,
-          profileId: dto.profileId ?? RenderProfileId.STANDARD,
         }),
       )
       .digest('hex');
@@ -143,13 +97,7 @@ export class JobsService {
       return { jobId: existing.id };
     }
 
-    const estimate = await this.estimate({
-      fileRef: dto.fileRef,
-      driveLink: dto.driveLink,
-      fileSizeBytes: dto.fileSizeBytes,
-      profileId: dto.profileId ?? RenderProfileId.STANDARD,
-    });
-
+    const estimate = await this.buildQueueSnapshot();
     const id = randomUUID();
     const projectName =
       dto.fileName ||
@@ -170,7 +118,6 @@ export class JobsService {
       notes: dto.notes ?? null,
       storageCode,
       customerId,
-      profileId: dto.profileId ?? RenderProfileId.STANDARD,
       status: initialStatus,
       stageProgress: 0,
       paymentId: null,
@@ -194,8 +141,6 @@ export class JobsService {
     try {
       await this.ordersRepository.create(order);
     } catch (error) {
-      // A concurrent retry may win the unique database insert. Re-read the
-      // durable row and return it instead of creating/dispatching a duplicate.
       const raced =
         await this.ordersRepository.findByIdempotencyKey(idempotencyKey);
       if (!raced) throw error;
@@ -207,17 +152,11 @@ export class JobsService {
       return { jobId: raced.id };
     }
 
-    // Dispatch cho Worker Fleet ngay (Model 1) — SchedulerService (chạy
-    // định kỳ) sẽ tiếp tục theo dõi và xử lý Model 2 nếu cần Wake.
     await this.dispatchToWorkerFleet(order);
-
     return { jobId: id };
   }
 
   private async dispatchToWorkerFleet(order: RenderOrder): Promise<void> {
-    // blend_link: ưu tiên driveLink nếu có, nếu không dùng B2 key đã
-    // upload (Backend cần build URL B2 thật ở FilesService — xem đó
-    // để biết chi tiết, ở đây chỉ ghép chuỗi tối thiểu).
     const blendLink = order.driveLink ?? `b2://${order.uploadedFileB2Key}`;
     const blendFile = order.projectName;
 
@@ -237,18 +176,6 @@ export class JobsService {
     return order;
   }
 
-  /**
-   * Job có chủ (order.customerId khác null) -> BẮT BUỘC customerId của
-   * người gọi phải khớp, kể cả khách chưa đăng nhập (customerId=null bị
-   * chặn) — trước đây mọi route theo `:id` (preview/approve/cancel/
-   * download/logs/notifications) chỉ dựa vào việc UUID khó đoán, KHÔNG
-   * hề kiểm tra chủ sở hữu, nên ai biết được id là xem/thao tác được
-   * job của người khác (IDOR). Job KHÔNG có chủ (tạo lúc chưa đăng nhập,
-   * customerId=null) vẫn mở cho bất kỳ ai biết id — giữ đúng hành vi cũ
-   * cho luồng khách vãng lai (chưa ép đăng nhập được, xem jwt-auth.guard.ts).
-   * `isAdmin=true` (chỉ Bearer + AAL2 đã được xác thực ở controller) bỏ qua
-   * kiểm tra — Admin Dashboard cần xem/thao tác job của MỌI khách.
-   */
   private assertOwnership(
     order: RenderOrder,
     customerId: string | null,
@@ -260,7 +187,6 @@ export class JobsService {
     }
   }
 
-  /** Dùng cho route GET /jobs/:id, GET /jobs/:id/status — có kiểm tra chủ sở hữu. */
   async getByIdForCustomer(
     id: string,
     customerId: string | null,
@@ -271,7 +197,6 @@ export class JobsService {
     return order;
   }
 
-  /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   async getByStorageCode(storageCode: string): Promise<RenderOrder> {
     const order = await this.ordersRepository.findByStorageCode(storageCode);
     if (!order)
@@ -281,25 +206,11 @@ export class JobsService {
     return order;
   }
 
-  /** customerId có -> chỉ trả job của đúng khách đó (đã đăng nhập Google).
-   * customerId null -> TRẢ TOÀN BỘ job của mọi khách (giới hạn đã biết:
-   * Portal chưa bắt buộc đăng nhập, xem jwt-auth.guard.ts và
-   * API_DOCUMENTATION.md). */
   async listAll(customerId: string | null = null): Promise<RenderOrder[]> {
     if (customerId) return this.ordersRepository.findByCustomerId(customerId);
     return this.ordersRepository.findAll();
   }
 
-  /** Các trạng thái CÒN Ở GIAI ĐOẠN MIỄN PHÍ (trước khi sinh QR thanh
-   * toán tại approve()) — CHỈ những trạng thái này được phép huỷ. Sửa
-   * lỗi nghiêm trọng phát hiện qua tự rà soát 31/07/2026: trước đây
-   * cancel() KHÔNG kiểm tra status, cho phép huỷ ngay cả khi đã
-   * AWAITING_PAYMENT (QR đã sinh, có thể khách ĐÃ chuyển khoản thật) —
-   * nếu khách bấm "Huỷ job" đúng lúc webhook ngân hàng sắp/vừa xác nhận
-   * PAID, `finalizeDelivery()` sẽ từ chối đóng gói/mở tải vì status
-   * không còn là AWAITING_PAYMENT nữa, khiến khách MẤT TIỀN THẬT mà
-   * KHÔNG BAO GIỜ nhận được file, và hệ thống không có cơ chế hoàn
-   * tiền/cảnh báo nào cho trường hợp này. */
   private static readonly CANCELLABLE_STATUSES = new Set<JobStatus>([
     JobStatus.QUEUED,
     JobStatus.SEARCHING_WORKERS,
@@ -324,14 +235,6 @@ export class JobsService {
     const order = await this.ordersRepository.markCancelled(id);
     if (!order) throw new NotFoundException(`Không tìm thấy job ${id}`);
 
-    // Đóng lỗ hổng: trước đây chỉ update render_orders.status, Worker
-    // Fleet không hề biết job đã bị huỷ nên vẫn tiếp tục render. Dùng
-    // internalJobId (khoá nối sang bảng `jobs`/`tasks` của Worker Fleet,
-    // xem WorkerFleetGateway) — KHÔNG phải render_orders.id, dù 2 giá
-    // trị này thường trùng nhau lúc tạo job (xem start()). Có thể null
-    // nếu job chưa từng tạo internal job (huỷ ngay khi mới queued) —
-    // bỏ qua, không có gì bên Worker Fleet để huỷ. Lỗi RPC (network/DB)
-    // chỉ log, KHÔNG chặn việc khách nhìn thấy job đã huỷ.
     if (existing.internalJobId) {
       try {
         await this.workerFleetGateway.adminCancelJob(existing.internalJobId);
@@ -345,8 +248,6 @@ export class JobsService {
     return order;
   }
 
-  /** Upload the full rendered result before payment, but keep the delivery
-   * route locked until the payment record becomes PAID. */
   async prepareLockedOutput(id: string): Promise<RenderOrder> {
     const order = await this.getById(id);
     if (order.downloadUrl) return order;
@@ -368,12 +269,6 @@ export class JobsService {
     return updated;
   }
 
-  /**
-   * Render-first payment boundary.  The Scheduler calls this only after the
-   * locked B2 output and real watermarked previews exist.  The old customer
-   * approve endpoint delegates here for compatibility, but approval is no
-   * longer a prerequisite for creating payment.
-   */
   async createPaymentAfterRender(
     id: string,
     customerId: string | null = null,
@@ -443,7 +338,6 @@ export class JobsService {
     };
   }
 
-  /** Backward-compatible endpoint name; it no longer gates payment creation. */
   async approve(
     id: string,
     customerId: string | null = null,
@@ -452,11 +346,6 @@ export class JobsService {
     return this.createPaymentAfterRender(id, customerId, isAdmin);
   }
 
-  /**
-   * Webhook đã xác nhận PAID cho payment của job này.  The final object was
-   * already uploaded under `final/` before payment; this method only flips
-   * the delivery state and must never render or upload again.
-   */
   async finalizeDelivery(id: string): Promise<RenderOrder | null> {
     const order = await this.getById(id);
     if (order.status === JobStatus.FINISHED) return order;
@@ -478,14 +367,6 @@ export class JobsService {
     return updated;
   }
 
-  /**
-   * Khách yêu cầu chỉnh sửa thay vì duyệt (CWS_MVP_WORKFLOW_FINAL.md,
-   * mục Review: "Đồng ý. Hoặc yêu cầu chỉnh sửa."). CHỦ Ý KHÔNG tự
-   * động re-render hay hoàn tiền — job vẫn ở REVIEW_READY (khách vẫn
-   * duyệt được nếu đổi ý), chỉ ghi lại yêu cầu để admin liên hệ khách
-   * và xử lý thủ công (re-render hoặc hoàn tiền là quyết định nghiệp
-   * vụ, không phải việc tự động hoá được).
-   */
   async requestChanges(
     id: string,
     note: string | null,
@@ -515,7 +396,6 @@ export class JobsService {
     );
   }
 
-  /** Danh sách ảnh preview (3-5 ảnh, đã watermark, kèm URL công khai) để khách xem trước khi duyệt. */
   async getReviewImages(
     id: string,
     customerId: string | null = null,
@@ -534,9 +414,6 @@ export class JobsService {
     );
   }
 
-  /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi trả
-   * về URL thật để Controller redirect — CHỈ cho phép khi job đã
-   * FINISHED và có downloadUrl (chưa duyệt thì chưa có gì để tải). */
   async getDownloadRedirectUrl(
     id: string,
     ipAddress: string | null,
@@ -557,7 +434,6 @@ export class JobsService {
     return this.b2StorageService.getSignedUrl(key, DOWNLOAD_URL_TTL_SECONDS);
   }
 
-  /** Admin xem log Worker (báo lỗi render, CWS_DATABASE_SCHEMA.md bảng worker_logs). */
   async getWorkerLogs(
     id: string,
     customerId: string | null = null,
@@ -567,7 +443,6 @@ export class JobsService {
     return this.storageService.getWorkerLogs(id);
   }
 
-  /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
   async getNotifications(
     id: string,
     customerId: string | null = null,
