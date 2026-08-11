@@ -782,7 +782,7 @@ class WorkerEngine:
                  checkpoints: CheckpointStore, validator: OutputValidator,
                  reporter: Reporter, guard: AttemptGuard | None = None,
                  preparer: BlendPreparer | None = None,
-                 metadata_reporter: Callable[[JobSpec, Mapping[str, Any]], None] | None = None):
+                 metadata_reporter: Callable[[JobSpec, Mapping[str, Any]], JobSpec | None] | None = None):
         self.workspace_root = workspace_root.resolve()
         self.downloader = downloader
         self.preflight = preflight
@@ -837,7 +837,9 @@ class WorkerEngine:
             self.reporter.stage(spec, "PREFLIGHT")
             metadata = self.preflight.inspect(spec, project)
             if metadata is not None and self.metadata_reporter is not None:
-                self.metadata_reporter(spec, metadata)
+                refreshed_spec = self.metadata_reporter(spec, metadata)
+                if refreshed_spec is not None:
+                    spec = refreshed_spec
             self.reporter.stage(spec, "PREPARING")
             if self.preparer is not None:
                 self.reporter.stage(spec, "OPTIMIZING")
