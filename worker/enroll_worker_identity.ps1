@@ -1,15 +1,27 @@
 param(
   [Parameter(Mandatory = $true)][string]$TicketFile,
+  [Parameter(Mandatory = $true)][string]$WorkerId,
   [string]$BackendUrl = 'https://cws-portal.onrender.com',
-  [string]$ServiceAccount = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),
-  [string]$StorePath = (Join-Path $env:LOCALAPPDATA 'CWS\worker.dpapi'),
-  [string]$Workspace = (Join-Path $env:LOCALAPPDATA 'CWS\workspace'),
+  [string]$ServiceAccount = '',
+  [string]$StateRoot = '',
+  [string]$StorePath = '',
+  [string]$Workspace = '',
   [string]$BlenderExe
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ServiceAccount)) { $ServiceAccount = $env:CWS_SERVICE_ACCOUNT }
+if ([string]::IsNullOrWhiteSpace($ServiceAccount)) { throw 'CWS_SERVICE_ACCOUNT is required; interactive-user enrollment is disabled' }
+if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -ne $ServiceAccount) {
+  throw "Enrollment must run as the configured CWS service identity: $ServiceAccount"
+}
+if ([string]::IsNullOrWhiteSpace($StateRoot)) { $StateRoot = Join-Path $env:ProgramData 'CWS\state' }
+if ([string]::IsNullOrWhiteSpace($StorePath)) { $StorePath = Join-Path $StateRoot 'worker.dpapi' }
+if ([string]::IsNullOrWhiteSpace($Workspace)) { $Workspace = Join-Path $StateRoot 'workspace' }
 $ticket = [IO.Path]::GetFullPath($TicketFile)
+$state = [IO.Path]::GetFullPath($StateRoot)
 $store = [IO.Path]::GetFullPath($StorePath)
+$identityMetadata = Join-Path $state 'worker-identity.json'
 $directory = [IO.Path]::GetDirectoryName($store)
 if (-not (Test-Path -LiteralPath $ticket -PathType Leaf)) { throw 'Enrollment ticket file does not exist' }
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
@@ -18,15 +30,16 @@ icacls $directory /grant:r "${ServiceAccount}:(OI)(CI)(M)" "SYSTEM:(OI)(CI)(F)" 
 icacls $ticket /inheritance:r | Out-Null
 icacls $ticket /grant:r "${ServiceAccount}:(R)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
 
-$python = Get-Command python.exe -ErrorAction SilentlyContinue
-if ($python) { $pythonPath = $python.Source }
-elseif (Test-Path -LiteralPath 'C:\Users\Administrator\Tools\Python312\python.exe') {
-  $pythonPath = 'C:\Users\Administrator\Tools\Python312\python.exe'
+$pythonPath = $env:CWS_PYTHON_EXE
+if ([string]::IsNullOrWhiteSpace($pythonPath)) {
+  $python = Get-Command python.exe -ErrorAction SilentlyContinue
+  if ($python) { $pythonPath = $python.Source }
 }
-else { throw 'Python 3 is required to enroll the Worker identity' }
+if ([string]::IsNullOrWhiteSpace($pythonPath) -or !(Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
+  throw 'CWS_PYTHON_EXE must point to the Golden Image Python runtime'
+}
 
-$workerId = & $pythonPath -c "import sys;sys.path.insert(0,r'$PSScriptRoot');from provision_worker_identity import stable_worker_id,windows_machine_guid;print(stable_worker_id(windows_machine_guid()))"
-if ($LASTEXITCODE -ne 0 -or -not $workerId) { throw 'Could not derive stable Worker ID' }
+if ($WorkerId -notmatch '^[A-Za-z0-9._~-]{1,128}$') { throw 'WorkerId is invalid' }
 
 $gpuName = $null
 $vramMb = 0
@@ -40,27 +53,26 @@ if (Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue) {
 
 $arguments = @((Join-Path $PSScriptRoot 'enroll_worker_identity.py'),
   '--backend-url', $BackendUrl, '--ticket-file', $ticket, '--store', $store,
-  '--worker-id', $workerId, '--hostname', $env:COMPUTERNAME, '--vram-mb', $vramMb)
+  '--worker-id', $WorkerId, '--hostname', $env:COMPUTERNAME, '--vram-mb', $vramMb)
 if ($gpuName) { $arguments += @('--gpu-name', $gpuName) }
 & $pythonPath @arguments
 if ($LASTEXITCODE -ne 0) { throw "Worker enrollment failed with exit code $LASTEXITCODE" }
 
 icacls $store /inheritance:r | Out-Null
 icacls $store /grant:r "${ServiceAccount}:(R,W)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
+New-Item -ItemType Directory -Force -Path $state | Out-Null
 New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
-[Environment]::SetEnvironmentVariable('CWS_BACKEND_URL', $BackendUrl, 'User')
-[Environment]::SetEnvironmentVariable('CWS_WORKER_ID', $workerId, 'User')
-[Environment]::SetEnvironmentVariable('CWS_WORKER_CREDENTIAL_FILE', $store, 'User')
-[Environment]::SetEnvironmentVariable('CWS_WORKSPACE', [IO.Path]::GetFullPath($Workspace), 'User')
-[Environment]::SetEnvironmentVariable('CWS_PYTHON_EXE', $pythonPath, 'User')
+@{ worker_id = $WorkerId; credential_file = $store } |
+  ConvertTo-Json -Compress | Set-Content -LiteralPath $identityMetadata -Encoding utf8
+icacls $identityMetadata /inheritance:r | Out-Null
+icacls $identityMetadata /grant:r "${ServiceAccount}:(R)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
 if ($BlenderExe) {
   $blender = [IO.Path]::GetFullPath($BlenderExe)
   if (-not (Test-Path -LiteralPath $blender -PathType Leaf)) { throw 'BlenderExe does not exist' }
-  [Environment]::SetEnvironmentVariable('CWS_BLENDER_EXE', $blender, 'User')
 }
 
 # Architecture V1: no long-lived storage or database master credential on Worker.
 [Environment]::SetEnvironmentVariable('CWS_B2_KEY_ID', $null, 'User')
 [Environment]::SetEnvironmentVariable('CWS_B2_APP_KEY', $null, 'User')
 [Environment]::SetEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY', $null, 'User')
-Write-Host "Worker $workerId enrolled. The one-time ticket was deleted after Backend acceptance."
+Write-Host "Worker $WorkerId enrolled. The one-time ticket was deleted after Backend acceptance."
