@@ -156,7 +156,7 @@ export async function createJob({ input, idempotencyKey }) {
       'Idempotency-Key': idempotencyKey,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ ...input, profileId }),
+    body: JSON.stringify(input),
   });
   if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
   const data = await res.json();
