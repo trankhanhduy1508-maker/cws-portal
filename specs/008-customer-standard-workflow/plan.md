@@ -4,95 +4,90 @@
 Reality -> Root cause -> Current bottleneck -> Constitution -> Specify -> Plan -> Tasks -> Analyze -> Implement -> Converge.
 
 ## Root cause
-The Customer Portal evolved through several product decisions without a single screen/state contract being enforced in code. As a result, old assumptions remain in UI comments, render-profile constants and job status labels even after the canonical business workflow changed.
+The Customer Portal evolved through several product decisions without one enforced screen/state contract. Legacy customer-choice logic, comments and lifecycle labels survived after the canonical business workflow changed.
 
 ## Current bottleneck
-The first production E2E bottleneck is no longer Admin. It is that the Customer Portal does not yet express one trustworthy workflow from login through download.
+Customer Golden E2E remains the implementation priority. Admin/Host stays important but is not the current non-blocking UX focus.
 
 ## Implementation strategy
 
 ### Phase A — Authentication gate
-Refactor `CustomerPortalApp` so the operational flow begins only after `useAuth()` confirms an authenticated customer session.
+Operational Customer flow begins only after `useAuth()` confirms an authenticated Google customer session.
 
 Expected UX:
-- unauthenticated: customer login gate/marketing + Continue with Google;
-- authenticated: New Render Job input screen;
-- restored session: skip login gate.
-
-Remove the need to preserve a Drive link across an OAuth redirect because Drive input is no longer accepted before login. Delete pending-input/sessionStorage logic when tests prove it is unused.
+- unauthenticated: login gate + Continue with Google;
+- authenticated: input screen;
+- restored session: continue from authenticated state.
 
 ### Phase B — Input state
-Make Upload/Drive a distinct authenticated step.
+Upload/Drive is an authenticated step.
 
-- Upload `.blend/.zip/.rar` or supported Google Drive only.
+- Accept `.blend/.zip/.rar` or approved Google Drive file links.
 - Continue only after a real canonical input reference is returned.
-- Do not fall through with raw `driveLink` when `fileRef` is absent.
-- Show actual upload/resolve/materialize/validate state and errors.
+- Do not create a Job from an unresolved raw input.
+- Show real upload/resolve/materialize/validate state and errors.
 
-### Phase C — Render mode
-Keep the customer choice about service/speed, not hardware.
+### Phase C — Automatic scheduling boundary
+There is **no customer render speed/tier selection and no customer hardware/Worker-count selection**.
 
-Converge public options to:
-- Economy
-- Balanced/Standard
-- Priority
+After canonical input is ready:
+- create exactly one customer-owned Job;
+- dispatch through the existing durable Worker/Scheduler boundary;
+- Scheduler determines task graph, eligible capacity and later adaptive scale from authoritative metadata/runtime/fleet evidence;
+- no compatibility code may resurrect a customer choice screen, tier identifier, tier-specific estimate endpoint or tier-specific persistence field.
 
-If backend/API currently uses `standard`, retain it as the machine identifier while displaying “Balanced” if needed. Remove `turbo` unless an active backend/product contract proves it must remain; do not silently break existing stored jobs.
+Historical rows/migrations may document prior behavior, but active runtime/API/UI must not depend on it.
 
 ### Phase D — Job lifecycle labels
-Reconcile frontend status mapping with actual backend statuses.
+Reconcile frontend state mapping with actual backend lifecycle.
 
-Public customer states should communicate:
-`Queued -> Finding machine -> Preparing -> Rendering -> Validating output -> Awaiting payment -> Paid/Completed`.
+Public customer states should communicate the real progression without implying a removed customer decision gate.
 
-Remove stale customer-approval language. If backend retains `REVIEW_READY`, map it to a non-interactive preview/output-preparation state or skip it in public step sequencing. Do not add an Approve button.
-
-If backend retains `PACKAGING`, ensure it does not represent post-payment generation of the deliverable. The full output must already be uploaded/locked before payment.
+If backend retains transitional machine states such as `REVIEW_READY` or `PACKAGING`, map them to truthful non-interactive customer states. Full output must already be validated/uploaded/locked before payment.
 
 ### Phase E — Result/payment screen
-At `AWAITING_PAYMENT`, show one consolidated customer screen containing:
+At the payment boundary show:
 - real watermarked previews;
-- final price;
+- final price from verified runtime/cost evidence;
 - MB QR;
 - exact transfer content/reference;
 - real payment waiting state.
 
-No preview-approval action.
+No customer render-tier choice and no preview-approval prerequisite.
 
-After backend `PAID/FINISHED`, expose authorized download only.
+After PAID/FINISHED, expose authorized download only.
 
 ### Phase F — History/recovery
-- Refresh/reopen running job must reattach using real job ID.
-- History cannot create a duplicate job.
-- History must be customer-owned and backend authorized.
+- Refresh/reopen running Job reattaches by real Job ID.
+- History cannot create a duplicate Job.
+- History remains customer-owned and backend authorized.
+- History must not display removed tier/profile metadata.
 
 ### Phase G — Tests and production evidence
-Add/adjust tests covering:
-1. unauthenticated customer cannot reach operational Upload/Drive;
-2. login success reveals input step;
-3. input readiness precedes render mode;
-4. job creation happens once and only after canonical input ready;
-5. no preview approval CTA exists;
-6. payment UI appears only after rendered output/previews/final price backend state;
-7. refresh/History reattach same job;
-8. paid state produces authorized download path;
-9. stale `turbo`, OneDrive/Dropbox/direct-link public claims are absent unless explicitly preserved for compatibility and not exposed.
+Coverage must include:
+1. unauthenticated customer cannot reach operational input;
+2. login success reveals input;
+3. canonical input readiness precedes Job creation;
+4. Job creation happens once;
+5. Customer payload/API/public JSON contain no removed tier/profile contract;
+6. no removed selection screen/constants/components remain in active runtime;
+7. payment UI appears only after rendered output/previews/final price backend state;
+8. refresh/History reattach same Job;
+9. paid state produces authorized download path.
 
-Run frontend build/test/lint and backend build/test/lint. Then deploy existing Customer Portal project only and gather browser + backend/Worker/payment evidence.
+Run frontend build/test/lint and backend build/test/lint. Deploy only existing approved CWS resources and gather runtime evidence separately.
 
 ## Files likely involved
 - `src/App.jsx`
-- `src/pages/LandingScreen.jsx`
 - `src/pages/UploadScreen.jsx`
-- `src/pages/RenderProfileScreen.jsx`
 - `src/pages/ReviewScreen.jsx`
 - `src/pages/PaymentScreen.jsx`
 - `src/pages/ProgressScreen.jsx`
 - `src/pages/HistoryScreen.jsx`
 - `src/constants/renderConstants.js`
-- auth/input/job hooks/services and their tests
-- `CURRENT_STATUS.md`
-- `CWS_ROADMAP.md`
-- engineering learning log/report
+- `src/services/RenderService.js`
+- backend Job DTO/domain/controller/service/repository/presenter
+- relevant migration/tests
+- active source-of-truth docs
 
-Codex must inspect backend job/status contracts before deleting or renaming machine-level states.
+Codex must preserve Scheduler ownership, atomic claim, lease/generation fencing, payment, Admin and Worker security boundaries unless separately approved.
