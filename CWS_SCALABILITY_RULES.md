@@ -2,6 +2,7 @@
 
 > Status: ACTIVE
 > Added: 2026-08-08
+> Updated: 2026-08-11
 > Purpose: Mandatory architecture rules for any CWS implementation that can affect fleet growth or production operations.
 
 ---
@@ -92,7 +93,50 @@ Compromise of one Worker should not expose credentials that grant broad access t
 
 ---
 
-# 6. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
+# 6. ZERO ADMIN APPROVAL IN NORMAL CUSTOMER RUNTIME
+
+Founder decision (2026-08-11): normal Customer jobs must be fully automatic after Google login and submission.
+
+Canonical Customer runtime:
+
+`Google Login -> Upload/Drive -> Validate -> Queue -> Scheduler -> Worker -> Render -> B2 -> Preview/Pricing/QR -> SePay verify -> Unlock -> Download -> Cleanup`
+
+The normal runtime MUST NOT require Founder/Admin approval, manual state advancement, manual Worker assignment, manual payment confirmation, or AI intervention.
+
+Admin exists for observability, security exceptions, incident handling, configuration, and explicit operational overrides only. Admin is not a mandatory hop in the Customer E2E workflow.
+
+---
+
+# 7. ZERO PER-WORKER FOUNDER APPROVAL IN NORMAL PROVISIONING
+
+Founder decision (2026-08-11): normal Worker enrollment/restart must not require the Founder/Admin to approve each machine individually.
+
+The current bounded enrollment ticket mechanism may remain as a security primitive, but its long-term canonical use MUST be automated by the provisioning/onboarding system rather than requiring a manual Admin Google OAuth + TOTP/AAL2 action for every Worker.
+
+Allowed human interaction:
+
+- one-time fleet/site onboarding bootstrap
+- security incident review
+- irreversible/root-secret rotation
+- explicit exceptional operations
+
+Not allowed as the canonical normal path:
+
+- Founder approves each Worker
+- Admin issues one ticket manually per Worker
+- Founder edits Supabase rows per Worker
+- Founder copies credentials/secrets to each Worker
+- Admin intervention on normal Worker restart/reconnect
+
+Target fleet behavior:
+
+`fleet/site onboard once -> unattended/bulk provisioning -> Worker receives or redeems authorized bootstrap material -> creates its own identity credential -> stores machine-bound credential -> heartbeat -> schedulable`
+
+Adding the 101st/1,001st Worker must not create a new manual Founder approval step.
+
+---
+
+# 8. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
 
 Before accepting any new production architecture or provisioning design, Codex/agents must answer:
 
@@ -104,12 +148,14 @@ Before accepting any new production architecture or provisioning design, Codex/a
 6. What component becomes a bottleneck as fleet size increases?
 7. Can the design be automated without changing the public/runtime contract?
 8. Does the design create one infrastructure resource per Worker unnecessarily?
+9. Does the normal Customer workflow require any Admin approval?
+10. Does the normal Worker lifecycle require per-machine Founder/Admin approval?
 
 If a design obviously creates a linear manual-operations bottleneck, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
 
 ---
 
-# 7. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
+# 9. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
 
 CWS still follows MVP-first and no-over-engineering rules.
 
@@ -123,7 +169,7 @@ The correct target is: **minimum implementation now, scalable boundary by design
 
 ---
 
-# 8. DEFINITION OF SCALE-READY PROVISIONING
+# 10. DEFINITION OF SCALE-READY PROVISIONING
 
 A Worker provisioning design is scale-ready only when:
 
@@ -134,5 +180,7 @@ A Worker provisioning design is scale-ready only when:
 - adding many Workers does not require creating duplicate Vercel/Supabase/B2/Render infrastructure
 - revoking one Worker does not require rotating credentials for the entire fleet
 - the same logical workflow can be bulk-deployed to 100+ Workers without per-machine secret hand-editing
+- normal Customer jobs require zero Admin approval
+- normal Worker enrollment/restart requires zero per-machine Founder/Admin approval
 
 These are architecture acceptance criteria, not optional future improvements.
