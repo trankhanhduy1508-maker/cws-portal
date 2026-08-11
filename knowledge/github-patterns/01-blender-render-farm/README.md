@@ -10,7 +10,11 @@ For Blender EEVEE / EEVEE Next work, also read:
 
 `knowledge/github-patterns/01-blender-render-farm/EEVEE_RENDERING.md`
 
-That note contains EEVEE-specific source ranking, engine/version compatibility, Worker eligibility, material-preservation rules, runtime evidence and animation/finalization guidance. It does **not** authorize switching render engines or adding external Blender forks/add-ons.
+For customer `.blend` optimization work — textures, materials, geometry, lights, shadows, Cycles/EEVEE performance and memory pressure — also read:
+
+`knowledge/github-patterns/01-blender-render-farm/BLEND_FILE_OPTIMIZATION.md`
+
+The optimization note separates safe operational optimizations from quality-sensitive/destructive changes. It requires an immutable customer original and does **not** authorize automatic art-direction changes, render-engine switching, destructive decimation, texture downscaling, light deletion or shadow reduction.
 
 ## Primary top-tier sources
 
@@ -151,5 +155,7 @@ Read this note when working on:
 - Adaptive Deadline Scheduler.
 
 If the task is EEVEE/EEVEE Next specific, also read `EEVEE_RENDERING.md` in this folder.
+
+If the task is customer `.blend` optimization, texture/material pressure, geometry complexity, lights/shadows, Cycles/EEVEE performance or memory pressure, also read `BLEND_FILE_OPTIMIZATION.md` in this folder.
 
 Before code, still ground active CWS spec/schema/Worker implementation. External patterns are reference only.
