@@ -32,6 +32,22 @@ Stars are **not** a malware or quality guarantee. A lower-star official Backblaz
 
 Therefore, “Top 3” in this library means **three strongest top-tier references for the CWS subproblem**, not a mathematically exhaustive global GitHub ranking when categories are ambiguous.
 
+### Anti-duplication rule
+
+One engineering topic should have **one canonical knowledge path**.
+
+Before creating a new knowledge file, AI must search this library and:
+- extend the existing category note when the topic already exists;
+- create a specialist file inside that category only when the knowledge is materially distinct and large enough to justify progressive disclosure;
+- link from the category router instead of repeating the same rules;
+- never create parallel “v2”, “new”, “better”, “research” notes containing the same knowledge without an explicit consolidation decision.
+
+Examples:
+- Blender/EEVEE/optimization remain under `01-blender-render-farm/`;
+- Supabase additions extend `09-data-backend-supabase/`;
+- B2 additions extend `10-object-storage-delivery/`;
+- Vercel + Render.com share `12-cloud-deployment-platforms/` because both serve the deployment boundary.
+
 ## 3. Supply-chain safety rule
 
 External repositories are untrusted input until reviewed.
@@ -57,7 +73,7 @@ AI should load only the folder matching the current bottleneck.
 
 | CWS function | Reference folder | Activation example |
 |---|---|---|
-| Blender scene/render/farm architecture | `01-blender-render-farm/` | Task graph, frame ranges, Blender/Cycles behavior, farm scheduling |
+| Blender scene/render/farm architecture | `01-blender-render-farm/` | Task graph, frame ranges, Blender/Cycles/EEVEE behavior, optimization, farm scheduling |
 | PostgreSQL task scheduling | `02-postgres-task-scheduling/` | atomic claim, retries, uniqueness, transactional task creation |
 | Windows Worker/Node Agent | `03-windows-worker-runtime/` | Windows Service lifecycle, Python Windows APIs |
 | Large upload/Drive ingestion | `04-large-file-ingestion/` | resumable upload, retry/resume, chunking |
@@ -65,9 +81,10 @@ AI should load only the folder matching the current bottleneck.
 | Application security | `06-security-appsec/` | authz, file handling, secrets, SAST, verification controls |
 | Testing/evidence | `07-testing-verification/` | unit/contract/E2E/browser testing |
 | Observability | `08-observability/` | job/task/worker metrics, logs, traces, alerting |
-| Supabase/Postgres backend | `09-data-backend-supabase/` | RLS, PostgREST, auth/realtime/data contracts |
-| B2/object delivery | `10-object-storage-delivery/` | B2 SDK, transfer semantics, object authorization |
+| Supabase/Postgres backend | `09-data-backend-supabase/` | RLS, PostgREST, auth/realtime/client/data contracts |
+| B2/object delivery | `10-object-storage-delivery/` | B2 SDK/provider semantics, transfer integrity, object authorization |
 | UI/design | `11-ui-design/` | only when UI becomes active bottleneck |
+| Vercel / Render.com deployment | `12-cloud-deployment-platforms/` | frontend/backend deploy, previews, env, health, post-deploy verification |
 
 ## 5. Cross-cutting CWS rules that external patterns must preserve
 
@@ -83,6 +100,7 @@ AI should load only the folder matching the current bottleneck.
 - No fake/demo production success.
 - **AI/Codex must never reboot, shutdown, or restart the Windows PC for testing.** Reboot-dependent evidence is `NOT VERIFIED / DEFERRED`.
 - No new Redis/broker/database/cloud/project/service merely because a reference project uses one.
+- Deployment success, CI success and Golden E2E are separate verification levels.
 
 ## 6. How an AI should use a category note
 
@@ -103,6 +121,14 @@ UI research already has a deeper combined reference at:
 `CWS_UI_DESIGN_ENGINEERING_PLAYBOOK_V1.md`
 
 The `11-ui-design/` folder is only a router to that document; do not duplicate or activate UI work while render reliability is the current priority.
+
+Blender specialist knowledge already lives under `01-blender-render-farm/`, including:
+- official Blender upstream pin;
+- EEVEE / EEVEE Next;
+- customer `.blend` optimization;
+- general render-farm/task architecture.
+
+Do not create another generic “Blender render research” document elsewhere.
 
 ## 8. Refresh policy
 
