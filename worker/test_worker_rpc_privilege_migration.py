@@ -52,5 +52,33 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
         )
 
 
+    def test_metadata_contract_reconciles_seed_and_handles_legacy_rows(self) -> None:
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "worker_migrations"
+            / "028_report_job_metadata_rpc.sql"
+        ).read_text(encoding="utf-8").lower()
+
+        for fragment in (
+            "t.worker_id = p_worker_id",
+            "t.generation = p_generation",
+            "t.status = 'active'",
+            "v_bootstrap",
+            "v_task_start = 1",
+            "v_task_end = 1",
+            "v_task_count = 1",
+            "set frame_start = p_frame_start",
+            "set frame_end = p_frame_start",
+            "v_job_total is not null and v_job_total <> p_total_frames",
+            "(v_job_start is null) <> (v_job_end is null)",
+            "v_job_fps = p_fps",
+            "jobs_frame_metadata_consistency_check",
+        ):
+            self.assertIn(fragment, migration)
+
+        self.assertIn("and t.status = 'active'", migration)
+        self.assertIn("for update", migration)
+
+
 if __name__ == "__main__":
     unittest.main()
