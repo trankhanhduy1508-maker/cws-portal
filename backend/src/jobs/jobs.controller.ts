@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JobsService } from './jobs.service';
-import { CreateJobDto, EstimateJobDto } from './dto/create-job.dto';
+import { CreateJobDto } from './dto/create-job.dto';
 import { toPublicJson } from './render-order.presenter';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -35,8 +35,7 @@ export class JobsController {
     private readonly inputUploadsService?: InputUploadsService,
     private readonly googleDriveService?: GoogleDriveService,
   ) {}
-  /** Chỉ Bearer token Admin thật đã hoàn tất MFA hợp lệ mới bỏ qua kiểm tra
-   * chủ sở hữu job. Shared x-admin-key legacy không còn được chấp nhận. */
+
   private async isAdminRequest(req: Request): Promise<boolean> {
     return isAuthenticatedMfaAdmin(req, this.supabaseService);
   }
@@ -50,19 +49,12 @@ export class JobsController {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
     if (!customerId)
       throw new UnauthorizedException('Cần đăng nhập để tạo job');
-    // /drive/resolve may already have materialized a public Drive file to
-    // B2 and return fileRef. Never download Drive again when that capability
-    // is present; the direct-link branch is only a fallback for older/API
-    // clients that submit driveLink without a materialized fileRef.
+
     if (dto.driveLink && !dto.fileRef) {
       if (!this.googleDriveService || !this.inputUploadsService) {
-        throw new UnauthorizedException(
-          'Google Drive import chưa được cấu hình',
-        );
+        throw new UnauthorizedException('Google Drive import chưa được cấu hình');
       }
-      const imported = await this.googleDriveService.materializeToB2(
-        dto.driveLink,
-      );
+      const imported = await this.googleDriveService.materializeToB2(dto.driveLink);
       dto = {
         ...dto,
         driveLink: null,
@@ -87,15 +79,6 @@ export class JobsController {
     return this.jobsService.createOrder(dto, customerId, idempotencyKey);
   }
 
-  @Post('estimate')
-  @HttpCode(200)
-  @UseGuards(MvpRateLimitGuard)
-  async estimate(@Body() dto: EstimateJobDto) {
-    return this.jobsService.estimate(dto);
-  }
-
-  /** Khách đã đăng nhập chỉ thấy job của mình; Admin/Host dùng Bearer + AAL2.
-   * Anonymous không được liệt kê toàn bộ job. */
   @Get()
   async listAll(@Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -103,16 +86,13 @@ export class JobsController {
       const orders = await this.jobsService.listAll(null);
       return orders.map(toPublicJson);
     }
-
     if (customerId) {
       const orders = await this.jobsService.listAll(customerId);
       return orders.map(toPublicJson);
     }
-
     throw new UnauthorizedException('Cần đăng nhập để xem danh sách job');
   }
 
-  /** Admin tra cứu theo Storage Code (CWS_ROADMAP_MVP_V1.md, Giai đoạn 7). */
   @Get('by-storage-code/:storageCode')
   @UseGuards(RoleGuard)
   async getByStorageCode(@Param('storageCode') storageCode: string) {
@@ -120,10 +100,6 @@ export class JobsController {
     return toPublicJson(order);
   }
 
-  /** Job có customer_id -> chỉ đúng chủ (hoặc khách chưa đăng nhập) mới
-   * xem/thao tác được — xem JobsService.assertOwnership(). Job không có
-   * chủ (tạo lúc chưa đăng nhập) vẫn mở cho ai biết id, giữ nguyên hành
-   * vi cũ cho khách vãng lai. */
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -135,9 +111,6 @@ export class JobsController {
     return toPublicJson(order);
   }
 
-  /** Alias — Portal hiện tại đọc status qua GET /jobs/:id (field
-   * `status` trong response đầy đủ), route riêng này chỉ để khớp danh
-   * sách API đã liệt kê, trả về tập con. */
   @Get(':id/status')
   async getStatus(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -149,22 +122,14 @@ export class JobsController {
     return { status: order.status, stageProgress: order.stageProgress };
   }
 
-  /** Route CHÍNH mà Portal thật sự gọi (xem apiConfig.js:
-   * CANCEL_JOB -> POST /jobs/:id/cancel). KHÔNG được đổi/xóa route này. */
   @Post(':id/cancel')
   @HttpCode(200)
   async cancelViaPost(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(
-      id,
-      customerId,
-      await this.isAdminRequest(req),
-    );
+    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
     return { ok: true };
   }
 
-  /** 3-5 ảnh preview có watermark — khách xem trước khi bấm duyệt; Admin
-   * Dashboard đọc qua Bearer + AAL2. */
   @Get(':id/preview')
   async getPreview(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -176,9 +141,6 @@ export class JobsController {
     return { images };
   }
 
-  /** Backward-compatible payment endpoint. Render completion already locks
-   * the full output, creates previews and prepares QR; this route only
-   * returns payment details for an authorized caller. */
   @Post(':id/approve')
   @HttpCode(200)
   async approve(@Param('id') id: string, @Req() req: Request) {
@@ -191,8 +153,6 @@ export class JobsController {
     return { ...toPublicJson(order), payment };
   }
 
-  /** Khách yêu cầu chỉnh sửa thay vì duyệt — CHỈ ghi nhận yêu cầu (thông
-   * báo + worker_log), KHÔNG đổi status/tiền, xem jobs.service.ts. */
   @Post(':id/request-changes')
   @HttpCode(200)
   async requestChanges(
@@ -210,10 +170,6 @@ export class JobsController {
     return { ok: true };
   }
 
-  /** Ghi log lượt tải (CWS_DATABASE_SCHEMA.md, bảng downloads) rồi
-   * redirect sang link B2 thật — Portal KHÔNG được dùng thẳng downloadUrl
-   * raw (xem getDownloadUrl() trong RenderService.js), phải qua route
-   * này để mọi lượt tải đều được ghi log. */
   @Get(':id/download')
   async download(
     @Param('id') id: string,
@@ -234,7 +190,6 @@ export class JobsController {
     res.redirect(302, url);
   }
 
-  /** Admin xem log Worker (báo lỗi render) qua Bearer + AAL2. */
   @Get(':id/logs')
   async getLogs(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -246,7 +201,6 @@ export class JobsController {
     return { logs };
   }
 
-  /** Thông báo hệ thống liên quan tới job (render xong/lỗi). */
   @Get(':id/notifications')
   async getNotifications(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
@@ -258,17 +212,11 @@ export class JobsController {
     return { notifications };
   }
 
-  /** Alias REST chuẩn (DELETE) — cùng logic với route POST ở trên,
-   * thêm để khớp convention REST nếu có client khác gọi kiểu DELETE. */
   @Delete(':id')
   @HttpCode(200)
   async cancelViaDelete(@Param('id') id: string, @Req() req: Request) {
     const customerId = await getOptionalCustomerId(req, this.supabaseService);
-    await this.jobsService.cancel(
-      id,
-      customerId,
-      await this.isAdminRequest(req),
-    );
+    await this.jobsService.cancel(id, customerId, await this.isAdminRequest(req));
     return { ok: true };
   }
 }
