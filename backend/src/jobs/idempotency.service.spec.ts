@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { JobStatus } from './domain/job-status.enum';
-import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.createOrder idempotency', () => {
   function make() {
