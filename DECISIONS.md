@@ -21,6 +21,15 @@ Customer MVP uses Google OAuth through Supabase Auth. No Facebook, Zalo or custo
 
 ## Customer Workflow / Pricing / Payment
 
+### [ACTIVE — 2026-08-11] Normal Customer runtime requires zero Admin approval
+After Google login and valid input submission, the normal Customer E2E must run automatically without Founder/Admin approval, manual Worker assignment, manual state advancement, manual payment confirmation, or AI intervention.
+
+Canonical normal flow:
+
+`Google Login -> Upload/Drive -> Validate -> Queue -> Scheduler -> Worker -> Render -> B2 -> Preview/Pricing/QR -> SePay verify -> Unlock -> Download -> Cleanup`
+
+Admin is not a mandatory hop in the Customer workflow. Admin is reserved for observability, support, security exceptions, incident handling, system configuration, and explicit exceptional overrides.
+
 ### [ACTIVE — 2026-08-11] Customer render-mode choice
 Customer chooses service/speed preference, never GPU/CPU hardware.
 
@@ -72,8 +81,32 @@ Full output is validated and uploaded to B2 before payment, remains locked until
 
 ## Worker / Scheduler / Security
 
-### [ACTIVE] Production runtime must work without AI
+### [ACTIVE] Production runtime must work without AI or Admin operation
 Normal scheduling, Worker claim/heartbeat, render, progress, retries, storage, payment matching, delivery, cleanup and recovery cannot require ChatGPT/Codex/Founder/Admin intervention.
+
+### [ACTIVE — 2026-08-11] Normal Worker lifecycle requires zero per-machine Founder/Admin approval
+Normal Worker enrollment, restart, reconnect, heartbeat, claim, render, cleanup and return-to-idle must not require Founder/Admin to approve each machine individually.
+
+The existing bounded one-time enrollment-ticket mechanism may remain as a security/bootstrap primitive, but the canonical long-term provisioning path must automate issuance/distribution/redemption after a bounded fleet/site onboarding step. Requiring Admin Google OAuth + TOTP/AAL2 for every Worker is not the intended normal operating model.
+
+Allowed human interaction is limited to bounded exceptional/bootstrap operations such as:
+
+- one-time fleet/site onboarding bootstrap
+- security incident review
+- irreversible/root-secret rotation
+- explicit exceptional operations
+
+Not allowed as the canonical normal path:
+
+- Founder approves each Worker
+- Admin manually issues one ticket per Worker
+- manual DB row creation per Worker
+- per-Worker copying of Supabase/B2 master credentials
+- Admin intervention on normal Worker restart/reconnect
+
+Target behavior:
+
+`fleet/site onboard once -> unattended/bulk provisioning -> Worker receives/redeems authorized bootstrap material -> creates/stores its own machine-bound identity credential -> heartbeat -> schedulable`
 
 ### [ACTIVE] Worker identity/enrollment
 Workers use stable system-managed identity with authenticated enrollment. Do not infer identity from hostname/GPU/registration age. No shared fleet secret or manual per-Worker DB edits as the normal scale path.
@@ -106,6 +139,8 @@ Admin UX/MFA refinement is currently deferred while Customer Golden E2E is the a
 ### [ACTIVE] Admin authentication
 Admin/Host staff use Google OAuth through Supabase plus required Supabase TOTP/AAL2 and explicit staff role authorization. Customer authentication and Admin authentication are separate flows. A separate hostname is not an authorization bypass; backend role/AAL2 enforcement remains mandatory.
 
+Admin AAL2 is for privileged Admin/staff actions; it is not a mandatory step in normal Customer job execution or normal per-Worker lifecycle.
+
 ### [ACTIVE] Customer CRM
 Customer profile data from the authenticated Google/Supabase account is available to the Admin Dashboard for customer management/support according to authorization rules.
 
@@ -115,7 +150,7 @@ Customer profile data from the authenticated Google/Supabase account is availabl
 Use the existing canonical GitHub repo, Render service, Supabase project, Backblaze B2 resources, Worker environment and SePay setup. The already-created `cws-admin` Vercel project is the only additional approved frontend resource. Do not create any other duplicate infrastructure without explicit Owner approval.
 
 ### [ACTIVE] Scale without manual operations
-Normal architecture should support growth toward 100/1,000/1,000,000 Workers without manual per-machine/per-job database configuration, copied storage secrets or AI runtime intervention. This is a design constraint, not a claim that those fleet sizes are currently deployed.
+Normal architecture should support growth toward 100/1,000/1,000,000 Workers without manual per-machine/per-job database configuration, copied storage secrets, per-machine Founder/Admin approval or AI runtime intervention. This is a design constraint, not a claim that those fleet sizes are currently deployed.
 
 ### [ACTIVE] Evidence levels
 Keep `CODE VERIFIED`, `SIMULATION VERIFIED`, and `PRODUCTION RUNTIME VERIFIED` distinct. Builds, unit tests, deployment READY state, heartbeat or historical rows do not establish Golden Production E2E.
