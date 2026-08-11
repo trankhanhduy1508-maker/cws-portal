@@ -136,7 +136,48 @@ Adding the 101st/1,001st Worker must not create a new manual Founder approval st
 
 ---
 
-# 8. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
+# 8. PARTNER GOLDEN IMAGE + PER-MACHINE STATE
+
+Founder decision (2026-08-11): for approved net-cafe/office partners, CWS runtime components should be installed in the partner's canonical Windows/BootROM Golden Image so reboot/reset does not remove the CWS software stack.
+
+The Golden Image may contain shared non-secret runtime components such as Node Agent code, Worker Engine code, Blender/runtime dependencies, the canonical startup wrapper/service, and shared non-secret Backend/site configuration.
+
+The Golden Image MUST NOT contain one copied Worker credential used by all machines. Worker identity and authentication credential remain unique per physical PC and should live in the partner's supported per-machine persistent/writeback state when available.
+
+Normal reboot behavior:
+
+`boot shared image -> load existing per-machine Worker identity/credential -> Node Agent auto-start -> heartbeat -> ACTIVE_IDLE`
+
+Normal reboot must not trigger re-enrollment. Enrollment/re-enrollment is limited to first enrollment, credential loss/corruption, reprovisioning/hardware replacement, or explicit revocation recovery.
+
+If a specific BootROM product cannot persist per-machine state, bounded unattended re-enrollment is allowed as a fallback only; it must not become the default reboot path for all partners.
+
+---
+
+# 9. ONE RESIDENT NODE AGENT; EPHEMERAL WORKER ENGINE
+
+Founder decision (2026-08-11): the canonical Windows runtime has one always-resident supervisor, the Node Agent.
+
+Required process model:
+
+`Windows boot -> Node Agent service -> authenticate/heartbeat -> ACTIVE_IDLE -> claim task -> launch Worker Engine -> Blender/render/upload/verify -> Worker Engine exits -> cleanup -> ACTIVE_IDLE`
+
+Rules:
+
+- Node Agent auto-starts with Windows through one canonical production startup mechanism.
+- Prefer a Windows Service with automatic/delayed start plus startup jitter/backoff suitable for fleets booting together.
+- Worker Engine is not a second permanent service and should not stay alive while no job is assigned.
+- Node Agent remains alive across jobs and owns lifecycle/state supervision.
+- Duplicate Node Agent instances are forbidden; competing Startup Folder/Scheduled Task/.bat/service production startup paths must be removed or disabled.
+- Temporary Backend/network outages must use bounded retry/backoff; they must not require Admin/AI restart.
+- Worker Engine or Blender failure must not permanently kill the resident Node Agent.
+- Legacy `cws_worker_full.py` is not the canonical auto-start production runtime.
+
+This process boundary reduces idle process load, duplicate claims and fleet startup ambiguity while preserving one clear owner for recovery.
+
+---
+
+# 10. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
 
 Before accepting any new production architecture or provisioning design, Codex/agents must answer:
 
@@ -150,12 +191,14 @@ Before accepting any new production architecture or provisioning design, Codex/a
 8. Does the design create one infrastructure resource per Worker unnecessarily?
 9. Does the normal Customer workflow require any Admin approval?
 10. Does the normal Worker lifecycle require per-machine Founder/Admin approval?
+11. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
+12. Is there exactly one canonical production startup owner for the Worker host?
 
 If a design obviously creates a linear manual-operations bottleneck, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
 
 ---
 
-# 9. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
+# 11. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
 
 CWS still follows MVP-first and no-over-engineering rules.
 
@@ -169,7 +212,7 @@ The correct target is: **minimum implementation now, scalable boundary by design
 
 ---
 
-# 10. DEFINITION OF SCALE-READY PROVISIONING
+# 12. DEFINITION OF SCALE-READY PROVISIONING
 
 A Worker provisioning design is scale-ready only when:
 
@@ -177,10 +220,13 @@ A Worker provisioning design is scale-ready only when:
 - no Supabase service-role or account-level storage credential is placed on a Worker
 - Worker identity enrollment is securely automatable
 - normal restart/recovery does not require human or AI intervention
+- partner Golden Image deployment does not clone one Worker credential across machines
+- normal reboot reuses existing per-machine identity when persistent state is available
 - adding many Workers does not require creating duplicate Vercel/Supabase/B2/Render infrastructure
 - revoking one Worker does not require rotating credentials for the entire fleet
 - the same logical workflow can be bulk-deployed to 100+ Workers without per-machine secret hand-editing
 - normal Customer jobs require zero Admin approval
 - normal Worker enrollment/restart requires zero per-machine Founder/Admin approval
+- there is one canonical Node Agent auto-start path and Worker Engine remains task-scoped/ephemeral
 
 These are architecture acceptance criteria, not optional future improvements.
