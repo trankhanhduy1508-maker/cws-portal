@@ -19,6 +19,7 @@ const RPC_NAMES = new Set([
   'report_worker_state_transition',
   'report_worker_failure',
   'report_worker_probe',
+  'report_job_metadata',
 ]);
 
 const WORKER_STATES = new Set([
@@ -116,6 +117,37 @@ export class WorkerRpcService {
         p_worker_id: workerId,
         p_task_id: Number(body.p_task_id),
         p_generation: Number(body.p_generation),
+      };
+    }
+    if (operation === 'report_job_metadata') {
+      if (
+        !Number.isInteger(body.p_task_id) ||
+        Number(body.p_task_id) <= 0 ||
+        !Number.isInteger(body.p_generation) ||
+        Number(body.p_generation) < 0 ||
+        !Number.isInteger(body.p_frame_start) ||
+        Number(body.p_frame_start) < 0 ||
+        !Number.isInteger(body.p_frame_end) ||
+        Number(body.p_frame_end) < Number(body.p_frame_start) ||
+        !Number.isInteger(body.p_total_frames) ||
+        Number(body.p_total_frames) !==
+          Number(body.p_frame_end) - Number(body.p_frame_start) + 1 ||
+        Number(body.p_total_frames) < 1 ||
+        typeof body.p_fps !== 'number' ||
+        !Number.isFinite(body.p_fps) ||
+        body.p_fps <= 0 ||
+        body.p_fps > 1000
+      ) {
+        throw new BadRequestException('Worker job metadata is invalid');
+      }
+      return {
+        p_worker_id: workerId,
+        p_task_id: Number(body.p_task_id),
+        p_generation: Number(body.p_generation),
+        p_frame_start: Number(body.p_frame_start),
+        p_frame_end: Number(body.p_frame_end),
+        p_total_frames: Number(body.p_total_frames),
+        p_fps: body.p_fps,
       };
     }
     if (operation === 'report_worker_state_transition') {

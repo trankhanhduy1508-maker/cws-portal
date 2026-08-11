@@ -360,6 +360,30 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         source = (Path(__file__).parent / "production_node_agent.py").read_text()
         self.assertFalse("print(token)" in source)
 
+    def test_report_job_metadata_uses_fenced_authenticated_rpc(self):
+        config = ProductionConfig.from_env({
+            "CWS_BACKEND_URL": "https://backend.example",
+            "CWS_WORKER_ID": "worker-a",
+            "CWS_WORKER_CREDENTIAL_FILE": "C:/secure/worker.dpapi",
+            "CWS_WORKSPACE": "C:/CWS/work",
+        })
+        client = FakeClient([True])
+        from worker_engine import JobSpec
+        spec = JobSpec.from_mapping({
+            "job_id": "job-1", "task_id": "42", "attempt_id": "9",
+            "lease_generation": 7, "project_uri": "b2://cws-prod/source/job-1.blend",
+            "frame_start": 1, "frame_end": 1, "output_prefix": "renders/job-1",
+            "output_format": "png",
+        })
+        ProductionRpcAdapter(client, config).report_job_metadata(spec, {
+            "frame_start": 11, "frame_end": 13, "total_frames": 3, "fps": 24.0,
+        })
+        self.assertEqual(client.calls, [("report_job_metadata", {
+            "p_task_id": 42, "p_generation": 7, "p_frame_start": 11,
+            "p_frame_end": 13, "p_total_frames": 3, "p_fps": 24.0,
+        })])
+
+
 
 if __name__ == "__main__":
     unittest.main()

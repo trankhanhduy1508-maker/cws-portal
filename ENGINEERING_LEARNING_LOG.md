@@ -95,3 +95,15 @@
 - **Lesson learned:** every cross-project contract change needs a same-commit compile/test check for both caller and implementation, plus explicit tests for the active public input contract.
 - **Rule for future:** do not mark a gate PASS from local or preview evidence while canonical CI still has a baseline failure.
 - **Remaining risks:** fresh PR CI is still required; no scheduler, Worker, payment, Admin or deployment work is authorized by this recovery gate.
+
+
+## 2026-08-11 — first real-task metadata contract
+
+- **Problem encountered:** the first real Worker Task could preflight a Blender project, but the canonical path had no authenticated contract to persist the authoritative frame interval and FPS before Task completion.
+- **Root cause:** the old set_job_total_frames RPC stored only total_frames/fps, was not called by production_node_agent.py, and did not use task generation fencing.
+- **Fix applied:** added additive jobs.frame_start/frame_end fields and a fenced, idempotent report_job_metadata RPC; canonical Blender preflight now extracts metadata with autoexec disabled and reports it before WorkerEngine renders the owned Task.
+- **What worked:** reusing the existing Backend Worker RPC gateway, Supabase service-role boundary, JobSpec/WorkerEngine preflight and lease/generation identity kept the change inside the approved architecture.
+- **What failed:** the initial generated test insertion was malformed at the file closing boundary and was corrected before CI verification.
+- **Lesson learned:** metadata discovery must be a first-class fenced event on the real Task, not an unfenced replacement for total_frames.
+- **Rule for future:** do not expand or partition Tasks until metadata is durably accepted for the owning task/generation; do not treat CI success as runtime/production proof.
+- **Remaining risks:** Scheduler Task Graph expansion, disjoint-range enforcement, runtime evidence wiring and adaptive scaling remain unimplemented and are the next bottleneck.
