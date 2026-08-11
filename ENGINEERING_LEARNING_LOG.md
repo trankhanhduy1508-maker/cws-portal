@@ -60,3 +60,15 @@
 - **Fix:** accept both legacy `#admin` and production `#/admin` route forms, plus `/admin` pathname.
 - **Verification:** frontend tests 12/12, lint PASS, build PASS.
 - **Unresolved risk:** production UI still needs a browser smoke test after the route-fix deployment with the real AAL2 session.
+
+## 2026-08-11 — Admin root routing must be reactive
+
+- **Symptom:** after the previous hash-string fix and a READY production deployment, the Founder still observed the old/customer UI on the Admin route.
+- **Root cause:** the previous fix corrected accepted route syntax but left root shell selection as an imperative `window.location` read inside `App.jsx`. React had no root `hashchange`/`popstate` subscription, so URL navigation could leave the already-mounted customer tree stale.
+- **Why the previous fix was insufficient:** adding `#/admin` to an `if` condition only helps when `App()` renders again; it does not itself cause a render when the hash changes.
+- **Fix:** added a deterministic `resolveRootRoute`, a `RootRouter` above `App`, and explicit `hashchange` + `popstate` subscriptions. Admin routes now mount `AdminScreen` before the customer app tree. No auth or backend authorization boundary was weakened.
+- **Regression coverage:** added route-resolution tests for `#/admin`, `#admin`, Admin subroutes, `/admin`, and non-Admin routes. Updated frontend CI to execute `npm test` so regression tests are actually enforced.
+- **Verification:** PR frontend CI build/test/lint PASS; Vercel preview deployment for the PR head is READY. This is CODE/DEPLOYMENT VERIFIED, not yet production DOM verified.
+- **What was not effective:** treating deployment READY, bundle markers, or string matching alone as proof that the correct shell was mounted in a real browser.
+- **Rule learned:** top-level URL-derived shell selection must be reactive; a route alias fix is not complete unless navigation itself triggers the shell-selection state update.
+- **Remaining risk / next step:** merge to main, verify the existing `cws-portal.vercel.app` alias points to the merged commit, then obtain real browser DOM evidence for `/#/admin` before claiming production runtime verification.
