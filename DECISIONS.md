@@ -1,6 +1,6 @@
 # CWS Official Decisions — Active
 
-> Reconciled 2026-08-10. This file contains current active decisions only. Superseded/history detail remains available in git history and evidence under `reports/`.
+> Reconciled 2026-08-11. This file contains current active decisions only. Superseded/history detail remains available in git history and evidence under `reports/`.
 
 ## Product / Roadmap
 
@@ -78,16 +78,26 @@ Worker operation retry is bounded and jittered. Task failover/retry authority re
 
 ## Admin / Staff
 
+### [ACTIVE — 2026-08-11] Separate Admin frontend and hostname
+Admin is a separate frontend application and production hostname from the Customer Portal.
+
+- Customer frontend: `cws-portal.vercel.app`.
+- Admin frontend target: `cws-admin.vercel.app`.
+- Both frontends remain in the same canonical GitHub repository but build/deploy independently.
+- Admin must mount only the Admin UI tree; Customer UI must not be mounted or used as a routing fallback in the Admin build.
+- The split does **not** create a second backend, Supabase project, B2 bucket, Worker fleet, SePay integration, or business-data source of truth.
+- Keep the legacy Customer Portal `/admin` route only as a temporary rollback path until the separate Admin production hostname is verified; then retire or redirect it in a follow-up.
+
 ### [ACTIVE] Admin authentication
-Admin/Host staff use Google OAuth through Supabase plus required Supabase TOTP/AAL2 and explicit staff role authorization. Customer authentication and Admin authentication are separate flows.
+Admin/Host staff use Google OAuth through Supabase plus required Supabase TOTP/AAL2 and explicit staff role authorization. Customer authentication and Admin authentication are separate flows. A separate hostname is not an authorization bypass; backend role/AAL2 enforcement remains mandatory.
 
 ### [ACTIVE] Customer CRM
 Customer profile data from the authenticated Google/Supabase account is available to the Admin Dashboard for customer management/support according to authorization rules.
 
 ## Architecture / Scale / Infrastructure
 
-### [ACTIVE] Existing infrastructure only
-Use the existing canonical GitHub repo, Vercel project, Render service, Supabase project, Backblaze B2 resources, Worker environment and SePay setup. Do not create duplicates without explicit Owner approval.
+### [ACTIVE — 2026-08-11] Existing infrastructure with one explicitly approved Admin frontend project
+Use the existing canonical GitHub repo, Render service, Supabase project, Backblaze B2 resources, Worker environment and SePay setup. The Founder explicitly approved one additional Vercel frontend project for the separate Admin application (`cws-admin`). Do not create any other duplicate infrastructure without explicit Owner approval.
 
 ### [ACTIVE] Scale without manual operations
 Normal architecture should support growth toward 100/1,000/1,000,000 Workers without manual per-machine/per-job database configuration, copied storage secrets or AI runtime intervention. This is a design constraint, not a claim that those fleet sizes are currently deployed.
