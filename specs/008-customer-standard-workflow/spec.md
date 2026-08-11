@@ -1,10 +1,10 @@
 # Spec 008 — Standard Customer Workflow
 
 ## Goal
-Make the Customer Portal follow one unambiguous production workflow beginning with customer Google authentication and ending with authorized result download. Admin/Host work is deferred.
+Make the Customer Portal follow one unambiguous production workflow beginning with customer Google authentication and ending with authorized result download. Admin/Host remains a core CWS component, but further Admin refinement is sequenced after the current Customer workflow bottleneck.
 
 ## Founder decision
-Approved 2026-08-11: stop spending the current implementation cycle on Admin UX. Return to the Customer MVP and make the customer workflow canonical, starting from Customer Login.
+Clarified 2026-08-11: do not abandon or de-scope Admin. Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and make the customer workflow canonical, starting from Customer Login; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
 
 ## Reality / current mismatch
 Current production/source has several contradictory assumptions:
@@ -22,7 +22,7 @@ These contradictions are workflow debt and make UI, backend state interpretation
 `Google Login -> Submit input -> materialize/validate -> choose Economy/Balanced(Standard)/Priority -> Start render -> prepare/optimize -> real render/progress -> validate + B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
 
 ## Scope
-- Customer Portal only.
+- Customer Portal is the current implementation focus.
 - Login becomes the first operational gate.
 - Upload/Drive controls are usable only after authenticated customer session.
 - Remove the “upload first, OAuth later” behavioral dependency and related pending-input workaround if no longer needed.
@@ -36,8 +36,9 @@ These contradictions are workflow debt and make UI, backend state interpretation
 - Add regression/E2E coverage for the full screen/state ordering.
 - Update source-of-truth docs and engineering learning log.
 
-## Non-goals
-- Do not redesign Admin/Host in this change.
+## Non-goals for this implementation cycle
+- Do not redesign Admin/Host in this change; this is sequencing, not abandonment.
+- Do not delete, weaken, or de-scope the existing Admin/Host architecture or security requirements.
 - Do not create new Vercel/Render/Supabase/B2 resources.
 - Do not change payment method away from MB Bank QR + SePay.
 - Do not invent a new pricing base rate.
