@@ -63,6 +63,41 @@ class ProductionNodeAgentContractTests(unittest.TestCase):
         self.assertIsNone(config.google_drive_api_key)
         self.assertFalse(hasattr(config, "b2_app_key"))
 
+    def test_service_config_loads_identity_from_state_root(self):
+        with tempfile.TemporaryDirectory() as root:
+            state = Path(root)
+            (state / "worker-identity.json").write_text(
+                '{"worker_id":"site-001-pc-001","credential_file":"'
+                + str(state / "worker.dpapi").replace("\\", "/")
+                + '"}',
+                encoding="utf-8",
+            )
+            config = ProductionConfig.from_env(
+                {
+                    "CWS_BACKEND_URL": "https://backend.example",
+                    "CWS_STATE_ROOT": str(state),
+                }
+            )
+            self.assertEqual(config.worker_id, "site-001-pc-001")
+            self.assertEqual(config.credential_file, state / "worker.dpapi")
+            self.assertEqual(config.workspace, state / "workspace")
+
+    def test_service_config_rejects_credential_outside_state_root(self):
+        with tempfile.TemporaryDirectory() as root:
+            state = Path(root) / "state"
+            state.mkdir()
+            (state / "worker-identity.json").write_text(
+                '{"worker_id":"worker-a","credential_file":"C:/outside/worker.dpapi"}',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(PermanentWorkerError, "inside CWS_STATE_ROOT"):
+                ProductionConfig.from_env(
+                    {
+                        "CWS_BACKEND_URL": "https://backend.example",
+                        "CWS_STATE_ROOT": str(state),
+                    }
+                )
+
     def test_drive_input_fails_closed_without_drive_api_key(self):
         config = ProductionConfig.from_env(
             {
