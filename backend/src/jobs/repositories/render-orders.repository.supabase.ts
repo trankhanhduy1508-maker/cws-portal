@@ -3,13 +3,9 @@ import { SupabaseService } from '../../supabase/supabase.service';
 import { IRenderOrdersRepository } from './render-orders.repository.interface';
 import { RenderOrder } from '../domain/render-order';
 import { JobStatus } from '../domain/job-status.enum';
-import { RenderProfileId } from '../domain/render-profile';
 
 const TABLE = 'render_orders';
 
-/** Row thật trong Postgres — snake_case theo convention SQL, khác với
- * camelCase phía domain/TypeScript. Hàm map ở dưới là ranh giới DUY
- * NHẤT chuyển đổi 2 chiều, phần còn lại của app không biết tới snake_case. */
 interface RenderOrderRow {
   id: string;
   project_name: string;
@@ -18,7 +14,6 @@ interface RenderOrderRow {
   notes: string | null;
   storage_code: string;
   customer_id: string | null;
-  profile_id: string;
   status: string;
   stage_progress: number;
   payment_id: string | null;
@@ -50,7 +45,6 @@ function rowToDomain(row: RenderOrderRow): RenderOrder {
     notes: row.notes,
     storageCode: row.storage_code,
     customerId: row.customer_id,
-    profileId: row.profile_id as RenderProfileId,
     status: row.status as JobStatus,
     stageProgress: row.stage_progress,
     paymentId: row.payment_id,
@@ -87,7 +81,6 @@ function domainToInsertRow(
     notes: order.notes,
     storage_code: order.storageCode,
     customer_id: order.customerId,
-    profile_id: order.profileId,
     status: order.status,
     stage_progress: order.stageProgress,
     payment_id: order.paymentId,
