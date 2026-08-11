@@ -6,9 +6,11 @@
 
 The customer flow must be simple enough to explain in one line:
 
-`Google Login -> Submit file -> Validate -> Choose render speed -> Render -> Preview + final price + QR -> SePay -> Download`
+`Google Login -> Submit file -> Validate -> Start render -> CWS automatically allocates Workers -> Render/finalize -> Preview + final price + QR -> SePay -> Download`
 
 The UI may show more operational detail, but it must not invent extra business gates or reorder the real backend lifecycle.
+
+The previous public Economy / Balanced(Standard) / Priority / Turbo choice is superseded. The customer does not choose speed tier, Worker count, GPU or CPU.
 
 ## 2. Canonical Customer UI Journey
 
@@ -21,8 +23,6 @@ Customer opens `cws-portal.vercel.app`.
 - After successful Supabase session restore, show customer identity in the portal shell.
 - Do not mix Admin/Host login into the customer application.
 - If a valid customer session already exists, skip the login gate and continue to Step 1.
-
-**Important:** the previous behavior where customers could choose/upload/paste a Drive link first and only be forced to login when pressing Render is no longer canonical.
 
 ### Step 1 — New Render Job / Input
 
@@ -47,72 +47,86 @@ For Google Drive:
 - Backend downloads/materializes it into canonical B2 storage;
 - customer/Worker must not depend on the external Drive URL after materialization.
 
-### Step 2 — Input Ready + Render Mode
+### Step 2 — Input Ready + Start Render
 
-Only after canonical input is ready, show the render-mode choice.
+Only after canonical input is ready, show the primary CTA: **Start render**.
 
-Customer chooses a **service/speed preference**, not GPU/CPU hardware.
+There is no public render-mode selection.
 
-Current product direction:
-- Economy
-- Balanced/Standard
-- Priority
+Customer does not choose:
+- Economy / Standard / Priority / Turbo;
+- Worker count;
+- GPU/CPU;
+- benchmark strategy.
 
-Do not expose Worker/GPU/CPU selection to the customer. Do not add extra modes without an active product decision.
+CWS owns capacity planning automatically.
 
-The screen may show an **estimated completion time/range** based on current evidence. It must clearly distinguish estimates from the final charge.
-
-**Final price is not charged or finalized here.**
-
-Primary CTA: **Start render**.
-
-### Step 3 — Create Job
+### Step 3 — Create Job + Analyze Work
 
 When the authenticated customer presses Start render:
 
 1. Backend re-validates customer session and input ownership.
 2. Backend creates exactly one customer-owned Job for the canonical input.
-3. Backend creates durable Task/scheduler state.
-4. UI transitions to the live job/progress screen using the returned real Job ID.
+3. Backend analyzes the project enough to determine frame/work range and runnable dependencies.
+4. Backend creates durable non-overlapping Tasks.
+5. UI transitions to the live job/progress screen using the returned real Job ID.
 
 Never create the production Job before canonical input materialization/validation.
 
-### Step 4 — Prepare + Optimize
+### Step 4 — Adaptive Deadline Scheduling
 
-Backend/Worker lifecycle:
+CWS uses a work-conserving deadline scheduler. It must not wait for a separate benchmark-only render phase before useful work begins.
 
-`claim -> download scoped input -> safe archive extraction if needed -> discover .blend/assets -> Blender preflight -> immutable original -> working copy -> safe optimization -> post-opt validation`
+Canonical behavior:
+
+1. As soon as runnable Tasks exist, Scheduler targets an initial wave of **10 eligible Workers**, subject to real fleet capacity.
+2. Each Worker atomically claims a distinct Task/frame. Two active Workers must not own/render the same Task/frame concurrently.
+3. Workers immediately perform real production work.
+4. The first completed real Tasks/frames become runtime evidence for the same Job.
+5. Backend calculates projected final completion from observed runtime, remaining work and reserved finalization overhead.
+6. If projected final completion is at risk of exceeding the internal **45-minute target**, desired Worker count increases aggressively as eligible capacity permits, for example `10 -> 20 -> 30+`.
+7. Capacity planning adds a configurable safety margin initially in the **20–30%** range and rounds the required Worker count **up** to a whole integer.
+8. Failed/expired Tasks may be reassigned only after the previous lease is no longer authoritative and generation fencing is advanced according to the canonical scheduler contract.
+
+Do not dedicate one Worker solely to a synthetic 3-frame benchmark while all other work waits. Useful production work itself supplies the measurements.
+
+### Step 5 — Prepare + Optimize + Real Render
+
+Backend/Worker lifecycle for each assigned Task:
+
+`claim -> scoped input download -> safe archive extraction if needed -> discover .blend/assets -> Blender preflight -> immutable original -> working copy -> safe optimization -> post-opt validation -> real Blender task/frame render`
 
 Rules:
 - customer original remains immutable;
 - no untrusted Blender Python autoexec;
 - optimization must be deterministic and semantics-safe;
 - if an optimization cannot be proven safe, fall back to the unoptimized working copy;
-- archive extraction is bounded and sandboxed.
+- archive extraction is bounded and sandboxed;
+- no fake timers or client-generated progress;
+- progress survives page refresh/reopen by reattaching to the same real Job ID.
 
-Customer UI should summarize these states in understandable language such as:
+Customer UI may summarize states such as:
 
-`Preparing project -> Checking scene -> Optimizing safely -> Ready to render`
+`Preparing project -> Distributing work -> Rendering -> Finalizing`
 
-Do not expose unnecessary internal secrets or infrastructure identifiers.
+### Step 6 — Collect + Finalize Within the Deadline Budget
 
-### Step 5 — Real Render
+The 45-minute scheduling target is **not frame-render-only**.
 
-Worker runs real Blender in background/CLI mode.
+Internal planning must reserve time for required downstream work, including as applicable:
+- project analysis/preparation and dispatch overhead;
+- remaining frame/task rendering;
+- retry/straggler reserve;
+- output collection and validation;
+- animation frame assembly/encode/finalization.
 
-UI receives real Backend state/progress only:
+If all frames finish but required animation assembly/encode is still running, the Job is not yet final output.
 
-`Queued -> Finding machine -> Preparing -> Rendering -> Validating output`
+For MVP, CWS parallelizes independent frames/tasks. Distributed tile/sample rendering of one single slow frame is not part of the current canonical scope.
 
-Requirements:
-- no fake timers;
-- no client-generated progress pretending to be Worker progress;
-- progress survives page refresh/reopen by reattaching to real Job ID;
-- History/Dashboard can reopen a running job without creating a duplicate.
+### Step 7 — Output Lock + Preview + Final Price
 
-### Step 6 — Output Lock + Preview + Final Price
-
-After successful render:
+After successful render/finalization:
 
 1. validate expected output;
 2. upload full output to B2;
@@ -129,7 +143,7 @@ Then customer sees one consolidated result/payment screen:
 
 There is **no customer preview-approval gate before payment**.
 
-### Step 7 — Payment Pending
+### Step 8 — Payment Pending
 
 Customer transfers the displayed exact amount with the displayed exact transfer content/reference.
 
@@ -139,7 +153,7 @@ The portal waits for real payment verification. It may show:
 
 Do not unlock from a frontend button, local state, screenshot, or manual client confirmation.
 
-### Step 8 — SePay Verification
+### Step 9 — SePay Verification
 
 SePay webhook reaches Backend.
 
@@ -153,7 +167,7 @@ Before `PAID`, Backend must:
 
 Only the Backend transition to `PAID` authorizes delivery.
 
-### Step 9 — Unlock + Download
+### Step 10 — Unlock + Download
 
 After `PAID`:
 
@@ -162,9 +176,9 @@ After `PAID`:
 3. customer sees **Download result**;
 4. portal records delivery/audit state;
 5. retention/cleanup follows active policy;
-6. Worker returns/remains idle after its render-side cleanup.
+6. Workers return/remain idle after render-side cleanup.
 
-### Step 10 — Customer History
+### Step 11 — Customer History
 
 Authenticated customer can see their own jobs only:
 
@@ -189,23 +203,29 @@ Validate content/signature + ownership + supported contract
     ↓
 INPUT_READY
     ↓
-Customer selects Economy / Balanced(Standard) / Priority
-    ↓
 START RENDER
     ↓
-CREATE CUSTOMER-OWNED JOB + durable Task
+CREATE CUSTOMER-OWNED JOB
     ↓
-Authenticated eligible Worker claims atomically
+Analyze frame/work range
     ↓
-Scoped input download
+Create durable non-overlapping Tasks
     ↓
-Safe extraction/discovery/preflight
+Initial desired capacity = 10 eligible Workers
     ↓
-Immutable original -> working copy -> safe optimization -> validation
+Atomic distinct Task claims + real Blender work starts immediately
     ↓
-REAL Blender render + REAL progress/logs
+First real completed Tasks/frames provide observed runtime
     ↓
-Validate output
+Project final completion time
+    ↓
+If 45-minute target at risk: increase desired Worker count + safety margin
+    ↓
+Continue real parallel render with no concurrent duplicate Task/frame ownership
+    ↓
+Collect + validate outputs
+    ↓
+Animation assembly/encode/finalization if required
     ↓
 Upload FULL OUTPUT to B2 + verify artifact
     ↓
@@ -234,7 +254,13 @@ Customer history / audit / cleanup
 - Upload/Drive controls belong to the authenticated customer workflow.
 - **Materialize/validate input before Job creation.**
 - A client-supplied file reference or Drive URL alone is never authorization proof.
-- Customer chooses service/speed preference, never GPU/CPU hardware.
+- Customer does not choose a render speed tier, Worker count or hardware.
+- Initial scheduling target is 10 eligible Workers for runnable render Tasks when fleet capacity permits.
+- Use completed real work as runtime evidence; do not block on a benchmark-only phase.
+- Scale capacity upward when projected final completion threatens the 45-minute target.
+- Apply configurable 20–30% safety capacity and round required Worker count up to an integer.
+- One Task/frame has only one active authoritative Worker at a time.
+- The 45-minute target includes required finalization/assembly/encode, not only frame rendering.
 - Do not charge before real render/output/previews.
 - There is **no customer approval gate** between preview and payment.
 - Full output is uploaded once, locked before payment, then authorized after `PAID`.
@@ -289,17 +315,19 @@ LOGIN_REQUIRED
 INPUT_SELECT
 INPUT_PROCESSING
 INPUT_READY
-MODE_SELECT
 JOB_CREATING
-QUEUED
-PREPARING
+ANALYZING_PROJECT
+DISTRIBUTING_WORK
 RENDERING
+FINALIZING
 VALIDATING_OUTPUT
 AWAITING_PAYMENT
 PAID
 COMPLETED
 ERROR / CANCELLED
 ```
+
+`MODE_SELECT` is superseded and must not remain as a required Customer gate.
 
 Stale labels such as **“Chờ bạn duyệt bản xem trước”** must not remain if no approval action exists.
 
@@ -313,16 +341,20 @@ Customer workflow is not DONE until production evidence proves all of the follow
 2. unauthenticated user cannot proceed into operational Upload/Drive flow;
 3. authenticated customer submits real `.blend/.zip/.rar` or supported Drive input;
 4. Backend materializes and validates customer-owned canonical input;
-5. customer selects an approved render mode;
+5. customer starts render without choosing a speed tier;
 6. exactly one real Job is created after input readiness;
-7. real Worker claims and runs real Blender;
-8. portal shows real progress and can recover/reattach after refresh;
-9. real output is validated and locked in B2;
-10. real watermarked previews are generated;
-11. final price + unique payment content + MB QR appear only after render/output lock;
-12. SePay verifies exact reference/content and amount idempotently;
-13. Backend marks `PAID`;
-14. customer receives an authorized download for the existing full output;
-15. customer History reflects the same real Job and payment/result state.
+7. Backend analyzes frame/work range and creates non-overlapping durable Tasks;
+8. initial real Worker wave begins useful rendering without a blocking benchmark-only phase;
+9. distinct Worker ownership prevents concurrent duplicate Task/frame rendering;
+10. observed real task/frame runtimes drive projected completion and adaptive capacity decisions;
+11. CWS can increase Worker target when the 45-minute final-output target is threatened;
+12. real output collection/validation and required animation assembly/encode complete;
+13. real output is validated and locked in B2;
+14. real watermarked previews are generated;
+15. final price + unique payment content + MB QR appear only after render/output lock;
+16. SePay verifies exact reference/content and amount idempotently;
+17. Backend marks `PAID`;
+18. customer receives an authorized download for the existing full output;
+19. customer History reflects the same real Job and payment/result state.
 
 Builds, unit tests, simulations, Vercel READY state, database edits, historical jobs, or Worker heartbeat alone are not Golden Production E2E proof.
