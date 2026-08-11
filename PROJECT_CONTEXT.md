@@ -9,12 +9,15 @@ CWS is a distributed Blender rendering platform. Customers submit projects; auth
 There is no customer-approval gate before payment. Payment is never required before render/previews. Normal runtime must operate without AI or Founder intervention.
 
 ## Current Stack
-- Frontend: React on the existing Vercel production project.
-- Backend/API: NestJS on the existing Render.com service.
-- Database/Auth: existing Supabase project; Google OAuth for customers.
+- Customer frontend: React/Vite on the existing `cws-portal.vercel.app` Vercel project.
+- Admin frontend: separate React/Vite build in the same canonical GitHub repo; target production hostname `cws-admin.vercel.app` on one explicitly approved additional Vercel frontend project.
+- Backend/API: existing NestJS Render.com service shared by both frontends.
+- Database/Auth: one existing Supabase project; Google OAuth for customers and staff, with staff TOTP/AAL2 + server-side staff role enforcement.
 - Storage: existing Backblaze B2.
 - Worker: canonical Windows Node Agent + generic Worker Engine + Blender CLI/background.
 - Payment: Vietnam bank QR + SePay webhook.
+
+The Admin frontend must not mount or fall back to Customer UI. The frontend split does not duplicate backend, Supabase, B2, Workers, SePay, business data, or the GitHub source of truth.
 
 ## Input
 Supported customer inputs are `.blend`, `.zip`, `.rar`, and approved Google Drive file links. Input must be materialized into canonical storage, validated, ownership-bound server-side, and only then used to create a Job. Archives are untrusted and extracted only in a bounded job sandbox.
@@ -47,4 +50,4 @@ Decisions: `DECISIONS.md`.
 Execution framework: `.specify/memory/constitution.md` + `CWS_EXECUTION_FUNNEL.md` + GitHub Spec Kit.
 Runtime truth: current code/config plus evidence under `reports/`.
 
-Never create duplicate Vercel/Render/Supabase/B2/GitHub resources without explicit Owner approval.
+Never create duplicate Render/Supabase/B2/GitHub resources. The only newly approved infrastructure resource as of 2026-08-11 is the separate `cws-admin` Vercel frontend project.
