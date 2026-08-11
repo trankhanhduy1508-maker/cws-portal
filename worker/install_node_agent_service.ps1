@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $serviceName = 'CWSNodeAgentProduction'
 $serviceAccount = "NT SERVICE\$serviceName"
-if ([string]::IsNullOrWhiteSpace($Repo)) { $Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
+if ([string]::IsNullOrWhiteSpace($Repo)) { $Repo = Split-Path -Parent $PSScriptRoot }
 if ([string]::IsNullOrWhiteSpace($Python)) {
   $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue
   if (-not $pythonCommand) { throw 'Python 3 is required for the canonical Node Agent service' }
