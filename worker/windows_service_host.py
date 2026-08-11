@@ -1,16 +1,16 @@
-"""Real Windows SCM host for the Node Agent staging PoC.
+"""Windows SCM owner for the canonical CWS production Node Agent.
 
-The service owns presence/heartbeat and supervision only. A user-session
-Worker launcher can be supplied with CWS_SERVICE_HELPER_COMMAND when GPU/UI
-constraints make Session 0 unsuitable; Blender is never launched implicitly
-by this service host.
+The service is the single automatic startup owner. It supervises the existing
+``production_node_agent.py`` process; the Node Agent owns authentication,
+heartbeat, task polling, and task-scoped Worker Engine launch. No synthetic
+heartbeat and no legacy Worker fallback are allowed here.
 """
 from __future__ import annotations
 
 import json
 import os
-import shlex
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -22,9 +22,9 @@ import win32serviceutil
 
 
 class CwsNodeAgentService(win32serviceutil.ServiceFramework):
-    _svc_name_ = "CWSNodeAgentStaging"
-    _svc_display_name_ = "CWS Node Agent (Staging PoC)"
-    _svc_description_ = "Staging-only CWS Node Agent SCM lifecycle and heartbeat PoC."
+    _svc_name_ = "CWSNodeAgentProduction"
+    _svc_display_name_ = "CWS Node Agent (Production)"
+    _svc_description_ = "Canonical CWS Node Agent production runtime owner."
     _max_log_bytes = 5 * 1024 * 1024
 
     def __init__(self, args):
@@ -52,28 +52,31 @@ class CwsNodeAgentService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop_event)
         if self.child is not None and self.child.poll() is None:
             self.child.terminate()
+            try:
+                self.child.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.child.kill()
         self._event("service_stop_requested")
 
     def SvcDoRun(self):
-        self._event("service_started", state="ACTIVE_IDLE")
+        self._event("service_started", state="STARTING", runtime="production_node_agent.py")
         self._run_loop()
-        self._event("service_stopped", state="ACTIVE_IDLE")
+        self._event("service_stopped", state="STOPPED")
 
     def _run_loop(self):
-        helper = os.environ.get("CWS_SERVICE_HELPER_COMMAND", "").strip()
-        helper_args = shlex.split(helper, posix=False) if helper else None
-        next_heartbeat = 0.0
+        python_exe = os.environ.get("CWS_PYTHON_EXE", sys.executable).strip() or sys.executable
+        script = os.environ.get("CWS_NODE_AGENT_SCRIPT", "").strip()
+        if not script:
+            script = str(Path(__file__).resolve().with_name("production_node_agent.py"))
+        if not Path(python_exe).is_file() or not Path(script).is_file():
+            raise RuntimeError("canonical Node Agent executable or script is missing")
+        self.child = subprocess.Popen([python_exe, script], shell=False)
+        self._event("node_agent_started", pid=self.child.pid, script=script)
         while not self.stop_requested.is_set():
-            now = time.monotonic()
-            if now >= next_heartbeat:
-                self._event("heartbeat", state="ACTIVE_IDLE", health="service_alive")
-                next_heartbeat = now + 5.0
-            if helper_args and self.child is None:
-                self.child = subprocess.Popen(helper_args, shell=False)
-                self._event("helper_started", pid=self.child.pid)
-            if self.child is not None and self.child.poll() is not None:
-                self._event("helper_exit", code=self.child.returncode)
-                self.child = None
+            result = self.child.poll()
+            if result is not None:
+                self._event("node_agent_exit", code=result)
+                raise RuntimeError(f"canonical Node Agent exited with code {result}")
             win32event.WaitForSingleObject(self.stop_event, 500)
 
 
