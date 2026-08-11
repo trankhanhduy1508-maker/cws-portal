@@ -427,5 +427,37 @@ class WorkerEngineTests(unittest.TestCase):
 
 
 
+    def test_refreshes_reconciled_seed_spec_before_rendering(self):
+        class MetadataPreflight:
+            def inspect(self, current_spec, project):
+                return {
+                    "frame_start": 11,
+                    "frame_end": 300,
+                    "total_frames": 290,
+                    "fps": 24.0,
+                }
+
+        class RecordingRenderer(Renderer):
+            def __init__(self):
+                self.frames = []
+
+            def render(self, current_spec, project, frame, output):
+                self.frames.append(frame)
+                return super().render(current_spec, project, frame, output)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            renderer = RecordingRenderer()
+            reporter = Reporter()
+            refreshed = spec(frame_start=11, frame_end=11)
+            WorkerEngine(
+                Path(tmp), Downloader(), MetadataPreflight(), renderer,
+                Checkpoints(), BasicOutputValidator(10), reporter,
+                metadata_reporter=lambda _spec, _metadata: refreshed,
+            ).run(spec(frame_start=1, frame_end=1))
+
+            self.assertEqual(renderer.frames, [11])
+            self.assertIn(("complete", "task-1"), reporter.events)
+
+
 if __name__ == "__main__":
     unittest.main()
