@@ -21,7 +21,12 @@ export async function signInStaffWithGoogle() {
   ensureConfigured();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/#admin` },
+    // Admin shell identity must live in the pathname, not the hash. Supabase
+    // implicit OAuth uses the URL fragment for access/refresh tokens on the
+    // callback, so `/#admin` can be replaced by `#access_token=...` and make
+    // the app fall through to the Customer shell. `/admin` remains stable
+    // while Supabase consumes its auth fragment.
+    options: { redirectTo: `${window.location.origin}/admin` },
   });
   if (error) throw new Error(error.message);
   return data;

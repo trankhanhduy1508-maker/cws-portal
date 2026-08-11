@@ -11,6 +11,7 @@ describe('resolveRootRoute', () => {
     [{ pathname: '/admin', hash: '' }, ROOT_ROUTE.ADMIN],
     [{ pathname: '/admin/', hash: '' }, ROOT_ROUTE.ADMIN],
     [{ pathname: '/admin/settings', hash: '' }, ROOT_ROUTE.ADMIN],
+    [{ pathname: '/admin', hash: '#access_token=oauth-token&refresh_token=refresh-token' }, ROOT_ROUTE.ADMIN],
   ])('resolves Admin route for %o', (locationLike, expected) => {
     expect(resolveRootRoute(locationLike)).toBe(expected);
   });
