@@ -382,6 +382,7 @@ class ProductionRpcAdapter:
             or not isinstance(total_frames, int)
             or not isinstance(fps, (int, float)) or isinstance(fps, bool)
             or frame_start < 0 or frame_end < frame_start
+            or spec.frame_start < frame_start or spec.frame_end > frame_end
             or total_frames != frame_end - frame_start + 1 or total_frames < 1
             or not 0 < float(fps) <= 1000
         ):
