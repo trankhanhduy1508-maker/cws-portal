@@ -12,7 +12,7 @@ Customer MVP operational flow begins with Google OAuth. Unauthenticated visitors
 
 Canonical front-of-flow order:
 
-`Google Login -> authenticated Upload/Google Drive -> backend materialize into canonical B2 storage -> validate content/signature + ownership -> choose approved render mode -> create customer-owned Job -> Task/Worker execution`
+`Google Login -> authenticated Upload/Google Drive -> backend materialize into canonical B2 storage -> validate content/signature + ownership -> Start render -> create customer-owned Job -> automatic deadline planning + Task/Worker execution`
 
 The previous “choose input first, login only when pressing Render” behavior is superseded.
 
@@ -26,19 +26,53 @@ After Google login and valid input submission, the normal Customer E2E must run 
 
 Canonical normal flow:
 
-`Google Login -> Upload/Drive -> Validate -> Queue -> Scheduler -> Worker -> Render -> B2 -> Preview/Pricing/QR -> SePay verify -> Unlock -> Download -> Cleanup`
+`Google Login -> Upload/Drive -> Validate -> Create Job -> Adaptive Deadline Scheduler -> Worker Tasks -> Render -> B2 -> Preview/Pricing/QR -> SePay verify -> Unlock -> Download -> Cleanup`
 
 Admin is not a mandatory hop in the Customer workflow. Admin is reserved for observability, support, security exceptions, incident handling, system configuration, and explicit exceptional overrides.
 
-### [ACTIVE — 2026-08-11] Customer render-mode choice
-Customer chooses service/speed preference, never GPU/CPU hardware.
+### [ACTIVE — 2026-08-11] No public render-mode choice; automatic deadline planning
+The previous public Economy / Balanced(Standard) / Priority / Turbo render-mode choice is superseded.
 
-Current public modes are:
-- Economy
-- Balanced/Standard
-- Priority
+Customer does **not** choose speed tier, Worker count, GPU, CPU or hardware. After a validated canonical input is ready, the customer starts the render and CWS automatically determines parallel capacity.
 
-Do not expose additional public modes without a new active product decision. Backend/internal compatibility identifiers may remain if required for existing data/contracts.
+The scheduling objective is an internal mandatory product target: **drive the complete render deliverable toward <=45 minutes from render start to final validated output**, including frame rendering and, when applicable, frame collection/assembly/encode. This is not a public contractual SLA unless separately approved.
+
+### [ACTIVE — 2026-08-11] CWS Adaptive Deadline Scheduler
+CWS uses a deadline-driven, work-conserving scheduler instead of a blocking benchmark-first phase.
+
+Canonical behavior:
+
+1. Backend analyzes the canonical project enough to determine frame/work range and build durable non-overlapping Tasks.
+2. Scheduler starts an initial wave of **10 Workers** as soon as runnable Tasks exist, subject to real fleet capacity and eligibility.
+3. Those Workers perform real production Tasks immediately; CWS does not reserve a Worker solely to wait for a synthetic benchmark.
+4. The first completed real frames/tasks provide observed runtime evidence (`seconds/frame`, task runtime, remaining work).
+5. Scheduler continuously projects final completion time from remaining work, observed runtime and reserved non-render overhead.
+6. If projected final completion exceeds the 45-minute target, Scheduler scales the same Job upward (for example 10 -> 20 -> 30+ Workers) as eligible capacity is available.
+7. Capacity calculation includes a configurable safety margin initially in the **20–30%** range and converts the result to a whole Worker count by **rounding up**, never down.
+8. Worker count is always an integer. No fractional Worker allocation exists.
+
+The exact scaling formula and safety factor are implementation/configuration details and must be measurable/tunable; do not expose them as customer choices.
+
+### [ACTIVE — 2026-08-11] No concurrent duplicate frame ownership
+A render frame/task may have only one active owner at a time.
+
+- Scheduler partitions the Job into durable, non-overlapping Tasks.
+- Atomic claim + lease + generation fencing prevents two active Workers from rendering the same Task/frame concurrently.
+- A failed/expired Task may be reassigned only after its prior lease is no longer authoritative and the generation is advanced according to the existing fencing model.
+- Do not use speculative duplicate rendering as the normal CWS path without a new Founder decision.
+
+### [ACTIVE — 2026-08-11] 45-minute budget includes finalization
+The 45-minute target is not “frame render only.” Internal scheduling must reserve time for downstream work required to produce the final deliverable, including as applicable:
+
+- project analysis/preparation and dispatch overhead;
+- remaining render work;
+- retry/straggler reserve;
+- output collection/validation;
+- animation frame assembly/encode/finalization.
+
+A Job is not considered within the target merely because all frame Tasks finished while required assembly/encode still remains.
+
+For MVP, CWS optimizes horizontal parallelism across independent frames/tasks. Splitting one single slow frame across multiple Workers (tile/sample distributed single-frame rendering) is not part of this decision and requires a separate future design if evidence proves it necessary.
 
 ### [ACTIVE — 2026-08-10] Render-before-payment; no customer approval gate
 Canonical order:
@@ -156,7 +190,9 @@ Workers use the authenticated Backend gateway. Direct `anon`/`authenticated` exe
 Long-lived B2 credentials remain server-side. Workers receive short-lived exact task/object-scoped GET/PUT capabilities only for current fenced assignments.
 
 ### [ACTIVE] Scheduler boundary
-Keep the existing PostgreSQL durable queue/atomic claim/lease/generation fencing architecture. Do not add OmniRoute as a production dependency or scheduler replacement. No Redis/broker/service is added until measured evidence proves the current control plane is the bottleneck.
+Keep the existing PostgreSQL durable queue/atomic claim/lease/generation fencing architecture. The Adaptive Deadline Scheduler is implemented **on top of this existing durable task model**: it changes task generation/capacity decisions, not the ownership/security boundary.
+
+Do not add OmniRoute as a production dependency or scheduler replacement. No Redis/broker/service is added until measured evidence proves the current control plane is the bottleneck.
 
 ### [ACTIVE] Failure/retry boundary
 Worker operation retry is bounded and jittered. Task failover/retry authority remains owned by the backend/Postgres lease/generation model. Security violations fail closed.
