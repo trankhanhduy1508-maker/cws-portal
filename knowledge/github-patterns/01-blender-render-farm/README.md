@@ -4,6 +4,16 @@
 > Snapshot: 2026-08-12
 > CWS mapping: Blender metadata/preflight, frame/task partitioning, render execution, Worker allocation, farm-scale scheduling.
 
+## Official upstream first
+
+For any Blender-specific behavior, first read the canonical official source pin:
+
+`knowledge/github-patterns/01-blender-render-farm/OFFICIAL_BLENDER_UPSTREAM.md`
+
+It points to the official `blender/blender` repository, records a reproducible upstream commit snapshot, maps the source paths most relevant to CWS, and requires re-grounding the exact supported Blender version before material production decisions.
+
+CWS intentionally does **not** vendor the entire Blender source tree or add it as a production submodule because that would unnecessarily bloat clone/CI/deployment context. The official upstream remains the authority; CWS stores the source pin and distilled CWS rules.
+
 ## Specialist references
 
 For Blender EEVEE / EEVEE Next work, also read:
@@ -153,6 +163,8 @@ Read this note when working on:
 - Worker device eligibility;
 - render task failure semantics;
 - Adaptive Deadline Scheduler.
+
+For any Blender-semantic question, read `OFFICIAL_BLENDER_UPSTREAM.md` first.
 
 If the task is EEVEE/EEVEE Next specific, also read `EEVEE_RENDERING.md` in this folder.
 
