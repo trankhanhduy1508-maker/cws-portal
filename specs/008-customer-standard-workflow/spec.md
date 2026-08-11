@@ -76,11 +76,22 @@ These are now the current scheduling mismatches to converge. Do not reopen the c
 
 ## Scheduling invariants
 
+### Metadata discovery / first useful task
+- Frame metadata discovery is a bounded preflight on the **first real render Task**, not a separate benchmark-only render phase and not a second customer-visible Job.
+- The first Worker may open the project, read authoritative `frame_start`, `frame_end`, `total_frames` and `fps`, report that metadata through the existing authenticated Backend/Worker security boundary, and then continue useful rendering for its already-owned Task.
+- The Scheduler must not wait for that first Task to finish rendering. As soon as authoritative metadata is durably recorded, it may create the remaining disjoint render Task graph.
+- Metadata reporting must be fenced to the Worker/task/generation that currently owns the first Task; stale or unrelated Workers must not be able to set Job metadata.
+- Do not add a separate benchmark Worker, new queue/broker, or Backend Blender runtime merely to discover frame metadata.
+- The durable Job metadata must represent the actual frame interval, not only an assumed `1..N`; projects whose `frame_start` is not 1 must partition correctly.
+
 ### Task ownership
 - Each render Task/frame has one active authoritative owner at a time.
 - Claim must remain atomic.
 - Lease/generation fencing remains authoritative for failover/retry.
 - Reassignment after failure/expiry must not allow an old Worker to commit stale completion.
+- Different Task IDs must not cover overlapping frame intervals for the same Job.
+- For a Job frame interval `[S,E]`, the union of render Task ranges must equal exactly `[S,E]` with no gaps and no overlap.
+- Task graph creation/expansion must have one authoritative writer/transactional path and be idempotent under Scheduler retries.
 
 ### Initial wave
 - Desired initial parallelism is 10 eligible Workers when there are enough runnable Tasks and fleet capacity exists.
@@ -90,6 +101,7 @@ These are now the current scheduling mismatches to converge. Do not reopen the c
 - Useful production Tasks provide benchmark evidence.
 - Maintain enough observations to estimate current seconds/frame or task-runtime distribution without blocking the Job.
 - Do not infer performance solely from GPU model/name when real runtime evidence exists.
+- Existing telemetry/schema is not completion evidence by itself; adaptive scheduling must consume timestamps/events that the canonical production Worker path actually writes.
 
 ### Deadline planning
 - Internal target: final validated deliverable within 45 minutes from render start.
@@ -118,9 +130,9 @@ A real production customer can complete, in order:
 3. Real canonical materialization/validation.
 4. Start render without selecting a public speed tier.
 5. Exactly one Job creation after input readiness.
-6. Real project/frame-work analysis.
-7. Durable non-overlapping Task generation.
-8. Initial real Worker wave begins useful work immediately, targeting 10 eligible Workers when capacity permits.
+6. Real project/frame-work analysis reports authoritative frame range/fps without waiting for a benchmark render to finish.
+7. Durable non-overlapping Task generation covers the exact authoritative frame interval.
+8. Initial real Worker wave begins useful work immediately after metadata makes runnable Tasks available, targeting 10 eligible Workers when capacity permits.
 9. No two active Workers render the same Task/frame concurrently.
 10. Real completed Tasks/frames produce runtime observations.
 11. Scheduler projects final completion and can increase desired Worker capacity when the 45-minute target is threatened.
