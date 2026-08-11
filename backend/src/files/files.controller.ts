@@ -17,7 +17,11 @@ import { ResolveDriveDto } from './dto/resolve-drive.dto';
 import { CwsTempUploadStorage } from './temp-upload.storage';
 import { UploadTimeoutInterceptor } from './upload-timeout.interceptor';
 import { MvpRateLimitGuard } from '../common/guards/mvp-rate-limit.guard';
-import { ACCEPTED_INPUT_EXTENSIONS, getInputFormat } from './input-file.util';
+import {
+  ACCEPTED_INPUT_EXTENSIONS,
+  getInputFormat,
+  hasValidInputSignature,
+} from './input-file.util';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -98,6 +102,12 @@ export class FilesController {
       );
     }
 
+    if (!(await hasValidInputSignature(file.path, file.originalname))) {
+      throw new BadRequestException(
+        'Nội dung file không khớp với phần mở rộng .blend, .zip hoặc .rar',
+      );
+    }
+
     const { key } = await this.b2StorageService.uploadFile(file);
     await this.inputUploadsService.record(
       key,
@@ -114,9 +124,43 @@ export class FilesController {
   }
 
   @Post('drive/resolve')
-  @UseGuards(MvpRateLimitGuard)
-  async resolveDrive(@Body() dto: ResolveDriveDto) {
-    const result = await this.googleDriveService.resolve(dto.driveLink);
+  @UseGuards(JwtAuthGuard, MvpRateLimitGuard)
+  async resolveDrive(@Body() dto: ResolveDriveDto, @Req() request: Request) {
+    const customerId = await getOptionalCustomerId(
+      request,
+      this.supabaseService,
+    );
+    if (!customerId) throw new UnauthorizedException('Cần đăng nhập để kiểm tra Google Drive');
+
+    let result = await this.googleDriveService.resolve(dto.driveLink);
+    if (!result.fileRef) {
+      const materialized = await this.googleDriveService.materializeToB2(
+        dto.driveLink,
+      );
+      result = { ...result, ...materialized, fileRef: materialized.key };
+    }
+
+    const fileRef = result.fileRef;
+    const fileName = result.fileName;
+    const fileSizeBytes = result.fileSizeBytes;
+    if (
+      !fileRef ||
+      !fileName ||
+      typeof fileSizeBytes !== 'number' ||
+      !Number.isInteger(fileSizeBytes) ||
+      fileSizeBytes <= 0
+    ) {
+      throw new BadRequestException(
+        'Google Drive chưa trả về input đã materialize hợp lệ',
+      );
+    }
+
+    await this.inputUploadsService.record(
+      fileRef,
+      customerId,
+      fileName,
+      fileSizeBytes as number,
+    );
     return { driveLink: dto.driveLink, ...result };
   }
 }

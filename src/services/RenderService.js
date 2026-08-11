@@ -13,7 +13,7 @@
 // ============================================================
 
 import { API_CONFIG, IS_BACKEND_CONFIGURED } from './apiConfig';
-import { validateFile, validateDriveLink } from '../utils/fileUtils';
+import { validateFile, validateDriveLink, validateMaterializedInput } from '../utils/fileUtils';
 import { getAccessToken } from './AuthService';
 
 function requireBackend() {
@@ -41,13 +41,24 @@ export async function uploadFile(file) {
   formData.append('file', file);
   const token = await getAccessToken();
   if (!token) throw new Error('Cần đăng nhập Google trước khi tải file');
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-  if (!res.ok) throw new Error(`Tải file thất bại (${res.status})`);
-  return res.json();
+  let res;
+  try {
+    res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.UPLOAD_FILE}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  } catch {
+    throw new Error('Không thể kết nối máy chủ upload. Vui lòng thử lại.');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || `Tải file thất bại (${res.status})`);
+  }
+  const data = await res.json();
+  const materialized = validateMaterializedInput(data);
+  if (!materialized.valid) throw new Error(materialized.error);
+  return data;
 }
 
 /**
@@ -60,17 +71,29 @@ export async function submitGoogleDrive(rawLink) {
   const driveLink = rawLink.trim();
 
   requireBackend();
-  const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ driveLink }),
-  });
+  const token = await getAccessToken();
+  if (!token) throw new Error('Cần đăng nhập Google trước khi kiểm tra Google Drive');
+  let res;
+  try {
+    res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ driveLink }),
+    });
+  } catch {
+    throw new Error('Không thể kết nối Google Drive. Vui lòng thử lại.');
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.message || `Không đọc được thông tin file từ Google Drive (${res.status})`);
   }
   const data = await res.json();
-  return { fileRef: null, driveLink: data.resolvedDriveLink || driveLink, ...data };
+  const materialized = validateMaterializedInput(data);
+  if (!materialized.valid) throw new Error(materialized.error);
+  return { driveLink: data.resolvedDriveLink || driveLink, ...data };
 }
 
 // ============================================================
