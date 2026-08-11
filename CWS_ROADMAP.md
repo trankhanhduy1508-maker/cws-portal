@@ -32,6 +32,9 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Database/Auth: one existing Supabase project; Customer Google OAuth and staff Google OAuth + TOTP/AAL2/role checks remain separate auth flows over the same provider.
 - Storage: existing Backblaze B2.
 - Render runtime: canonical Windows Node Agent + generic Worker Engine + Blender CLI/background.
+- Partner host image model: approved net-cafe/office fleets bake shared CWS runtime components into their Windows/BootROM Golden Image; per-machine Worker identity/credential remains distinct persistent machine state and is never cloned as one shared credential.
+- Host process lifecycle: Node Agent is the one resident Windows auto-start supervisor; Worker Engine is launched only for assigned tasks and exits after completion/failure cleanup.
+- Normal reboot: load existing per-machine identity/credential -> Node Agent auto-start -> heartbeat -> `ACTIVE_IDLE`; normal reboot does not re-enroll when persistent machine state is available.
 - Payment detection: SePay webhook; exact reference/content + amount; idempotent/fail-closed.
 - Worker control plane: authenticated Backend gateway; no Supabase service-role key on Workers.
 - Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing; no new broker/Redis until measurement proves a bottleneck.
@@ -71,7 +74,12 @@ Rules:
 
 ### M2 — Worker autonomous execution
 **PARTIAL PRODUCTION RUNTIME VERIFIED; FULL TASK PATH NEEDS VERIFICATION**
-- Stable Worker identity/enrollment.
+- Stable Worker identity/enrollment without per-machine Founder/Admin approval in normal fleet operation.
+- Partner Golden Image includes shared CWS runtime/bootstrap/Blender components; unique Worker credential is per-machine state, not shared image state.
+- One canonical Windows startup owner: resident Node Agent auto-start service with duplicate-process protection, bounded retry/backoff and fleet startup jitter.
+- Worker Engine remains task-scoped/ephemeral: Node Agent launches it for a claimed task; after render/failure cleanup the Engine exits and Node Agent returns to `ACTIVE_IDLE`.
+- Normal reboot reuses the existing Worker identity/credential and must not re-enroll when per-machine persistent state is available.
+- Bounded unattended re-enrollment remains a recovery fallback only for actual credential loss/corruption, reprovisioning/hardware replacement or revocation recovery.
 - Heartbeat/presence.
 - Atomic capability-aware claim.
 - Lease/generation fencing.
@@ -126,6 +134,8 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 - Near gate: 1 real customer job end-to-end.
 - Then: isolated 10 -> 25 -> 50 -> 100 real/control-plane load verification.
 - Design must remain compatible with 100 / 1,000 / 1,000,000 Workers without assuming they are current deployment targets.
+- Partner Golden Image deployment must not clone one Worker credential across machines.
+- Normal reboot must not require re-enrollment when per-machine persistent state is available.
 - Do not add Redis/brokers/services before measured evidence shows the existing Postgres control plane is the bottleneck.
 
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
