@@ -108,6 +108,44 @@ Target behavior:
 
 `fleet/site onboard once -> unattended/bulk provisioning -> Worker receives/redeems authorized bootstrap material -> creates/stores its own machine-bound identity credential -> heartbeat -> schedulable`
 
+### [ACTIVE — 2026-08-11] Partner net-cafe Golden Image model
+For an approved partner net-cafe/office fleet, CWS software is intended to be baked into the partner's canonical Windows/BootROM Golden Image so a normal PC reboot does not remove CWS runtime components.
+
+Golden Image may contain shared non-secret runtime components such as:
+
+- canonical CWS bootstrap/startup wrapper
+- Node Agent code
+- Worker Engine code
+- Blender/runtime dependencies
+- shared non-secret Backend/site configuration where appropriate
+
+The Golden Image must **not** contain one shared Worker credential copied to every PC. Each physical PC keeps a distinct Worker identity/credential outside shared image state, using the partner's supported per-machine persistent/writeback mechanism when available.
+
+Normal reboot is therefore expected to be:
+
+`Windows boot -> existing per-machine identity/credential -> Node Agent auto-start -> authenticate -> heartbeat -> ACTIVE_IDLE`
+
+Normal reboot must not re-enroll the Worker. Re-enrollment/credential recovery is reserved for first enrollment, actual credential loss/corruption, reprovisioning/hardware replacement, or revocation recovery.
+
+If a specific BootROM platform cannot persist per-machine credential state, bounded unattended re-enrollment may be used as a fallback; it is not the default reboot model.
+
+### [ACTIVE — 2026-08-11] Canonical Windows process lifecycle
+There is one canonical production startup owner: the **Node Agent**.
+
+- Node Agent is the resident background supervisor and auto-starts with Windows using one canonical Windows Service/startup mechanism.
+- Preferred production service behavior is automatic startup with delayed/jittered connection so many PCs do not stampede the Backend at once.
+- Worker Engine is **not** a second always-running background service. It is launched by Node Agent only for an assigned job/task and exits after completion/failure cleanup.
+- After Worker Engine exits, Node Agent remains alive and returns to `ACTIVE_IDLE`.
+- Duplicate Node Agent instances must be prevented; competing Startup Folder/Scheduled Task/.bat/service startup paths are not allowed in production.
+- Backend/network outages must use bounded retry/backoff without killing the resident Node Agent.
+- Worker Engine/Blender crash must not permanently kill Node Agent; Node Agent owns cleanup/recovery according to the canonical state machine.
+
+Canonical runtime shape:
+
+`Windows boot -> Node Agent service -> authenticate/heartbeat -> ACTIVE_IDLE -> claim -> launch Worker Engine -> Blender/render/upload/verify -> Worker Engine exits -> cleanup -> ACTIVE_IDLE`
+
+Legacy `cws_worker_full.py` is not the canonical auto-start production runtime.
+
 ### [ACTIVE] Worker identity/enrollment
 Workers use stable system-managed identity with authenticated enrollment. Do not infer identity from hostname/GPU/registration age. No shared fleet secret or manual per-Worker DB edits as the normal scale path.
 
