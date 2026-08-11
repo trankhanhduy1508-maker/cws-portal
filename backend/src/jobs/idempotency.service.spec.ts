@@ -35,7 +35,7 @@ describe('JobsService.createOrder idempotency', () => {
 
   const dto = {
     fileRef: 'staging/input.blend', fileName: 'input.blend',
-    fileSizeBytes: 1024, profileId: RenderProfileId.STANDARD,
+    fileSizeBytes: 1024,
   };
 
   it('returns the original job for a retry with the same key', async () => {
