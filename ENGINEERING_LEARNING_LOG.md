@@ -83,3 +83,15 @@
 - **Security:** no change to Google provider, Supabase session persistence, TOTP/AAL2, backend RBAC, bearer handling, or infrastructure.
 - **Verification:** PR frontend build/test/lint PASS and backend CI PASS. Production deployment and fresh browser evidence are required before marking `PRODUCTION RUNTIME VERIFIED`.
 - **Rule learned:** never use the same URL fragment namespace for application routing and an OAuth flow that returns credentials/state in the fragment.
+
+
+## 2026-08-11 — baseline validation contract recovery
+
+- **Problem encountered:** PR #31 CI exposed a compile/test baseline inconsistency from the prior Input Validation sync.
+- **Root cause:** files.controller.ts called hasValidInputSignature, but the backend utility export was missing; the frontend link matcher still accepted OneDrive/Dropbox/direct URLs despite the active Google Drive-only contract.
+- **Fix applied:** restored deterministic .blend/ZIP/RAR magic-byte validation and restricted the shared-link matcher to approved Google Drive file links, with targeted regression tests.
+- **What worked:** grounding the failing CI boundary against the active workflow/spec before editing kept the fix limited to input validation.
+- **What failed:** the earlier sync treated compile/test convergence as complete without a fresh canonical CI run.
+- **Lesson learned:** every cross-project contract change needs a same-commit compile/test check for both caller and implementation, plus explicit tests for the active public input contract.
+- **Rule for future:** do not mark a gate PASS from local or preview evidence while canonical CI still has a baseline failure.
+- **Remaining risks:** fresh PR CI is still required; no scheduler, Worker, payment, Admin or deployment work is authorized by this recovery gate.
