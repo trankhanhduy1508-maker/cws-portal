@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const entry = readFileSync(new URL('../apps/admin/src/main.jsx', import.meta.url), 'utf8');
+const entry = readFileSync(join(process.cwd(), 'apps/admin/src/main.jsx'), 'utf8');
 
 describe('separate Admin build boundary', () => {
   it('mounts AdminScreen directly', () => {
-    expect(entry).toContain("AdminScreen");
+    expect(entry).toContain('AdminScreen');
     expect(entry).toContain('<AdminScreen />');
   });
 
