@@ -16,17 +16,24 @@ function ensureConfigured() {
   }
 }
 
+/**
+ * Dedicated Admin deploy lives at the origin root (`cws-admin.vercel.app/`).
+ * The temporary legacy route on the Customer Portal still lives at `/admin`.
+ * Preserve whichever shell initiated OAuth so a callback cannot cross back
+ * into the Customer application by accident.
+ */
+export function getStaffOAuthRedirectUrl(location = window.location) {
+  const legacyAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+  const redirectPath = legacyAdminRoute ? '/admin' : '/';
+  return `${location.origin}${redirectPath}`;
+}
+
 /** Bắt đầu Google OAuth cho staff. Role và AAL2 vẫn được kiểm tra server-side. */
 export async function signInStaffWithGoogle() {
   ensureConfigured();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    // Admin shell identity must live in the pathname, not the hash. Supabase
-    // implicit OAuth uses the URL fragment for access/refresh tokens on the
-    // callback, so `/#admin` can be replaced by `#access_token=...` and make
-    // the app fall through to the Customer shell. `/admin` remains stable
-    // while Supabase consumes its auth fragment.
-    options: { redirectTo: `${window.location.origin}/admin` },
+    options: { redirectTo: getStaffOAuthRedirectUrl() },
   });
   if (error) throw new Error(error.message);
   return data;
