@@ -110,7 +110,7 @@ export async function estimateJob(input, profileId) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ESTIMATE_JOB}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...input, profileId }),
+    body: JSON.stringify(input),
   });
   if (!res.ok) throw new Error('Không ước tính được thời gian/giá');
   return res.json();
@@ -146,7 +146,7 @@ export async function getPaymentDetails(paymentId) {
  * chỉ diễn ra sau khi khách duyệt preview, xem approveJob()).
  * @returns {Promise<{ jobId: string }>}
  */
-export async function createJob({ input, profileId, idempotencyKey }) {
+export async function createJob({ input, idempotencyKey }) {
   requireBackend();
   const token = await getAccessToken();
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
