@@ -1,14 +1,19 @@
 # CURRENT_STATUS
 
 ## Current Phase
-M0 — Source-of-truth convergence + Founder-approved Admin frontend separation before resuming Golden Production E2E.
+M0 — Separate Admin frontend is deployed; verify the final staff OAuth/MFA browser path, then resume Golden Production E2E.
 
 ## Last Verified
 2026-08-11:
-- the existing `cws-portal.vercel.app` Customer project is production READY;
-- Admin routing fixes in the shared portal are code/deployment verified but Founder browser evidence still showed Customer UI during Admin access attempts;
-- Founder explicitly approved separating Admin into its own frontend hostname;
-- CWS architecture FigJam now shows separate Customer/Admin frontends sharing the same backend/data plane.
+- Customer remains on the existing `https://cws-portal.vercel.app` production project;
+- a separate Vercel project `cws-admin` now exists and is production READY;
+- `https://cws-admin.vercel.app/` returns HTTP 200 with `<title>CWS Admin</title>` and the independently built Admin assets;
+- the deployed Admin JS contains `CWS ADMIN`, `Workers / Nodes`, `System Health`, the Admin API tree, Google staff auth + MFA flow, and the dedicated-origin OAuth redirect logic;
+- the Admin build mounts `AdminScreen` directly and does not use the Customer application as a routing fallback;
+- PR #25 passed frontend + backend CI and was merged so OAuth returns dedicated Admin `/` to the same Admin origin while preserving the temporary shared-portal `/admin` rollback route;
+- CWS architecture FigJam shows separate Customer/Admin frontends sharing the same backend/data plane.
+
+The remaining Admin verification is interactive Auth configuration/runtime evidence: Supabase requires every explicit OAuth `redirectTo` to match the project's Redirect URLs allow list. The current Supabase connector does not expose hosted Auth URL Configuration read/write, so `https://cws-admin.vercel.app/` must still be confirmed in Additional Redirect URLs through an interactive browser test or Dashboard setting.
 
 Golden Production E2E is still not proven. Existing evidence remains:
 - `reports/evidence/CWS_FULL_PRODUCTION_INTEGRATION_TRACE_2026-08-08.md`
@@ -18,22 +23,22 @@ Golden Production E2E is still not proven. Existing evidence remains:
 ## Current Task
 `specs/007-separate-admin-frontend/`
 
-Build and deploy a separate Admin frontend from the same canonical GitHub repository:
-- Customer: `cws-portal.vercel.app`
-- Admin target: `cws-admin.vercel.app`
+Production endpoints:
+- Customer: `https://cws-portal.vercel.app`
+- Admin: `https://cws-admin.vercel.app/`
 
-The Admin build must mount only the Admin tree and preserve Google staff login + Supabase TOTP/AAL2 + backend staff-role authorization. Do not duplicate Render, Supabase, B2, Workers, SePay, business data, or the GitHub repository.
+The separate Admin frontend preserves Google staff login + Supabase TOTP/AAL2 + backend staff-role authorization and continues to use the existing Render backend, Supabase, B2, Workers and SePay.
 
 ## Next
-1. Finish isolated Admin build + CI.
-2. Merge after green verification.
-3. Create/configure the explicitly approved `cws-admin` Vercel frontend project.
-4. Obtain Founder browser evidence that the separate hostname shows the Admin login/dashboard.
-5. Then return immediately to the first real production E2E bottleneck using the canonical customer flow:
+1. Open `https://cws-admin.vercel.app/` in a real browser.
+2. Run Google staff login. If Supabase refuses/falls back because the callback is not allow-listed, add exact `https://cws-admin.vercel.app/` under Authentication -> URL Configuration -> Additional Redirect URLs, preserving all existing entries.
+3. Complete TOTP/AAL2 and verify the Admin dashboard shows `CWS ADMIN` on the separate hostname.
+4. Record Founder browser evidence, then retire/redirect the legacy Customer Portal Admin route.
+5. Return immediately to the first real production E2E bottleneck using the canonical customer flow:
 
 `Google Login -> Upload/Drive -> materialize/validate -> create customer-owned Job -> Worker claim -> Blender -> B2 locked output -> previews -> final price + QR -> SePay -> download`.
 
 Do not claim Golden E2E PASS until the whole trace is evidenced with real current IDs/artifacts.
 
 ## Last Updated
-2026-08-11 — `specs/007-separate-admin-frontend/`
+2026-08-11 — separate Admin production deployment verified; interactive OAuth/MFA remains.
