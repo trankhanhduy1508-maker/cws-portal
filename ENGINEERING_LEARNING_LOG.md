@@ -72,3 +72,14 @@
 - **What was not effective:** treating deployment READY, bundle markers, or string matching alone as proof that the correct shell was mounted in a real browser.
 - **Rule learned:** top-level URL-derived shell selection must be reactive; a route alias fix is not complete unless navigation itself triggers the shell-selection state update.
 - **Remaining risk / next step:** merge to main, verify the existing `cws-portal.vercel.app` alias points to the merged commit, then obtain real browser DOM evidence for `/#/admin` before claiming production runtime verification.
+
+## 2026-08-11 — Admin OAuth callback must not share the URL fragment with routing
+
+- **Symptom:** a fresh production screenshot after the reactive root-router deployment still showed the Customer upload UI when Admin was expected.
+- **Root cause:** the browser Supabase client uses the default JavaScript implicit OAuth flow, which returns access/refresh tokens in the URL fragment. Staff OAuth also used `redirectTo: /#admin`, so OAuth callback data and Admin routing competed for the same `window.location.hash`. The callback could replace `#admin` with `#access_token=...`, making the router resolve the Customer shell.
+- **Why the previous fix was insufficient:** reactive hash routing only helps when the Admin hash survives. It does not solve a protocol-level collision where Supabase legitimately owns and replaces the fragment during implicit OAuth.
+- **Fix:** move Admin shell identity to pathname `/admin`. Existing Vercel SPA rewrites already serve `/admin`, RootRouter already recognizes the pathname, and Supabase can consume its auth fragment without changing the selected shell.
+- **Regression coverage:** `staffAuth.test.js` requires the `/admin` callback and `rootRoute.test.js` proves `/admin` remains Admin when an implicit OAuth token fragment is present.
+- **Security:** no change to Google provider, Supabase session persistence, TOTP/AAL2, backend RBAC, bearer handling, or infrastructure.
+- **Verification:** PR frontend build/test/lint PASS and backend CI PASS. Production deployment and fresh browser evidence are required before marking `PRODUCTION RUNTIME VERIFIED`.
+- **Rule learned:** never use the same URL fragment namespace for application routing and an OAuth flow that returns credentials/state in the fragment.
