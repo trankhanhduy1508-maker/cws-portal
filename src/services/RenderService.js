@@ -110,7 +110,7 @@ export async function estimateJob(input, profileId) {
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ESTIMATE_JOB}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, profileId }),
   });
   if (!res.ok) throw new Error('Không ước tính được thời gian/giá');
   return res.json();
