@@ -371,7 +371,7 @@ class ProductionRpcAdapter:
         result = self.client.call("report_worker_probe", payload)
         return str(result)
 
-    def report_job_metadata(self, spec: JobSpec, metadata: Mapping[str, Any]) -> None:
+    def report_job_metadata(self, spec: JobSpec, metadata: Mapping[str, Any]) -> JobSpec:
         required = ("frame_start", "frame_end", "total_frames", "fps")
         if any(key not in metadata for key in required):
             raise PermanentWorkerError("Blender metadata is incomplete")
@@ -382,7 +382,6 @@ class ProductionRpcAdapter:
             or not isinstance(total_frames, int)
             or not isinstance(fps, (int, float)) or isinstance(fps, bool)
             or frame_start < 0 or frame_end < frame_start
-            or spec.frame_start < frame_start or spec.frame_end > frame_end
             or total_frames != frame_end - frame_start + 1 or total_frames < 1
             or not 0 < float(fps) <= 1000
         ):
@@ -394,6 +393,33 @@ class ProductionRpcAdapter:
         })
         if result is not True:
             raise PermanentWorkerError("job metadata report was rejected")
+
+        refreshed = _single_assignment(
+            self.client.call(
+                "get_claimed_task_spec",
+                {
+                    "p_task_id": int(spec.task_id),
+                    "p_generation": spec.lease_generation,
+                },
+            )
+        )
+        if refreshed is None:
+            raise PermanentWorkerError(
+                "metadata reconciliation returned no JobSpec"
+            )
+        refreshed_spec = JobSpec.from_mapping(refreshed)
+        if (
+            refreshed_spec.job_id != spec.job_id
+            or refreshed_spec.task_id != spec.task_id
+            or refreshed_spec.attempt_id != spec.attempt_id
+            or refreshed_spec.lease_generation != spec.lease_generation
+            or refreshed_spec.frame_start != frame_start
+            or refreshed_spec.frame_end != frame_start
+        ):
+            raise PermanentWorkerError(
+                "metadata reconciliation returned an unexpected JobSpec"
+            )
+        return refreshed_spec
 
     def transition(self, state: str, task_id: int | None = None, reason: str | None = None) -> None:
         observed = _OBSERVED_STATES.get(state, state)
