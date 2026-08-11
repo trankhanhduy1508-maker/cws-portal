@@ -27,7 +27,7 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 
 ## 3. Canonical Architecture
 - Customer frontend: existing Vercel project `cws-portal.vercel.app`.
-- Admin frontend: separate React/Vite build in the same repo at `cws-admin.vercel.app`; Admin work is not the current implementation priority.
+- Admin frontend: separate React/Vite build in the same repo at `cws-admin.vercel.app`; Admin is a core CWS component and remains on the active roadmap.
 - Backend/API: one existing Render.com service shared by Customer and Admin.
 - Database/Auth: one existing Supabase project; Customer Google OAuth and staff Google OAuth + TOTP/AAL2/role checks remain separate auth flows over the same provider.
 - Storage: existing Backblaze B2.
@@ -58,7 +58,7 @@ Rules:
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
 - Customer workflow is being reconverged around a login-first operational flow.
-- Admin refinement is deferred while Customer Golden E2E is the current bottleneck.
+- Admin remains an active/core roadmap component; its next refinement cycle is sequenced after the current Customer production gate.
 
 ### M1 — Customer identity + canonical input
 **CODE/SCHEMA PARTIALLY VERIFIED; CUSTOMER UI FLOW NEEDS CONVERGENCE**
@@ -113,6 +113,14 @@ Required trace:
 
 A build, unit test, simulation, deployment READY state, or Worker heartbeat alone is not Golden E2E proof.
 
+### M6 — Admin / Operations Control Plane
+**ACTIVE ROADMAP COMPONENT; NEXT REFINEMENT CYCLE SEQUENCED AFTER CURRENT CUSTOMER GATE**
+- Separate Admin frontend remains `cws-admin.vercel.app`.
+- Staff Google OAuth + mandatory TOTP/AAL2 + backend role enforcement remain binding.
+- Continue Admin jobs/customers/workers/payments/enrollment/logs/system-health functionality.
+- Continue OAuth/MFA production verification and UX refinement.
+- Admin work is delayed in sequence only; it is not abandoned, optional, or removed from MVP operations architecture.
+
 ## 6. Scale Direction
 MVP architecture must avoid manual-per-machine or manual-per-job operations.
 - Near gate: 1 real customer job end-to-end.
@@ -123,4 +131,4 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
 
 ## 7. Current Priority
-Implement `specs/008-customer-standard-workflow/` and converge the Customer Portal around the canonical login-first workflow. Admin UX/MFA refinement is deferred. After CI, deploy only the existing `cws-portal` project and prove one real Golden Production E2E customer trace from Google Login through authorized download.
+Implement `specs/008-customer-standard-workflow/` and converge the Customer Portal around the canonical login-first workflow. This is a **sequencing decision**: Customer Golden E2E is the current bottleneck. After the Customer workflow reaches its next verified production gate, continue the Admin/operations control-plane work rather than dropping it.
