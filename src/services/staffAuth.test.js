@@ -20,12 +20,12 @@ describe('staffAuth Google OAuth boundary', () => {
     vi.resetModules();
   });
 
-  it('starts Google OAuth with a pathname-based Admin return URL', async () => {
+  it('returns Google OAuth to the initiating Admin origin root by default', async () => {
     const { module, auth } = await loadStaffAuth();
     await module.signInStaffWithGoogle();
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/admin` },
+      options: { redirectTo: `${window.location.origin}/` },
     });
   });
 
