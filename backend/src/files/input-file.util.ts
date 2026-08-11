@@ -58,9 +58,10 @@ export async function hasValidInputSignature(
     );
   }
 
-  return (
-    header.length >= 8
-    && header.toString('ascii', 0, 7) === 'Rar!\x1a\x07'
-    && (header[7] === 0x00 || header[7] === 0x01)
-  );
+  const rarMarker = Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07]);
+  if (header.length < 7 || !header.subarray(0, 6).equals(rarMarker)) {
+    return false;
+  }
+  if (header[6] === 0x00) return true;
+  return header[6] === 0x01 && header.length >= 8 && header[7] === 0x00;
 }
