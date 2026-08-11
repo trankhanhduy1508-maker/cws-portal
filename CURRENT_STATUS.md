@@ -34,6 +34,7 @@ Ground and implement the next smallest slice of the automatic deadline-planning 
 ## Verified Current State
 - Customer Login Gate: implemented/synced.
 - Customer Input Validation Gate: implemented/synced to canonical paths.
+- Profile Gate Removal: DONE on canonical main after PR #31 merge and green CI.
 - Production Node Agent code: synced.
 - Windows auto-start/reboot persistence verification: deferred; not a blocker for the current Customer workflow slice.
 - Golden Production E2E: still **NOT PROVEN**.
@@ -41,7 +42,7 @@ Ground and implement the next smallest slice of the automatic deadline-planning 
 ## Current Workflow Mismatch To Remove
 The obsolete public Render Profile gate has been removed from the Customer path. Historical/internal profile identifiers remain only where required for compatibility with persisted history and legacy estimate/storage contracts; the Customer create-job payload is profile-free.
 
-The remaining workflow mismatch is the not-yet-converged adaptive Task Graph / Deadline Scheduler path.
+The next verified bottleneck is the not-yet-converged adaptive Task Graph / Deadline Scheduler path.
 
 ## Next Required Convergence
 1. Preserve validated/materialized customer-owned input as the only allowed input to Job creation.
