@@ -231,8 +231,22 @@ Keep `CODE VERIFIED`, `SIMULATION VERIFIED`, and `PRODUCTION RUNTIME VERIFIED` d
 
 ## Execution Governance
 
+### [ACTIVE — 2026-08-11] CWS AI Engineering Harness is mandatory before code
+`CWS_AI_ENGINEERING_HARNESS_V1.md` is the active AI-assisted engineering control framework for CWS.
+
+Every coding agent must enter through `AGENTS.md`, read/apply the Harness before implementation, then load the active decisions/current spec and only task-relevant specialist protocols.
+
+Binding governance rules:
+
+- **code is the final execution phase, not the starting point**;
+- material work must pass grounding, diagnosis, decision-boundary, specification/planning/analyze gates before implementation;
+- low-risk local fixes may use the Harness shortened L1 path, but still require grounding, diagnosis, targeted verification and evidence;
+- AI may choose implementation details inside an approved boundary, but may not silently change product intent, workflow, architecture, security, infrastructure, payment/data rules or other Founder-controlled boundaries;
+- evidence level limits completion language; agent claims alone are not proof;
+- the Harness complements the existing GitHub Spec Kit/constitution, grounding/staleness policies and `CWS_AI_OPERATING_PLAYBOOK.md`; it does not replace product/runtime source-of-truth documents.
+
 ### [ACTIVE] Mandatory diagnostic + Spec Kit funnel
-Every CWS change follows:
+Every CWS material change follows:
 
 `Reality -> Diagnosis -> Root Cause -> One Current Bottleneck -> Constitution -> Specify -> Clarify when needed -> Plan -> Tasks -> Analyze -> Implement -> Converge/Verify`
 
