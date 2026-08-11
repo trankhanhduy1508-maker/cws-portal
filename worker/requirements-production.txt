@@ -1,0 +1,2 @@
+# Canonical Windows SCM host dependency for the production Node Agent.
+pywin32==312
