@@ -4,19 +4,25 @@
 > Historical roadmap versions are not active instructions. Runtime evidence under `reports/` remains historical proof.
 
 ## 1. Product Goal
-Build a production CWS MVP where a customer authenticates with Google, submits a real Blender project, has an authenticated distributed Worker render it autonomously, receives real watermarked previews plus final price/payment QR, pays by Vietnam bank QR, and downloads the locked full output after exact SePay verification.
+Build a production CWS MVP where a customer authenticates with Google, submits a real Blender project, and CWS automatically allocates enough eligible Workers to drive the complete render deliverable toward a 45-minute internal target, then delivers real watermarked previews plus final price/payment QR, verifies Vietnam bank payment by SePay, and unlocks the locked full output.
 
 ## 2. Canonical Customer Workflow
 
-`Google Login -> authenticated Upload/Google Drive -> materialize + validate canonical input -> choose Economy/Balanced(Standard)/Priority -> Start render -> create customer-owned Job + durable Task -> authenticated Worker claim -> extract/discover -> Blender preflight -> immutable-original working copy -> safe optimization -> real Blender render -> real progress -> validate output -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference/content + amount idempotently -> PAID -> authorized B2 download -> History/cleanup/audit`
+`Google Login -> authenticated Upload/Google Drive -> materialize + validate canonical input -> Start render -> create customer-owned Job -> analyze frame/work range -> build durable non-overlapping Tasks -> start initial 10-Worker wave -> measure real completed task/frame runtimes while useful work is already running -> adapt Worker count upward as needed for <=45-minute final-output target -> safe preparation/optimization -> real Blender render -> collect/validate -> animation assembly/encode if required -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference/content + amount idempotently -> PAID -> authorized B2 download -> History/cleanup/audit`
 
 ### Binding business rules
 - Customer Google Login is the **first operational gate** for the MVP customer flow.
 - Upload/Drive controls are part of the authenticated customer workflow.
-- Input is uploaded/materialized and validated before render-mode selection can create a Job.
+- Input is uploaded/materialized and validated before Job creation.
 - Supported canonical customer inputs: `.blend`, `.zip`, `.rar`, and approved Google Drive file links.
-- Customer chooses service/speed preference only; no GPU/CPU hardware selection.
-- Current public modes: Economy / Balanced(Standard) / Priority. Do not add public modes without an active product decision.
+- Customer does **not** choose Economy/Standard/Priority/Turbo, Worker count, GPU or CPU. Previous public render-mode choice is superseded.
+- CWS automatically plans parallel capacity.
+- Initial runnable render wave targets **10 eligible Workers** when capacity permits.
+- First completed real Tasks/frames are runtime evidence; there is no blocking benchmark-only phase.
+- If projected final completion exceeds the 45-minute target, CWS scales the same Job upward (for example 10 -> 20 -> 30+ Workers) as eligible capacity is available.
+- Capacity planning uses a configurable safety margin initially in the 20–30% range and rounds required Worker count **up** to a whole integer.
+- One Task/frame has one active authoritative Worker owner at a time. Reassignment occurs only through the existing lease/generation fencing rules.
+- The 45-minute target includes required finalization such as render, collection/validation and animation assembly/encode when applicable. It is an internal mandatory scheduling target, not a public contractual SLA unless separately approved.
 - Customer originals are immutable.
 - No fake/demo progress, render, payment, or output in production.
 - No AI/Founder/Admin intervention is allowed for normal runtime state transitions.
@@ -37,8 +43,9 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Normal reboot: load existing per-machine identity/credential -> Node Agent auto-start -> heartbeat -> `ACTIVE_IDLE`; normal reboot does not re-enroll when persistent machine state is available.
 - Payment detection: SePay webhook; exact reference/content + amount; idempotent/fail-closed.
 - Worker control plane: authenticated Backend gateway; no Supabase service-role key on Workers.
-- Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing; no new broker/Redis until measurement proves a bottleneck.
+- Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing plus an **Adaptive Deadline Scheduler** that controls task generation/chunking and desired parallel Worker count from observed real task runtimes. No new broker/Redis until measurement proves a bottleneck.
 - Worker storage access: short-lived task/object-scoped capabilities; no long-lived per-Worker B2 keys.
+- MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single frame is not part of the current scope.
 
 ## 4. Execution / Governance
 Every CWS change follows:
@@ -60,7 +67,7 @@ Rules:
 **IN_PROGRESS (2026-08-11)**
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
-- Customer workflow is being reconverged around a login-first operational flow.
+- Customer workflow is login-first and now uses automatic deadline scheduling rather than public speed tiers.
 - Admin remains an active/core roadmap component; its next refinement cycle is sequenced after the current Customer production gate.
 
 ### M1 — Customer identity + canonical input
@@ -70,25 +77,32 @@ Rules:
 - Authenticated Upload/Drive materialization to canonical B2 input.
 - Server-side ownership and validation.
 - `.blend/.zip/.rar` safety boundary.
-- Job creation only after materialized/validated customer-owned input and approved render-mode selection.
+- Job creation only after materialized/validated customer-owned input.
+- Remove obsolete public render-profile selection from the Customer flow.
 
-### M2 — Worker autonomous execution
-**PARTIAL PRODUCTION RUNTIME VERIFIED; FULL TASK PATH NEEDS VERIFICATION**
+### M2 — Adaptive autonomous execution
+**PARTIAL PRODUCTION RUNTIME VERIFIED; DEADLINE-SCHEDULING PATH NEEDS IMPLEMENTATION/VERIFICATION**
 - Stable Worker identity/enrollment without per-machine Founder/Admin approval in normal fleet operation.
 - Partner Golden Image includes shared CWS runtime/bootstrap/Blender components; unique Worker credential is per-machine state, not shared image state.
 - One canonical Windows startup owner: resident Node Agent auto-start service with duplicate-process protection, bounded retry/backoff and fleet startup jitter.
 - Worker Engine remains task-scoped/ephemeral: Node Agent launches it for a claimed task; after render/failure cleanup the Engine exits and Node Agent returns to `ACTIVE_IDLE`.
-- Normal reboot reuses the existing Worker identity/credential and must not re-enroll when per-machine persistent state is available.
-- Bounded unattended re-enrollment remains a recovery fallback only for actual credential loss/corruption, reprovisioning/hardware replacement or revocation recovery.
 - Heartbeat/presence.
 - Atomic capability-aware claim.
 - Lease/generation fencing.
 - Task-scoped download/upload capabilities.
+- Analyze project/frame range and create durable non-overlapping Tasks.
+- Start initial 10-Worker wave without waiting for a separate benchmark-only phase.
+- Collect observed real task/frame runtime metrics from useful completed work.
+- Continuously project final completion and scale Worker target upward when the 45-minute target is at risk.
+- Apply configurable 20–30% safety capacity and round Worker target upward to an integer.
+- Prevent concurrent duplicate frame/task ownership.
+- Reserve budget for collection/validation and animation assembly/encode when required.
 - Safe extraction, preflight, optimizer, real Blender process, progress, retry/failure handling.
 
 ### M3 — Output + preview + price
 **CODE VERIFIED; PRODUCTION E2E NEEDS VERIFICATION**
-- Validate output.
+- Collect/validate all expected frame/task outputs.
+- Assemble/encode animation deliverable when required by the output contract.
 - Upload full result to B2 LOCKED.
 - Generate 3–5 real watermarked previews.
 - Final runtime/cost calculation with approved 2.5x multiplier.
@@ -106,18 +120,20 @@ Required trace:
 1. Real Google-authenticated customer.
 2. Real authenticated Upload/Drive input.
 3. Materialize + validate canonical input.
-4. Choose approved render mode.
-5. Create exactly one customer-owned Job/Task.
-6. Real physical Worker claim.
-7. Real Blender process and progress.
-8. Real B2 locked output.
-9. Real watermarked previews.
-10. Real final price + exact payment content + MB QR.
-11. Real SePay exact/idempotent match.
-12. Real PAID transition.
-13. Real authorized download.
-14. Same Job visible in customer History.
-15. Cleanup and Worker returns idle.
+4. Customer starts render without selecting a speed tier.
+5. Create exactly one customer-owned Job.
+6. Analyze work range and create non-overlapping durable Tasks.
+7. Real physical Workers claim distinct Tasks; initial wave targets 10 Workers when capacity permits.
+8. Real Blender work produces observed runtime evidence and Scheduler can adapt parallel Worker count without duplicate active frame ownership.
+9. Real render/finalization completes, including animation assembly/encode when required.
+10. Real B2 locked output.
+11. Real watermarked previews.
+12. Real final price + exact payment content + MB QR.
+13. Real SePay exact/idempotent match.
+14. Real PAID transition.
+15. Real authorized download.
+16. Same Job visible in customer History.
+17. Cleanup and Workers return idle.
 
 A build, unit test, simulation, deployment READY state, or Worker heartbeat alone is not Golden E2E proof.
 
@@ -131,8 +147,9 @@ A build, unit test, simulation, deployment READY state, or Worker heartbeat alon
 
 ## 6. Scale Direction
 MVP architecture must avoid manual-per-machine or manual-per-job operations.
-- Near gate: 1 real customer job end-to-end.
+- Near gate: 1 real customer job end-to-end with adaptive scheduling evidence.
 - Then: isolated 10 -> 25 -> 50 -> 100 real/control-plane load verification.
+- A single Job may legitimately consume 10, 20, 30 or more Workers when deadline planning requires it and fleet capacity permits.
 - Design must remain compatible with 100 / 1,000 / 1,000,000 Workers without assuming they are current deployment targets.
 - Partner Golden Image deployment must not clone one Worker credential across machines.
 - Normal reboot must not require re-enrollment when per-machine persistent state is available.
@@ -141,4 +158,4 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
 
 ## 7. Current Priority
-Implement `specs/008-customer-standard-workflow/` and converge the Customer Portal around the canonical login-first workflow. This is a **sequencing decision**: Customer Golden E2E is the current bottleneck. After the Customer workflow reaches its next verified production gate, continue the Admin/operations control-plane work rather than dropping it.
+Converge `specs/008-customer-standard-workflow/` to the new Founder decision: remove public render-profile selection and replace it with automatic Adaptive Deadline Scheduling. Then implement the smallest verified vertical slice in order: validated input -> Start render -> one Job -> task graph -> distinct Task ownership -> initial 10-Worker desired capacity -> observed-runtime feedback -> adaptive scale decision. Customer Golden E2E remains the current bottleneck; Admin continues afterward rather than being dropped.
