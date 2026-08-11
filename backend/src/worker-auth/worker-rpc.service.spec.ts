@@ -193,7 +193,8 @@ describe('WorkerRpcService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
-}  it('validates fenced job metadata and binds Worker identity', async () => {
+
+  it('validates fenced job metadata and binds Worker identity', async () => {
     const supabase = { rpc: jest.fn().mockResolvedValue({ data: true, error: null }) };
     const service = new WorkerRpcService({ getClient: () => supabase } as any);
     await service.call('report_job_metadata', 'worker-a', {
