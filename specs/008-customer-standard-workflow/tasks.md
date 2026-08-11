@@ -4,16 +4,20 @@
 - [x] Replace canonical workflow with customer-login-first flow.
 - [x] Record current code contradictions and Founder priority.
 - [x] Produce implementation plan before code.
+- [x] Founder removed the customer render speed/tier feature entirely.
 
-## Codex implementation
+## Customer workflow implementation
 - [ ] Inspect current backend auth/input/job/payment status contracts before code changes.
 - [ ] Make Google customer login the first operational gate.
 - [ ] Remove unauthenticated Upload/Drive interaction.
 - [ ] Remove OAuth-after-input pending Drive/sessionStorage workaround if no longer needed.
-- [ ] Require canonical `fileRef` / materialized input before render-mode step.
+- [ ] Require canonical `fileRef` / materialized input before Job creation.
 - [ ] Ensure Google Drive is materialized server-side before Job creation.
-- [ ] Converge public render modes to Economy / Balanced(Standard) / Priority; preserve machine-level compatibility where required.
-- [ ] Remove stale public `turbo` option unless active product/backend evidence requires it.
+- [x] Remove customer render speed/tier UI, constants, estimate hook and profile card/screen.
+- [x] Remove tier/profile fields from Customer create payload, Backend DTO/domain/public JSON and repository mapping.
+- [x] Remove the tier-specific pre-render estimate API path.
+- [x] Add an additive DB migration to drop the obsolete `render_orders.profile_id` column when applied.
+- [ ] Ensure active docs/API docs contain no instruction that can recreate the removed customer tier feature.
 - [ ] Remove stale OneDrive/Dropbox/direct-link public support claims unless explicitly approved and implemented.
 - [ ] Remove preview-approval wording/action from public customer state.
 - [ ] Reconcile `REVIEW_READY`, `AWAITING_PAYMENT`, `PACKAGING`, `FINISHED` UI mapping with actual backend lifecycle.
@@ -24,15 +28,16 @@
 - [ ] Add regression tests for screen/state ordering and duplicate-job prevention.
 - [ ] Run frontend build/test/lint.
 - [ ] Run backend build/test/lint.
-- [ ] Update `CURRENT_STATUS.md`, `CWS_ROADMAP.md`, relevant decisions/context, and engineering learning log.
-- [ ] Open PR with evidence and no unrelated Admin work.
+- [ ] Update active source-of-truth docs and engineering learning evidence.
+- [ ] Open PR with evidence and no unrelated Admin/Worker/Scheduler architecture work.
 
 ## Production convergence
 - [ ] Merge only after CI passes.
+- [ ] Apply the obsolete-column migration through the existing production DB migration process before claiming DB removal.
 - [ ] Deploy the existing `cws-portal` Vercel project; do not create another project.
 - [ ] Verify real Google customer login in production.
 - [ ] Verify real authenticated input materialization.
-- [ ] Verify exactly one real Job after input ready.
+- [ ] Verify exactly one real Job after input ready with no customer speed/tier choice.
 - [ ] Verify real Worker/Blender/progress.
 - [ ] Verify B2 locked output + real watermarked previews.
 - [ ] Verify final price + exact payment content + MB QR.
@@ -42,3 +47,4 @@
 ## Explicitly deferred
 - Admin UI refinement.
 - Admin MFA UX polish beyond already deployed separate Admin application.
+- Adaptive Scheduler implementation beyond the already approved scheduling spec.
