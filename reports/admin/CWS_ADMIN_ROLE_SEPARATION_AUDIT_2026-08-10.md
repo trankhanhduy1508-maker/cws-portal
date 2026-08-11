@@ -40,3 +40,11 @@ operations console.
 The backend does not currently expose a general Admin payment list, dedicated
 system-health aggregate, or settings API. The UI intentionally does not invent
 those values. Enrollment still requires the existing Google + MFA/AAL2 session.
+
+## Production route verification â€” 2026-08-11
+
+- **Symptom:** production bundle contained the new Admin markers, but opening `/#/admin` showed the old Customer UI.
+- **Evidence:** live Vercel bundle contained `System Health`, `Workers / Nodes`, `Enrollment`, `Customers`, `CWS ADMIN`, and `Operations control plane`.
+- **Root cause:** `src/App.jsx` only matched `window.location.hash === '#admin'`; production URL `/#/admin` has hash value `#/admin`, so it fell through to `CustomerPortalApp`.
+- **Fix:** Admin routing now accepts `/admin`, `#admin`, and `#/admin`.
+- **Verification:** tests 12/12, lint PASS, build PASS. Production redeployment remains required for this route fix.
