@@ -80,7 +80,7 @@ export class JobsService {
   async estimate(dto: EstimateJobDto): Promise<JobEstimate> {
     const baseEstimate = computeEstimate(
       dto.fileSizeBytes ?? null,
-      dto.profileId,
+      dto.profileId ?? RenderProfileId.STANDARD,
     );
 
     // Hàng đợi thật: nếu số Worker online hiện tại là 0, báo hàng đợi
@@ -126,7 +126,7 @@ export class JobsService {
           software: dto.software ?? null,
           softwareVersion: dto.softwareVersion ?? null,
           notes: dto.notes ?? null,
-          profileId: dto.profileId,
+          profileId: dto.profileId ?? RenderProfileId.STANDARD,
         }),
       )
       .digest('hex');
@@ -147,7 +147,7 @@ export class JobsService {
       fileRef: dto.fileRef,
       driveLink: dto.driveLink,
       fileSizeBytes: dto.fileSizeBytes,
-      profileId: dto.profileId,
+      profileId: dto.profileId ?? RenderProfileId.STANDARD,
     });
 
     const id = randomUUID();
@@ -170,7 +170,7 @@ export class JobsService {
       notes: dto.notes ?? null,
       storageCode,
       customerId,
-      profileId: dto.profileId,
+      profileId: dto.profileId ?? RenderProfileId.STANDARD,
       status: initialStatus,
       stageProgress: 0,
       paymentId: null,

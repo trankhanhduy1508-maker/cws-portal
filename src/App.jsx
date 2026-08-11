@@ -3,7 +3,6 @@ import { AnimatePresence } from 'framer-motion';
 import PortalShell from './layouts/PortalShell';
 import LandingScreen from './pages/LandingScreen';
 import UploadScreen from './pages/UploadScreen';
-import RenderProfileScreen from './pages/RenderProfileScreen';
 import PaymentScreen from './pages/PaymentScreen';
 import ProgressScreen from './pages/ProgressScreen';
 import ReviewScreen from './pages/ReviewScreen';
@@ -17,7 +16,6 @@ import { getStaffMe } from './services/staffApi';
 import { useFileSelection } from './hooks/useFileSelection';
 import { useDriveLink } from './hooks/useDriveLink';
 import { useFileUploadResolver } from './hooks/useFileUploadResolver';
-import { useProfileEstimates } from './hooks/useProfileEstimates';
 import { useRenderJob } from './hooks/useRenderJob';
 import { useJobHistory } from './hooks/useJobHistory';
 import { useAuth } from './hooks/useAuth';
@@ -30,7 +28,7 @@ import { validateMaterializedInput } from './utils/fileUtils';
 // mới: khách phải thấy hết các hành động ngay từ đầu, KHÔNG bắt bấm
 // "Bắt đầu" mới lộ ra Upload, và KHÔNG có màn hình Login riêng chặn
 // trước — đăng nhập chỉ được yêu cầu đúng lúc khách bấm Render, xem
-// handleContinueFromUpload). -> Render Profile -> Processing (Job chạy
+// handleContinueFromUpload). -> Processing (Job chạy
 // thật, MIỄN PHÍ, bao gồm cả lúc xong/lỗi/hủy/preview/CHỜ THANH TOÁN —
 // xem điều kiện render bên trong PROCESSING). Thanh toán (QR MB Bank)
 // chỉ diễn ra SAU khi khách duyệt preview (CWS_MVP_WORKFLOW_FINAL.md),
@@ -40,7 +38,6 @@ import { validateMaterializedInput } from './utils/fileUtils';
 // customer approve. History có thể mở từ bất kỳ đâu qua nút ở header.
 const SCREEN = {
   LANDING: 'landing',
-  PROFILE: 'profile',
   PROCESSING: 'processing',
   HISTORY: 'history',
 };
@@ -115,7 +112,6 @@ function CustomerPortalApp() {
   const [source, setSource] = useState(FILE_SOURCE.UPLOAD);
   const [resolvedInput, setResolvedInput] = useState(null); // { fileRef, driveLink, fileName, fileSizeBytes }
   const [activeProjectName, setActiveProjectName] = useState(null);
-  const [selectedProfileId, setSelectedProfileId] = useState(null);
 
   const { file, fileError, setFile, clearFile } = useFileSelection();
   const {
@@ -128,9 +124,6 @@ function CustomerPortalApp() {
     clearLink,
   } = useDriveLink();
   const fileUploadResolver = useFileUploadResolver();
-  const { estimates, isLoading: isLoadingEstimates } = useProfileEstimates(
-    screen === SCREEN.PROFILE ? resolvedInput : null
-  );
   const job = useRenderJob();
   const jobHistory = useJobHistory();
   const auth = useAuth();
@@ -219,30 +212,34 @@ function CustomerPortalApp() {
       }
     }
     try {
+      let nextInput;
       if (source === FILE_SOURCE.UPLOAD) {
         const uploaded = await fileUploadResolver.resolve(file);
         const validation = validateMaterializedInput(uploaded);
         if (!validation.valid) throw new Error(validation.error);
-        setResolvedInput({ fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes });
+        nextInput = { fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes };
+        setResolvedInput(nextInput);
         setActiveProjectName(uploaded.fileName);
       } else {
         const validation = validateMaterializedInput(resolvedInfo);
         if (!validation.valid) throw new Error(validation.error);
         const fileName = resolvedInfo?.fileName || driveLink;
-        setResolvedInput({
+        nextInput = {
           fileRef: resolvedInfo?.fileRef || null,
           driveLink: resolvedInfo?.fileRef ? null : driveLink,
           fileName,
           fileSizeBytes: resolvedInfo?.fileSizeBytes,
-        });
+        };
+        setResolvedInput(nextInput);
         setActiveProjectName(fileName);
       }
-      setScreen(SCREEN.PROFILE);
+      setScreen(SCREEN.PROCESSING);
+      await job.start({ input: nextInput });
     } catch {
       // Lỗi đã được lưu trong fileUploadResolver.uploadError, hiển thị
       // ngay trên UploadScreen (xem UploadZone/fileError phía dưới).
     }
-  }, [auth.isAuthenticated, triggerGoogleLogin, source, file, driveLink, resolvedInfo, fileUploadResolver]);
+  }, [auth.isAuthenticated, triggerGoogleLogin, source, file, driveLink, resolvedInfo, fileUploadResolver, job]);
 
   // Vừa khôi phục xong driveLink sau khi đăng nhập xong (effect phía
   // trên) VÀ backend vừa resolve xong (isResolving chuyển false) -> tự
@@ -254,13 +251,6 @@ function CustomerPortalApp() {
       handleContinueFromUpload();
     }
   }, [isResolving, resolvedInfo, linkError, handleContinueFromUpload]);
-
-  // ---- Bước 2: Render Profile -> Processing (tạo job NGAY; payment chỉ
-  // được tạo sau render, validate, full-output lock và preview thật). ----
-  const handleContinueToProcessing = useCallback(() => {
-    setScreen(SCREEN.PROCESSING);
-    job.start({ input: resolvedInput, profileId: selectedProfileId });
-  }, [job, resolvedInput, selectedProfileId]);
 
   // SỬA LỖI (tự phát hiện 31/07/2026): trước đây gọi job.cancel() không
   // await/catch — job.cancel() là async, nếu Backend từ chối huỷ (vd
@@ -282,7 +272,6 @@ function CustomerPortalApp() {
     clearLink();
     setResolvedInput(null);
     setActiveProjectName(null);
-    setSelectedProfileId(null);
     setScreen(SCREEN.LANDING);
   }, [job, clearFile, clearLink]);
 
@@ -317,7 +306,6 @@ function CustomerPortalApp() {
     }
     // Job đang chạy — mở lại (subscribe), KHÔNG tạo job mới.
     setActiveProjectName(historyJob.projectName);
-    setSelectedProfileId(historyJob.profileId);
     job.attach(historyJob.id);
     setScreen(SCREEN.PROCESSING);
   }, [job]);
@@ -356,18 +344,6 @@ function CustomerPortalApp() {
               isAuthLoading={auth.isLoading}
             />
           </div>
-        )}
-
-        {screen === SCREEN.PROFILE && (
-          <RenderProfileScreen
-            key="profile"
-            estimates={estimates}
-            isLoadingEstimates={isLoadingEstimates}
-            selectedProfileId={selectedProfileId}
-            onSelectProfile={setSelectedProfileId}
-            onContinue={handleContinueToProcessing}
-            onBack={() => setScreen(SCREEN.LANDING)}
-          />
         )}
 
         {screen === SCREEN.PROCESSING && job.status === JOB_STATUS.ERROR && (
@@ -417,7 +393,6 @@ function CustomerPortalApp() {
             stageIndex={job.stageIndex}
             overallProgress={job.overallProgress}
             fileName={activeProjectName}
-            etaSeconds={estimates[selectedProfileId]?.etaSeconds}
             onCancel={handleCancelJob}
           />
         )}

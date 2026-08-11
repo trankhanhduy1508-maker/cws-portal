@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { JobStatus } from './domain/job-status.enum';
-import { RenderProfileId } from './domain/render-profile';
 
 describe('JobsService.createOrder idempotency', () => {
   function make() {
@@ -35,7 +34,7 @@ describe('JobsService.createOrder idempotency', () => {
 
   const dto = {
     fileRef: 'staging/input.blend', fileName: 'input.blend',
-    fileSizeBytes: 1024, profileId: RenderProfileId.STANDARD,
+    fileSizeBytes: 1024,
   };
 
   it('returns the original job for a retry with the same key', async () => {

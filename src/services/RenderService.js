@@ -146,7 +146,7 @@ export async function getPaymentDetails(paymentId) {
  * chỉ diễn ra sau khi khách duyệt preview, xem approveJob()).
  * @returns {Promise<{ jobId: string }>}
  */
-export async function createJob({ input, profileId, idempotencyKey }) {
+export async function createJob({ input, idempotencyKey }) {
   requireBackend();
   const token = await getAccessToken();
   const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CREATE_JOB}`, {
@@ -156,7 +156,7 @@ export async function createJob({ input, profileId, idempotencyKey }) {
       'Idempotency-Key': idempotencyKey,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ ...input, profileId }),
+    body: JSON.stringify(input),
   });
   if (!res.ok) throw new Error(`Tạo job thất bại (${res.status})`);
   const data = await res.json();

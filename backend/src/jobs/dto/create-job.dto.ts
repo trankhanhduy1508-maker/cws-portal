@@ -48,8 +48,10 @@ export class CreateJobDto {
   @MaxLength(4000)
   notes?: string | null;
 
+  /** Historical compatibility only; the Customer flow no longer sends or chooses it. */
+  @IsOptional()
   @IsIn(Object.values(RenderProfileId))
-  profileId!: RenderProfileId;
+  profileId?: RenderProfileId;
 }
 
 export class EstimateJobDto {
@@ -69,6 +71,8 @@ export class EstimateJobDto {
   @Max(2 * 1024 * 1024 * 1024)
   fileSizeBytes?: number | null;
 
+  /** Legacy estimate endpoint compatibility; not used by the Customer flow. */
+  @IsOptional()
   @IsIn(Object.values(RenderProfileId))
-  profileId!: RenderProfileId;
+  profileId?: RenderProfileId;
 }
