@@ -60,6 +60,7 @@ from resilience_policy import (
     stable_jitter_value,
 )
 from blender_bootstrap import resolve_blender
+from node_engine import discover_host_capabilities, evaluate_readiness
 from worker_rpc_auth import WorkerCredential, WorkerRpcClient
 from windows_credential_store import WindowsProtectedCredentialStore
 
@@ -149,7 +150,27 @@ class ProductionConfig:
         backend_url = required("CWS_BACKEND_URL").rstrip("/")
         if not backend_url.startswith("https://"):
             raise PermanentWorkerError("CWS_BACKEND_URL must use https://")
-        worker_id = required("CWS_WORKER_ID")
+        state_root_value = values.get("CWS_STATE_ROOT", "").strip()
+        state_root = Path(state_root_value) if state_root_value else None
+        identity_path = (
+            Path(values.get("CWS_WORKER_IDENTITY_FILE", "").strip())
+            if values.get("CWS_WORKER_IDENTITY_FILE", "").strip()
+            else (state_root / "worker-identity.json" if state_root else None)
+        )
+        identity: Mapping[str, Any] = {}
+        if identity_path is not None and identity_path.is_file():
+            try:
+                loaded = json.loads(identity_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
+                raise PermanentWorkerError("invalid Worker identity metadata") from exc
+            if not isinstance(loaded, Mapping):
+                raise PermanentWorkerError("invalid Worker identity metadata")
+            identity = loaded
+
+        configured_worker_id = values.get("CWS_WORKER_ID", "").strip()
+        worker_id = configured_worker_id or str(identity.get("worker_id", "")).strip()
+        if not worker_id:
+            raise PermanentWorkerError("missing production configuration: CWS_WORKER_ID or worker identity metadata")
         if not _SAFE_ID.fullmatch(worker_id):
             raise PermanentWorkerError("invalid CWS_WORKER_ID")
         def integer(name: str, default: int) -> int:
@@ -188,12 +209,28 @@ class ProductionConfig:
                 raise PermanentWorkerError(f"{name} must be between 0 and {maximum}")
             return result
 
-        workspace = Path(required("CWS_WORKSPACE"))
+        workspace = Path(
+            values.get("CWS_WORKSPACE", "").strip()
+            or (str(state_root / "workspace") if state_root else required("CWS_WORKSPACE"))
+        )
         explicit_blender = values.get("CWS_BLENDER_EXE", "").strip()
+        credential_value = values.get("CWS_WORKER_CREDENTIAL_FILE", "").strip()
+        credential_value = credential_value or str(identity.get("credential_file", "")).strip()
+        credential_value = credential_value or (str(state_root / "worker.dpapi") if state_root else "")
+        if not credential_value:
+            raise PermanentWorkerError(
+                "missing production configuration: CWS_WORKER_CREDENTIAL_FILE or worker identity metadata"
+            )
+        credential_path = Path(credential_value)
+        if state_root is not None:
+            try:
+                credential_path.resolve().relative_to(state_root.resolve())
+            except ValueError as exc:
+                raise PermanentWorkerError("Worker credential must remain inside CWS_STATE_ROOT") from exc
         return cls(
             backend_url=backend_url,
             worker_id=worker_id,
-            credential_file=Path(required("CWS_WORKER_CREDENTIAL_FILE")),
+            credential_file=credential_path,
             blender_exe=Path(explicit_blender) if explicit_blender else None,
             blender_cache_dir=Path(
                 values.get("CWS_BLENDER_CACHE_DIR", str(workspace / "Blender"))
@@ -824,6 +861,26 @@ class ProductionNodeAgentRuntime:
         if not self.blender_exe.is_file():
             raise PermanentWorkerError(
                 "Blender executable is unavailable", FailureCategory.WORKER_HOST_ERROR
+            )
+        capabilities = discover_host_capabilities(self.blender_exe, self.config.workspace)
+        readiness = evaluate_readiness(
+            backend_url=self.config.backend_url,
+            worker_id=self.config.worker_id,
+            credential_file=self.config.credential_file,
+            workspace=self.config.workspace,
+            capabilities=capabilities,
+        )
+        self._record_metrics(
+            {
+                "event": "node_readiness",
+                "readiness": readiness.as_dict(),
+                "capabilities": capabilities.as_dict(),
+            }
+        )
+        if not readiness.ready:
+            raise PermanentWorkerError(
+                "Node Engine readiness failed: " + ",".join(readiness.reasons),
+                FailureCategory.WORKER_HOST_ERROR,
             )
 
     def _attempt_health_probe(self) -> bool:
