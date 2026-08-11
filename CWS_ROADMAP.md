@@ -4,19 +4,22 @@
 > Historical roadmap versions are not active instructions. Runtime evidence under `reports/` remains historical proof.
 
 ## 1. Product Goal
-Build a production CWS MVP where a customer can submit a real Blender project, have an authenticated distributed Worker render it autonomously, review watermarked previews, pay by Vietnam bank QR, and download the locked full output after exact SePay verification.
+Build a production CWS MVP where a customer authenticates with Google, submits a real Blender project, has an authenticated distributed Worker render it autonomously, receives real watermarked previews plus final price/payment QR, pays by Vietnam bank QR, and downloads the locked full output after exact SePay verification.
 
 ## 2. Canonical Customer Workflow
 
-`Google Login -> Upload/Google Drive -> materialize + validate canonical input -> create Job -> durable Task -> authenticated Worker claim -> extract/discover -> Blender preflight -> immutable-original working copy -> safe optimization -> real Blender render -> real progress -> validate output -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference + amount idempotently -> PAID -> authorized B2 download -> cleanup/audit`
+`Google Login -> authenticated Upload/Google Drive -> materialize + validate canonical input -> choose Economy/Balanced(Standard)/Priority -> Start render -> create customer-owned Job + durable Task -> authenticated Worker claim -> extract/discover -> Blender preflight -> immutable-original working copy -> safe optimization -> real Blender render -> real progress -> validate output -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference/content + amount idempotently -> PAID -> authorized B2 download -> History/cleanup/audit`
 
 ### Binding business rules
-- Customer Google Login is required for the MVP customer flow.
-- Input is uploaded/materialized and validated before the Job is created.
+- Customer Google Login is the **first operational gate** for the MVP customer flow.
+- Upload/Drive controls are part of the authenticated customer workflow.
+- Input is uploaded/materialized and validated before render-mode selection can create a Job.
 - Supported canonical customer inputs: `.blend`, `.zip`, `.rar`, and approved Google Drive file links.
+- Customer chooses service/speed preference only; no GPU/CPU hardware selection.
+- Current public modes: Economy / Balanced(Standard) / Priority. Do not add public modes without an active product decision.
 - Customer originals are immutable.
 - No fake/demo progress, render, payment, or output in production.
-- No AI/Founder intervention is allowed for normal runtime state transitions.
+- No AI/Founder/Admin intervention is allowed for normal runtime state transitions.
 - No payment before real render/output/previews.
 - **No customer-approval gate before payment.** Preview is presented together with final price + QR after render.
 - Full output is uploaded once, locked before payment, and unlocked after PAID; do not rerender/repackage/reupload just to deliver.
@@ -24,7 +27,7 @@ Build a production CWS MVP where a customer can submit a real Blender project, h
 
 ## 3. Canonical Architecture
 - Customer frontend: existing Vercel project `cws-portal.vercel.app`.
-- Admin frontend: separate React/Vite build in the same repo, target Vercel hostname `cws-admin.vercel.app`; Admin build mounts only the Admin tree.
+- Admin frontend: separate React/Vite build in the same repo at `cws-admin.vercel.app`; Admin work is not the current implementation priority.
 - Backend/API: one existing Render.com service shared by Customer and Admin.
 - Database/Auth: one existing Supabase project; Customer Google OAuth and staff Google OAuth + TOTP/AAL2/role checks remain separate auth flows over the same provider.
 - Storage: existing Backblaze B2.
@@ -33,7 +36,6 @@ Build a production CWS MVP where a customer can submit a real Blender project, h
 - Worker control plane: authenticated Backend gateway; no Supabase service-role key on Workers.
 - Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing; no new broker/Redis until measurement proves a bottleneck.
 - Worker storage access: short-lived task/object-scoped capabilities; no long-lived per-Worker B2 keys.
-- Frontend isolation rule: Customer UI must not be used as an Admin fallback; the separate Admin hostname does not weaken backend authorization.
 
 ## 4. Execution / Governance
 Every CWS change follows:
@@ -46,7 +48,7 @@ Rules:
 - production evidence over simulation;
 - one current E2E bottleneck at a time;
 - existing infrastructure only unless Owner explicitly approves a new resource;
-- the Owner explicitly approved one additional Vercel frontend project named `cws-admin` on 2026-08-11; this does not authorize any other duplicate infrastructure;
+- the already-approved `cws-admin` Vercel frontend does not authorize any other duplicate infrastructure;
 - update the engineering learning log after technical/documentation changes.
 
 ## 5. Current MVP Milestones
@@ -55,17 +57,17 @@ Rules:
 **IN_PROGRESS (2026-08-11)**
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
-- `PROJECT_CONTEXT.md`, workflow, decisions, constitution, and agent rules agree.
-- Obsolete roadmap versions removed from active repository instructions.
-- Customer/Admin frontend boundary reflects the Founder-approved separate Admin deployment.
+- Customer workflow is being reconverged around a login-first operational flow.
+- Admin refinement is deferred while Customer Golden E2E is the current bottleneck.
 
 ### M1 — Customer identity + canonical input
-**CODE/SCHEMA PARTIALLY VERIFIED; PRODUCTION E2E NEEDS VERIFICATION**
+**CODE/SCHEMA PARTIALLY VERIFIED; CUSTOMER UI FLOW NEEDS CONVERGENCE**
 - Google OAuth customer session.
-- Upload/Drive materialization to canonical B2 input.
+- Login-first operational gate.
+- Authenticated Upload/Drive materialization to canonical B2 input.
 - Server-side ownership and validation.
 - `.blend/.zip/.rar` safety boundary.
-- Job creation only after materialized/validated customer-owned input.
+- Job creation only after materialized/validated customer-owned input and approved render-mode selection.
 
 ### M2 — Worker autonomous execution
 **PARTIAL PRODUCTION RUNTIME VERIFIED; FULL TASK PATH NEEDS VERIFICATION**
@@ -82,6 +84,7 @@ Rules:
 - Upload full result to B2 LOCKED.
 - Generate 3–5 real watermarked previews.
 - Final runtime/cost calculation with approved 2.5x multiplier.
+- No preview approval gate.
 
 ### M4 — Payment + delivery
 **CODE/SANDBOX PARTIALLY VERIFIED; GOLDEN E2E NEEDS VERIFICATION**
@@ -93,18 +96,20 @@ Rules:
 **NOT YET PROVEN**
 Required trace:
 1. Real Google-authenticated customer.
-2. Real customer Upload/Drive input.
-3. Materialize + validate.
-4. Create customer-owned Job/Task.
-5. Real physical Worker claim.
-6. Real Blender process and progress.
-7. Real B2 locked output.
-8. Real watermarked previews.
-9. Real final price + QR.
-10. Real SePay sandbox/live-equivalent match.
-11. Real PAID transition.
-12. Real authorized download.
-13. Cleanup and Worker returns idle.
+2. Real authenticated Upload/Drive input.
+3. Materialize + validate canonical input.
+4. Choose approved render mode.
+5. Create exactly one customer-owned Job/Task.
+6. Real physical Worker claim.
+7. Real Blender process and progress.
+8. Real B2 locked output.
+9. Real watermarked previews.
+10. Real final price + exact payment content + MB QR.
+11. Real SePay exact/idempotent match.
+12. Real PAID transition.
+13. Real authorized download.
+14. Same Job visible in customer History.
+15. Cleanup and Worker returns idle.
 
 A build, unit test, simulation, deployment READY state, or Worker heartbeat alone is not Golden E2E proof.
 
@@ -118,4 +123,4 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
 
 ## 7. Current Priority
-Complete the Founder-approved separate Admin frontend deployment and production verification without duplicating backend/data infrastructure. After `cws-admin.vercel.app` is verified, return immediately to the first real Golden Production E2E bottleneck from `CURRENT_STATUS.md`.
+Implement `specs/008-customer-standard-workflow/` and converge the Customer Portal around the canonical login-first workflow. Admin UX/MFA refinement is deferred. After CI, deploy only the existing `cws-portal` project and prove one real Golden Production E2E customer trace from Google Login through authorized download.
