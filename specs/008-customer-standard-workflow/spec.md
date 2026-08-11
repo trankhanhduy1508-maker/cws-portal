@@ -19,17 +19,19 @@ Updated 2026-08-11:
 Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and adaptive scheduling path; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
 
 ## Reality / current mismatch
-Current production/source has several assumptions that now conflict with the Founder decision:
+Profile Gate Removal is now complete on canonical `main` after PR #31 merged with green frontend/backend CI. The Customer create-job path is profile-free; historical/internal profile identifiers remain only for compatibility where required.
 
-1. Customer Login Gate and Input Validation Gate have been converged/synced, but the next UI step still exposes Render Profile cards.
-2. `renderConstants.js` still defines Economy/Standard/Priority/Turbo public profiles.
-3. `RenderProfileScreen.jsx` and `useProfileEstimates.js` still make profile selection/estimation a required Customer gate.
-4. Job creation currently accepts `profileId`, so simply hiding the UI would leave a stale backend/business contract.
-5. Existing durable Task ownership/lease/generation fencing is useful and must be preserved; it should become the safety boundary for adaptive task distribution rather than be replaced.
-6. The scheduler does not yet implement the new deadline-driven desired-capacity loop based on observed real task/frame runtimes.
+The remaining mismatch is the adaptive Task Graph / Deadline Scheduler path:
+
+1. Job creation still seeds a single probe task (`frame 1-1`) through `WorkerFleetGateway.createInternalJobWithProbeTask()`.
+2. `SchedulerService` still waits for that probe task to finish before expanding frames `2..N` in fixed chunks, which conflicts with the approved work-conserving “start useful work immediately” direction.
+3. The scheduler does not yet establish an initial desired parallel capacity of 10 eligible Workers for the same Job.
+4. Real completed Tasks/frames are not yet used as runtime evidence for deadline projection.
+5. The scheduler does not yet compute projected final completion against the 45-minute target with reserved finalization overhead and configurable safety capacity.
+6. Existing durable PostgreSQL Task ownership, atomic claim, lease, generation fencing, retry/failover, and Worker security boundaries are already valuable and must be preserved rather than replaced.
 7. Finalization/assembly/encode time is not yet explicitly budgeted as part of the 45-minute completion target.
 
-These contradictions are workflow debt and make UI, backend state interpretation, tests and E2E evidence harder to reason about.
+These are now the current scheduling mismatches to converge. Do not reopen the completed public Render Profile gate while working on this slice.
 
 ## Canonical customer journey
 `Google Login -> Submit input -> materialize/validate -> Start render -> create one Job -> analyze frame/work range -> create durable non-overlapping Tasks -> initial 10-Worker desired capacity -> real distinct task claims/render -> observe real task/frame runtimes -> adapt desired Worker count if 45-minute final-output target is at risk -> collect/validate -> animation assembly/encode when required -> B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
