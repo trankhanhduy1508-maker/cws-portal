@@ -51,3 +51,12 @@
 - **Verification:** frontend tests 12/12, lint PASS, production build PASS.
 - **Unresolved risk:** Payments, Settings and aggregate System Health remain partial where backend APIs do not exist; UI states this explicitly instead of inventing data.
 - **Next highest-priority action:** deploy the canonical frontend change and verify `/admin` with the real AAL2 session, then add only backend capabilities that are proven necessary.
+
+## 2026-08-11 â€” production Admin route mismatch
+
+- **Symptom:** the live Admin bundle was new, but `https://cws-portal.vercel.app/#/admin` still displayed the old Customer UI.
+- **Evidence:** live bundle markers proved the new Admin code was deployed; `App.jsx` matched only `#admin` while the URL hash was `#/admin`.
+- **Root cause:** hash-route syntax mismatch caused `App()` to fall through to `CustomerPortalApp`; this was not a Vercel deployment or cache problem.
+- **Fix:** accept both legacy `#admin` and production `#/admin` route forms, plus `/admin` pathname.
+- **Verification:** frontend tests 12/12, lint PASS, build PASS.
+- **Unresolved risk:** production UI still needs a browser smoke test after the route-fix deployment with the real AAL2 session.
