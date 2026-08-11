@@ -8,6 +8,7 @@ import DriveLinkCard from '../components/DriveLinkCard';
 import GoogleDriveModal from '../components/GoogleDriveModal';
 import Button from '../components/Button';
 import { FILE_SOURCE } from '../constants/renderConstants';
+import { useAuth } from '../hooks/useAuth';
 
 export default function UploadScreen({
   source, setSource,
@@ -16,6 +17,14 @@ export default function UploadScreen({
   onContinue, isContinuing,
 }) {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // Customer workflow Phase 1 is intentionally gated by Google login:
+  // Login -> Upload/Drive -> Validate -> remaining render flow.
+  // Keep this guard local and defensive even though App.jsx also protects
+  // the continue action, so unauthenticated customers cannot interact with
+  // upload/Drive UI before completing Google authentication.
+  if (!isAuthenticated) return null;
 
   const hasValidInput = source === FILE_SOURCE.UPLOAD ? !!file && !fileError : !!driveLink && !linkError;
 

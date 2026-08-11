@@ -9,12 +9,10 @@ const REASONS = [
   { icon: ShieldCheck, text: 'File của bạn được xoá sau khi tải xuống' },
 ];
 
-/** Hero + trạng thái đăng nhập Google — không còn là 1 bước riêng phải
- * bấm "Bắt đầu" mới thấy được (khách cần thấy ngay Upload/Drive link ở
- * trang đầu). Đăng nhập chỉ thực sự BẮT BUỘC khi khách bấm "Bắt đầu
- * render" ở UploadScreen render ngay bên dưới trang này (xem
- * App.jsx#handleContinueFromUpload) — nút Google ở đây chỉ là lối tắt
- * cho khách muốn đăng nhập trước khi chọn file/dán link. */
+/** Customer workflow Phase 1 starts with Google authentication.
+ * Unauthenticated customers see the product introduction + Google Login.
+ * Upload/Drive becomes available only after authentication succeeds.
+ * Do not reorder this workflow without Founder approval. */
 export default function LandingScreen({ isAuthenticated, customerName, isAuthLoading, authError, onGoogleLogin }) {
   return (
     <motion.div
@@ -40,9 +38,14 @@ export default function LandingScreen({ isAuthenticated, customerName, isAuthLoa
             Đã đăng nhập{customerName ? ` — ${customerName}` : ''}
           </p>
         ) : (
-          <Button variant="secondary" icon={LogIn} onClick={onGoogleLogin} disabled={isAuthLoading}>
-            {isAuthLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Google'}
-          </Button>
+          <>
+            <Button variant="secondary" icon={LogIn} onClick={onGoogleLogin} disabled={isAuthLoading}>
+              {isAuthLoading ? 'Đang đăng nhập...' : 'Đăng nhập với Google'}
+            </Button>
+            <p style={{ fontSize: 12, color: '#6B6B70', textAlign: 'center', marginTop: 8 }}>
+              Đăng nhập để tiếp tục gửi file render.
+            </p>
+          </>
         )}
         {authError && (
           <p role="alert" style={{ fontSize: 13, color: '#E5484D', textAlign: 'center', marginTop: 8 }}>
