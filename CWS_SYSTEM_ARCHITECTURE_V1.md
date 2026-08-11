@@ -56,7 +56,7 @@ Core production concepts:
 
 Supporting concepts:
 
-`priority + capability + heartbeat + retry + generation fencing`
+`capability + heartbeat + retry + generation fencing + deadline planning`
 
 Do not add Kafka, Kubernetes, service mesh, Redis cluster, NATS, MQTT, event sourcing, or extra microservices for the 100-Worker target unless measured evidence proves they are required.
 
@@ -72,7 +72,7 @@ Responsibilities:
 - authenticate Workers
 - expose claim/heartbeat/progress/completion APIs
 - match Tasks to compatible Workers
-- enforce priority and ownership
+- enforce task ownership and deterministic scheduling policy
 - maintain lease/generation state
 - authorize storage access
 - handle retry/failover
@@ -224,23 +224,15 @@ Do not build AI scheduling for MVP.
 
 ---
 
-# 10. PRIORITY / QUEUE POLICY
+# 10. SCHEDULING / QUEUE POLICY
 
 Do not build multiple queue infrastructures for MVP.
 
-A durable Task table with priority/scheduling fields is sufficient for the current target.
+A durable Task table plus the existing atomic claim/lease/generation model is sufficient for the current target. The customer render speed/tier feature is removed and must not be represented as hidden customer-facing or persisted scheduling tiers.
 
-Conceptual tiers may map to numeric scheduling priority, e.g.:
+Scheduling decisions are deterministic and owned by CWS. They may use task readiness, capability, deadline risk, observed runtime, fairness/starvation prevention, fleet capacity and explicit internal operational policy. They must not require a customer tier identifier.
 
-- Priority
-- Balanced
-- Economy
-
-Exact values are implementation details and must follow current product/pricing decisions.
-
-Claim ordering should be deterministic and starvation-aware when implemented.
-
-A single Job must not automatically consume all 100 Workers. Per-job concurrency limits may be added when task decomposition/concurrency actually exists.
+A single Job may consume additional Workers when deadline planning requires it and eligible capacity exists, while preserving fair control-plane behavior and one authoritative active owner per Task/frame.
 
 ---
 
@@ -410,7 +402,7 @@ Before claiming readiness, verify or load-test the following at appropriate scal
 1. 100 Workers can maintain heartbeat/presence without control-plane instability.
 2. Concurrent claim attempts do not produce duplicate ownership.
 3. Multiple Jobs can run concurrently.
-4. Scheduler/claim respects capability and priority rules.
+4. Scheduler/claim respects capability and deterministic scheduling rules.
 5. Several Workers may disappear mid-job and expired leases recover automatically.
 6. Old generations cannot report completion after reassignment.
 7. Worker reboot automatically reconnects/re-authenticates using the supported mechanism.

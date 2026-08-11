@@ -28,7 +28,6 @@ describe('JobsController.create upload ownership', () => {
       {
         fileRef: 'uploads/input.blend',
         fileName: 'input.blend',
-        profileId: 'balanced',
       } as never,
       {
         headers: { authorization: 'Bearer customer-token' },

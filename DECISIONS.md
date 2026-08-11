@@ -30,10 +30,10 @@ Canonical normal flow:
 
 Admin is not a mandatory hop in the Customer workflow. Admin is reserved for observability, support, security exceptions, incident handling, system configuration, and explicit exceptional overrides.
 
-### [ACTIVE — 2026-08-11] No public render-mode choice; automatic deadline planning
-The previous public Economy / Balanced(Standard) / Priority / Turbo render-mode choice is superseded.
+### [ACTIVE — 2026-08-11] Customer render speed/tier feature is removed
+The former public customer render speed/tier choice is removed from the active product and must not be recreated as compatibility behavior.
 
-Customer does **not** choose speed tier, Worker count, GPU, CPU or hardware. After a validated canonical input is ready, the customer starts the render and CWS automatically determines parallel capacity.
+Customer does **not** choose a render tier, Worker count, GPU, CPU or hardware. Active frontend, API, domain, public response and persistence contracts must not require a customer tier identifier. After a validated canonical input is ready, the customer starts the render and CWS automatically determines parallel capacity.
 
 The scheduling objective is an internal mandatory product target: **drive the complete render deliverable toward <=45 minutes from render start to final validated output**, including frame rendering and, when applicable, frame collection/assembly/encode. This is not a public contractual SLA unless separately approved.
 
@@ -47,7 +47,7 @@ Canonical behavior:
 3. Those Workers perform real production Tasks immediately; CWS does not reserve a Worker solely to wait for a synthetic benchmark.
 4. The first completed real frames/tasks provide observed runtime evidence (`seconds/frame`, task runtime, remaining work).
 5. Scheduler continuously projects final completion time from remaining work, observed runtime and reserved non-render overhead.
-6. If projected final completion exceeds the 45-minute target, Scheduler scales the same Job upward (for example 10 -> 20 -> 30+ Workers) as eligible capacity is available.
+6. If projected final completion exceeds the 45-minute target, Scheduler scales the same Job upward as eligible capacity is available.
 7. Capacity calculation includes a configurable safety margin initially in the **20–30%** range and converts the result to a whole Worker count by **rounding up**, never down.
 8. Worker count is always an integer. No fractional Worker allocation exists.
 

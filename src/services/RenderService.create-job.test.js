@@ -24,7 +24,7 @@ describe('RenderService.createJob customer contract', () => {
     });
   });
 
-  it('creates exactly one job payload without a public profile choice', async () => {
+  it('creates exactly one job payload from canonical input fields', async () => {
     await expect(createJob({
       input: {
         fileRef: 'uploads/scene.blend',
@@ -42,6 +42,5 @@ describe('RenderService.createJob customer contract', () => {
       fileName: 'scene.blend',
       fileSizeBytes: 7,
     });
-    expect(JSON.parse(request.body)).not.toHaveProperty('profileId');
   });
 });

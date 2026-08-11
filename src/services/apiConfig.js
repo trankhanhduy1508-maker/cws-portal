@@ -4,14 +4,9 @@ export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_CWS_API_BASE_URL || '',
   WS_BASE_URL: import.meta.env.VITE_CWS_WS_BASE_URL || '',
 
-  // Endpoint dự kiến khi Backend hoàn thành (đặt tên trước để dễ đối
-  // chiếu, KHÔNG có nghĩa là các endpoint này đã tồn tại thật).
   ENDPOINTS: {
     UPLOAD_FILE: '/files/upload',
     DRIVE_RESOLVE: '/drive/resolve',
-    ESTIMATE_JOB: '/jobs/estimate',
-    // Payment (QR MB Bank) chỉ tra cứu lại qua đây — Portal không tự
-    // tạo payment độc lập nữa, Backend tự tạo bên trong APPROVE_JOB.
     GET_PAYMENT_STATUS: (paymentId) => `/payments/${paymentId}`,
     CREATE_JOB: '/jobs',
     GET_JOB: (jobId) => `/jobs/${jobId}`,
@@ -22,7 +17,6 @@ export const API_CONFIG = {
     REQUEST_CHANGES_JOB: (jobId) => `/jobs/${jobId}/request-changes`,
     JOB_DOWNLOAD: (jobId) => `/jobs/${jobId}/download`,
     JOB_REALTIME_WS: (jobId) => `/ws/jobs/${jobId}`,
-    // Admin MVP — fleet status only; cần Bearer token staff AAL2.
     ADMIN_LIST_CUSTOMERS: '/customers/crm',
     ADMIN_LIST_WORKERS: '/fleet/workers',
     ADMIN_LIST_INCIDENTS: '/fleet/incidents',
@@ -38,8 +32,6 @@ export const API_CONFIG = {
     ADMIN_JOB_LOGS: (jobId) => `/jobs/${jobId}/logs`,
     ADMIN_LIST_PAYMENT_DEVICES: '/payments/devices',
     ADMIN_LIST_PAYMENT_ANOMALIES: '/payments/reconciliation-anomalies',
-    // Staff (Admin/Host thật, Phần 6) — cần Authorization: Bearer <session
-    // token Supabase>, xem services/staffApi.js.
     STAFF_ME: '/staff/me',
     HOST_DASHBOARD: '/host/dashboard',
   },

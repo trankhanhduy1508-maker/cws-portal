@@ -1,14 +1,14 @@
 import { ArrowLeft, FileBox, Loader2, XOctagon, Ban } from 'lucide-react';
 import StepCard from '../components/StepCard';
 import { formatRelativeTime, formatDuration } from '../utils/timeUtils';
-import { JOB_STATUS, JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL, RENDER_PROFILES } from '../constants/renderConstants';
+import { JOB_STATUS, JOB_STATUS_LABEL, PAYMENT_STATUS_LABEL } from '../constants/renderConstants';
 import './HistoryScreen.css';
 
 function getStatusStyle(status) {
   if (status === JOB_STATUS.FINISHED) return { bg: '#E3F7ED', color: '#2AB673', icon: FileBox };
   if (status === JOB_STATUS.ERROR) return { bg: '#FDECEC', color: '#E5484D', icon: XOctagon };
   if (status === JOB_STATUS.CANCELLED) return { bg: '#F0F0F1', color: '#6B6B70', icon: Ban };
-  return { bg: '#EEF0FF', color: '#3B5BFF', icon: Loader2 }; // mọi trạng thái đang xử lý
+  return { bg: '#EEF0FF', color: '#3B5BFF', icon: Loader2 };
 }
 
 export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
@@ -34,7 +34,6 @@ export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
           {jobs.map((job) => {
             const style = getStatusStyle(job.status);
             const StatusIcon = style.icon;
-            const profileLabel = RENDER_PROFILES.find((p) => p.id === job.profileId)?.label;
             return (
               <button key={job.id} className="history-item" onClick={() => onOpenJob(job)} type="button">
                 <div className="history-item__icon" style={{ background: style.bg, color: style.color }}>
@@ -43,7 +42,6 @@ export default function HistoryScreen({ jobs, isLoading, onBack, onOpenJob }) {
                 <div className="history-item__info">
                   <p className="history-item__name">{job.projectName}</p>
                   <p className="history-item__meta">
-                    {profileLabel ? `${profileLabel} · ` : ''}
                     {formatRelativeTime(job.createdAt)}
                     {job.durationSec != null ? ` · ${formatDuration(job.durationSec)}` : ''}
                   </p>

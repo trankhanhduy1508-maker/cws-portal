@@ -188,7 +188,7 @@ Current Customer MVP flow:
 
 Binding rules:
 
-- no public Economy/Standard/Priority/Turbo render-mode choice;
+- customer render speed/tier selection is removed from the active product and must not be recreated;
 - customer does not choose Worker count/GPU/CPU;
 - upload/materialize/validate occurs before Job creation;
 - initial desired capacity targets 10 eligible Workers when useful runnable work and real capacity exist;

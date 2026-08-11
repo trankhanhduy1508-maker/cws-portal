@@ -6,44 +6,43 @@ Make the Customer Portal follow one unambiguous production workflow beginning wi
 ## Founder decision
 Updated 2026-08-11:
 
-1. Customer does **not** choose Economy / Balanced(Standard) / Priority / Turbo, Worker count, GPU or CPU.
-2. After validated input, customer presses **Start render** and CWS automatically plans capacity.
-3. CWS targets complete final output within an internal mandatory **45-minute scheduling budget**, including render plus required collection/validation and animation assembly/encode.
-4. Scheduler does not wait for a dedicated benchmark-only phase. It starts useful production work immediately with an initial target of **10 eligible Workers** when capacity permits.
-5. The first completed real Tasks/frames provide runtime evidence for the same Job.
-6. If projected final completion threatens the 45-minute target, CWS scales the Job upward, potentially 10 -> 20 -> 30+ Workers, subject to eligible fleet capacity.
-7. Capacity calculation adds a configurable safety margin initially in the **20–30%** range and rounds required Worker count **up** to a whole integer.
-8. One Task/frame has one active authoritative owner at a time. Concurrent duplicate rendering of the same frame is forbidden in the normal path; failover remains controlled by lease/generation fencing.
-9. Current MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single slow frame is a future decision, not part of this spec.
+1. Customer does **not** choose a render speed/tier, Worker count, GPU or CPU.
+2. The former customer render-tier feature is removed from active UI, API, domain and persistence contracts; it must not be recreated as compatibility behavior.
+3. After validated input, customer presses **Start render** and CWS automatically plans capacity.
+4. CWS targets complete final output within an internal mandatory **45-minute scheduling budget**, including render plus required collection/validation and animation assembly/encode.
+5. Scheduler does not wait for a dedicated benchmark-only phase. It starts useful production work immediately with an initial target of **10 eligible Workers** when capacity permits.
+6. Completed real Tasks/frames provide runtime evidence for the same Job.
+7. If projected final completion threatens the 45-minute target, CWS scales the Job upward subject to eligible fleet capacity.
+8. Capacity calculation adds a configurable safety margin initially in the **20–30%** range and rounds required Worker count **up** to a whole integer.
+9. One Task/frame has one active authoritative owner at a time. Concurrent duplicate rendering of the same frame is forbidden in the normal path; failover remains controlled by lease/generation fencing.
+10. Current MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single slow frame is a future decision, not part of this spec.
 
 Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and adaptive scheduling path; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
 
 ## Reality / current mismatch
-Profile Gate Removal is now complete on canonical `main` after PR #31 merged with green frontend/backend CI. The Customer create-job path is profile-free; historical/internal profile identifiers remain only for compatibility where required.
+The public customer-choice gate was removed from canonical `main` after PR #31. This spec now requires removal of the remaining legacy runtime/API/persistence artifacts rather than retaining hidden identifiers.
 
-The remaining mismatch is the adaptive Task Graph / Deadline Scheduler path:
+The remaining scheduling mismatch is the adaptive Task Graph / Deadline Scheduler path:
 
-1. Job creation still seeds a single probe task (`frame 1-1`) through `WorkerFleetGateway.createInternalJobWithProbeTask()`.
-2. `SchedulerService` still waits for that probe task to finish before expanding frames `2..N` in fixed chunks, which conflicts with the approved work-conserving “start useful work immediately” direction.
+1. Job creation still seeds a single first task through the existing Worker Fleet path.
+2. `SchedulerService` still waits for that task to finish before expanding remaining frames in fixed chunks, which conflicts with the approved work-conserving direction.
 3. The scheduler does not yet establish an initial desired parallel capacity of 10 eligible Workers for the same Job.
 4. Real completed Tasks/frames are not yet used as runtime evidence for deadline projection.
 5. The scheduler does not yet compute projected final completion against the 45-minute target with reserved finalization overhead and configurable safety capacity.
 6. Existing durable PostgreSQL Task ownership, atomic claim, lease, generation fencing, retry/failover, and Worker security boundaries are already valuable and must be preserved rather than replaced.
 7. Finalization/assembly/encode time is not yet explicitly budgeted as part of the 45-minute completion target.
 
-These are now the current scheduling mismatches to converge. Do not reopen the completed public Render Profile gate while working on this slice.
+Do not recreate a customer render-choice gate while working on Scheduler convergence.
 
 ## Canonical customer journey
-`Google Login -> Submit input -> materialize/validate -> Start render -> create one Job -> analyze frame/work range -> create durable non-overlapping Tasks -> initial 10-Worker desired capacity -> real distinct task claims/render -> observe real task/frame runtimes -> adapt desired Worker count if 45-minute final-output target is at risk -> collect/validate -> animation assembly/encode when required -> B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
+`Google Login -> Submit input -> materialize/validate -> Start render -> create one Job -> analyze frame/work range -> create durable non-overlapping Tasks -> initial desired capacity -> real distinct task claims/render -> observe real task/frame runtimes -> adapt desired Worker count if final-output target is at risk -> collect/validate -> animation assembly/encode when required -> B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
 
 ## Scope
 - Customer Portal is the current implementation focus.
 - Keep Google login as the first operational gate.
 - Keep Upload/Drive authenticated-only.
 - Keep canonical materialized/validated customer-owned input mandatory before Job creation.
-- Remove public Render Profile/Mode selection from the Customer journey.
-- Remove obsolete Economy/Standard/Priority/Turbo as required public business choices.
-- Preserve internal compatibility identifiers only if existing persisted data/contracts genuinely require them; do not keep them as a hidden required Customer choice.
+- No customer render speed/tier selection or associated tier identifier is part of the active product contract.
 - Customer presses one Start render action after input readiness.
 - Create exactly one customer-owned Job after Start render.
 - Analyze project/frame range and generate durable non-overlapping Tasks.
@@ -58,16 +57,16 @@ These are now the current scheduling mismatches to converge. Do not reopen the c
 - Include collection/validation and animation assembly/encode in the deadline budget.
 - Preserve output-before-payment order: render/finalize -> validate -> B2 full output locked -> previews -> final price/QR -> SePay -> download.
 - Keep History/reattach behavior tied to the same real Job ID.
-- Add regression/E2E coverage for the new screen/state and scheduling order.
-- Update source-of-truth docs and engineering learning log.
+- Add regression/E2E coverage for screen/state and scheduling order.
+- Update source-of-truth docs and engineering learning evidence.
 
 ## Non-goals for this implementation cycle
 - Do not redesign Admin/Host in this change; this is sequencing, not abandonment.
-- Do not delete, weaken, or de-scope the existing Admin/Host architecture or security requirements.
+- Do not delete, weaken, or de-scope existing Admin/Host architecture or security requirements.
 - Do not create new Vercel/Render/Supabase/B2 resources.
 - Do not change payment method away from MB Bank QR + SePay.
 - Do not invent a new pricing base rate.
-- Do not add OneDrive/Dropbox/direct-link ingestion.
+- Do not add unapproved ingestion sources.
 - Do not add customer GPU/CPU/Worker-count selection.
 - Do not add a new Redis/broker/queue service without measured evidence.
 - Do not replace PostgreSQL task ownership/lease/generation fencing.
@@ -109,7 +108,7 @@ These are now the current scheduling mismatches to converge. Do not reopen the c
 - If projected completion exceeds target, increase desired capacity as eligible Workers are available.
 - Safety margin is configurable, initially 20–30%.
 - Required Worker count is an integer and rounds upward.
-- Do not expose this formula as a Customer choice.
+- Do not expose the scheduling formula as a Customer choice.
 
 ## Security / data invariants
 - Customer identity and input ownership are server-side enforced.
@@ -128,7 +127,7 @@ A real production customer can complete, in order:
 1. Google login.
 2. Authenticated Upload/Drive input.
 3. Real canonical materialization/validation.
-4. Start render without selecting a public speed tier.
+4. Start render with no customer render speed/tier selection.
 5. Exactly one Job creation after input readiness.
 6. Real project/frame-work analysis reports authoritative frame range/fps without waiting for a benchmark render to finish.
 7. Durable non-overlapping Task generation covers the exact authoritative frame interval.

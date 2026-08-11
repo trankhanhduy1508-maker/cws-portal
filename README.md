@@ -1,32 +1,34 @@
 # CWS Customer Portal
 
-Frontend cho dự án CWS — khách gửi file (upload hoặc Google Drive link),
-chọn tốc độ render, xác nhận, theo dõi tiến trình, và tải kết quả.
+Customer frontend của CWS: Google Login → Upload/Google Drive → validate/materialize input → tạo một Job → Scheduler tự phân bổ tài nguyên → theo dõi render → preview + giá cuối + QR → SePay → tải kết quả.
 
-## Chạy thử (development)
+Khách hàng **không chọn tốc độ/tier, GPU/CPU hay số Worker**. Scheduler quyết định capacity tự động từ workload, deadline và fleet capacity thật.
+
+## Development
+```bash
 npm install
 npm run dev
+```
 
-## Build production
+## Production build
+```bash
 npm run build
 npm run preview
+```
 
-## Cấu trúc thư mục
-- `components/` — UI component tái sử dụng
-- `pages/` — từng màn hình trong flow
-- `layouts/` — khung bao ngoài chung
-- `hooks/` — logic state (useFileSelection, useRenderJob, useJobEstimate, useJobHistory, useDriveLink)
-- `services/` — CỔNG DUY NHẤT giao tiếp Backend (`RenderService.js`)
-- `utils/` — hàm tiện ích thuần (format, validate)
-- `constants/` — hằng số dùng chung
-- `theme/` — design tokens (màu, font, spacing)
+## Cấu trúc chính
+- `src/components/` — UI component tái sử dụng
+- `src/pages/` — Customer/Admin screens
+- `src/layouts/` — layout chung
+- `src/hooks/` — auth/input/job/history state
+- `src/services/` — Backend API boundary (`RenderService.js`)
+- `src/utils/` — validation/format helpers
+- `src/constants/` — shared constants
+- `backend/` — NestJS API/Scheduler/payment/storage
+- `worker/` — production Node Agent + Worker Engine
 
-## Kết nối Backend thật (sau này)
-1. Điền `VITE_CWS_API_BASE_URL` vào file `.env` (xem `.env.example`)
-2. Mở `src/services/RenderService.js`, hoàn thiện phần `submitRenderJobReal()`
-   và các hàm `*Real` khác (khung sườn đã có sẵn, khớp đúng shape với bản mock)
-3. Không cần sửa bất kỳ Component/Hook/Page nào khác
+## Backend
+Portal production gọi Backend CWS thật qua `VITE_CWS_API_BASE_URL` và `VITE_CWS_WS_BASE_URL`. Không có mock/demo success fallback trong production path.
 
 ## Deploy
-Repo này đã kết nối Vercel — mỗi lần có commit mới trên nhánh `main`,
-Vercel tự động build và deploy, không cần thao tác thủ công.
+Customer Portal dùng existing Vercel project. Commit/merge vào canonical `main` đi qua CI/deployment hiện hữu; không tạo Vercel project mới cho Customer.

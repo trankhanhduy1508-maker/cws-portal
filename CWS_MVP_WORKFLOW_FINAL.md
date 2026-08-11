@@ -10,7 +10,7 @@ The customer flow must be simple enough to explain in one line:
 
 The UI may show more operational detail, but it must not invent extra business gates or reorder the real backend lifecycle.
 
-The previous public Economy / Balanced(Standard) / Priority / Turbo choice is superseded. The customer does not choose speed tier, Worker count, GPU or CPU.
+The customer render speed/tier feature is removed from the active product. Customer does not choose a render tier, Worker count, GPU or CPU.
 
 ## 2. Canonical Customer UI Journey
 
@@ -51,15 +51,15 @@ For Google Drive:
 
 Only after canonical input is ready, show the primary CTA: **Start render**.
 
-There is no public render-mode selection.
+There is no customer render speed/tier selection.
 
 Customer does not choose:
-- Economy / Standard / Priority / Turbo;
+- a render service/speed tier;
 - Worker count;
 - GPU/CPU;
 - benchmark strategy.
 
-CWS owns capacity planning automatically.
+CWS owns capacity planning automatically. Active frontend/API/domain/persistence must not require a customer tier identifier.
 
 ### Step 3 — Create Job + Analyze Work
 
@@ -84,11 +84,11 @@ Canonical behavior:
 3. Workers immediately perform real production work.
 4. The first completed real Tasks/frames become runtime evidence for the same Job.
 5. Backend calculates projected final completion from observed runtime, remaining work and reserved finalization overhead.
-6. If projected final completion is at risk of exceeding the internal **45-minute target**, desired Worker count increases aggressively as eligible capacity permits, for example `10 -> 20 -> 30+`.
+6. If projected final completion is at risk of exceeding the internal **45-minute target**, desired Worker count increases as eligible capacity permits.
 7. Capacity planning adds a configurable safety margin initially in the **20–30%** range and rounds the required Worker count **up** to a whole integer.
 8. Failed/expired Tasks may be reassigned only after the previous lease is no longer authoritative and generation fencing is advanced according to the canonical scheduler contract.
 
-Do not dedicate one Worker solely to a synthetic 3-frame benchmark while all other work waits. Useful production work itself supplies the measurements.
+Do not dedicate one Worker solely to a synthetic benchmark while all other work waits. Useful production work itself supplies the measurements.
 
 ### Step 5 — Prepare + Optimize + Real Render
 
@@ -254,7 +254,7 @@ Customer history / audit / cleanup
 - Upload/Drive controls belong to the authenticated customer workflow.
 - **Materialize/validate input before Job creation.**
 - A client-supplied file reference or Drive URL alone is never authorization proof.
-- Customer does not choose a render speed tier, Worker count or hardware.
+- Customer render speed/tier selection is removed; customer also does not choose Worker count or hardware.
 - Initial scheduling target is 10 eligible Workers for runnable render Tasks when fleet capacity permits.
 - Use completed real work as runtime evidence; do not block on a benchmark-only phase.
 - Scale capacity upward when projected final completion threatens the 45-minute target.
@@ -283,7 +283,7 @@ Requirements:
 - reject unsupported/malformed input clearly;
 - preserve original uploaded object for audit/retry.
 
-Do not expand the public workflow to OneDrive/Dropbox/direct arbitrary links unless a new active product decision explicitly approves them and the Backend implements real validation/materialization.
+Do not expand the public workflow to unapproved external-link sources unless a new active product decision explicitly approves them and the Backend implements real validation/materialization.
 
 ## 6. Archive Safety
 
@@ -327,7 +327,7 @@ COMPLETED
 ERROR / CANCELLED
 ```
 
-`MODE_SELECT` is superseded and must not remain as a required Customer gate.
+No customer render-tier selection state may remain as a required gate.
 
 Stale labels such as **“Chờ bạn duyệt bản xem trước”** must not remain if no approval action exists.
 
@@ -341,7 +341,7 @@ Customer workflow is not DONE until production evidence proves all of the follow
 2. unauthenticated user cannot proceed into operational Upload/Drive flow;
 3. authenticated customer submits real `.blend/.zip/.rar` or supported Drive input;
 4. Backend materializes and validates customer-owned canonical input;
-5. customer starts render without choosing a speed tier;
+5. customer starts render with no render speed/tier choice;
 6. exactly one real Job is created after input readiness;
 7. Backend analyzes frame/work range and creates non-overlapping durable Tasks;
 8. initial real Worker wave begins useful rendering without a blocking benchmark-only phase;
