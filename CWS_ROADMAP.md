@@ -15,11 +15,12 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Upload/Drive controls are part of the authenticated customer workflow.
 - Input is uploaded/materialized and validated before Job creation.
 - Supported canonical customer inputs: `.blend`, `.zip`, `.rar`, and approved Google Drive file links.
-- Customer does **not** choose Economy/Standard/Priority/Turbo, Worker count, GPU or CPU. Previous public render-mode choice is superseded.
+- Customer render speed/tier selection is removed from the active product. Customer does not choose Worker count, GPU or CPU.
+- Active UI/API/domain/persistence must not depend on a customer tier identifier.
 - CWS automatically plans parallel capacity.
 - Initial runnable render wave targets **10 eligible Workers** when capacity permits.
 - First completed real Tasks/frames are runtime evidence; there is no blocking benchmark-only phase.
-- If projected final completion exceeds the 45-minute target, CWS scales the same Job upward (for example 10 -> 20 -> 30+ Workers) as eligible capacity is available.
+- If projected final completion exceeds the 45-minute target, CWS scales the same Job upward as eligible capacity is available.
 - Capacity planning uses a configurable safety margin initially in the 20–30% range and rounds required Worker count **up** to a whole integer.
 - One Task/frame has one active authoritative Worker owner at a time. Reassignment occurs only through the existing lease/generation fencing rules.
 - The 45-minute target includes required finalization such as render, collection/validation and animation assembly/encode when applicable. It is an internal mandatory scheduling target, not a public contractual SLA unless separately approved.
@@ -67,7 +68,7 @@ Rules:
 **IN_PROGRESS (2026-08-11)**
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
-- Customer workflow is login-first and now uses automatic deadline scheduling rather than public speed tiers.
+- Customer workflow is login-first and uses automatic deadline scheduling with no customer render speed/tier choice.
 - Admin remains an active/core roadmap component; its next refinement cycle is sequenced after the current Customer production gate.
 
 ### M1 — Customer identity + canonical input
@@ -78,7 +79,7 @@ Rules:
 - Server-side ownership and validation.
 - `.blend/.zip/.rar` safety boundary.
 - Job creation only after materialized/validated customer-owned input.
-- Remove obsolete public render-profile selection from the Customer flow.
+- Remove all obsolete customer render-tier runtime/API/persistence artifacts.
 
 ### M2 — Adaptive autonomous execution
 **PARTIAL PRODUCTION RUNTIME VERIFIED; DEADLINE-SCHEDULING PATH NEEDS IMPLEMENTATION/VERIFICATION**
@@ -120,7 +121,7 @@ Required trace:
 1. Real Google-authenticated customer.
 2. Real authenticated Upload/Drive input.
 3. Materialize + validate canonical input.
-4. Customer starts render without selecting a speed tier.
+4. Customer starts render with no render speed/tier choice.
 5. Create exactly one customer-owned Job.
 6. Analyze work range and create non-overlapping durable Tasks.
 7. Real physical Workers claim distinct Tasks; initial wave targets 10 Workers when capacity permits.
@@ -149,7 +150,7 @@ A build, unit test, simulation, deployment READY state, or Worker heartbeat alon
 MVP architecture must avoid manual-per-machine or manual-per-job operations.
 - Near gate: 1 real customer job end-to-end with adaptive scheduling evidence.
 - Then: isolated 10 -> 25 -> 50 -> 100 real/control-plane load verification.
-- A single Job may legitimately consume 10, 20, 30 or more Workers when deadline planning requires it and fleet capacity permits.
+- A single Job may legitimately consume many Workers when deadline planning requires it and fleet capacity permits.
 - Design must remain compatible with 100 / 1,000 / 1,000,000 Workers without assuming they are current deployment targets.
 - Partner Golden Image deployment must not clone one Worker credential across machines.
 - Normal reboot must not require re-enrollment when per-machine persistent state is available.
@@ -158,4 +159,4 @@ MVP architecture must avoid manual-per-machine or manual-per-job operations.
 `CWS_SCALING_ROADMAP.md` is a supporting specialist document and is subordinate to this roadmap.
 
 ## 7. Current Priority
-Converge `specs/008-customer-standard-workflow/` to the new Founder decision: remove public render-profile selection and replace it with automatic Adaptive Deadline Scheduling. Then implement the smallest verified vertical slice in order: validated input -> Start render -> one Job -> task graph -> distinct Task ownership -> initial 10-Worker desired capacity -> observed-runtime feedback -> adaptive scale decision. Customer Golden E2E remains the current bottleneck; Admin continues afterward rather than being dropped.
+Converge `specs/008-customer-standard-workflow/` to the Founder decision: customer render speed/tier selection is removed and capacity is owned automatically by the Adaptive Deadline Scheduler. Then implement the smallest verified vertical slice in order: validated input -> Start render -> one Job -> task graph -> distinct Task ownership -> initial desired capacity -> observed-runtime feedback -> adaptive scale decision. Customer Golden E2E remains the current bottleneck; Admin continues afterward rather than being dropped.
