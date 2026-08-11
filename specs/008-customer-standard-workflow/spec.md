@@ -4,36 +4,59 @@
 Make the Customer Portal follow one unambiguous production workflow beginning with customer Google authentication and ending with authorized result download. Admin/Host remains a core CWS component, but further Admin refinement is sequenced after the current Customer workflow bottleneck.
 
 ## Founder decision
-Clarified 2026-08-11: do not abandon or de-scope Admin. Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and make the customer workflow canonical, starting from Customer Login; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
+Updated 2026-08-11:
+
+1. Customer does **not** choose Economy / Balanced(Standard) / Priority / Turbo, Worker count, GPU or CPU.
+2. After validated input, customer presses **Start render** and CWS automatically plans capacity.
+3. CWS targets complete final output within an internal mandatory **45-minute scheduling budget**, including render plus required collection/validation and animation assembly/encode.
+4. Scheduler does not wait for a dedicated benchmark-only phase. It starts useful production work immediately with an initial target of **10 eligible Workers** when capacity permits.
+5. The first completed real Tasks/frames provide runtime evidence for the same Job.
+6. If projected final completion threatens the 45-minute target, CWS scales the Job upward, potentially 10 -> 20 -> 30+ Workers, subject to eligible fleet capacity.
+7. Capacity calculation adds a configurable safety margin initially in the **20–30%** range and rounds required Worker count **up** to a whole integer.
+8. One Task/frame has one active authoritative owner at a time. Concurrent duplicate rendering of the same frame is forbidden in the normal path; failover remains controlled by lease/generation fencing.
+9. Current MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single slow frame is a future decision, not part of this spec.
+
+Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and adaptive scheduling path; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
 
 ## Reality / current mismatch
-Current production/source has several contradictory assumptions:
+Current production/source has several assumptions that now conflict with the Founder decision:
 
-1. `LandingScreen.jsx` currently advertises that Google login is optional until the customer presses Render.
-2. `App.jsx` currently renders Landing + Upload together for unauthenticated visitors and includes sessionStorage recovery logic because OAuth can happen after Drive input selection.
-3. `renderConstants.js` still contains stale copy for `REVIEW_READY` / `STAGE_SEQUENCE` such as “Chờ bạn duyệt bản xem trước”, even though the active workflow explicitly has no customer preview-approval gate.
-4. `renderConstants.js` exposes four render profiles including `turbo`, while current product direction is Economy / Balanced(Standard) / Priority unless a separate active decision approves another mode.
-5. Comments/constants still mention OneDrive/Dropbox/direct arbitrary links even though the current canonical customer input contract is `.blend/.zip/.rar` + approved Google Drive.
-6. `PACKAGING`/status copy risks implying output creation occurs after payment, conflicting with the active rule that the full output is uploaded and locked before payment.
+1. Customer Login Gate and Input Validation Gate have been converged/synced, but the next UI step still exposes Render Profile cards.
+2. `renderConstants.js` still defines Economy/Standard/Priority/Turbo public profiles.
+3. `RenderProfileScreen.jsx` and `useProfileEstimates.js` still make profile selection/estimation a required Customer gate.
+4. Job creation currently accepts `profileId`, so simply hiding the UI would leave a stale backend/business contract.
+5. Existing durable Task ownership/lease/generation fencing is useful and must be preserved; it should become the safety boundary for adaptive task distribution rather than be replaced.
+6. The scheduler does not yet implement the new deadline-driven desired-capacity loop based on observed real task/frame runtimes.
+7. Finalization/assembly/encode time is not yet explicitly budgeted as part of the 45-minute completion target.
 
 These contradictions are workflow debt and make UI, backend state interpretation, tests and E2E evidence harder to reason about.
 
 ## Canonical customer journey
-`Google Login -> Submit input -> materialize/validate -> choose Economy/Balanced(Standard)/Priority -> Start render -> prepare/optimize -> real render/progress -> validate + B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
+`Google Login -> Submit input -> materialize/validate -> Start render -> create one Job -> analyze frame/work range -> create durable non-overlapping Tasks -> initial 10-Worker desired capacity -> real distinct task claims/render -> observe real task/frame runtimes -> adapt desired Worker count if 45-minute final-output target is at risk -> collect/validate -> animation assembly/encode when required -> B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
 
 ## Scope
 - Customer Portal is the current implementation focus.
-- Login becomes the first operational gate.
-- Upload/Drive controls are usable only after authenticated customer session.
-- Remove the “upload first, OAuth later” behavioral dependency and related pending-input workaround if no longer needed.
-- Keep Google OAuth session restore so already-authenticated customers skip the login gate.
-- Require canonical materialized/validated input before moving to render-mode selection/job creation.
-- Customer selects service/speed preference only; never GPU/CPU hardware.
-- Converge public modes to Economy / Balanced(Standard) / Priority unless code/backend contract requires a compatibility alias.
-- Remove stale preview-approval language/actions.
-- Preserve output-before-payment order: render -> validate -> B2 full output locked -> previews -> final price/QR -> SePay -> download.
+- Keep Google login as the first operational gate.
+- Keep Upload/Drive authenticated-only.
+- Keep canonical materialized/validated customer-owned input mandatory before Job creation.
+- Remove public Render Profile/Mode selection from the Customer journey.
+- Remove obsolete Economy/Standard/Priority/Turbo as required public business choices.
+- Preserve internal compatibility identifiers only if existing persisted data/contracts genuinely require them; do not keep them as a hidden required Customer choice.
+- Customer presses one Start render action after input readiness.
+- Create exactly one customer-owned Job after Start render.
+- Analyze project/frame range and generate durable non-overlapping Tasks.
+- Preserve PostgreSQL atomic claim + lease + generation fencing.
+- Target initial desired capacity of 10 eligible Workers when runnable Tasks exist and fleet capacity permits.
+- Start useful production work immediately; do not wait for a dedicated benchmark-only Worker.
+- Record observed runtime from completed real Tasks/frames.
+- Project final completion time from observed runtime, remaining work and finalization reserve.
+- Increase desired Worker count when the 45-minute target is threatened.
+- Apply configurable 20–30% safety capacity and round required Worker count up to an integer.
+- Prevent concurrent duplicate active Task/frame ownership.
+- Include collection/validation and animation assembly/encode in the deadline budget.
+- Preserve output-before-payment order: render/finalize -> validate -> B2 full output locked -> previews -> final price/QR -> SePay -> download.
 - Keep History/reattach behavior tied to the same real Job ID.
-- Add regression/E2E coverage for the full screen/state ordering.
+- Add regression/E2E coverage for the new screen/state and scheduling order.
 - Update source-of-truth docs and engineering learning log.
 
 ## Non-goals for this implementation cycle
@@ -43,7 +66,36 @@ These contradictions are workflow debt and make UI, backend state interpretation
 - Do not change payment method away from MB Bank QR + SePay.
 - Do not invent a new pricing base rate.
 - Do not add OneDrive/Dropbox/direct-link ingestion.
-- Do not add customer GPU/CPU selection.
+- Do not add customer GPU/CPU/Worker-count selection.
+- Do not add a new Redis/broker/queue service without measured evidence.
+- Do not replace PostgreSQL task ownership/lease/generation fencing.
+- Do not implement distributed single-frame tile/sample rendering in this spec.
+- Do not use speculative duplicate frame rendering in the normal path.
+
+## Scheduling invariants
+
+### Task ownership
+- Each render Task/frame has one active authoritative owner at a time.
+- Claim must remain atomic.
+- Lease/generation fencing remains authoritative for failover/retry.
+- Reassignment after failure/expiry must not allow an old Worker to commit stale completion.
+
+### Initial wave
+- Desired initial parallelism is 10 eligible Workers when there are enough runnable Tasks and fleet capacity exists.
+- If fewer than 10 eligible Workers exist, use available capacity and keep the Job observable as capacity-constrained; do not fabricate capacity.
+
+### Runtime feedback
+- Useful production Tasks provide benchmark evidence.
+- Maintain enough observations to estimate current seconds/frame or task-runtime distribution without blocking the Job.
+- Do not infer performance solely from GPU model/name when real runtime evidence exists.
+
+### Deadline planning
+- Internal target: final validated deliverable within 45 minutes from render start.
+- Projection must include remaining render work plus reserved finalization overhead.
+- If projected completion exceeds target, increase desired capacity as eligible Workers are available.
+- Safety margin is configurable, initially 20–30%.
+- Required Worker count is an integer and rounds upward.
+- Do not expose this formula as a Customer choice.
 
 ## Security / data invariants
 - Customer identity and input ownership are server-side enforced.
@@ -53,6 +105,8 @@ These contradictions are workflow debt and make UI, backend state interpretation
 - Untrusted Blender Python autoexec stays disabled.
 - Full result remains locked until server-side `PAID`.
 - Frontend local state never authorizes payment/download.
+- Worker task ownership remains fenced through authenticated Backend/Postgres contracts.
+- Frontend never calls Worker/Scheduler directly.
 
 ## Definition of Done
 A real production customer can complete, in order:
@@ -60,15 +114,22 @@ A real production customer can complete, in order:
 1. Google login.
 2. Authenticated Upload/Drive input.
 3. Real canonical materialization/validation.
-4. Approved render-mode selection.
-5. One Job creation after input readiness.
-6. Real Worker/Blender execution with real progress.
-7. B2 full output locked before payment.
-8. Real 3–5 watermarked previews.
-9. Final price + exact payment content + MB QR.
-10. Exact/idempotent SePay verification.
-11. PAID.
-12. Authorized download.
-13. Same Job visible in History.
+4. Start render without selecting a public speed tier.
+5. Exactly one Job creation after input readiness.
+6. Real project/frame-work analysis.
+7. Durable non-overlapping Task generation.
+8. Initial real Worker wave begins useful work immediately, targeting 10 eligible Workers when capacity permits.
+9. No two active Workers render the same Task/frame concurrently.
+10. Real completed Tasks/frames produce runtime observations.
+11. Scheduler projects final completion and can increase desired Worker capacity when the 45-minute target is threatened.
+12. Safety capacity is applied and Worker target rounds upward to an integer.
+13. Real Worker/Blender execution reports real progress.
+14. Required collection/validation and animation assembly/encode finish before final-output completion is claimed.
+15. B2 full output is locked before payment.
+16. Real 3–5 watermarked previews are produced.
+17. Final price + exact payment content + MB QR are produced.
+18. Exact/idempotent SePay verification produces PAID.
+19. Authorized download is issued.
+20. Same Job is visible in History.
 
 No mock/demo substitute counts as production evidence.
