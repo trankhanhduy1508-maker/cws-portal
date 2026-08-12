@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1.4 seconds
-Output:
 -- Spec 008: expand the durable render Task graph at first authoritative
 -- metadata report. This is additive and preserves claim/lease/generation
 -- fencing; it does not add a queue or change Worker ownership.
