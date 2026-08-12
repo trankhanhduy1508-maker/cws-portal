@@ -41,3 +41,25 @@ jobs:
           if-no-files-found: error
       - run: npm test
       - run: npm run lint
+
+  worker-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production Worker dependencies
+        run: python -m pip install -r worker/requirements-production.txt
+      - name: Compile Worker and Node Agent modules
+        run: python -m compileall -q worker
+      - name: Run Worker and Node Agent test suite
+        run: python -m unittest discover -s worker -p "test_*.py"
+      - name: Verify pinned Worker package integrity
+        shell: pwsh
+        run: |
+          $actualEngine = (Get-FileHash -Algorithm SHA256 worker/worker_engine.py).Hash
+          $actualLauncher = (Get-FileHash -Algorithm SHA256 worker-engine.bat).Hash
+          Write-Host "worker_engine.py SHA256=$actualEngine"
+          Write-Host "worker-engine.bat SHA256=$actualLauncher"
+          python -c "import sys; from pathlib import Path; sys.path.insert(0, 'worker'); from canonical_worker_launcher import PinnedWorkerLauncher, WorkerArtifact; print(PinnedWorkerLauncher(WorkerArtifact(Path('.'))).validate())"

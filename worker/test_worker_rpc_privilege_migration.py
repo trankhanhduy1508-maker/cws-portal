@@ -68,7 +68,6 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
             "v_task_end = 1",
             "v_task_count = 1",
             "set frame_start = p_frame_start",
-            "set frame_end = p_frame_start",
             "v_job_total is not null and v_job_total <> p_total_frames",
             "(v_job_start is null) <> (v_job_end is null)",
             "v_job_fps = p_fps",
@@ -77,6 +76,7 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
             self.assertIn(fragment, migration)
 
         self.assertIn("and t.status = 'active'", migration)
+        self.assertRegex(migration, r"frame_end\s*=\s*p_frame_start")
         self.assertIn("for update", migration)
 
 
