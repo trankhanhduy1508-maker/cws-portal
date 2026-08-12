@@ -21,7 +21,7 @@ After Google login, normal Customer execution is automatic. Founder/Admin does n
 
 Canonical front-of-flow:
 
-`Google Login -> authenticated Upload/Google Drive -> canonical B2 quarantine/materialization -> security + structural validation -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> Scheduler/Tasks/Workers`
+`Google Login -> authenticated Upload/Google Drive -> temporary quarantine/staging -> pre-B2 anti-malware + security/structural validation -> CLEAN/SAFE -> canonical B2 input upload -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> Scheduler/Tasks/Workers`
 
 A supported authenticated New Render submission expresses render intent.
 
@@ -31,10 +31,14 @@ The previous active requirement:
 
 is superseded. There is no mandatory post-validation `Start render` confirmation.
 
-### [ACTIVE — 2026-08-12] No Job before authoritative INPUT_SAFE
-All `.blend`, `.zip`, `.rar`, and approved Google Drive inputs are hostile/untrusted until the Backend completes the canonical input-security gate.
+### [ACTIVE — 2026-08-12] Security scan happens before canonical B2 input upload
+The previous B2-first quarantine/materialization direction is superseded.
 
-Required layers include, as applicable:
+All `.blend`, `.zip`, `.rar`, and approved Google Drive inputs are hostile/untrusted when they first arrive.
+
+They must first enter a bounded **temporary quarantine/staging area outside canonical B2 input storage** using existing approved infrastructure.
+
+Required pre-B2 layers include, as applicable:
 
 - authenticated customer + server-side ownership;
 - provider/URL validation and SSRF-aware outbound controls;
@@ -47,15 +51,15 @@ Required layers include, as applicable:
 
 Verdict contract:
 
-- `CLEAN + all required structural checks PASS -> INPUT_SAFE`;
-- `INFECTED -> INPUT_REJECTED -> no Job`;
-- scanner unavailable/error/timeout/unknown -> fail closed -> no Job;
-- malformed/unsupported/unsafe input -> no Job.
+- `CLEAN + all required structural checks PASS -> upload/promote to canonical B2 -> verify object -> INPUT_SAFE`;
+- `INFECTED -> INPUT_REJECTED -> no canonical B2 upload -> no Job`;
+- scanner unavailable/error/timeout/unknown -> fail closed -> no canonical B2 upload -> no Job;
+- malformed/unsupported/unsafe input -> no canonical B2 upload -> no Job.
 
-Frontend state is never authoritative for `INPUT_SAFE`.
+Frontend state is never authoritative for CLEAN or `INPUT_SAFE`.
 
-### [ACTIVE — 2026-08-12] Malware scanning is an additional security layer
-CWS must add an approved deterministic malware-scanning layer before `INPUT_SAFE`.
+### [ACTIVE — 2026-08-12] Malware handling: reject/isolate, do not silently disinfect and render
+CWS must use an approved deterministic malware-scanning layer before canonical B2 input upload and before `INPUT_SAFE`.
 
 Canonical direction is a local/self-hosted scanner compatible with existing approved infrastructure; ClamAV is the first implementation candidate to evaluate.
 
@@ -63,10 +67,18 @@ Do not upload private customer project files to public VirusTotal-style scanning
 
 Malware CLEAN does not replace signature validation, archive safety, sandboxing, or Blender execution controls.
 
-### [ACTIVE] B2-first canonical materialization
-Customer input is materialized into canonical B2 storage before Worker processing. Prefer an existing-B2 quarantine/untrusted prefix/state instead of creating another bucket.
+If malware is detected, reject/isolate the submission. Do **not** automatically modify/disinfect the customer's `.blend/.zip/.rar` and continue rendering; automatic repair may corrupt or alter customer content and requires a separate Founder-approved design.
 
-Google Drive is an ingestion source, not a Worker dependency. Worker never needs the customer Drive URL/API key after canonical materialization.
+### [ACTIVE] Canonical B2 input is trusted-by-validation
+Canonical B2 input storage is not the first landing zone for untrusted customer files.
+
+After all mandatory pre-B2 checks pass:
+
+`temporary quarantine -> CLEAN/SAFE -> canonical B2 upload -> integrity/ownership verification -> INPUT_SAFE`
+
+Google Drive is an ingestion source, not a Worker dependency. Worker never needs the customer Drive URL/API key after canonical B2 materialization.
+
+Do not create a new B2 bucket or new storage service merely for quarantine without Founder approval.
 
 ### [ACTIVE] Supported public customer input
 MVP supports:
@@ -79,14 +91,14 @@ MVP supports:
 OneDrive, Dropbox and arbitrary direct-link ingestion are not public canonical inputs without a new Founder decision.
 
 ### [ACTIVE] Archive safety
-ZIP/RAR handling occurs only in bounded sandboxed processing with traversal/sandbox-escape/bomb/resource protections and deterministic `.blend` selection.
+ZIP/RAR handling occurs only in bounded sandboxed processing with traversal/sandbox-escape/bomb/resource protections and deterministic `.blend` selection. Required structural checks happen before canonical B2 promotion.
 
 ### [ACTIVE] Immutable original + safe Blender preparation
-Customer original remains immutable.
+After clean canonicalization, the customer original in B2 remains immutable.
 
 Canonical preparation:
 
-`immutable original -> safe/read-only analysis -> working copy -> deterministic safe optimization -> post-opt validation -> render`
+`immutable canonical B2 original -> safe/read-only analysis -> working copy -> deterministic safe optimization -> post-opt validation -> render`
 
 Untrusted Blender Python autoexec remains OFF. Automatic optimization may not silently change customer visual/animation semantics.
 
@@ -100,9 +112,10 @@ Backend automatically creates exactly one customer-owned Job for the accepted Ne
 Requirements:
 
 - server-side customer ownership;
+- canonical B2 input already exists and is verified;
 - idempotency under retries/refresh/callback duplication;
 - Customer A cannot use Customer B input;
-- quarantined/rejected input cannot create a Job;
+- temporary quarantined/rejected/unknown-scan input cannot create a Job;
 - no Founder/Admin approval;
 - no mandatory customer Start Render click after validation.
 
