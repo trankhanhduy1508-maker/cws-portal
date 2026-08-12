@@ -371,6 +371,56 @@ class ProductionRpcAdapter:
         result = self.client.call("report_worker_probe", payload)
         return str(result)
 
+    def report_job_metadata(self, spec: JobSpec, metadata: Mapping[str, Any]) -> JobSpec:
+        required = ("frame_start", "frame_end", "total_frames", "fps")
+        if any(key not in metadata for key in required):
+            raise PermanentWorkerError("Blender metadata is incomplete")
+        frame_start, frame_end = metadata["frame_start"], metadata["frame_end"]
+        total_frames, fps = metadata["total_frames"], metadata["fps"]
+        if (
+            not isinstance(frame_start, int) or not isinstance(frame_end, int)
+            or not isinstance(total_frames, int)
+            or not isinstance(fps, (int, float)) or isinstance(fps, bool)
+            or frame_start < 0 or frame_end < frame_start
+            or total_frames != frame_end - frame_start + 1 or total_frames < 1
+            or not 0 < float(fps) <= 1000
+        ):
+            raise PermanentWorkerError("Blender metadata is invalid")
+        result = self.client.call("report_job_metadata", {
+            "p_task_id": int(spec.task_id), "p_generation": spec.lease_generation,
+            "p_frame_start": frame_start, "p_frame_end": frame_end,
+            "p_total_frames": total_frames, "p_fps": float(fps),
+        })
+        if result is not True:
+            raise PermanentWorkerError("job metadata report was rejected")
+
+        refreshed = _single_assignment(
+            self.client.call(
+                "get_claimed_task_spec",
+                {
+                    "p_task_id": int(spec.task_id),
+                    "p_generation": spec.lease_generation,
+                },
+            )
+        )
+        if refreshed is None:
+            raise PermanentWorkerError(
+                "metadata reconciliation returned no JobSpec"
+            )
+        refreshed_spec = JobSpec.from_mapping(refreshed)
+        if (
+            refreshed_spec.job_id != spec.job_id
+            or refreshed_spec.task_id != spec.task_id
+            or refreshed_spec.attempt_id != spec.attempt_id
+            or refreshed_spec.lease_generation != spec.lease_generation
+            or refreshed_spec.frame_start != frame_start
+            or refreshed_spec.frame_end != frame_start
+        ):
+            raise PermanentWorkerError(
+                "metadata reconciliation returned an unexpected JobSpec"
+            )
+        return refreshed_spec
+
     def transition(self, state: str, task_id: int | None = None, reason: str | None = None) -> None:
         observed = _OBSERVED_STATES.get(state, state)
         if observed not in {"ACTIVE_IDLE", "PREPARING", "RENDERING", "RECOVERY", "CLEANUP"}:
@@ -655,7 +705,7 @@ class BlenderScenePreflight:
         self.analyzer_script = analyzer_script
         self.basic = BasicPreflight(capabilities)
 
-    def inspect(self, spec: JobSpec, project: Path) -> None:
+    def inspect(self, spec: JobSpec, project: Path) -> Mapping[str, Any]:
         self.basic.inspect(spec, project)
         report = project.parent / "scene-analysis.json"
         env = os.environ.copy()
@@ -692,6 +742,19 @@ class BlenderScenePreflight:
             raise PermanentWorkerError(
                 f"scene has {len(missing)} missing linked asset(s)"
             )
+        metadata = {key: analysis.get(key) for key in ("frame_start", "frame_end", "total_frames", "fps")}
+        frame_start, frame_end = metadata["frame_start"], metadata["frame_end"]
+        total_frames, fps = metadata["total_frames"], metadata["fps"]
+        if (
+            not isinstance(frame_start, int) or not isinstance(frame_end, int)
+            or not isinstance(total_frames, int)
+            or not isinstance(fps, (int, float)) or isinstance(fps, bool)
+            or frame_start < 0 or frame_end < frame_start
+            or total_frames != frame_end - frame_start + 1 or total_frames < 1
+            or not 0 < float(fps) <= 1000
+        ):
+            raise PermanentWorkerError("Blender scene metadata is invalid")
+        return metadata
 
 
 class ProductionB2CheckpointStore(CheckpointStore):
@@ -934,6 +997,7 @@ class ProductionNodeAgentRuntime:
                     self.blender_exe,
                     Path(__file__).with_name("blender_scene_analyzer.py"),
                 ),
+                metadata_reporter=self.rpc.report_job_metadata,
             )
             engine.run(spec)
 
