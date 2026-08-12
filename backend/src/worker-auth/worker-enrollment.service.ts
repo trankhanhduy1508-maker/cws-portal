@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
@@ -154,7 +155,7 @@ export class WorkerEnrollmentService {
     ) {
       throw new BadRequestException('Site controller status is invalid');
     }
-    const { error } = await this.supabaseService
+    const { data, error } = await this.supabaseService
       .getClient()
       .from('worker_site_controller_trust')
       .update({
@@ -162,11 +163,15 @@ export class WorkerEnrollmentService {
         status_changed_by: staffUserId,
         status_changed_at: new Date().toISOString(),
       })
-      .eq('fleet_id', input.fleetId);
+      .eq('fleet_id', input.fleetId)
+      .select('controller_hash');
     if (error)
       throw new InternalServerErrorException(
         'Could not update site controller status',
       );
+    if (!data?.length) {
+      throw new NotFoundException('Site controller trust was not found');
+    }
     return { fleetId: input.fleetId, status: input.status };
   }
 

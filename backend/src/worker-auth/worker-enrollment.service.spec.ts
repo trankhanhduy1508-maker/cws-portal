@@ -12,13 +12,19 @@ function supabase(
     insertError?: unknown;
     rpcData?: unknown;
     rpcError?: unknown;
+    updateData?: unknown;
   } = {},
 ) {
   const insert = jest
     .fn()
     .mockResolvedValue({ error: options.insertError ?? null });
   const update = jest.fn().mockReturnValue({
-    eq: jest.fn().mockResolvedValue({ error: options.insertError ?? null }),
+    eq: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        data: options.updateData ?? [{ controller_hash: 'h'.repeat(64) }],
+        error: options.insertError ?? null,
+      }),
+    }),
   });
   const rpc = jest.fn().mockResolvedValue({
     data: options.rpcData ?? true,
@@ -204,6 +210,16 @@ describe('WorkerEnrollmentService', () => {
         status_changed_by: 'admin-user',
       }),
     );
+  });
+
+  it('does not report a status change when the site-controller trust row is absent', async () => {
+    const db = supabase({ updateData: [] });
+    await expect(
+      new WorkerEnrollmentService(db.dependency).setSiteControllerStatus(
+        { fleetId: 999, status: 'revoked' },
+        'admin-user',
+      ),
+    ).rejects.toThrow('Site controller trust was not found');
   });
   it('issues unique per-worker tickets and stores hashes only', async () => {
     const db = supabase();
