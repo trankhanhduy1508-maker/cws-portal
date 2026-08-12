@@ -14,19 +14,18 @@ Do not scale beyond one Worker until the 1-Worker provisioning/runtime gate pass
 
 The active Customer New Render initiation flow is now:
 
-`Google Login -> authenticated Upload/Google Drive -> B2 quarantine/materialization -> security + structural validation -> INPUT_SAFE -> automatically create exactly one customer-owned Job -> analyze/tasks/scheduler/render`
+`Google Login -> authenticated Upload/Google Drive -> temporary quarantine/staging outside canonical B2 -> anti-malware + security/structural validation -> CLEAN/SAFE -> upload/promote canonical input to B2 -> verify object -> INPUT_SAFE -> automatically create exactly one customer-owned Job -> analyze/tasks/scheduler/render`
 
-The previous active requirement:
+Two previous active ideas are superseded:
 
-`INPUT_READY -> customer presses Start render -> create Job`
-
-is superseded.
+- `INPUT_READY -> customer presses Start render -> create Job`
+- untrusted customer input is uploaded to canonical B2 quarantine before malware scanning.
 
 Submitting a supported input while authenticated represents Customer render intent. There is no mandatory second `Start render` confirmation and no Founder/Admin approval between safe input acceptance and Job creation.
 
 ## Input Security Gate
 
-No production Job may be created before authoritative `INPUT_SAFE`.
+No customer input may enter canonical B2 input storage and no production Job may be created before the mandatory pre-B2 security gate passes.
 
 Customer input is hostile until it passes, as applicable:
 
@@ -39,9 +38,26 @@ Customer input is hostile until it passes, as applicable:
 - ZIP/RAR traversal/bomb/resource/sandbox protections;
 - Blender safety with untrusted Python autoexec disabled.
 
-`INFECTED`, scanner unavailable/error/timeout/unknown, malformed input, unsafe archive, signature mismatch or another failed mandatory security check -> fail closed -> no Job.
+Verdict behavior:
+
+- `CLEAN + all required structural checks PASS -> canonical B2 upload -> object verification -> INPUT_SAFE`;
+- `INFECTED -> reject/isolate -> no canonical B2 upload -> no Job`;
+- scanner unavailable/error/timeout/unknown -> fail closed -> no canonical B2 upload -> no Job;
+- malformed input, unsafe archive, signature mismatch or another failed mandatory security check -> no canonical B2 upload -> no Job.
 
 Canonical malware-scanning direction is a local/self-hosted implementation compatible with existing approved infrastructure; ClamAV is the first candidate to evaluate. Do not send private Customer project files to public scanning services without Founder approval.
+
+CWS does not automatically disinfect/modify an infected customer project and continue rendering. Reject/isolate instead; automatic repair requires a separate Founder-approved design.
+
+## Canonical B2 Input Rule
+
+Canonical B2 input is **trusted-by-validation**, not the first landing zone for untrusted Customer content.
+
+Canonical order:
+
+`temporary quarantine -> security scan/validation -> CLEAN/SAFE -> canonical B2 upload -> integrity/ownership verification -> INPUT_SAFE`
+
+Temporary quarantine must use existing approved infrastructure and remain inaccessible to Workers. Do not create a new bucket/service without Founder approval.
 
 ## Automatic Job Creation
 
@@ -50,10 +66,11 @@ Only authoritative `INPUT_SAFE` may trigger Job creation.
 Backend must automatically create exactly one customer-owned Job for the accepted New Render submission intent, with:
 
 - server-side ownership enforcement;
+- canonical B2 input already verified;
 - idempotency under retries/refresh/callback duplication;
 - no duplicate Job from the same accepted submission;
 - no frontend-forged `INPUT_SAFE`;
-- no Job from quarantined/rejected input;
+- no Job from quarantined/rejected/unknown-scan input;
 - zero Founder/Admin approval.
 
 ## Customer Scheduling Direction
@@ -103,7 +120,7 @@ Founder/Admin must not authorize every normal PC or every new batch at an alread
 
 ## Current Active Specs
 
-- `specs/008-customer-standard-workflow/` — Customer workflow now includes quarantine/security scan + automatic Job creation after `INPUT_SAFE`.
+- `specs/008-customer-standard-workflow/` — Customer workflow now requires temporary quarantine + pre-B2 malware/security validation + canonical B2 promotion + automatic Job creation after `INPUT_SAFE`.
 - `specs/009-automatic-worker-provisioning/` — active 1-Worker runtime provisioning blocker.
 
 ## Next Required Convergence
@@ -121,4 +138,4 @@ Still **NOT PROVEN**.
 Builds, tests, merged PRs, deployed routes, migrations, scanner installation, historical Jobs or Worker heartbeat alone do not prove Golden Production E2E.
 
 ## Last Updated
-2026-08-12 — Founder superseded the post-validation `Start render` gate. Canonical Customer flow now requires quarantine + input security/malware validation, then automatic exactly-one Job creation after authoritative `INPUT_SAFE`, with zero Founder/Admin approval.
+2026-08-12 — Founder clarified the security order: Customer input must be scanned/validated in temporary quarantine before canonical B2 input upload. CLEAN/SAFE input is then canonicalized to B2, verified, marked `INPUT_SAFE`, and automatically creates exactly one Job with zero Founder/Admin approval.
