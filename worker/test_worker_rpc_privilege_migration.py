@@ -76,7 +76,7 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
             self.assertIn(fragment, migration)
 
         self.assertIn("and t.status = 'active'", migration)
-        self.assertRegex(migration, r"frame_end\\s*=\\s*p_frame_start")
+        self.assertRegex(migration, r"frame_end\s*=\s*p_frame_start")
         self.assertIn("for update", migration)
 
 
