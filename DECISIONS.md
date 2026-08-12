@@ -143,6 +143,31 @@ Binding rules:
 
 For the current single-PC MVP/runtime test, if the existing implementation still blocks on manual Worker ID/ticket input, treat that as a **provisioning implementation gap to fix**, not as the desired workflow and not as a Founder step to repeat manually.
 
+### [ACTIVE — 2026-08-12] One physical PC has one canonical PCID/Worker ID; no separate PCID namespace
+Founder supersedes any earlier design that treats `PCID` and `Worker ID` as two separate identifiers for the current CWS machine model.
+
+Canonical identity rule:
+
+`1 physical PC = 1 canonical PCID/Worker ID`
+
+`PCID` is only a human/business alias for the same canonical `worker_id` value. CWS must not create, provision, reconcile, or operate a second independent PC-ID namespace while one physical PC maps to one Worker runtime.
+
+ID generation requirements:
+
+- Backend is the sole canonical ID generator during authorized first provisioning.
+- Generate **128 bits of cryptographically secure random entropy** and encode it as an opaque ID; preferred canonical presentation is `cwsw_` followed by 32 lowercase hexadecimal characters.
+- Example shape only: `cwsw_d77a91e54e824683a4b03ac20b5e4f11`.
+- The database must enforce the canonical Worker ID with a `PRIMARY KEY` or equivalent `UNIQUE` constraint.
+- If an ID collision is ever rejected by the database, Backend must generate a new random ID and retry inside a bounded/idempotent provisioning path; it must never overwrite or merge two physical machines.
+- At one million independently generated 128-bit IDs, random collision probability is approximately 1.5e-27 before the database uniqueness guard; production correctness must still rely on the uniqueness constraint, not probability alone.
+- The ID is opaque: do not encode hostname, site number, GPU, MachineGuid, motherboard serial, fingerprint, customer, Job, or sequential fleet count into it.
+- The same ID survives reboot, reconnect and normal Jobs. Hardware metadata may change without changing the canonical ID unless an explicit authorized identity-recovery/replacement flow decides otherwise.
+- Scheduler, heartbeat, logs, Worker state, task ownership and host accounting use this single canonical ID.
+
+Machine fingerprint remains separate in **purpose**, not as a second PC identifier: it is security evidence used to bind/recover enrollment. It must never silently become or replace the PCID/Worker ID.
+
+Historical reports or legacy code that describe a separate PCID, sequential PC numbering, MachineGuid-derived PC identity, or another second machine-ID namespace are **superseded as active design guidance**. Preserve historical evidence, but do not implement those patterns in the canonical runtime.
+
 ### [ACTIVE — 2026-08-12] Site/Fleet bootstrap authorization and composite machine fingerprint
 Founder approved the concrete security contract for automatic provisioning:
 
@@ -162,7 +187,7 @@ Founder approved the concrete security contract for automatic provisioning:
 
 Canonical provisioning direction:
 
-`authorize site/fleet once -> unattended PC bootstrap -> fingerprint evidence -> Backend scoped authorization -> Backend-generated Worker ID -> bounded bound bootstrap material -> redeem -> per-Worker credential -> DPAPI -> Node Agent -> authenticated heartbeat -> ACTIVE_IDLE`
+`authorize site/fleet once -> unattended PC bootstrap -> fingerprint evidence -> Backend scoped authorization -> Backend-generated PCID/Worker ID -> bounded bound bootstrap material -> redeem -> per-Worker credential -> DPAPI -> Node Agent -> authenticated heartbeat -> ACTIVE_IDLE`
 
 Detailed implementation/verification contract is recorded in `specs/009-automatic-worker-provisioning/spec.md`.
 
