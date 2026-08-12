@@ -2,7 +2,7 @@
 
 > Status: ACTIVE
 > Added: 2026-08-08
-> Updated: 2026-08-11
+> Updated: 2026-08-12
 > Purpose: Mandatory architecture rules for any CWS implementation that can affect fleet growth or production operations.
 
 ---
@@ -26,6 +26,8 @@ Examples of unacceptable fleet-wide patterns:
 - manually creating a storage application key for every Worker
 - manually copying long-lived secrets onto every Worker
 - manually creating database rows for every Worker when secure enrollment can create them
+- manually choosing/typing Worker IDs for every machine
+- manually issuing/copying one enrollment ticket per normal Worker
 - manually advancing normal job states
 - requiring AI/Codex to operate the runtime
 - creating one backend/project/service/bucket per Worker
@@ -37,13 +39,13 @@ Examples of unacceptable fleet-wide patterns:
 
 The intended operator experience is:
 
-`install/enroll Worker -> authenticate securely -> receive machine identity/config -> become schedulable`
+`authorize fleet/site once -> provision Worker unattended -> system generates identity -> authenticate securely -> become schedulable`
 
-Adding Worker N+1 should require approximately the same bounded setup flow regardless of whether the fleet has 10, 100, or 100,000 Workers.
+Adding Worker N+1 should require approximately the same bounded automated setup flow regardless of whether the fleet has 10, 100, or 100,000 Workers.
 
-Bulk enrollment and unattended deployment should be possible without redesigning the runtime architecture.
+Bulk enrollment and unattended deployment must be possible without redesigning the runtime architecture.
 
-Manual Founder action may exist for account-level bootstrap, irreversible production approval, or root-secret rotation, but must not be repeated for every normal Worker or every normal job.
+Manual Founder action may exist for account/site-level bootstrap, irreversible production approval, or root-secret rotation, but must not be repeated for every normal Worker or every normal job.
 
 ---
 
@@ -107,32 +109,38 @@ Admin exists for observability, security exceptions, incident handling, configur
 
 ---
 
-# 7. ZERO PER-WORKER FOUNDER APPROVAL IN NORMAL PROVISIONING
+# 7. AUTOMATIC WORKER IDENTITY + ZERO PER-WORKER FOUNDER APPROVAL
 
-Founder decision (2026-08-11): normal Worker enrollment/restart must not require the Founder/Admin to approve each machine individually.
+Founder decision (2026-08-12): normal Worker provisioning must not require the Founder/Admin to choose a Worker ID, issue/copy an enrollment ticket manually for each machine, approve each machine individually, or repeat any enrollment action per job.
 
-The current bounded enrollment ticket mechanism may remain as a security primitive, but its long-term canonical use MUST be automated by the provisioning/onboarding system rather than requiring a manual Admin Google OAuth + TOTP/AAL2 action for every Worker.
+Worker identity is system-generated. On first authorized provisioning of a physical PC, the provisioning/enrollment system must automatically create a unique stable Worker ID and obtain/store the machine-bound credential through the authenticated Backend boundary.
+
+The current bounded enrollment-ticket mechanism may remain as an internal security primitive, but its normal use MUST be automated by the provisioning/onboarding system. A human must not need to copy a ticket or type a Worker ID into every PC.
 
 Allowed human interaction:
 
-- one-time fleet/site onboarding bootstrap
+- one-time fleet/site onboarding or trust bootstrap
 - security incident review
 - irreversible/root-secret rotation
-- explicit exceptional operations
+- credential revocation/recovery or other explicit exceptional operations
 
 Not allowed as the canonical normal path:
 
+- Founder chooses or types each Worker ID
 - Founder approves each Worker
-- Admin issues one ticket manually per Worker
+- Admin issues one ticket manually per normal Worker
 - Founder edits Supabase rows per Worker
 - Founder copies credentials/secrets to each Worker
 - Admin intervention on normal Worker restart/reconnect
+- any enrollment/ticket action triggered by each customer Job
 
 Target fleet behavior:
 
-`fleet/site onboard once -> unattended/bulk provisioning -> Worker receives or redeems authorized bootstrap material -> creates its own identity credential -> stores machine-bound credential -> heartbeat -> schedulable`
+`fleet/site authorize once -> unattended PC provisioning -> system generates unique stable Worker ID -> authorized bootstrap material is issued/redeemed automatically -> machine-bound credential stored -> Node Agent authenticates -> heartbeat -> schedulable`
 
-Adding the 101st/1,001st Worker must not create a new manual Founder approval step.
+Worker identity is per physical Worker, not per Job. Adding the 101st/1,001st Worker must not create a new manual Founder approval or ticket-copy step.
+
+If the current implementation still requires a manually entered Worker ID or manually issued ticket for the single-PC MVP test, that is a **provisioning implementation gap**, not the accepted target workflow.
 
 ---
 
@@ -191,8 +199,10 @@ Before accepting any new production architecture or provisioning design, Codex/a
 8. Does the design create one infrastructure resource per Worker unnecessarily?
 9. Does the normal Customer workflow require any Admin approval?
 10. Does the normal Worker lifecycle require per-machine Founder/Admin approval?
-11. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
-12. Is there exactly one canonical production startup owner for the Worker host?
+11. Is Worker ID system-generated rather than Founder-entered?
+12. Does normal provisioning avoid manual per-Worker ticket handling?
+13. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
+14. Is there exactly one canonical production startup owner for the Worker host?
 
 If a design obviously creates a linear manual-operations bottleneck, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
 
@@ -218,7 +228,10 @@ A Worker provisioning design is scale-ready only when:
 
 - no Founder-created B2 key is required per Worker
 - no Supabase service-role or account-level storage credential is placed on a Worker
+- Worker ID is generated automatically by the system and remains stable for that physical Worker
 - Worker identity enrollment is securely automatable
+- normal provisioning does not require Admin to manually issue/copy one enrollment ticket per Worker
+- no enrollment/ticket action is required per customer Job
 - normal restart/recovery does not require human or AI intervention
 - partner Golden Image deployment does not clone one Worker credential across machines
 - normal reboot reuses existing per-machine identity when persistent state is available
