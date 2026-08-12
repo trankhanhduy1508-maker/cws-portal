@@ -52,22 +52,38 @@ Required pre-B2 layers include, as applicable:
 Verdict contract:
 
 - `CLEAN + all required structural checks PASS -> upload/promote to canonical B2 -> verify object -> INPUT_SAFE`;
-- `INFECTED -> INPUT_REJECTED -> no canonical B2 upload -> no Job`;
-- scanner unavailable/error/timeout/unknown -> fail closed -> no canonical B2 upload -> no Job;
-- malformed/unsupported/unsafe input -> no canonical B2 upload -> no Job.
+- `INFECTED/SUSPICIOUS -> QUARANTINE -> no canonical B2 upload -> no Job`;
+- scanner unavailable/error/timeout/unknown -> fail closed -> remain quarantined -> no canonical B2 upload -> no Job;
+- malformed/unsupported/unsafe input -> quarantine/reject according to policy -> no canonical B2 upload -> no Job.
 
 Frontend state is never authoritative for CLEAN or `INPUT_SAFE`.
 
-### [ACTIVE — 2026-08-12] Malware handling: reject/isolate, do not silently disinfect and render
-CWS must use an approved deterministic malware-scanning layer before canonical B2 input upload and before `INPUT_SAFE`.
+### [ACTIVE — 2026-08-12] Malware handling is quarantine-first; use mature existing security tooling instead of building an antivirus engine
+CWS must integrate a mature, maintained security scanner/endpoint-protection tool rather than implement antivirus detection/remediation logic from scratch.
 
-Canonical direction is a local/self-hosted scanner compatible with existing approved infrastructure; ClamAV is the first implementation candidate to evaluate.
+Implementation order is **integration-first**:
+
+1. inspect existing CWS security patterns/integrations;
+2. evaluate established maintained tools/plugins/packages from authoritative upstream sources;
+3. verify current maintenance, security advisories, license, provenance/signatures/hashes where available, and compatibility with existing CWS infrastructure;
+4. integrate the smallest safe supported interface;
+5. add CWS-specific orchestration, audit, policy and tests around the tool instead of recreating the scanning engine.
+
+Detection response:
+
+- suspicious/infected customer input is **quarantined first** and is not promoted to canonical B2 or rendered;
+- quarantine is containment, not automatic deletion;
+- a detected file is not automatically modified and then trusted merely because a scanner offers a repair action;
+- if there is evidence or strong indication that malware has executed, escaped quarantine, modified the host, or is actively intruding into CWS infrastructure, trigger the approved security product's containment/remediation/eradication capability and incident workflow;
+- system remediation may isolate/remove malicious artifacts/processes according to the trusted tool's supported behavior and CWS policy;
+- do not write a custom virus-removal engine;
+- do not weaken quarantine or security gates to keep a Job running.
+
+Any attempt to disinfect/repair the **customer project itself** and then continue rendering must be separately validated as format-preserving and safe. If that cannot be proven, keep the submission quarantined and require a clean resubmission rather than risk corrupting customer work.
 
 Do not upload private customer project files to public VirusTotal-style scanning services without a separate Founder decision.
 
 Malware CLEAN does not replace signature validation, archive safety, sandboxing, or Blender execution controls.
-
-If malware is detected, reject/isolate the submission. Do **not** automatically modify/disinfect the customer's `.blend/.zip/.rar` and continue rendering; automatic repair may corrupt or alter customer content and requires a separate Founder-approved design.
 
 ### [ACTIVE] Canonical B2 input is trusted-by-validation
 Canonical B2 input storage is not the first landing zone for untrusted customer files.
