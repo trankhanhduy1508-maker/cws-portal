@@ -11,64 +11,79 @@
 
 Every production design must be evaluated against fleet growth before it is accepted.
 
-The target mental model is not only 1 Worker or 10 Workers. For every design, ask whether the same operating model remains viable at approximately:
+For every design, ask whether the same operating model remains viable at approximately:
 
 - 100 Workers
 - 1,000 Workers
 - 10,000 Workers
 - 1,000,000 Workers
 
-This does NOT mean prematurely building infrastructure sized for one million machines. It means avoiding architecture whose operating cost, manual work, secret management, provisioning steps, identity collision risk, or control-plane complexity grows badly with every Worker when that growth can reasonably be automated or centralized.
+This does NOT mean prematurely building infrastructure sized for one million machines. It means avoiding architecture whose operating cost, manual work, secret management, provisioning steps, identity collision risk, or control-plane complexity grows badly with fleet size.
 
-A solution is unacceptable as the long-term canonical design if adding Workers requires the Founder/operator to repeat a manual production action per machine that cannot be safely automated.
+A long-term canonical solution is unacceptable if adding Workers requires the Founder/operator to repeat a manual production action per machine **or per normal batch at an already-approved site/fleet** when that action can be safely automated.
 
-Examples of unacceptable fleet-wide patterns:
+Unacceptable patterns include:
 
 - manually creating a storage application key for every Worker
 - manually copying long-lived secrets onto every Worker
-- manually creating database rows for every Worker when secure enrollment can create them
-- manually choosing/typing Worker IDs for every machine
+- manually creating database rows for every Worker
+- manually choosing/typing Worker IDs
 - creating a separate PCID namespace that must be reconciled with Worker IDs
 - deriving canonical Worker IDs from hostname, MachineGuid, GPU, serial number, or sequential PC numbering
 - manually issuing/copying one enrollment ticket per normal Worker
+- requiring Founder/Admin to approve every normal new PC batch at a site already approved by CWS
 - manually advancing normal job states
 - requiring AI/Codex to operate the runtime
 - creating one backend/project/service/bucket per Worker
-- requiring an operator to edit production configuration every time one Worker is added
+- requiring production config edits every time one Worker is added
 
 ---
 
 # 2. O(1) OPERATOR EFFORT FOR NORMAL FLEET GROWTH
 
-The intended operator experience is:
+The intended lifecycle is:
 
-`authorize fleet/site once -> provision Worker unattended -> Backend generates canonical identity -> authenticate securely -> become schedulable`
+`approve site/fleet once -> persist durable site trust -> provision Workers unattended -> Backend generates canonical identities -> Workers authenticate securely -> become schedulable`
 
-Adding Worker N+1 should require approximately the same bounded automated setup flow regardless of whether the fleet has 10, 100, 10,000, or 1,000,000 Workers.
+For an already-approved site/fleet:
 
-Bulk enrollment and unattended deployment must be possible without redesigning the runtime architecture.
+`new batch starts -> approved site controller/backend automatically obtains or rotates bounded provisioning capability -> PCs provision unattended`
 
-Manual Founder action may exist for account/site-level bootstrap, irreversible production approval, or root-secret rotation, but must not be repeated for every normal Worker or every normal job.
+Adding Worker N+1 or batch N+1 should not require another Founder/Admin approval while the site remains approved and within server-side policy.
+
+Manual Founder action may exist for:
+
+- first site/fleet trust onboarding
+- explicit site suspension/revocation
+- ownership/site transfer
+- root trust reset or irreversible secret rotation
+- major policy/capacity change
+- exceptional security recovery
+
+Manual Founder action must not exist for:
+
+- each normal Worker
+- each normal PC batch at an approved site
+- each customer Job
+- normal reboot/reconnect
+- ordinary short-lived capability renewal/rotation
 
 ---
 
 # 3. NO LONG-LIVED STORAGE MASTER CREDENTIAL ON WORKERS
 
-Canonical long-term storage architecture:
+Canonical storage architecture:
 
-- long-lived Backblaze B2/account-level credentials remain server-side in trusted infrastructure
-- Workers authenticate to the CWS Backend using their per-Worker identity
-- for a claimed job, Backend grants only the minimum storage capability required for that job/object set
-- storage authorization must be short-lived or otherwise narrowly scoped and revocable
+- long-lived Backblaze B2/account-level credentials remain server-side
+- Workers authenticate to the CWS Backend using per-Worker identity
+- Backend grants only minimum job/object-scoped storage capability
 - Worker must not require a Founder-created B2 application key per machine
 
 Preferred behavior:
 
 `Worker auth -> claim Job -> Backend issues job-scoped storage access -> download/render/upload -> access expires/revokes`
 
-The exact B2 mechanism must be selected from current supported APIs and verified against production constraints. Do not invent a signed-URL feature if B2 does not support the required operation directly; use the safest supported server-mediated or temporary-authorization design.
-
-A temporary scoped B2 key on the first test Worker may be used only as an explicitly documented bootstrap experiment if absolutely required to unblock evidence. It must not become the canonical fleet provisioning model, and P7 scale readiness cannot PASS while per-Worker manual B2 key creation remains required.
+Compromise of one Worker must not expose broad credentials for other Workers/jobs/storage.
 
 ---
 
@@ -76,9 +91,9 @@ A temporary scoped B2 key on the first test Worker may be used only as an explic
 
 Production jobs and fleet operations must continue when ChatGPT, Codex, Claude, Kimi, or any other AI is offline.
 
-AI may develop, inspect, debug, or analyze the system. AI must not be a required production orchestration component.
+AI may develop, inspect, debug, test, document, and improve CWS. It is not a required production orchestration component.
 
-Expected runtime actions such as claim, heartbeat, retry, render, upload, state transitions, cleanup, recovery, payment handling, and delivery must be deterministic code/state-machine behavior.
+Claim, heartbeat, retry, render, upload, state transitions, cleanup, recovery, payment handling, and delivery must be deterministic code/state-machine behavior.
 
 ---
 
@@ -87,186 +102,213 @@ Expected runtime actions such as claim, heartbeat, retry, render, upload, state 
 Prefer:
 
 - centralized long-lived account credentials
+- durable approved-site trust state
+- site-controller identity/trust material held in its own secure boundary
 - per-Worker identity credentials
-- short-lived/job-scoped capabilities
+- short-lived/job- or provisioning-scoped capabilities
 - automatic rotation/revocation
-- machine-bound secure local storage only for the Worker identity credential where appropriate
+- machine-bound secure local storage for Worker identity credentials
 
 Avoid distributing account-level secrets across the fleet.
 
-Compromise of one Worker should not expose credentials that grant broad access to other Workers, unrelated jobs, or the entire storage account.
+A short-lived site provisioning token expiring must not force Founder/Admin re-approval if the site itself is still approved. The approved site controller/Backend should renew/exchange bounded capability automatically.
+
+The site-controller secret/trust anchor must not be cloned into a shared Golden Image.
 
 ---
 
 # 6. ZERO ADMIN APPROVAL IN NORMAL CUSTOMER RUNTIME
 
-Founder decision (2026-08-11): normal Customer jobs must be fully automatic after Google login and submission.
+Founder decision: normal Customer jobs are fully automatic after Google login and valid submission.
 
 Canonical Customer runtime:
 
 `Google Login -> Upload/Drive -> Validate -> Queue -> Scheduler -> Worker -> Render -> B2 -> Preview/Pricing/QR -> SePay verify -> Unlock -> Download -> Cleanup`
 
-The normal runtime MUST NOT require Founder/Admin approval, manual state advancement, manual Worker assignment, manual payment confirmation, or AI intervention.
-
-Admin exists for observability, security exceptions, incident handling, configuration, and explicit operational overrides only. Admin is not a mandatory hop in the Customer E2E workflow.
+Normal runtime MUST NOT require Founder/Admin approval, manual state advancement, manual Worker assignment, manual payment confirmation, or AI intervention.
 
 ---
 
 # 7. AUTOMATIC WORKER IDENTITY + ONE CANONICAL PCID/WORKER ID
 
-Founder decision (2026-08-12): normal Worker provisioning must not require the Founder/Admin to choose a Worker ID, issue/copy an enrollment ticket manually for each machine, approve each machine individually, or repeat any enrollment action per job.
+Founder decision: normal Worker provisioning must not require the Founder/Admin to choose a Worker ID, issue/copy an enrollment ticket manually for each machine, approve each machine, approve each normal batch at an already-approved site, or repeat enrollment action per Job.
 
-Canonical machine identity rule:
+Canonical identity:
 
 `1 physical PC = 1 canonical PCID/Worker ID`
 
-`PCID` and `Worker ID` are aliases of the same canonical `worker_id` value. CWS must not maintain a second independent PC-ID namespace while one physical PC maps to one Worker runtime.
+`PCID` and `Worker ID` are aliases of the same canonical `worker_id` value.
 
-Worker identity is system-generated. On first authorized provisioning of a physical PC, the Backend must automatically create the unique stable canonical PCID/Worker ID and obtain/store the machine-bound credential through the authenticated Backend boundary.
-
-Canonical ID generation/uniqueness contract:
+Canonical generation:
 
 - Backend generates 128 bits of cryptographically secure random entropy.
-- Preferred representation is `cwsw_` + 32 lowercase hex characters.
-- Database `PRIMARY KEY` or equivalent `UNIQUE` enforcement is mandatory.
-- Any collision is rejected and retried with a fresh random ID; never overwrite or merge another Worker.
-- At 1,000,000 independently generated 128-bit IDs, random birthday collision probability is approximately `1.5e-27` before the uniqueness guard.
-- Correctness relies on the database uniqueness constraint plus bounded retry, not probability alone.
-- Do not derive the ID from hostname, GPU, MachineGuid, fingerprint, motherboard/BIOS serial, site number, Job, customer, or sequential PC number.
-- Machine fingerprint is enrollment/recovery evidence only; it is not a second ID.
+- Preferred representation: `cwsw_` + 32 lowercase hex characters.
+- Database `PRIMARY KEY`/`UNIQUE` protection is authoritative.
+- Collision is rejected and retried with a fresh random ID; never overwrite/merge another Worker.
+- Do not derive ID from hostname, GPU, MachineGuid, fingerprint, motherboard/BIOS serial, site number, Job, customer, or sequential PC number.
+- Fingerprint is enrollment/recovery evidence only.
 
-The current bounded enrollment-ticket mechanism may remain as an internal security primitive, but its normal use MUST be automated by the provisioning/onboarding system. A human must not need to copy a ticket or type a Worker ID into every PC.
+Internal one-time enrollment tickets may remain as security primitives, but humans do not create/copy them in the normal path.
 
-Allowed human interaction:
+Target behavior:
 
-- one-time fleet/site onboarding or trust bootstrap
-- security incident review
-- irreversible/root-secret rotation
-- credential revocation/recovery or other explicit exceptional operations
+`site approved once -> durable site trust -> unattended batch provisioning -> Backend generates canonical Worker IDs -> bounded enrollment material auto-issued/redeemed -> per-Worker credential -> DPAPI -> Node Agent -> heartbeat`
 
-Not allowed as the canonical normal path:
+Adding the 101st, 1,001st, 10,001st Worker — or a new batch of those Workers at the same approved site — must not create a new Founder approval/ticket-copy/ID-entry process.
 
-- Founder chooses or types each Worker ID/PCID
-- separate PCID creation/reconciliation
-- Founder approves each Worker
-- Admin issues one ticket manually per normal Worker
-- Founder edits Supabase rows per Worker
-- Founder copies credentials/secrets to each Worker
-- Admin intervention on normal Worker restart/reconnect
-- any enrollment/ticket action triggered by each customer Job
-
-Target fleet behavior:
-
-`fleet/site authorize once -> unattended PC provisioning -> Backend generates canonical PCID/Worker ID -> authorized bootstrap material is issued/redeemed automatically -> machine-bound credential stored -> Node Agent authenticates -> heartbeat -> schedulable`
-
-Worker identity is per physical Worker, not per Job. Adding the 101st/1,001st/10,001st Worker must not create a new manual Founder approval, PCID reconciliation, or ticket-copy step.
-
-If the current implementation still requires a manually entered Worker ID/PCID or manually issued ticket for the single-PC MVP test, that is a **provisioning implementation gap**, not the accepted target workflow.
+If implementation still requires an Admin AAL2 `/site-bootstrap` call before every normal batch, that is a **scale-blocking implementation gap**.
 
 ---
 
-# 8. PARTNER GOLDEN IMAGE + PER-MACHINE STATE
+# 8. APPROVED SITE/FLEET AUTONOMY
 
-Founder decision (2026-08-11): for approved net-cafe/office partners, CWS runtime components should be installed in the partner's canonical Windows/BootROM Golden Image so reboot/reset does not remove the CWS software stack.
+This is a binding scale rule.
 
-The Golden Image may contain shared non-secret runtime components such as Node Agent code, Worker Engine code, Blender/runtime dependencies, the canonical startup wrapper/service, and shared non-secret Backend/site configuration.
+A site/fleet approval and a short-lived provisioning token are different things.
 
-The Golden Image MUST NOT contain one copied Worker credential used by all machines. Worker identity and authentication credential remain unique per physical PC and should live in the partner's supported per-machine persistent/writeback state when available.
+### Durable site approval
 
-Normal reboot behavior:
+- Established once through an authenticated privileged onboarding boundary.
+- Stored server-side as durable APPROVED trust state.
+- Remains valid until explicit suspension/revocation, ownership transfer, trust reset, or other exceptional policy event.
 
-`boot shared image -> load existing canonical PCID/Worker ID + per-machine credential -> Node Agent auto-start -> heartbeat -> ACTIVE_IDLE`
+### Site controller
 
-Normal reboot must not trigger re-enrollment. Enrollment/re-enrollment is limited to first enrollment, credential loss/corruption, reprovisioning/hardware replacement, or explicit revocation recovery.
+- Authenticates the already-approved site/fleet.
+- Has provisioning-only scope.
+- Is not a Worker credential and not a Supabase service-role credential.
+- Cannot claim Tasks, render, access payments, or hold B2 master authority.
+- Cannot act for another site/fleet.
+- Is revocable/auditable.
+- Its secret/trust anchor is not embedded in the shared Golden Image.
 
-If a specific BootROM product cannot persist per-machine state, bounded unattended re-enrollment is allowed as a fallback only; it must not become the default reboot path for all partners.
+### Short-lived provisioning capability
+
+- May expire frequently.
+- May be exchanged/renewed/rotated automatically while durable site approval remains valid and server policy permits.
+- Expiry alone is not a reason to ask Founder/Admin to approve the site again.
+
+### Human boundary
+
+Founder/Admin may be required for first onboarding or exceptional trust/security events only.
+
+Founder/Admin must **not** be required when:
+
+- batch 2, batch 3, or batch N is introduced at an approved site;
+- a normal PC is added within approved policy/capacity;
+- a short-lived provisioning token expires;
+- a normal Worker reconnects/reboots.
 
 ---
 
-# 9. ONE RESIDENT NODE AGENT; EPHEMERAL WORKER ENGINE
+# 9. PARTNER GOLDEN IMAGE + PER-MACHINE STATE
 
-Founder decision (2026-08-11): the canonical Windows runtime has one always-resident supervisor, the Node Agent.
+For approved net-cafe/office partners, CWS runtime components should be baked into the canonical Windows/BootROM Golden Image.
 
-Required process model:
+The shared image may contain:
+
+- Node Agent code
+- Worker Engine code
+- Blender/runtime dependencies
+- canonical startup wrapper/service
+- non-secret Backend/site identifiers/configuration
+
+It MUST NOT contain:
+
+- one shared Worker credential
+- Supabase service-role key
+- B2 master credential
+- site-controller root/trust secret
+
+Worker identity and credential remain unique per physical PC and live in supported per-machine persistent/writeback state where available.
+
+Normal reboot:
+
+`boot shared image -> load existing Worker ID + DPAPI credential -> Node Agent -> heartbeat -> ACTIVE_IDLE`
+
+Normal reboot does not re-enroll.
+
+---
+
+# 10. ONE RESIDENT NODE AGENT; EPHEMERAL WORKER ENGINE
+
+Canonical Windows runtime:
 
 `Windows boot -> Node Agent service -> authenticate/heartbeat -> ACTIVE_IDLE -> claim task -> launch Worker Engine -> Blender/render/upload/verify -> Worker Engine exits -> cleanup -> ACTIVE_IDLE`
 
 Rules:
 
-- Node Agent auto-starts with Windows through one canonical production startup mechanism.
-- Prefer a Windows Service with automatic/delayed start plus startup jitter/backoff suitable for fleets booting together.
-- Worker Engine is not a second permanent service and should not stay alive while no job is assigned.
-- Node Agent remains alive across jobs and owns lifecycle/state supervision.
-- Duplicate Node Agent instances are forbidden; competing Startup Folder/Scheduled Task/.bat/service production startup paths must be removed or disabled.
-- Temporary Backend/network outages must use bounded retry/backoff; they must not require Admin/AI restart.
-- Worker Engine or Blender failure must not permanently kill the resident Node Agent.
+- Node Agent is the only resident startup owner.
+- Prefer delayed/jittered service startup for large fleets.
+- Worker Engine is task-scoped, not a second permanent service.
+- Duplicate Node Agent instances are forbidden.
+- Network outages use bounded retry/backoff.
+- Worker/Blender failure must not permanently kill Node Agent.
 - Legacy `cws_worker_full.py` is not the canonical auto-start production runtime.
 
-This process boundary reduces idle process load, duplicate claims and fleet startup ambiguity while preserving one clear owner for recovery.
-
 ---
 
-# 10. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
+# 11. SCALE REVIEW REQUIRED FOR ARCHITECTURE CHANGES
 
-Before accepting any new production architecture or provisioning design, Codex/agents must answer:
+Before accepting production architecture/provisioning design, agents must answer:
 
 1. What manual action is required per Worker?
-2. What manual action is required per job?
-3. What secret exists on each Worker?
-4. What happens if one Worker is compromised?
-5. Does adding the 101st, 1,001st, 10,001st or 1,000,001st Worker require a new manual process?
-6. What component becomes a bottleneck as fleet size increases?
-7. Can the design be automated without changing the public/runtime contract?
-8. Does the design create one infrastructure resource per Worker unnecessarily?
-9. Does the normal Customer workflow require any Admin approval?
-10. Does the normal Worker lifecycle require per-machine Founder/Admin approval?
-11. Is canonical PCID/Worker ID system-generated rather than Founder-entered?
-12. Is there exactly one machine identity namespace for the current one-PC/one-Worker model?
-13. Is the ID collision-resistant by 128-bit CSPRNG generation plus database uniqueness and bounded collision retry?
-14. Does normal provisioning avoid manual per-Worker ticket handling?
-15. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
-16. Is there exactly one canonical production startup owner for the Worker host?
+2. What manual action is required per batch at an already-approved site?
+3. What manual action is required per Job?
+4. What secret exists on each Worker?
+5. What secret/trust material exists at site-controller level?
+6. What happens if one Worker is compromised?
+7. What happens if one site controller is compromised?
+8. Does adding the 101st/1,001st/10,001st/1,000,001st Worker require a new manual process?
+9. Does adding batch N+1 at an approved site require Founder/Admin login/action?
+10. Can short-lived capability renewal be automated without widening scope?
+11. What component becomes the bottleneck as fleet size increases?
+12. Does the design create one infrastructure resource per Worker unnecessarily?
+13. Does normal Customer workflow require Admin approval?
+14. Does normal Worker lifecycle require per-machine or per-batch Founder/Admin approval?
+15. Is canonical Worker ID system-generated with 128-bit CSPRNG + DB uniqueness?
+16. Is there one machine identity namespace?
+17. Does normal reboot reuse existing per-machine identity?
+18. Is there exactly one canonical production startup owner?
 
-If a design obviously creates a linear manual-operations bottleneck, duplicate identity namespace, or collision-prone identity scheme, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
-
----
-
-# 11. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
-
-CWS still follows MVP-first and no-over-engineering rules.
-
-Therefore:
-
-- do not build million-node infrastructure before demand exists
-- do not add brokers, microservices, or complex distributed systems without evidence
-- DO choose interfaces, credential boundaries, identity generation, enrollment flow, storage authorization, and state machines that do not force a rewrite simply because the fleet grows
-
-The correct target is: **minimum implementation now, scalable boundary by design.**
+Reject designs that create linear manual-operation bottlenecks or repeated site approval work.
 
 ---
 
-# 12. DEFINITION OF SCALE-READY PROVISIONING
+# 12. MVP FIRST DOES NOT MEAN SCALE-DEAD-END
+
+Do not build million-node infrastructure before demand exists.
+
+Do not add brokers/microservices/complex distributed systems without evidence.
+
+Do choose interfaces, trust boundaries, identity generation, enrollment flow, storage authorization, and state machines that do not force a rewrite as fleet size grows.
+
+Target: **minimum implementation now, scalable boundary by design.**
+
+---
+
+# 13. DEFINITION OF SCALE-READY PROVISIONING
 
 A Worker provisioning design is scale-ready only when:
 
 - no Founder-created B2 key is required per Worker
-- no Supabase service-role or account-level storage credential is placed on a Worker
-- one physical PC has one canonical PCID/Worker ID; no second active PCID namespace exists
-- canonical Worker ID is generated automatically by Backend with 128-bit CSPRNG entropy
-- database uniqueness/primary-key enforcement prevents accepted duplicate IDs
+- no Supabase service-role or account-level storage credential is placed on Worker/site controller
+- one physical PC has one canonical PCID/Worker ID
+- Worker ID is Backend-generated with 128-bit CSPRNG entropy
+- DB uniqueness prevents accepted duplicate IDs
 - bounded collision retry cannot overwrite/merge another Worker
-- Worker ID remains stable for that physical Worker across normal reboot/reconnect and Jobs
-- Worker identity enrollment is securely automatable
-- normal provisioning does not require Admin to manually issue/copy one enrollment ticket per Worker
+- Worker ID remains stable across normal reboot/reconnect/Jobs
+- normal provisioning does not require Admin to manually issue/copy one ticket per Worker
 - no enrollment/ticket action is required per customer Job
-- normal restart/recovery does not require human or AI intervention
-- partner Golden Image deployment does not clone one Worker credential across machines
-- normal reboot reuses existing per-machine identity when persistent state is available
-- adding many Workers does not require creating duplicate Vercel/Supabase/B2/Render infrastructure
-- revoking one Worker does not require rotating credentials for the entire fleet
-- the same logical workflow can be bulk-deployed to 100+ Workers without per-machine secret hand-editing or PCID reconciliation
+- an already-approved site/fleet requires zero Founder/Admin action per normal batch
+- short-lived site provisioning capability can renew/exchange automatically while durable site approval remains valid
+- site revocation/suspension blocks new provisioning immediately
+- site-controller trust is isolated and not cloned into Golden Images
+- normal restart/recovery does not require human/AI intervention
+- adding many Workers does not require duplicate Vercel/Supabase/B2/Render infrastructure
+- revoking one Worker does not require rotating the entire fleet
+- revoking one site does not affect unrelated sites
 - normal Customer jobs require zero Admin approval
-- normal Worker enrollment/restart requires zero per-machine Founder/Admin approval
-- there is one canonical Node Agent auto-start path and Worker Engine remains task-scoped/ephemeral
+- there is one canonical Node Agent startup path and Worker Engine remains task-scoped
 
-These are architecture acceptance criteria, not optional future improvements.
+These are mandatory architecture acceptance criteria.
