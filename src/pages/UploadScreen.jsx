@@ -83,9 +83,11 @@ export default function UploadScreen({
         )
       )}
 
-      <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
-        {isContinuing ? 'Đang xử lý...' : 'Bắt đầu render'}
-      </Button>
+      {source === FILE_SOURCE.UPLOAD && (
+        <Button icon={ArrowRight} disabled={!hasValidInput || isContinuing} onClick={onContinue}>
+          {isContinuing ? 'Đang kiểm tra an toàn...' : 'Gửi file và kiểm tra an toàn'}
+        </Button>
+      )}
 
       {isDriveModalOpen && (
         <GoogleDriveModal

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { PackagingModule } from '../scheduler/packaging.module';
 import { PackagingService } from '../scheduler/packaging.service';
@@ -19,7 +19,7 @@ import { RoleGuard } from '../common/guards/role.guard';
 import { StaffIdentityGuard } from '../common/guards/staff-identity.guard';
 
 @Module({
-  imports: [SupabaseModule, PackagingModule, StorageModule, FilesModule, PaymentsModule],
+  imports: [SupabaseModule, PackagingModule, StorageModule, forwardRef(() => FilesModule), PaymentsModule],
   controllers: [JobsController, FleetController, StaffController, HostController],
   providers: [
     JobsService,

@@ -65,12 +65,8 @@ describe('GoogleDriveService', () => {
         service.resolve(
           'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view?usp=drivesdk',
         ),
-      ).resolves.toMatchObject({
-        fileRef: 'uploads/public-scene.blend',
-        fileName: 'scene.blend',
-        fileSizeBytes: bytes.length,
-      });
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      ).resolves.toEqual({ fileName: null, fileSizeBytes: null });
+      expect(fetchSpy).not.toHaveBeenCalled();
       fetchSpy.mockRestore();
     });
 
@@ -80,11 +76,9 @@ describe('GoogleDriveService', () => {
           headers: { 'content-type': 'text/html' },
         }),
       );
-      await expect(
-        service.resolve(
-          'https://drive.google.com/open?id=1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ',
-        ),
-      ).rejects.toThrow(/Anyone with the link/);
+      await expect(service.resolve('https://drive.google.com/open?id=1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ'))
+        .resolves.toEqual({ fileName: null, fileSizeBytes: null });
+      expect(fetchSpy).not.toHaveBeenCalled();
       fetchSpy.mockRestore();
     });
   });
@@ -185,8 +179,12 @@ describe('GoogleDriveService', () => {
       await expect(
         serviceWithApiKey.materializeToB2(
           'https://drive.google.com/file/d/1vDKbOXoUbk7XwF7Y6xomDwdAzkPWPnyJ/view',
+          async () => ({
+            verdict: 'CLEAN', contentSha256: 'hash', scannerEngine: 'clamav',
+            scannerVersion: '1', signatureDatabaseVersion: '2', scannedAt: new Date().toISOString(),
+          }),
         ),
-      ).resolves.toEqual({
+      ).resolves.toMatchObject({
         key: 'uploads/drive-project.blend',
         fileName: 'scene.blend',
         fileSizeBytes: bytes.length,

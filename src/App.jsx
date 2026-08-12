@@ -217,7 +217,7 @@ function CustomerPortalApp() {
         const uploaded = await fileUploadResolver.resolve(file);
         const validation = validateMaterializedInput(uploaded);
         if (!validation.valid) throw new Error(validation.error);
-        nextInput = { fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes };
+        nextInput = { fileRef: uploaded.fileRef, driveLink: null, fileName: uploaded.fileName, fileSizeBytes: uploaded.fileSizeBytes, jobId: uploaded.jobId };
         setResolvedInput(nextInput);
         setActiveProjectName(uploaded.fileName);
       } else {
@@ -229,12 +229,14 @@ function CustomerPortalApp() {
           driveLink: resolvedInfo?.fileRef ? null : driveLink,
           fileName,
           fileSizeBytes: resolvedInfo?.fileSizeBytes,
+          jobId: resolvedInfo?.jobId,
         };
         setResolvedInput(nextInput);
         setActiveProjectName(fileName);
       }
       setScreen(SCREEN.PROCESSING);
-      await job.start({ input: nextInput });
+      if (!nextInput.jobId) throw new Error('Backend chưa trả về Job sau INPUT_SAFE');
+      await job.attach(nextInput.jobId);
     } catch {
       // Lỗi đã được lưu trong fileUploadResolver.uploadError, hiển thị
       // ngay trên UploadScreen (xem UploadZone/fileError phía dưới).
@@ -251,6 +253,18 @@ function CustomerPortalApp() {
       handleContinueFromUpload();
     }
   }, [isResolving, resolvedInfo, linkError, handleContinueFromUpload]);
+
+  // A successful Drive submission already passed INPUT_SAFE and the Backend
+  // created the one idempotent Job. Attach to that Job immediately; there is
+  // no second customer Render/Start Render action.
+  useEffect(() => {
+    if (autoContinueRef.current || screen !== SCREEN.LANDING || isResolving) return;
+    if (!resolvedInfo?.jobId || linkError) return;
+    setResolvedInput(resolvedInfo);
+    setActiveProjectName(resolvedInfo.fileName);
+    setScreen(SCREEN.PROCESSING);
+    void job.attach(resolvedInfo.jobId);
+  }, [screen, isResolving, resolvedInfo, linkError, job]);
 
   // SỬA LỖI (tự phát hiện 31/07/2026): trước đây gọi job.cancel() không
   // await/catch — job.cancel() là async, nếu Backend từ chối huỷ (vd

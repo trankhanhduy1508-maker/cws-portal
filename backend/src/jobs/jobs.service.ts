@@ -74,7 +74,7 @@ export class JobsService {
       .update(
         JSON.stringify({
           customerId,
-          fileRef: dto.fileRef ?? null,
+          fileRef: idempotencyKey.startsWith('auto-') ? null : (dto.fileRef ?? null),
           driveLink: dto.driveLink ?? null,
           fileName: dto.fileName ?? null,
           fileSizeBytes: dto.fileSizeBytes ?? null,

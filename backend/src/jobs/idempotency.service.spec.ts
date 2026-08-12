@@ -45,6 +45,15 @@ describe('JobsService.createOrder idempotency', () => {
     expect(repository.create).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps automatic safe-input retries idempotent across a new B2 object key', async () => {
+    const { service, repository } = make();
+    const key = 'auto-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    const first = await service.createOrder(dto, 'customer-a', key);
+    const second = await service.createOrder({ ...dto, fileRef: 'uploads/retry-copy.blend' }, 'customer-a', key);
+    expect(second).toEqual(first);
+    expect(repository.create).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects reusing a key with a different request payload', async () => {
     const { service } = make();
     await service.createOrder(dto, null, 'retry-key-0000002');
