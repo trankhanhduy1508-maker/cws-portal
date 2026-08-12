@@ -7,8 +7,13 @@ import {
 import { createHash, randomBytes } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 
-const WORKER_ID = /^[A-Za-z0-9._~-]{1,128}$/;
+export const CANONICAL_WORKER_ID = /^cwsw_[a-f0-9]{32}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+const MAX_ID_ALLOCATION_ATTEMPTS = 5;
+
+export function generateCanonicalWorkerId(): string {
+  return `cwsw_${randomBytes(16).toString('hex')}`;
+}
 
 export interface IssueEnrollmentInput {
   workerIds: string[];
@@ -20,6 +25,21 @@ export interface RedeemEnrollmentInput {
   token: string;
   workerId: string;
   credentialHash: string;
+  fingerprintHash?: string;
+  hostname?: string;
+  gpuName?: string;
+  vramMb?: number;
+}
+
+export interface SiteBootstrapInput {
+  fleetId: number;
+  expiresMinutes?: number;
+  quota?: number;
+}
+
+export interface AutomaticProvisionInput {
+  bootstrapToken: string;
+  fingerprintHash: string;
   hostname?: string;
   gpuName?: string;
   vramMb?: number;
@@ -29,13 +49,80 @@ export interface RedeemEnrollmentInput {
 export class WorkerEnrollmentService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
+  async issueSiteBootstrap(input: SiteBootstrapInput, staffUserId: string) {
+    if (!Number.isInteger(input.fleetId) || input.fleetId < 1) {
+      throw new BadRequestException('Fleet ID is invalid');
+    }
+    const expiresMinutes = input.expiresMinutes ?? 24 * 60;
+    const quota = input.quota ?? 100;
+    if (!Number.isInteger(expiresMinutes) || expiresMinutes < 5 || expiresMinutes > 30 * 24 * 60) {
+      throw new BadRequestException('Bootstrap expiry is invalid');
+    }
+    if (!Number.isInteger(quota) || quota < 1 || quota > 1_000_000) {
+      throw new BadRequestException('Bootstrap quota is invalid');
+    }
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + expiresMinutes * 60_000).toISOString();
+    const { error } = await this.supabaseService.getClient()
+      .from('worker_site_bootstrap_capabilities')
+      .insert({
+        token_hash: this.hash(token),
+        fleet_id: input.fleetId,
+        expires_at: expiresAt,
+        quota,
+        created_by: staffUserId,
+      });
+    if (error) throw new InternalServerErrorException('Could not issue site bootstrap capability');
+    return { token, expiresAt, quota };
+  }
+
+  async provision(input: AutomaticProvisionInput) {
+    if (!/^[A-Za-z0-9_-]{40,128}$/.test(input.bootstrapToken) || !SHA256.test(input.fingerprintHash)) {
+      throw new UnauthorizedException('Invalid Worker provisioning');
+    }
+    if (input.hostname !== undefined && (typeof input.hostname !== 'string' || input.hostname.length > 255)) {
+      throw new UnauthorizedException('Invalid Worker provisioning');
+    }
+    if (input.gpuName !== undefined && (typeof input.gpuName !== 'string' || input.gpuName.length > 240)) {
+      throw new UnauthorizedException('Invalid Worker provisioning');
+    }
+    if (input.vramMb !== undefined && (!Number.isInteger(input.vramMb) || input.vramMb < 0)) {
+      throw new UnauthorizedException('Invalid Worker provisioning');
+    }
+
+    for (let attempt = 0; attempt < MAX_ID_ALLOCATION_ATTEMPTS; attempt += 1) {
+      const workerId = generateCanonicalWorkerId();
+      const enrollmentToken = randomBytes(32).toString('base64url');
+      const { data, error } = await this.supabaseService.getClient().rpc('provision_worker', {
+        p_bootstrap_hash: this.hash(input.bootstrapToken),
+        p_fingerprint_hash: input.fingerprintHash,
+        p_worker_id: workerId,
+        p_ticket_hash: this.hash(enrollmentToken),
+        p_hostname: input.hostname?.trim() || null,
+        p_gpu_name: input.gpuName?.trim() || null,
+        p_vram_mb: input.vramMb ?? 0,
+        p_ticket_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+      });
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!error && row?.worker_id && row?.ticket_hash) {
+        return { workerId: row.worker_id, token: enrollmentToken };
+      }
+      // A unique worker_id collision is the only retryable allocation failure.
+      // The RPC must not update the collided row; all other errors fail closed.
+      if (error?.code !== '23505' || !/(workers_pkey|workers_worker_id)/i.test(String(error.message ?? ''))) {
+        throw new UnauthorizedException('Invalid Worker provisioning');
+      }
+    }
+    throw new InternalServerErrorException('Worker identity allocation exhausted');
+  }
+
   async issueBatch(input: IssueEnrollmentInput, staffUserId: string) {
     const workerIds = input.workerIds;
     if (
       !Array.isArray(workerIds) ||
       workerIds.length < 1 ||
       workerIds.length > 100 ||
-      workerIds.some((id) => typeof id !== 'string' || !WORKER_ID.test(id)) ||
+      workerIds.some((id) => typeof id !== 'string' || !CANONICAL_WORKER_ID.test(id)) ||
       new Set(workerIds).size !== workerIds.length
     ) {
       throw new BadRequestException('Worker ID batch is invalid');
@@ -83,9 +170,10 @@ export class WorkerEnrollmentService {
       typeof input.token !== 'string' ||
       !/^[A-Za-z0-9_-]{40,128}$/.test(input.token) ||
       typeof input.workerId !== 'string' ||
-      !WORKER_ID.test(input.workerId) ||
+      !CANONICAL_WORKER_ID.test(input.workerId) ||
       typeof input.credentialHash !== 'string' ||
       !SHA256.test(input.credentialHash) ||
+      (input.fingerprintHash !== undefined && !SHA256.test(input.fingerprintHash)) ||
       (input.hostname !== undefined &&
         (typeof input.hostname !== 'string' || input.hostname.length > 255)) ||
       (input.gpuName !== undefined &&
@@ -105,6 +193,7 @@ export class WorkerEnrollmentService {
         p_token_hash: this.hash(input.token),
         p_worker_id: input.workerId,
         p_credential_hash: input.credentialHash,
+        p_fingerprint_hash: input.fingerprintHash ?? null,
         p_hostname: input.hostname?.trim() || null,
         p_gpu_name: input.gpuName?.trim() || null,
         p_vram_mb: input.vramMb ?? 0,

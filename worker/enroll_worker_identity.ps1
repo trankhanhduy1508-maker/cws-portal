@@ -1,6 +1,5 @@
 param(
-  [Parameter(Mandatory = $true)][string]$TicketFile,
-  [Parameter(Mandatory = $true)][string]$WorkerId,
+  [Parameter(Mandatory = $true)][string]$BootstrapTokenFile,
   [string]$BackendUrl = 'https://cws-portal.onrender.com',
   [string]$ServiceAccount = '',
   [string]$StateRoot = '',
@@ -18,17 +17,17 @@ if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -ne $ServiceA
 if ([string]::IsNullOrWhiteSpace($StateRoot)) { $StateRoot = Join-Path $env:ProgramData 'CWS\state' }
 if ([string]::IsNullOrWhiteSpace($StorePath)) { $StorePath = Join-Path $StateRoot 'worker.dpapi' }
 if ([string]::IsNullOrWhiteSpace($Workspace)) { $Workspace = Join-Path $StateRoot 'workspace' }
-$ticket = [IO.Path]::GetFullPath($TicketFile)
+$bootstrap = [IO.Path]::GetFullPath($BootstrapTokenFile)
 $state = [IO.Path]::GetFullPath($StateRoot)
 $store = [IO.Path]::GetFullPath($StorePath)
 $identityMetadata = Join-Path $state 'worker-identity.json'
 $directory = [IO.Path]::GetDirectoryName($store)
-if (-not (Test-Path -LiteralPath $ticket -PathType Leaf)) { throw 'Enrollment ticket file does not exist' }
+if (-not (Test-Path -LiteralPath $bootstrap -PathType Leaf)) { throw 'Site bootstrap capability file does not exist' }
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
 icacls $directory /inheritance:r | Out-Null
 icacls $directory /grant:r "${ServiceAccount}:(OI)(CI)(M)" "SYSTEM:(OI)(CI)(F)" "Administrators:(OI)(CI)(F)" | Out-Null
-icacls $ticket /inheritance:r | Out-Null
-icacls $ticket /grant:r "${ServiceAccount}:(R)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
+icacls $bootstrap /inheritance:r | Out-Null
+icacls $bootstrap /grant:r "${ServiceAccount}:(R)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
 
 $pythonPath = $env:CWS_PYTHON_EXE
 if ([string]::IsNullOrWhiteSpace($pythonPath)) {
@@ -38,8 +37,6 @@ if ([string]::IsNullOrWhiteSpace($pythonPath)) {
 if ([string]::IsNullOrWhiteSpace($pythonPath) -or !(Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
   throw 'CWS_PYTHON_EXE must point to the Golden Image Python runtime'
 }
-
-if ($WorkerId -notmatch '^[A-Za-z0-9._~-]{1,128}$') { throw 'WorkerId is invalid' }
 
 $gpuName = $null
 $vramMb = 0
@@ -52,17 +49,20 @@ if (Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue) {
 }
 
 $arguments = @((Join-Path $PSScriptRoot 'enroll_worker_identity.py'),
-  '--backend-url', $BackendUrl, '--ticket-file', $ticket, '--store', $store,
-  '--worker-id', $WorkerId, '--hostname', $env:COMPUTERNAME, '--vram-mb', $vramMb)
+  '--backend-url', $BackendUrl, '--bootstrap-token-file', $bootstrap, '--store', $store,
+  '--hostname', $env:COMPUTERNAME, '--vram-mb', $vramMb)
 if ($gpuName) { $arguments += @('--gpu-name', $gpuName) }
-& $pythonPath @arguments
+$enrollmentOutput = & $pythonPath @arguments
 if ($LASTEXITCODE -ne 0) { throw "Worker enrollment failed with exit code $LASTEXITCODE" }
+
+$resolvedWorkerId = ($enrollmentOutput | Select-String -Pattern '^Enrolled CWS Worker: (cwsw_[a-f0-9]{32})$' | Select-Object -First 1).Matches.Groups[1].Value
+if (-not $resolvedWorkerId) { throw 'Automatic enrollment did not return a canonical Worker ID' }
 
 icacls $store /inheritance:r | Out-Null
 icacls $store /grant:r "${ServiceAccount}:(R,W)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
 New-Item -ItemType Directory -Force -Path $state | Out-Null
 New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
-@{ worker_id = $WorkerId; credential_file = $store } |
+@{ worker_id = $resolvedWorkerId; credential_file = $store } |
   ConvertTo-Json -Compress | Set-Content -LiteralPath $identityMetadata -Encoding utf8
 icacls $identityMetadata /inheritance:r | Out-Null
 icacls $identityMetadata /grant:r "${ServiceAccount}:(R)" "SYSTEM:(F)" "Administrators:(F)" | Out-Null
@@ -75,4 +75,4 @@ if ($BlenderExe) {
 [Environment]::SetEnvironmentVariable('CWS_B2_KEY_ID', $null, 'User')
 [Environment]::SetEnvironmentVariable('CWS_B2_APP_KEY', $null, 'User')
 [Environment]::SetEnvironmentVariable('SUPABASE_SERVICE_ROLE_KEY', $null, 'User')
-Write-Host "Worker $WorkerId enrolled. The one-time ticket was deleted after Backend acceptance."
+Write-Host "Worker $resolvedWorkerId automatically enrolled. The site bootstrap capability was deleted after Backend acceptance."

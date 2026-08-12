@@ -45,6 +45,7 @@ class EnrollmentTests(unittest.TestCase):
             hostname="MAY083",
             gpu_name="GPU",
             vram_mb=8192,
+            fingerprint_hash="a" * 64,
             timeout_seconds=30,
         )
         self.assertEqual(worker_id, "CWS-A")
@@ -53,6 +54,7 @@ class EnrollmentTests(unittest.TestCase):
         self.assertEqual(payload["credentialHash"], hashlib.sha256(final.encode()).hexdigest())
         self.assertNotIn(final, request.data.decode())
         self.assertEqual(payload["token"], "T" * 43)
+        self.assertEqual(payload["fingerprintHash"], "a" * 64)
 
 
 if __name__ == "__main__":
