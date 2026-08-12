@@ -193,4 +193,30 @@ describe('WorkerRpcService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('validates fenced job metadata and binds Worker identity', async () => {
+    const supabase = { rpc: jest.fn().mockResolvedValue({ data: true, error: null }) };
+    const service = new WorkerRpcService({ getClient: () => supabase } as any);
+    await service.call('report_job_metadata', 'worker-a', {
+      p_worker_id: 'attacker', p_task_id: 42, p_generation: 7,
+      p_frame_start: 11, p_frame_end: 13, p_total_frames: 3, p_fps: 24,
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith('report_job_metadata', {
+      p_worker_id: 'worker-a', p_task_id: 42, p_generation: 7,
+      p_frame_start: 11, p_frame_end: 13, p_total_frames: 3, p_fps: 24,
+    });
+  });
+
+  it('rejects inconsistent or unsafe job metadata', async () => {
+    const service = new WorkerRpcService({ getClient: () => ({ rpc: jest.fn() }) } as never);
+    const base = { p_task_id: 42, p_generation: 7, p_frame_start: 1,
+      p_frame_end: 3, p_total_frames: 3, p_fps: 24 };
+    await expect(service.call('report_job_metadata', 'worker-a',
+      { ...base, p_total_frames: 2 })).rejects.toThrow('Worker job metadata is invalid');
+    await expect(service.call('report_job_metadata', 'worker-a',
+      { ...base, p_frame_end: 0 })).rejects.toThrow('Worker job metadata is invalid');
+    await expect(service.call('report_job_metadata', 'worker-a',
+      { ...base, p_fps: 0 })).rejects.toThrow('Worker job metadata is invalid');
+  });
+
 });
