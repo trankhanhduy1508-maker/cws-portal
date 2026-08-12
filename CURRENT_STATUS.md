@@ -3,73 +3,88 @@
 ## Current Phase
 Customer MVP workflow convergence before Golden Production E2E.
 
-## Founder Priority — 2026-08-11
-Customer is the **current highest-priority product bottleneck**. Continue the Customer Portal from Customer Google Login through real render/payment/download before spending another long cycle on non-blocking Admin polish.
+## Founder Priority — 2026-08-12
+Customer remains the highest-priority product path, but the immediate runtime bottleneck is now **automatic first provisioning of exactly one physical Worker**. Do not scale to multiple Workers until the 1-Worker provisioning/runtime gate passes.
 
-Admin/Host is **not abandoned and not de-scoped**. It remains a core CWS operational product surface and will continue to be developed after the Customer workflow reaches its next production gate. The separate Admin site and its security requirements remain active.
+Admin/Host is not abandoned and not de-scoped. It remains a core CWS operational product surface and continues after the current Customer/Worker production gate.
 
-## Current Founder Decision — Automatic Deadline Scheduling
-The former customer render speed/tier feature is removed entirely from the active product contract.
+## Current Founder Decision — One Physical PC = One Canonical PCID/Worker ID
+For the current CWS machine model:
 
-Customer now follows:
+`1 physical PC = 1 canonical PCID/Worker ID`
 
-`Google Login -> Submit input -> materialize/validate -> Start render -> one customer-owned Job -> automatic work analysis -> durable non-overlapping Tasks -> initial 10-Worker wave -> observed real task/frame runtimes -> adaptive scale-up when <=45-minute final-output target is at risk -> render/finalize -> B2 locked output -> previews -> final price + MB QR -> SePay -> PAID -> download -> History`
+`PCID` is an alias for the same canonical `worker_id`; there is no second independent PC-ID namespace.
 
-Binding points:
-- customer does not choose a render speed/tier, Worker count, GPU or CPU;
-- active UI/API/domain/persistence must not require or recreate a customer tier identifier;
-- initial runnable wave targets 10 eligible Workers when capacity permits;
-- no dedicated benchmark-only wait phase;
-- first completed real Tasks/frames are measurement evidence;
-- Scheduler scales the Job upward as needed/capacity permits if projected final completion threatens 45 minutes;
-- safety capacity is configurable, initially 20–30%, and required Worker count rounds **up** to an integer;
-- one active authoritative owner per Task/frame; no concurrent duplicate frame rendering;
-- 45-minute target includes required collection/validation and animation assembly/encode, not frame render alone;
-- distributed single-frame tile/sample rendering is not current MVP scope.
+Binding identity rules:
+- Backend generates the ID during authorized first provisioning.
+- ID uses 128 bits of cryptographically secure random entropy.
+- Preferred representation: `cwsw_` + 32 lowercase hex characters.
+- Database uniqueness/primary-key enforcement is mandatory; a rejected collision must generate a new ID and retry without overwriting another Worker.
+- ID is opaque and is not derived from hostname, GPU, MachineGuid, fingerprint, serial number, Job, customer, site counter, or sequential PC number.
+- Machine fingerprint remains enrollment/recovery evidence only.
+- Same canonical ID is used for heartbeat, Worker state, logs, Scheduler/task ownership and host accounting.
+- Normal reboot/reconnect reuses the existing ID + DPAPI credential.
+
+Any legacy design that treats PCID and Worker ID as separate identifiers is superseded as active guidance.
+
+## Customer Automatic Deadline Scheduling
+The former customer render speed/tier feature remains removed.
+
+Customer target workflow remains:
+
+`Google Login -> Submit input -> materialize/validate -> Start render -> one customer-owned Job -> automatic work analysis -> durable non-overlapping Tasks -> initial desired capacity -> observed real task/frame runtimes -> adaptive scale-up when <=45-minute final-output target is at risk -> render/finalize -> B2 locked output -> previews -> final price + MB QR -> SePay -> PAID -> download -> History`
+
+However, multi-Worker/adaptive expansion is currently sequenced behind the 1-Worker production gate.
 
 ## Current Task
-`specs/008-customer-standard-workflow/`
+`specs/009-automatic-worker-provisioning/`
 
-Converge the automatic deadline-planning workflow without redesigning the Worker security/ownership architecture.
+Reason: the real physical 1-Worker pilot found no canonical Worker identity or DPAPI credential on the test PC, so Node Agent could not authenticate/heartbeat. This is the current direct runtime blocker.
 
 ## Verified Current State
 - Customer Login Gate: implemented/synced.
 - Customer Input Validation Gate: implemented/synced to canonical paths.
-- Customer render speed/tier runtime feature cleanup: **MERGED to canonical main in PR #33; GitHub CI #711 PASS**.
-- Obsolete DB column removal: migration exists in main but is **NEEDS_PRODUCTION_APPLICATION/VERIFICATION**; code merge alone does not prove the live Supabase schema changed.
-- Production Node Agent code: synced.
-- Windows auto-start/reboot persistence verification: deferred; not a blocker for the current Customer workflow slice.
+- Customer render speed/tier runtime cleanup: merged in PR #33; CI passed.
+- Task Graph foundation: merged in PR #36.
+- Production `expand_job_task_graph` migration: applied and production `report_job_metadata(...)` verified against merged contract.
+- Exact 1-Worker runtime pilot: **BLOCKED before Node Agent start because identity/credential is missing**.
+- Canonical Node Agent service path exists; the physical test showed the service stopped because enrollment/credential readiness failed closed.
 - Golden Production E2E: still **NOT PROVEN**.
 
-## Current Workflow Mismatch To Remove
-Customer render resource selection is fully automatic at the active code/API boundary. Do not recreate a customer tier/profile gate.
+## Current Runtime Blocker
+The physical test PC reported missing canonical identity/credential state. Do not bypass this with manual Worker ID, manual per-machine ticket, manual SQL identity fabrication, or MachineGuid-derived identity.
 
-The next scheduling bottleneck remains the not-yet-converged adaptive Task Graph / Deadline Scheduler path after the preceding metadata/runtime gate is verified at the required evidence level.
+Required path:
+
+`authorized site/fleet bootstrap -> automatic PC bootstrap -> composite fingerprint evidence -> Backend generates canonical PCID/Worker ID -> bounded enrollment material -> per-Worker credential -> DPAPI -> CWSNodeAgentProduction -> authenticated heartbeat -> ACTIVE_IDLE`
 
 ## Next Required Convergence
-1. Preserve validated/materialized customer-owned input as the only allowed input to Job creation.
-2. Create exactly one Job after Start render.
-3. Analyze frame/work range and create durable non-overlapping Tasks.
-4. Preserve PostgreSQL atomic claim + lease + generation fencing.
-5. Establish initial desired parallel capacity of 10 eligible Workers when possible.
-6. Capture real task/frame runtime observations from useful work already being rendered.
-7. Compute projected final completion with reserved finalization overhead.
-8. Scale desired Worker count upward when the 45-minute target is threatened, with configurable 20–30% safety capacity and integer round-up.
-9. Never allow concurrent duplicate active Task/frame ownership.
-10. Continue through real render/finalization, B2 lock, previews, pricing/payment and delivery.
+1. Ground current enrollment/ticket/Worker identity code and live schema constraints.
+2. Implement the Founder-approved Spec 009 automatic provisioning slice using existing infrastructure only.
+3. Ensure `PCID = Worker ID` and eliminate any active second-PCID/client-generated-ID path.
+4. Generate 128-bit CSPRNG Worker IDs server-side and enforce database uniqueness + bounded collision retry.
+5. Bind provisioning to authorized site/fleet + composite fingerprint evidence.
+6. Persist the single canonical identity and machine-bound credential with DPAPI.
+7. Start exactly one canonical Node Agent and verify authenticated production heartbeat + `ACTIVE_IDLE`.
+8. STOP and report 1-Worker gate evidence.
+9. Only after Founder approval: continue one-Worker real Job/Task/render verification, then 2–3 Worker concurrency, then 10-Worker/adaptive scaling.
 
-## Sequenced After Current Customer Gate
-- Continue Admin UI refinement.
-- Continue Admin OAuth/MFA UX verification and polish.
-- Further Admin operational features according to the roadmap.
-- Windows reboot/auto-start persistence verification for Node Agent.
+## Scale Gate
+Current approved sequence:
 
-This sequencing does not make Admin or auto-start architecture optional; it only keeps the current bottleneck focused.
+`1 Worker provisioning/runtime PASS -> Founder review -> 1 Worker real Job/Task/render PASS -> Founder review -> 2–3 Workers -> 10 Workers -> adaptive scaling`
+
+Do not jump directly to 10 Workers.
+
+## Sequenced After Current Gate
+- Continue multi-Worker Scheduler/adaptive scaling convergence.
+- Continue Admin UI/OAuth/MFA refinement.
+- Continue Windows reboot/auto-start persistence verification after first canonical identity is successfully provisioned.
 
 ## Golden Production E2E
-Still **NOT PROVEN**. Do not claim PASS from build/test/deployment state alone.
+Still **NOT PROVEN**. Build/test/deployment state alone does not establish Golden E2E.
 
-Implementation must follow the CWS grounding/Spec Kit execution rules, run frontend + backend CI, use only existing approved infrastructure, and gather real customer/Worker/B2/SePay evidence.
+Implementation must follow the CWS grounding/Spec Kit/Harness rules, use only existing approved infrastructure, preserve claim/lease/generation fencing, and collect real production evidence.
 
 ## Last Updated
-2026-08-11 — Customer render speed/tier runtime feature removed from canonical main via PR #33; CI passed. Live DB migration and Golden Production E2E remain separate verification gates.
+2026-08-12 — PR #36 Task Graph merged and production migration applied; physical 1-Worker pilot exposed missing canonical identity/credential as the active blocker. Founder then unified PCID and Worker ID into one Backend-generated 128-bit random canonical identity. Spec 009 is now the immediate runtime task.
