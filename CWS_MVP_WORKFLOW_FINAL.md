@@ -1,6 +1,6 @@
 # CWS MVP Workflow — Canonical Customer Flow
 
-> Updated 2026-08-12. This is the **customer business-workflow source of truth**. It supersedes the previous active flow that required a customer-visible `Start render` gate after input validation. `CWS_ROADMAP.md` remains the canonical roadmap.
+> Updated 2026-08-12. This is the **customer business-workflow source of truth**. It supersedes the previous active flow that required a customer-visible `Start render` gate after input validation and the previous B2-first input-quarantine order. `CWS_ROADMAP.md` remains the canonical roadmap.
 
 ## 1. Product Principle
 
@@ -8,7 +8,7 @@ The normal Customer flow must be automatic after authenticated input submission 
 
 Canonical one-line flow:
 
-`Google Login -> Upload/Google Drive -> quarantine/materialize -> security + structural validation -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze/tasks/scheduler/render -> B2 locked output -> preview + final price + QR -> SePay -> authorized download`
+`Google Login -> Upload/Google Drive -> temporary quarantine/staging -> anti-malware + security + structural validation -> CLEAN/SAFE -> upload canonical input to B2 -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze/tasks/scheduler/render -> B2 locked output -> preview + final price + QR -> SePay -> authorized download`
 
 For a New Render flow, successful authenticated submission of a supported input is the customer's render intent. There is no separate Founder/Admin approval and no mandatory customer `Start render` confirmation after `INPUT_SAFE`.
 
@@ -32,32 +32,36 @@ The input is **untrusted** until the complete input-security gate succeeds.
 
 Suggested customer-visible states:
 
-`selected -> uploading/resolving -> materializing -> checking file -> security scanning -> preparing render`
+`selected -> uploading/resolving -> temporary quarantine -> checking file -> security scanning -> preparing render`
 
 Do not expose internal security details that help an attacker bypass controls.
 
-## 4. Canonical Quarantine / Materialization
+## 4. Temporary Quarantine Before Canonical B2
 
-All accepted inputs converge into canonical CWS storage before Worker processing.
+**No customer input may enter canonical B2 input storage before the mandatory pre-B2 security gate succeeds.**
+
+All accepted inputs first land in a bounded, non-Worker-accessible **temporary quarantine/staging area outside canonical B2 input storage** using existing approved infrastructure.
 
 ### Direct upload
 
-`authenticated upload -> canonical B2 quarantine/untrusted object -> validation pipeline`
+`authenticated upload -> temporary quarantine/staging -> security pipeline -> CLEAN/SAFE -> canonical B2 input upload`
 
 ### Google Drive
 
-`validated Google Drive URL -> bounded server-side download -> canonical B2 quarantine/untrusted object -> validation pipeline`
+`validated Google Drive URL -> bounded server-side download to temporary quarantine/staging -> security pipeline -> CLEAN/SAFE -> canonical B2 input upload`
 
 Rules:
 
 - Google Drive is an ingestion source only; Worker does not depend on the external Drive URL.
-- Prefer an existing-B2 quarantine prefix/state; do not create another B2 bucket without Founder approval.
-- Quarantined/rejected input must not receive Worker download capability.
-- Original customer input remains immutable for audit/retry according to retention policy.
+- Temporary quarantine must be bounded by size/time/resource policy and must not be exposed to Workers or customers as canonical input.
+- Do not create another B2 bucket, storage service or infrastructure resource without Founder approval.
+- Infected/rejected/unknown-scan input must **not** be promoted/uploaded into canonical B2 input storage.
+- Temporary quarantined files must be deleted or retained only according to an explicit bounded security/audit policy; do not keep malicious files indefinitely by default.
+- Customer original remains immutable while under validation; CWS does not silently rewrite or “clean” the customer project and continue.
 
-## 5. Mandatory Input Security Gate Before Job Creation
+## 5. Mandatory Pre-B2 Input Security Gate
 
-No production Job may be created until Backend has established `INPUT_SAFE`.
+No canonical B2 input object and no production Job may be created until the Backend completes the required pre-B2 security checks.
 
 Required layers are cumulative; one layer does not replace another:
 
@@ -65,22 +69,22 @@ Required layers are cumulative; one layer does not replace another:
 2. server-side input ownership binding;
 3. allowed input source/provider semantics;
 4. SSRF-aware Google Drive URL/redirect handling;
-5. bounded redirects, timeout and download size;
+5. bounded redirects, timeout and download/upload size;
 6. extension allowlist;
 7. content/file-signature validation;
 8. anti-malware scan using an approved self-hosted/local scanning path;
 9. ZIP/RAR structural safety when applicable;
 10. Blender safety rules, including untrusted Python autoexec disabled;
-11. deterministic final verdict.
+11. deterministic final security verdict.
 
 Verdicts:
 
-- `CLEAN + all structural checks PASS -> INPUT_SAFE`
-- `INFECTED -> INPUT_REJECTED -> no Job`
-- `SCAN_ERROR / SCAN_TIMEOUT / signature database unavailable / UNKNOWN -> fail closed -> no Job`
-- signature mismatch / unsupported format / oversize / unsafe archive -> no Job
+- `CLEAN + all required structural checks PASS -> promote/upload to canonical B2 -> INPUT_SAFE`
+- `INFECTED -> INPUT_REJECTED -> no canonical B2 upload -> no Job`
+- `SCAN_ERROR / SCAN_TIMEOUT / signature database unavailable / UNKNOWN -> fail closed -> no canonical B2 upload -> no Job`
+- signature mismatch / unsupported format / oversize / unsafe archive -> no canonical B2 upload -> no Job
 
-A frontend flag or client request can never assert `INPUT_SAFE` authoritatively.
+A frontend flag or client request can never assert `CLEAN` or `INPUT_SAFE` authoritatively.
 
 ## 6. Anti-Malware Rule
 
@@ -89,15 +93,19 @@ Customer project files are potentially hostile.
 Canonical direction:
 
 - evaluate/use an approved local/self-hosted malware scanner such as ClamAV inside existing approved infrastructure when production constraints permit;
+- scan the temporary quarantined file **before** canonical B2 input upload;
 - do not upload customer project files to public VirusTotal-style services without a separate Founder decision because customer files may contain private/commercial work;
 - malware scanning is an additional layer, not a replacement for signature validation, archive safety, sandboxing or Blender execution controls;
-- scanner failure is never interpreted as CLEAN.
+- scanner failure is never interpreted as CLEAN;
+- if malware is detected, reject/isolate the submission rather than automatically modifying the customer's `.blend/.zip/.rar` and continuing.
 
-Security audit metadata may include object/hash/reference, scan time, scanner/version, signature database version/date, verdict and bounded error code. Do not log file contents or customer secrets.
+CWS must not claim to “disinfect” and render a modified customer project automatically. Automatic repair may corrupt project data or change customer content and requires a separate Founder-approved design.
+
+Security audit metadata may include submission/input hash/reference, scan time, scanner/version, signature database version/date, verdict and bounded error code. Do not log file contents or customer secrets.
 
 ## 7. Google Drive Security
 
-Google Drive inputs must retain current protections and converge on the same security gate as direct uploads.
+Google Drive inputs must retain current protections and converge on the same pre-B2 security gate as direct uploads.
 
 Required behavior:
 
@@ -105,16 +113,17 @@ Required behavior:
 - validate file/folder resolution rules;
 - bound redirects to approved Google download hosts;
 - enforce timeout and size/resource limits;
+- download first into temporary quarantine/staging, not directly into canonical B2 input;
 - validate actual content/signature rather than filename alone;
-- materialize to canonical B2 before Worker processing;
-- run anti-malware and structural validation after materialization;
+- run anti-malware and structural validation on the quarantined copy;
+- only after CLEAN/SAFE verdict, upload/promote the input into canonical B2 storage;
 - Drive availability/shareability is not equivalent to malware safety.
 
 ## 8. ZIP / RAR Security
 
 Archives remain hostile even after a malware CLEAN result.
 
-Before or during bounded sandbox extraction enforce, as applicable:
+Before canonical B2 promotion, bounded sandbox inspection/extraction must enforce, as applicable:
 
 - path traversal prevention;
 - absolute/device-path rejection;
@@ -134,9 +143,11 @@ Where the approved scanner supports it safely, scan the raw archive and the boun
 
 A `.blend` file is untrusted even when malware scan is CLEAN.
 
-Canonical preparation:
+Before canonical B2 promotion, validation must establish the required Blender safety properties without executing untrusted embedded scripts.
 
-`immutable original -> read-only/safe analysis -> working copy -> deterministic safe optimization -> post-opt validation -> render`
+Canonical post-acceptance preparation remains:
+
+`immutable canonical B2 original -> read-only/safe analysis -> working copy -> deterministic safe optimization -> post-opt validation -> render`
 
 Rules:
 
@@ -145,9 +156,14 @@ Rules:
 - optimization may not silently change customer visual/animation semantics;
 - if optimization cannot be proven safe, use the unoptimized working copy.
 
-## 10. INPUT_SAFE -> Automatic Job Creation
+## 10. CLEAN/SAFE -> Canonical B2 -> INPUT_SAFE -> Automatic Job Creation
 
-Once Backend records authoritative `INPUT_SAFE`, the system automatically creates **exactly one customer-owned Job** for that new-render input intent.
+After the temporary quarantined submission passes all mandatory security/structural checks:
+
+1. Backend uploads/promotes the clean immutable input into canonical B2 input storage;
+2. Backend verifies canonical B2 object integrity/ownership;
+3. Backend records authoritative `INPUT_SAFE`;
+4. system automatically creates **exactly one customer-owned Job** for that New Render submission intent.
 
 There is no mandatory `Start render` button after this point.
 
@@ -155,11 +171,11 @@ Job creation must be:
 
 - server-side;
 - bound to authenticated customer ownership;
-- allowed only for `INPUT_SAFE` input;
+- allowed only for authoritative `INPUT_SAFE` canonical B2 input;
 - idempotent under retries/reconnects/callback duplication;
 - unable to create duplicate Jobs for the same accepted submission intent;
 - unable to use another customer's input;
-- impossible for quarantined/rejected input.
+- impossible for quarantined/rejected/unknown-scan input.
 
 Customer UI progresses automatically from security/preparation into the real Job/progress screen.
 
@@ -196,7 +212,7 @@ The 45-minute target is internal and includes required collection/validation/ass
 
 Canonical Worker Task lifecycle:
 
-`atomic claim -> scoped input capability -> bounded preparation/extraction -> Blender preflight -> safe working copy -> real render -> output upload/verify -> task completion -> cleanup`
+`atomic claim -> scoped canonical B2 input capability -> bounded preparation/extraction -> Blender preflight -> safe working copy -> real render -> output upload/verify -> task completion -> cleanup`
 
 Node Agent remains resident supervisor; Worker Engine remains task-scoped.
 
@@ -241,7 +257,7 @@ AUTHENTICATED CUSTOMER
     ↓
 UPLOAD .blend/.zip/.rar OR APPROVED GOOGLE DRIVE
     ↓
-MATERIALIZE TO B2 QUARANTINE / UNTRUSTED STATE
+TEMPORARY QUARANTINE / STAGING OUTSIDE CANONICAL B2 INPUT
     ↓
 OWNERSHIP + URL/SSRF + SIZE + SIGNATURE VALIDATION
     ↓
@@ -249,7 +265,11 @@ ANTI-MALWARE SCAN
     ↓
 ARCHIVE / BLENDER STRUCTURAL SAFETY
     ↓
-INPUT_SAFE
+CLEAN / SAFE VERDICT
+    ↓
+UPLOAD / PROMOTE IMMUTABLE INPUT TO CANONICAL B2
+    ↓
+VERIFY B2 OBJECT + RECORD INPUT_SAFE
     ↓
 AUTO-CREATE EXACTLY ONE CUSTOMER-OWNED JOB
     ↓
@@ -283,12 +303,14 @@ HISTORY / AUDIT / CLEANUP
 - Google Login is the first operational Customer gate.
 - Normal Customer runtime requires zero Founder/Admin approval.
 - A supported authenticated New Render submission expresses render intent; no later mandatory Start Render confirmation exists.
+- **No customer input enters canonical B2 input storage before the mandatory pre-B2 security scan/validation passes.**
 - **No Job before authoritative INPUT_SAFE.**
-- Quarantined/rejected/unknown-scan input cannot create or reach a Worker Job.
+- Infected/rejected/unknown-scan input cannot be promoted to canonical B2 and cannot reach a Worker Job.
 - Scanner unavailable/error/timeout fails closed.
 - Malware CLEAN alone does not prove archive/Blender safety.
+- CWS does not automatically disinfect/modify infected customer projects and continue rendering.
 - Customer cannot choose tier/Worker count/GPU/CPU.
-- Customer original remains immutable.
+- Customer original remains immutable after clean canonicalization.
 - Full output exists and is locked before payment.
 - Exact SePay verification is required before download unlock.
 - Normal runtime does not depend on ChatGPT/Codex/Founder/Admin.
@@ -299,20 +321,21 @@ Customer workflow is production-verified only when a real authenticated customer
 
 1. Google login;
 2. direct upload or approved Drive input;
-3. canonical quarantine/materialization;
+3. temporary quarantine/staging outside canonical B2 input;
 4. ownership/provider/size/signature checks;
-5. real anti-malware verdict;
+5. real anti-malware verdict before canonical B2 upload;
 6. archive/Blender safety checks as applicable;
-7. authoritative `INPUT_SAFE`;
-8. automatic exactly-one Job creation with no Founder/Admin and no mandatory Start Render click;
-9. real project analysis + exact durable Task Graph;
-10. real Worker rendering with fenced ownership;
-11. adaptive runtime evidence/capacity behavior;
-12. real final output validation + B2 lock;
-13. real watermarked previews + final price + MB QR;
-14. exact/idempotent SePay verification;
-15. `PAID`;
-16. authorized download;
-17. same Job reflected in History.
+7. CLEAN/SAFE input is uploaded/promoted to canonical B2;
+8. canonical B2 integrity/ownership is verified and authoritative `INPUT_SAFE` recorded;
+9. automatic exactly-one Job creation with no Founder/Admin and no mandatory Start Render click;
+10. real project analysis + exact durable Task Graph;
+11. real Worker rendering with fenced ownership;
+12. adaptive runtime evidence/capacity behavior;
+13. real final output validation + B2 lock;
+14. real watermarked previews + final price + MB QR;
+15. exact/idempotent SePay verification;
+16. `PAID`;
+17. authorized download;
+18. same Job reflected in History.
 
 Builds, unit tests, scanner installation, Vercel/Render READY state, database rows or historical evidence alone do not establish Golden Production E2E.
