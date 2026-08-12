@@ -4,11 +4,11 @@
 > Historical roadmap versions are not active instructions. Runtime evidence under `reports/` remains historical proof.
 
 ## 1. Product Goal
-Build a production CWS MVP where a customer authenticates with Google, submits a real Blender project, CWS quarantines and verifies that input, automatically creates one customer-owned Job after `INPUT_SAFE`, then automatically allocates enough eligible Workers to drive the complete render deliverable toward a 45-minute internal target, produces real watermarked previews plus final price/payment QR, verifies Vietnam bank payment by SePay, and unlocks the locked full output.
+Build a production CWS MVP where a customer authenticates with Google, submits a real Blender project, CWS quarantines and scans that input before canonical B2 storage, promotes only CLEAN/SAFE input into B2, automatically creates one customer-owned Job after `INPUT_SAFE`, then automatically allocates enough eligible Workers to drive the complete render deliverable toward a 45-minute internal target, produces real watermarked previews plus final price/payment QR, verifies Vietnam bank payment by SePay, and unlocks the locked full output.
 
 ## 2. Canonical Customer Workflow
 
-`Google Login -> authenticated Upload/Google Drive -> materialize into canonical B2 quarantine -> ownership/provider/SSRF/size/signature checks -> anti-malware scan -> archive/Blender structural safety -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze frame/work range -> build durable non-overlapping Tasks -> start initial desired Worker wave -> measure real completed task/frame runtimes while useful work is running -> adapt Worker count upward as needed for <=45-minute final-output target -> safe preparation/optimization -> real Blender render -> collect/validate -> animation assembly/encode if required -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference/content + amount idempotently -> PAID -> authorized B2 download -> History/cleanup/audit`
+`Google Login -> authenticated Upload/Google Drive -> temporary quarantine/staging outside canonical B2 -> ownership/provider/SSRF/size/signature checks -> anti-malware scan -> archive/Blender structural safety -> CLEAN/SAFE -> upload/promote immutable canonical input to B2 -> verify B2 object -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze frame/work range -> build durable non-overlapping Tasks -> start initial desired Worker wave -> measure real completed task/frame runtimes while useful work is running -> adapt Worker count upward as needed for <=45-minute final-output target -> safe preparation/optimization -> real Blender render -> collect/validate -> animation assembly/encode if required -> upload FULL OUTPUT to B2 LOCKED -> generate 3–5 CWS-watermarked previews -> calculate FINAL PRICE -> create payment record/code/MB QR -> customer pays -> SePay verifies exact reference/content + amount idempotently -> PAID -> authorized B2 download -> History/cleanup/audit`
 
 ### Binding business rules
 - Customer Google Login is the **first operational gate**.
@@ -16,13 +16,16 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - A supported authenticated New Render submission expresses render intent.
 - The former mandatory post-validation **Start render** gate is superseded.
 - Normal Customer runtime requires zero Founder/Admin approval.
-- Input is hostile until canonical materialization + security/structural validation succeeds.
+- Input is hostile when first received and must remain in bounded temporary quarantine/staging until mandatory security checks pass.
+- **No customer input enters canonical B2 input storage before required anti-malware/security/structural validation passes.**
 - **No production Job before authoritative `INPUT_SAFE`.**
 - Supported canonical customer inputs: `.blend`, `.zip`, `.rar`, and approved Google Drive file links.
-- Google Drive input is materialized to B2 before Worker processing and must pass the same security gate as direct upload.
-- Anti-malware is a required additional layer; scanner error/timeout/unavailable/unknown fails closed and creates no Job.
+- Google Drive input downloads first to temporary quarantine and must pass the same security gate as direct upload before B2 canonicalization.
+- Anti-malware is a required additional layer; scanner error/timeout/unavailable/unknown fails closed, creates no canonical B2 input, and creates no Job.
 - Malware CLEAN does not replace signature validation, archive safety or Blender safety.
+- Infected input is rejected/isolated; CWS does not automatically disinfect/modify the customer project and continue rendering.
 - Do not send private customer project files to public malware scanning services without Founder approval.
+- Clean/validated input is uploaded/promoted to canonical B2, integrity/ownership is verified, then Backend records `INPUT_SAFE`.
 - Automatic Job creation after `INPUT_SAFE` is server-side, customer-owned and idempotent; retries must not create duplicate Jobs.
 - Customer render speed/tier selection remains removed. Customer does not choose Worker count, GPU or CPU.
 - Active UI/API/domain/persistence must not depend on a customer tier identifier.
@@ -33,7 +36,7 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Capacity planning uses a configurable safety margin initially in the 20–30% range and rounds required Worker count **up** to a whole integer.
 - One Task/frame has one active authoritative Worker owner at a time. Reassignment occurs only through lease/generation fencing.
 - The 45-minute target includes required finalization such as render, collection/validation and animation assembly/encode when applicable. It is an internal mandatory scheduling target, not a public contractual SLA unless separately approved.
-- Customer originals are immutable.
+- Customer canonical B2 originals are immutable after clean validation.
 - Untrusted Blender Python autoexec remains disabled.
 - No fake/demo progress, render, payment, output or security verdict in production.
 - No AI/Founder/Admin intervention is allowed for normal runtime state transitions.
@@ -47,8 +50,8 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Admin frontend: separate React/Vite build in the same repo at `cws-admin.vercel.app`; Admin remains a core CWS component.
 - Backend/API: one existing Render.com service shared by Customer and Admin.
 - Database/Auth: one existing Supabase project; Customer Google OAuth and staff Google OAuth + TOTP/AAL2/role checks remain separate auth flows.
-- Storage: existing Backblaze B2; use logical quarantine/untrusted state/prefix inside existing storage rather than creating a new bucket without approval.
-- Input security: authenticated ownership, provider/SSRF controls, bounded download/resource rules, content/signature validation, anti-malware, archive/Blender structural safety.
+- Storage: existing Backblaze B2 for **clean canonical input and output**. Untrusted customer input first uses bounded temporary quarantine/staging in existing approved infrastructure; do not create a new bucket/service without Founder approval.
+- Input security: authenticated ownership, provider/SSRF controls, bounded download/resource rules, content/signature validation, pre-B2 anti-malware, archive/Blender structural safety.
 - Render runtime: canonical Windows Node Agent + generic Worker Engine + Blender CLI/background.
 - Partner host image model: approved net-cafe/office fleets bake shared CWS runtime components into Windows/BootROM Golden Image; per-machine Worker identity/credential remains distinct persistent machine state and is never cloned as one shared credential.
 - Host process lifecycle: Node Agent is the one resident Windows auto-start supervisor; Worker Engine is launched only for assigned tasks and exits after completion/failure cleanup.
@@ -56,7 +59,7 @@ Build a production CWS MVP where a customer authenticates with Google, submits a
 - Payment detection: SePay webhook; exact reference/content + amount; idempotent/fail-closed.
 - Worker control plane: authenticated Backend gateway; no Supabase service-role key on Workers.
 - Scheduling: PostgreSQL durable task ownership using atomic claim/lease/generation fencing plus Adaptive Deadline Scheduler. No new broker/Redis until measurement proves a bottleneck.
-- Worker storage access: short-lived task/object-scoped capabilities; no long-lived per-Worker B2 keys.
+- Worker storage access: short-lived task/object-scoped capabilities to clean canonical B2 inputs/outputs only; no long-lived per-Worker B2 keys.
 - MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single frame is not current scope.
 
 ## 4. Execution / Governance
@@ -79,22 +82,24 @@ Rules:
 **IN_PROGRESS (2026-08-12)**
 - One canonical roadmap (`CWS_ROADMAP.md`).
 - `CURRENT_STATUS.md` is current-only.
-- Customer workflow is login-first, security-gated and automatically creates one Job after `INPUT_SAFE`.
-- The previous mandatory Start Render gate is superseded.
+- Customer workflow is login-first, pre-B2 security-gated and automatically creates one Job after `INPUT_SAFE`.
+- The previous mandatory Start Render gate and B2-first untrusted-input flow are superseded.
 - Admin remains an active/core roadmap component.
 
 ### M1 — Customer identity + canonical safe input
-**CODE/SCHEMA PARTIALLY VERIFIED; SECURITY/AUTO-JOB FLOW NEEDS IMPLEMENTATION/PRODUCTION VERIFICATION**
+**CODE/SCHEMA PARTIALLY VERIFIED; PRE-B2 SECURITY/AUTO-JOB FLOW NEEDS IMPLEMENTATION/PRODUCTION VERIFICATION**
 - Google OAuth customer session.
 - Login-first operational gate.
-- Authenticated Upload/Drive materialization to canonical B2 quarantine/untrusted input.
+- Authenticated Upload/Drive lands in bounded temporary quarantine/staging outside canonical B2 input.
 - Server-side ownership.
 - Google Drive provider/redirect/timeout/size protections.
-- Content/signature validation.
-- Add/verify anti-malware scanning in existing approved infrastructure; ClamAV is first implementation candidate.
-- `.blend/.zip/.rar` archive/Blender safety boundary.
-- Scanner error/timeout/unavailable/unknown fails closed.
-- `INPUT_SAFE` is server-authoritative.
+- Content/signature validation before B2.
+- Add/verify anti-malware scanning before B2 in existing approved infrastructure; ClamAV is first implementation candidate.
+- `.blend/.zip/.rar` archive/Blender safety boundary before canonical promotion.
+- Scanner error/timeout/unavailable/unknown fails closed and does not create canonical B2 input.
+- Infected input is rejected/isolated, not automatically modified and rendered.
+- CLEAN/SAFE input is promoted/uploaded into canonical B2 and verified.
+- `INPUT_SAFE` is server-authoritative after canonical B2 verification.
 - Automatically create exactly one customer-owned Job after `INPUT_SAFE`, idempotently and without Founder/Admin/Start Render approval.
 - Remove obsolete customer render-tier artifacts.
 
@@ -138,23 +143,24 @@ Rules:
 Required trace:
 1. Real Google-authenticated customer.
 2. Real authenticated Upload/Drive input.
-3. Materialize to canonical quarantine/untrusted state.
+3. Temporary quarantine/staging outside canonical B2 input.
 4. Real ownership/provider/size/signature checks.
-5. Real anti-malware + archive/Blender structural safety verdict.
-6. `INPUT_SAFE`.
-7. Automatically create exactly one customer-owned Job with no Founder/Admin and no mandatory Start Render click.
-8. Analyze work range and create non-overlapping durable Tasks.
-9. Real physical Workers claim distinct Tasks; initial wave targets 10 Workers when capacity permits.
-10. Real Blender work produces observed runtime evidence and Scheduler can adapt capacity without duplicate active frame ownership.
-11. Real render/finalization completes, including animation assembly/encode when required.
-12. Real B2 locked output.
-13. Real watermarked previews.
-14. Real final price + exact payment content + MB QR.
-15. Real SePay exact/idempotent match.
-16. Real PAID transition.
-17. Real authorized download.
-18. Same Job visible in History.
-19. Cleanup and Workers return idle.
+5. Real anti-malware + archive/Blender structural safety verdict before B2.
+6. CLEAN/SAFE input uploaded/promoted to canonical B2 and verified.
+7. `INPUT_SAFE`.
+8. Automatically create exactly one customer-owned Job with no Founder/Admin and no mandatory Start Render click.
+9. Analyze work range and create non-overlapping durable Tasks.
+10. Real physical Workers claim distinct Tasks; initial wave targets 10 Workers when capacity permits.
+11. Real Blender work produces observed runtime evidence and Scheduler can adapt capacity without duplicate active frame ownership.
+12. Real render/finalization completes, including animation assembly/encode when required.
+13. Real B2 locked output.
+14. Real watermarked previews.
+15. Real final price + exact payment content + MB QR.
+16. Real SePay exact/idempotent match.
+17. Real PAID transition.
+18. Real authorized download.
+19. Same Job visible in History.
+20. Cleanup and Workers return idle.
 
 A build, unit test, simulation, scanner install, deployment READY state or Worker heartbeat alone is not Golden E2E proof.
 
@@ -168,7 +174,7 @@ A build, unit test, simulation, scanner install, deployment READY state or Worke
 ## 6. Scale Direction
 MVP architecture must avoid manual-per-machine, manual-per-batch and manual-per-job operations.
 - Immediate gate: exactly one real Worker reaches authenticated `ACTIVE_IDLE` autonomously.
-- Then: one real customer Job end-to-end with the new safe-input automatic-Job workflow.
+- Then: one real customer Job end-to-end with the new pre-B2 safe-input automatic-Job workflow.
 - Then: 2–3 Workers -> 10 Workers -> 25 -> 50 -> 100 control-plane/runtime verification as evidence permits.
 - A single Job may legitimately consume many Workers when deadline planning requires it and fleet capacity permits.
 - Design must remain logically compatible with 100 / 1,000 / 10,000 / 1,000,000 Workers without assuming those are current deployments.
@@ -183,6 +189,6 @@ MVP architecture must avoid manual-per-machine, manual-per-batch and manual-per-
 Current convergence has two bounded fronts that must not be mixed into one uncontrolled change:
 
 1. **Worker runtime gate:** make exactly one physical Worker provision autonomously through approved-site trust and reach authenticated `ACTIVE_IDLE`; then STOP for Founder review.
-2. **Customer Spec 008 security/intent gate:** implement quarantine + anti-malware/structural validation -> authoritative `INPUT_SAFE` -> automatic exactly-one Job creation, with zero Founder/Admin and no mandatory Start Render gate.
+2. **Customer Spec 008 security/intent gate:** implement temporary quarantine -> pre-B2 anti-malware/security/structural validation -> CLEAN/SAFE -> canonical B2 upload -> `INPUT_SAFE` -> automatic exactly-one Job creation, with zero Founder/Admin and no mandatory Start Render gate.
 
 After the 1-Worker gate passes, continue one-Worker real Job/Task/render verification before scaling to multiple Workers.
