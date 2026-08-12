@@ -1,5 +1,8 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { WorkerEnrollmentService, generateCanonicalWorkerId } from './worker-enrollment.service';
+import {
+  WorkerEnrollmentService,
+  generateCanonicalWorkerId,
+} from './worker-enrollment.service';
 
 const idA = 'cwsw_' + 'a'.repeat(32);
 const idB = 'cwsw_' + 'b'.repeat(32);
@@ -9,11 +12,20 @@ function supabase(
     insertError?: unknown;
     rpcData?: unknown;
     rpcError?: unknown;
+    updateData?: unknown;
   } = {},
 ) {
   const insert = jest
     .fn()
     .mockResolvedValue({ error: options.insertError ?? null });
+  const update = jest.fn().mockReturnValue({
+    eq: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        data: options.updateData ?? [{ controller_hash: 'h'.repeat(64) }],
+        error: options.insertError ?? null,
+      }),
+    }),
+  });
   const rpc = jest.fn().mockResolvedValue({
     data: options.rpcData ?? true,
     error: options.rpcError ?? null,
@@ -21,11 +33,12 @@ function supabase(
   return {
     dependency: {
       getClient: () => ({
-        from: () => ({ insert }),
+        from: () => ({ insert, update }),
         rpc,
       }),
     } as never,
     insert,
+    update,
     rpc,
   };
 }
@@ -47,33 +60,166 @@ describe('WorkerEnrollmentService', () => {
     });
     expect(result.workerId).toBe(idA);
     expect(result.token).not.toBe('b'.repeat(64));
-    expect(db.rpc).toHaveBeenCalledWith('provision_worker', expect.objectContaining({
-      p_fingerprint_hash: 'f'.repeat(64),
-      p_worker_id: expect.stringMatching(/^cwsw_[a-f0-9]{32}$/),
-    }));
+    expect(db.rpc).toHaveBeenCalledWith(
+      'provision_worker',
+      expect.objectContaining({
+        p_fingerprint_hash: 'f'.repeat(64),
+        p_worker_id: expect.stringMatching(/^cwsw_[a-f0-9]{32}$/),
+      }),
+    );
   });
 
   it('regenerates after a database uniqueness collision and never accepts the collided row', async () => {
     const db = supabase();
     db.rpc
-      .mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'workers_pkey' } })
-      .mockResolvedValueOnce({ data: [{ worker_id: idB, ticket_hash: 'c'.repeat(64) }], error: null });
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: '23505', message: 'workers_pkey' },
+      })
+      .mockResolvedValueOnce({
+        data: [{ worker_id: idB, ticket_hash: 'c'.repeat(64) }],
+        error: null,
+      });
     const result = await new WorkerEnrollmentService(db.dependency).provision({
-      bootstrapToken: 'B'.repeat(43), fingerprintHash: 'f'.repeat(64),
+      bootstrapToken: 'B'.repeat(43),
+      fingerprintHash: 'f'.repeat(64),
     });
     expect(result.workerId).toBe(idB);
     expect(db.rpc).toHaveBeenCalledTimes(2);
-    expect((db.rpc.mock.calls[0][1] as Record<string, unknown>).p_worker_id)
-      .not.toBe((db.rpc.mock.calls[1][1] as Record<string, unknown>).p_worker_id);
+    expect(
+      (db.rpc.mock.calls[0][1] as Record<string, unknown>).p_worker_id,
+    ).not.toBe(
+      (db.rpc.mock.calls[1][1] as Record<string, unknown>).p_worker_id,
+    );
   });
 
   it('fails closed for a fingerprint or site bootstrap that is not valid', async () => {
     const db = supabase();
     const service = new WorkerEnrollmentService(db.dependency);
-    await expect(service.provision({
-      bootstrapToken: 'B'.repeat(43), fingerprintHash: 'not-a-hash',
-    })).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.provision({
+        bootstrapToken: 'B'.repeat(43),
+        fingerprintHash: 'not-a-hash',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it('creates durable site-controller trust only through the Admin approval service boundary', async () => {
+    const db = supabase();
+    const result = await new WorkerEnrollmentService(
+      db.dependency,
+    ).approveSiteController(
+      { fleetId: 2, quota: 3, capabilityTtlMinutes: 15 },
+      'founder-user',
+    );
+    expect(result.controllerToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(result).toMatchObject({
+      fleetId: 2,
+      quota: 3,
+      capabilityTtlMinutes: 15,
+    });
+    const row = db.insert.mock.calls[0][0] as Record<string, unknown>;
+    expect(row).toMatchObject({
+      fleet_id: 2,
+      quota: 3,
+      capability_ttl_minutes: 15,
+      created_by: 'founder-user',
+    });
+    expect(row.controller_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(row)).not.toContain(result.controllerToken);
+  });
+
+  it('renews a bounded capability through the approved controller without Admin AAL2', async () => {
+    const db = supabase();
+    db.rpc.mockResolvedValue({
+      data: [{ fleet_id: 2, expires_at: '2030-01-01T00:00:00.000Z', quota: 3 }],
+      error: null,
+    });
+    const result = await new WorkerEnrollmentService(
+      db.dependency,
+    ).issueSiteControllerCapability({ controllerToken: 'C'.repeat(43) });
+    expect(result).toEqual({
+      token: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      fleetId: 2,
+      expiresAt: '2030-01-01T00:00:00.000Z',
+      quota: 3,
+    });
+    expect(db.rpc).toHaveBeenCalledWith('issue_site_bootstrap_capability', {
+      p_controller_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      p_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
+
+  it('passes the renewed site-scoped capability into normal automatic provisioning', async () => {
+    const db = supabase();
+    db.rpc
+      .mockResolvedValueOnce({
+        data: [
+          { fleet_id: 2, expires_at: '2030-01-01T00:00:00.000Z', quota: 3 },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [{ worker_id: idA, ticket_hash: 'b'.repeat(64) }],
+        error: null,
+      });
+    const service = new WorkerEnrollmentService(db.dependency);
+    const capability = await service.issueSiteControllerCapability({
+      controllerToken: 'C'.repeat(43),
+    });
+    const provisioned = await service.provision({
+      bootstrapToken: capability.token,
+      fingerprintHash: 'f'.repeat(64),
+    });
+    expect(provisioned.workerId).toBe(idA);
+    expect(db.rpc).toHaveBeenNthCalledWith(
+      2,
+      'provision_worker',
+      expect.objectContaining({
+        p_bootstrap_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        p_fingerprint_hash: 'f'.repeat(64),
+      }),
+    );
+  });
+
+  it('rejects malformed or revoked-controller responses without exposing capability state', async () => {
+    const db = supabase({ rpcData: null });
+    const service = new WorkerEnrollmentService(db.dependency);
+    await expect(
+      service.issueSiteControllerCapability({ controllerToken: 'short' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.issueSiteControllerCapability({
+        controllerToken: 'C'.repeat(43),
+      }),
+    ).rejects.toEqual(new UnauthorizedException('Invalid site controller'));
+  });
+
+  it('keeps suspension and revocation behind the Admin boundary', async () => {
+    const db = supabase();
+    await expect(
+      new WorkerEnrollmentService(db.dependency).setSiteControllerStatus(
+        { fleetId: 2, status: 'suspended' },
+        'admin-user',
+      ),
+    ).resolves.toEqual({ fleetId: 2, status: 'suspended' });
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'suspended',
+        status_changed_by: 'admin-user',
+      }),
+    );
+  });
+
+  it('does not report a status change when the site-controller trust row is absent', async () => {
+    const db = supabase({ updateData: [] });
+    await expect(
+      new WorkerEnrollmentService(db.dependency).setSiteControllerStatus(
+        { fleetId: 999, status: 'revoked' },
+        'admin-user',
+      ),
+    ).rejects.toThrow('Site controller trust was not found');
   });
   it('issues unique per-worker tickets and stores hashes only', async () => {
     const db = supabase();
@@ -105,7 +251,10 @@ describe('WorkerEnrollmentService', () => {
     await expect(
       service.issueBatch(
         {
-          workerIds: Array.from({ length: 101 }, (_, i) => `cwsw_${i.toString(16).padStart(32, '0')}`),
+          workerIds: Array.from(
+            { length: 101 },
+            (_, i) => `cwsw_${i.toString(16).padStart(32, '0')}`,
+          ),
           fleetId: 2,
         },
         'u',
