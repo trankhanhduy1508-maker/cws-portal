@@ -5,6 +5,9 @@ import {
   IssueEnrollmentInput,
   RedeemEnrollmentInput,
   SiteBootstrapInput,
+  SiteControllerApprovalInput,
+  SiteControllerCapabilityInput,
+  SiteControllerStatusInput,
   AutomaticProvisionInput,
   WorkerEnrollmentService,
 } from './worker-enrollment.service';
@@ -25,8 +28,39 @@ export class WorkerEnrollmentController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(RoleGuard)
   @Roles('admin')
-  issueSiteBootstrap(@Body() body: SiteBootstrapInput, @Req() request: Request) {
+  issueSiteBootstrap(
+    @Body() body: SiteBootstrapInput,
+    @Req() request: Request,
+  ) {
     return this.enrollment.issueSiteBootstrap(body, request.staff!.userId);
+  }
+
+  @Post('site-controller/approve')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  approveSiteController(
+    @Body() body: SiteControllerApprovalInput,
+    @Req() request: Request,
+  ) {
+    return this.enrollment.approveSiteController(body, request.staff!.userId);
+  }
+
+  @Post('site-controller/status')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  setSiteControllerStatus(
+    @Body() body: SiteControllerStatusInput,
+    @Req() request: Request,
+  ) {
+    return this.enrollment.setSiteControllerStatus(body, request.staff!.userId);
+  }
+
+  @Post('site-controller/capability')
+  @Header('Cache-Control', 'no-store')
+  issueSiteControllerCapability(@Body() body: SiteControllerCapabilityInput) {
+    return this.enrollment.issueSiteControllerCapability(body);
   }
 
   @Post('provision')
