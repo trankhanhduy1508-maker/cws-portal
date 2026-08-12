@@ -122,6 +122,28 @@ Drive/materialization/webhook/download URLs need:
 - bounded redirects/timeouts/size;
 - no trust in user-supplied response metadata without server validation.
 
+### 7. Integrate mature security tools; do not build an antivirus engine
+
+For malware scanning, quarantine, endpoint containment and remediation, CWS should first evaluate established maintained tools/plugins/packages rather than implement signature detection or virus-removal logic from scratch.
+
+Required adoption discipline:
+- prefer official upstream repositories/packages and supported interfaces;
+- review current maintenance status, advisories, license and release provenance before adoption;
+- pin/verify versions when appropriate;
+- integrate the narrowest supported scanner/quarantine/remediation API or CLI;
+- keep CWS-owned code focused on orchestration, policy, evidence, access control, audit and failure handling;
+- do not recreate malware signature databases, detection engines, quarantine engines or eradication engines in CWS application code.
+
+Canonical response model:
+
+`untrusted input -> scan -> suspicious/infected -> QUARANTINE`
+
+Quarantine is the first containment action. It prevents promotion to trusted/canonical storage and blocks Worker/Job access.
+
+If evidence indicates malware has executed, escaped quarantine, modified a host or is actively intruding into CWS infrastructure, invoke the approved security product's supported containment/remediation/eradication workflow. Do not weaken the gate just to keep the Job running.
+
+Repairing/disinfecting a customer project and then rendering it is a separate risk: only continue if the chosen mature tool and CWS validation can prove the project remains format-safe and semantically acceptable. Otherwise retain quarantine and require a clean resubmission.
+
 ## Security review order for CWS changes
 
 1. identity/authentication;
