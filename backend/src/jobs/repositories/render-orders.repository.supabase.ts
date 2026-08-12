@@ -9,6 +9,7 @@ const TABLE = 'render_orders';
 interface RenderOrderRow {
   id: string;
   project_name: string;
+  profile_id: string;
   software: string | null;
   software_version: string | null;
   notes: string | null;
@@ -76,6 +77,8 @@ function domainToInsertRow(
   return {
     id: order.id,
     project_name: order.projectName,
+    // Historical production compatibility column; never customer-selected.
+    profile_id: 'standard',
     software: order.software,
     software_version: order.softwareVersion,
     notes: order.notes,

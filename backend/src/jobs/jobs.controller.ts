@@ -54,26 +54,14 @@ export class JobsController {
       if (!this.googleDriveService || !this.inputUploadsService) {
         throw new UnauthorizedException('Google Drive import chưa được cấu hình');
       }
-      const imported = await this.googleDriveService.materializeToB2(dto.driveLink);
-      dto = {
-        ...dto,
-        driveLink: null,
-        fileRef: imported.key,
-        fileName: imported.fileName,
-        fileSizeBytes: imported.fileSizeBytes,
-      };
-      await this.inputUploadsService.record(
-        imported.key,
-        customerId,
-        imported.fileName,
-        imported.fileSizeBytes,
-      );
+      throw new BadRequestException('Google Drive must pass the input security pipeline before job creation');
     }
     if (dto.fileRef) {
       if (!this.inputUploadsService) {
         throw new UnauthorizedException('Upload ownership chưa được cấu hình');
       }
       await this.inputUploadsService.assertOwned(dto.fileRef, customerId);
+      await this.inputUploadsService.assertInputSafe(dto.fileRef, customerId);
     }
     const idempotencyKey = req.header('Idempotency-Key');
     return this.jobsService.createOrder(dto, customerId, idempotencyKey);

@@ -34,6 +34,15 @@ type ResolvedDriveFile = {
   fileRef?: string;
 };
 
+type PrePromotionCheck = (path: string, fileName: string, sizeBytes: number) => Promise<{
+  verdict: 'CLEAN';
+  contentSha256: string;
+  scannerEngine: string;
+  scannerVersion: string | null;
+  signatureDatabaseVersion: string | null;
+  scannedAt: string;
+}>;
+
 @Injectable()
 export class GoogleDriveService {
   private readonly logger = new Logger(GoogleDriveService.name);
@@ -121,17 +130,7 @@ export class GoogleDriveService {
     }
 
     const fileId = this.extractFileId(driveLink);
-    if (!apiKey) {
-      this.logger.log(
-        `Resolving public Drive file ${fileId} through direct download (no API key).`,
-      );
-      const imported = await this.materializePublicFileToB2(driveLink, fileId);
-      return {
-        fileName: imported.fileName,
-        fileSizeBytes: imported.fileSizeBytes,
-        fileRef: imported.key,
-      };
-    }
+    if (!apiKey) return { fileName: null, fileSizeBytes: null };
     const url =
       `https://www.googleapis.com/drive/v3/files/${fileId}?key=${encodeURIComponent(apiKey)}` +
       '&fields=name,size';
@@ -161,15 +160,18 @@ export class GoogleDriveService {
    */
   async materializeToB2(
     driveLink: string,
-  ): Promise<{ key: string; fileName: string; fileSizeBytes: number }> {
+    beforePromotion?: PrePromotionCheck,
+  ): Promise<{ key: string; fileName: string; fileSizeBytes: number; security?: Awaited<ReturnType<PrePromotionCheck>> }> {
+    if (!beforePromotion) {
+      throw new BadRequestException('Input phải vượt qua security gate trước khi vào B2.');
+    }
     const fileId = this.extractFileId(driveLink);
     const apiKey = this.configService.get('googleDriveApiKey', { infer: true });
 
-    // Public-link MVP path: the resolve endpoint already materializes the
-    // file when it is called before job creation. This method remains the
-    // fallback for clients that create a job with driveLink directly.
+    // The caller must supply the pre-promotion security gate. This method is
+    // never a standalone trusted-materialization shortcut.
     if (!apiKey) {
-      return this.materializePublicFileToB2(driveLink, fileId);
+      return this.materializePublicFileToB2(driveLink, fileId, beforePromotion);
     }
 
     const metadata = await this.resolve(driveLink);
@@ -228,6 +230,7 @@ export class GoogleDriveService {
         throw new BadRequestException('File Google Drive tải không đủ dữ liệu');
       }
       await this.validateProjectSignature(tempPath, fileName);
+      const security = beforePromotion ? await beforePromotion(tempPath, fileName, written) : undefined;
       const uploaded = await this.b2StorageService.uploadFile({
         path: tempPath,
         originalname: fileName,
@@ -239,7 +242,7 @@ export class GoogleDriveService {
               ? 'application/vnd.rar'
               : 'application/octet-stream',
       } as Express.Multer.File);
-      return { key: uploaded.key, fileName, fileSizeBytes: written };
+      return { key: uploaded.key, fileName, fileSizeBytes: written, security };
     } finally {
       await fsPromises.unlink(tempPath).catch(() => undefined);
     }
@@ -264,7 +267,8 @@ export class GoogleDriveService {
   private async materializePublicFileToB2(
     driveLink: string,
     fileId: string,
-  ): Promise<{ key: string; fileName: string; fileSizeBytes: number }> {
+    beforePromotion?: PrePromotionCheck,
+  ): Promise<{ key: string; fileName: string; fileSizeBytes: number; security?: Awaited<ReturnType<PrePromotionCheck>> }> {
     const initialUrl = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
     let tempPath: string | null = null;
     let initialResponse: Response | null = null;
@@ -345,6 +349,7 @@ export class GoogleDriveService {
         requestedName,
       );
       await this.validateProjectSignature(tempPath, fileName);
+      const security = beforePromotion ? await beforePromotion(tempPath, fileName, written) : undefined;
 
       const uploaded = await this.b2StorageService.uploadFile({
         path: tempPath,
@@ -352,7 +357,7 @@ export class GoogleDriveService {
         size: written,
         mimetype: this.mimeTypeFor(fileName),
       } as Express.Multer.File);
-      return { key: uploaded.key, fileName, fileSizeBytes: written };
+      return { key: uploaded.key, fileName, fileSizeBytes: written, security };
     } catch (error) {
       this.logger.error(
         `Drive public materialization failed for ${driveLink}: ${

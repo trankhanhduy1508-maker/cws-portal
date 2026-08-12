@@ -21,6 +21,7 @@ export function useDriveLink() {
         fileRef: result.fileRef || null,
         fileName: result.fileName,
         fileSizeBytes: result.fileSizeBytes,
+        jobId: result.jobId || null,
       });
       return true;
     } catch (err) {
@@ -46,6 +47,7 @@ export function useDriveLink() {
       fileRef: result.fileRef || null,
       fileName: result.fileName || null,
       fileSizeBytes: result.fileSizeBytes ?? null,
+      jobId: result.jobId || null,
     });
     setLinkError(null);
   }, []);

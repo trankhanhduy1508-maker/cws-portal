@@ -17,6 +17,7 @@ describe('JobsController.create upload ownership', () => {
     };
     const inputUploadsService = {
       assertOwned: jest.fn().mockResolvedValue(undefined),
+      assertInputSafe: jest.fn().mockResolvedValue(undefined),
     };
     const controller = new JobsController(
       jobsService as never,

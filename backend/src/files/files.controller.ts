@@ -8,6 +8,8 @@ import {
   UnauthorizedException,
   UseInterceptors,
   UseGuards,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
@@ -26,6 +28,9 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { getOptionalCustomerId } from '../common/optional-auth.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InputUploadsService } from './input-uploads.service';
+import { InputSecurityService } from './input-security.service';
+import { JobsService } from '../jobs/jobs.service';
+import { createHash } from 'node:crypto';
 
 // LƯU Ý ĐỒNG BỘ: 2 hằng số này PHẢI khớp với
 // cws-portal/src/constants/renderConstants.js (ACCEPTED_FILE_EXTENSIONS,
@@ -42,6 +47,9 @@ export class FilesController {
     private readonly googleDriveService: GoogleDriveService,
     private readonly supabaseService: SupabaseService,
     private readonly inputUploadsService: InputUploadsService,
+    private readonly inputSecurityService: InputSecurityService,
+    @Inject(forwardRef(() => JobsService))
+    private readonly jobsService: JobsService,
   ) {}
 
   /**
@@ -108,18 +116,26 @@ export class FilesController {
       );
     }
 
+    const security = await this.inputSecurityService.inspect(file.path, file.originalname, file.size);
     const { key } = await this.b2StorageService.uploadFile(file);
     await this.inputUploadsService.record(
       key,
       customerId,
       file.originalname,
       file.size,
+      security,
+    );
+    const job = await this.jobsService.createOrder(
+      { fileRef: key, fileName: file.originalname, fileSizeBytes: file.size },
+      customerId,
+      this.autoJobKey(customerId, security.contentSha256),
     );
     return {
       fileRef: key,
       fileName: file.originalname,
       fileSizeBytes: file.size,
       inputFormat: getInputFormat(file.originalname),
+      jobId: job.jobId,
     };
   }
 
@@ -133,12 +149,11 @@ export class FilesController {
     if (!customerId) throw new UnauthorizedException('Cần đăng nhập để kiểm tra Google Drive');
 
     let result = await this.googleDriveService.resolve(dto.driveLink);
-    if (!result.fileRef) {
-      const materialized = await this.googleDriveService.materializeToB2(
-        dto.driveLink,
-      );
-      result = { ...result, ...materialized, fileRef: materialized.key };
-    }
+    const materialized = await this.googleDriveService.materializeToB2(
+      dto.driveLink,
+      async (path, fileName, sizeBytes) => this.inputSecurityService.inspect(path, fileName, sizeBytes),
+    );
+    result = { ...result, ...materialized, fileRef: materialized.key };
 
     const fileRef = result.fileRef;
     const fileName = result.fileName;
@@ -160,7 +175,17 @@ export class FilesController {
       customerId,
       fileName,
       fileSizeBytes as number,
+      materialized.security,
     );
-    return { driveLink: dto.driveLink, ...result };
+    const job = await this.jobsService.createOrder(
+      { fileRef, driveLink: null, fileName, fileSizeBytes: fileSizeBytes as number },
+      customerId,
+      this.autoJobKey(customerId, materialized.security?.contentSha256 ?? fileRef),
+    );
+    return { driveLink: dto.driveLink, ...result, jobId: job.jobId };
+  }
+
+  private autoJobKey(customerId: string, stableInputIdentity: string): string {
+    return `auto-${createHash('sha256').update(`${customerId}:${stableInputIdentity}`).digest('hex')}`;
   }
 }
