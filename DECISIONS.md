@@ -143,6 +143,29 @@ Binding rules:
 
 For the current single-PC MVP/runtime test, if the existing implementation still blocks on manual Worker ID/ticket input, treat that as a **provisioning implementation gap to fix**, not as the desired workflow and not as a Founder step to repeat manually.
 
+### [ACTIVE — 2026-08-12] Site/Fleet bootstrap authorization and composite machine fingerprint
+Founder approved the concrete security contract for automatic provisioning:
+
+- an authorized site/fleet is onboarded once through the authenticated Backend boundary;
+- Backend issues a **site-scoped bootstrap credential/capability** limited to provisioning for that site/fleet;
+- the site-scoped capability is not a Worker credential, not a Supabase service-role credential, and must not grant Worker claim/render/payment/storage-master authority;
+- the capability must be bounded by server-side scope, quota/rate controls where appropriate, expiry/bounded validity, revocation and audit;
+- Backend is the canonical Worker ID generation owner and creates the unique stable Worker ID transactionally; Founder/Admin/operator does not type it;
+- Worker ID is not derived from hostname, GPU, MachineGuid or fingerprint;
+- enrollment binding uses a **composite machine fingerprint** from multiple available device signals rather than one mutable/spoofable attribute;
+- fingerprint is normalized and used as evidence for enrollment binding, duplicate/replay detection and recovery decisions, not as the canonical Worker identity;
+- prefer minimum necessary normalized/hash fingerprint representation rather than broadly storing/transmitting raw identifiers;
+- bootstrap/ticket material is automatically issued after site/fleet authorization and bound to the intended site/fleet + generated Worker ID + machine fingerprint evidence;
+- missing authorization, fingerprint mismatch, replay, revocation or invalid binding fails closed;
+- normal reboot/reconnect reuses the existing per-Worker identity + DPAPI credential and does not re-enroll;
+- recovery/re-enrollment is exceptional and Backend-authorized; MachineGuid may only be auxiliary recovery evidence, never a silent canonical Worker-ID fallback.
+
+Canonical provisioning direction:
+
+`authorize site/fleet once -> unattended PC bootstrap -> fingerprint evidence -> Backend scoped authorization -> Backend-generated Worker ID -> bounded bound bootstrap material -> redeem -> per-Worker credential -> DPAPI -> Node Agent -> authenticated heartbeat -> ACTIVE_IDLE`
+
+Detailed implementation/verification contract is recorded in `specs/009-automatic-worker-provisioning/spec.md`.
+
 ### [ACTIVE — 2026-08-11] Partner net-cafe Golden Image model
 For an approved partner net-cafe/office fleet, CWS software is intended to be baked into the partner's canonical Windows/BootROM Golden Image so a normal PC reboot does not remove CWS runtime components.
 
