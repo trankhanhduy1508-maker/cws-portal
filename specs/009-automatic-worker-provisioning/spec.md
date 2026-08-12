@@ -2,14 +2,15 @@
 
 > Status: FOUNDER APPROVED — ACTIVE 1-WORKER PROVISIONING BLOCKER
 > Date: 2026-08-12
+> Latest Founder refinement: an already-approved site/fleet must provision future PC batches without repeated Founder/Admin authorization.
 
 ## Goal
 
-Make normal CWS Worker provisioning unattended after one authorized site/fleet onboarding, while preserving the existing Backend gateway, per-Worker credentials, Node Agent lifecycle, PostgreSQL claim/lease/generation fencing, and current infrastructure topology.
+Make normal CWS Worker provisioning unattended after **one initial site/fleet trust onboarding** while preserving the existing Backend gateway, per-Worker credentials, Node Agent lifecycle, PostgreSQL claim/lease/generation fencing, and current infrastructure topology.
 
-The operator must not manually choose Worker IDs, manually issue/copy one enrollment ticket per normal Worker, edit one Worker row per machine, or repeat enrollment per Job.
+The operator must not manually choose Worker IDs, manually issue/copy one enrollment ticket per normal Worker, edit one Worker row per machine, repeat enrollment per Job, or return to Founder/Admin for each new batch of PCs at an already-approved site/fleet.
 
-The current physical 1-Worker pilot is blocked because the test PC has no canonical Worker identity/credential yet. This spec is therefore the active runtime blocker before scaling beyond one Worker.
+The current physical 1-Worker pilot remains the gate before scaling beyond one Worker.
 
 ## Founder-approved canonical identity model
 
@@ -17,207 +18,234 @@ For the current CWS machine/runtime model:
 
 `1 physical PC = 1 canonical PCID/Worker ID`
 
-`PCID` and `Worker ID` are two names for the same canonical `worker_id` value. There is no second independent PC-ID namespace to create, reconcile, or maintain while one physical PC maps to one Worker runtime.
+`PCID` and `Worker ID` are aliases for the same canonical `worker_id`. There is no second independent PC-ID namespace.
 
-Any legacy document/code idea that creates a separate PCID, sequential PC number, MachineGuid-derived Worker ID, hostname-derived Worker ID, or another parallel machine-ID namespace is superseded as active design guidance.
+Any legacy active guidance that creates a separate PCID, sequential PC number, MachineGuid-derived Worker ID, hostname-derived Worker ID, or another parallel machine-ID namespace is superseded.
 
 ### Canonical ID generation
 
-Backend owns ID generation during authorized first provisioning.
+Backend owns canonical Worker ID generation during first provisioning.
 
 Requirements:
 
 - Generate **128 bits of cryptographically secure random entropy** server-side.
-- Preferred canonical representation: `cwsw_` + 32 lowercase hexadecimal characters.
-- Example shape only: `cwsw_d77a91e54e824683a4b03ac20b5e4f11`.
-- The database must enforce `worker_id` with `PRIMARY KEY` or equivalent `UNIQUE` protection.
-- A collision must be rejected by the database; Backend generates a new random ID and retries in a bounded/idempotent transaction/path.
-- Never overwrite, merge, or reuse another physical PC's identity because of a collision.
-- At 1,000,000 independently generated 128-bit IDs, the birthday-bound collision probability is approximately `1.5e-27` before the database uniqueness guard. Correctness still relies on the uniqueness constraint, not probability alone.
-- The ID is opaque and must not encode hostname, fleet/site number, GPU, CPU, customer, Job, frame range, MachineGuid, motherboard/BIOS serial, fingerprint, or sequential Worker count.
-- The ID is stable across normal reboot/reconnect and across Jobs.
-- Scheduler ownership, heartbeat, Worker state, logs, task ownership and host accounting all use this one canonical ID.
+- Preferred representation: `cwsw_` + 32 lowercase hexadecimal characters.
+- Database `PRIMARY KEY`/`UNIQUE` enforcement is authoritative.
+- A collision is rejected; Backend generates a fresh random ID and retries in a bounded/idempotent path.
+- Never overwrite, merge, or reuse another physical PC identity because of a collision.
+- The ID is opaque and must not encode hostname, site number, GPU, CPU, customer, Job, frame range, MachineGuid, serials, fingerprint, or sequential count.
+- The ID survives normal reboot/reconnect and all normal Jobs.
+- Scheduler ownership, heartbeat, Worker state, logs, task ownership, and host accounting all use this one ID.
 
-Machine fingerprint is separate in **purpose**: it is enrollment/recovery security evidence and must never become a second PC identity or silently replace `worker_id`.
+Machine fingerprint is separate in **purpose**: enrollment/recovery security evidence only. It must not become a second machine identity.
 
-## Founder-approved canonical flow
+## Canonical provisioning flow
 
-`authorize site/fleet once -> unattended PC bootstrap -> machine fingerprint evidence -> Backend site-scoped authorization check -> Backend transactionally generates canonical PCID/Worker ID -> bounded bootstrap/enrollment material bound to site/fleet + Worker ID + fingerprint -> PC redeems -> Backend issues/accepts per-Worker credential according to the canonical enrollment contract -> credential stored with Windows DPAPI -> Node Agent authenticates -> heartbeat -> ACTIVE_IDLE`
+### Initial site/fleet onboarding — one human trust decision
 
-Normal reboot/reconnect:
+A new partner site/fleet may require **one initial authenticated Founder/Admin approval** to establish trust, scope, owner, policy, quota/capacity limits, revocation controls, and a site-controller trust anchor.
 
-`load existing Worker identity + DPAPI credential -> Node Agent -> authenticate/heartbeat -> ACTIVE_IDLE`
+Canonical initial onboarding:
 
-Normal reboot MUST NOT call enrollment again when the credential is valid.
+`Founder/Admin approves site once -> Backend records durable APPROVED site/fleet trust -> Backend establishes site-scoped controller identity/trust material -> site becomes autonomous for normal provisioning within policy`
 
-## Site/Fleet bootstrap authorization
+This is a site/fleet onboarding event, **not a per-PC event and not a per-batch event**.
 
-Founder decision:
+### Approved site/fleet normal batch provisioning — zero Founder/Admin interaction
 
-- Site/fleet onboarding happens once through an authenticated Backend boundary.
-- Backend issues a **site-scoped bootstrap credential/capability** for that authorized site/fleet.
-- The capability is NOT a Worker credential and NOT a Supabase service-role credential.
-- It may authorize only bounded provisioning actions for its own site/fleet.
-- It must have explicit scope and server-side authorization checks.
-- It must support quota/rate limits as appropriate for the approved site/fleet size.
-- It must support expiry and/or bounded validity, revocation, and auditability.
-- Compromise of one site bootstrap capability must not grant Worker claim/render/payment/storage-master privileges or authority over another site/fleet.
-- A Worker never receives or exposes the controller/site bootstrap credential as its long-term runtime identity.
+Once the site/fleet is already approved:
 
-The exact token representation and cryptographic implementation are implementation details, but the security properties above are binding.
+`approved site controller/trust -> unattended PC bootstrap -> machine fingerprint evidence -> Backend verifies approved site scope/policy -> Backend generates canonical PCID/Worker ID -> Backend automatically creates bounded enrollment material -> PC redeems -> per-Worker credential -> DPAPI -> Node Agent -> authenticated heartbeat -> ACTIVE_IDLE`
+
+Adding another batch of PCs at the same approved site MUST NOT require the Founder/Admin to:
+
+- log in again merely because a new batch is starting;
+- call `POST /worker/enrollment/site-bootstrap` for that batch;
+- issue/copy per-machine tickets;
+- choose Worker IDs;
+- create Worker rows;
+- approve every PC individually.
+
+## Durable approved-site trust vs short-lived capability
+
+This distinction is binding:
+
+- **Site/fleet approval** is durable server-side authorization state until explicitly revoked/suspended or materially re-onboarded.
+- **Site controller credential/trust anchor** authenticates the already-approved site/controller. It is site-scoped and must be stored outside shared Worker/Golden Image credentials.
+- **Short-lived provisioning capability/token** may be generated, renewed, rotated, or exchanged automatically by the approved site controller/Backend.
+- Expiry of a short-lived token MUST NOT automatically mean the Founder/Admin has to approve the site again.
+- Normal token renewal/rotation is automated while the site remains approved and within policy.
+- Founder/Admin interaction is reserved for exceptional trust events: first onboarding, explicit revocation/suspension, ownership/site transfer, root trust reset, major policy/capacity change, or security recovery requiring human judgment.
+
+The current endpoint `POST /worker/enrollment/site-bootstrap` may remain for **initial onboarding, explicit trust reset, or exceptional privileged rotation**, but it must not be the canonical gate for every future PC batch at an approved site.
+
+If current code requires a fresh Admin AAL2 call to `/site-bootstrap` before each normal batch, that is now an **implementation gap to remove**, not accepted workflow.
+
+## Site/Fleet controller security contract
+
+The approved site/fleet controller/trust mechanism:
+
+- is limited to its own site/fleet;
+- is provisioning-only;
+- is NOT a Worker runtime credential;
+- is NOT a Supabase service-role credential;
+- grants no Task claim/render/payment/B2 master authority;
+- is revocable and auditable;
+- uses server-side quota/rate/capacity policy;
+- cannot authorize another site/fleet;
+- must fail closed when the site is suspended/revoked, policy is exceeded, or trust validation fails;
+- must support automatic bounded renewal/rotation without Founder/Admin interaction while the site remains approved.
+
+Compromise of one site controller must not grant broad control over other sites or unrelated runtime/storage/payment privileges.
+
+The site controller secret/trust material must **not** be baked into the shared Golden Image. Shared images may contain only non-secret site configuration/identifiers needed to discover the approved provisioning path.
 
 ## Worker ID generation owner
 
 Backend is the canonical PCID/Worker ID generation owner.
 
-Requirements:
-
-- Worker ID is generated server-side inside the authoritative provisioning transaction/path.
+- Worker ID is generated server-side inside the authoritative provisioning path.
 - Worker ID is unique and stable for the physical Worker identity.
-- Worker ID is not selected or typed by Founder/Admin/operator.
-- Worker ID is not derived from hostname, GPU name, Windows MachineGuid, motherboard serial, BIOS serial, fingerprint, or a sequential counter exposed as identity.
+- Founder/Admin/operator never types/selects it.
+- Worker ID is not derived from hostname, GPU, MachineGuid, serials, fingerprint, or sequential counters.
 - Worker ID is not generated per Job.
-- Concurrent/retried provisioning must be idempotent and must not create duplicate active identities for the same authorized machine binding.
-- Database uniqueness must be authoritative; random generation is not allowed to bypass the unique constraint.
-
-`PCID/Worker ID`, `MachineGuid`, and `machine fingerprint` are distinct concepts by purpose. `PCID` and `Worker ID` are aliases of the same canonical value; MachineGuid/fingerprint are not that value.
+- Concurrent/retried provisioning is idempotent and must not create duplicate active identities for the same machine binding.
 
 ## Machine fingerprint contract
 
-Founder decision:
+Enrollment binding uses a composite machine fingerprint rather than one mutable/spoofable attribute.
 
-- Enrollment binding uses a **composite machine fingerprint**, not one mutable or spoofable attribute by itself.
-- Fingerprint may combine multiple available device signals such as TPM/device identity evidence when available, Windows MachineGuid, motherboard/system/BIOS identifiers, and other bounded hardware/OS identifiers supported by the implementation.
-- Raw identifying attributes must not become the canonical Worker ID.
-- The fingerprint is evidence for enrollment binding, duplicate/replay detection, and recovery decisions; it is not the sole identity authority.
-- Fingerprint material must be normalized deterministically before hashing/comparison.
-- Prefer transmitting/storing the minimum necessary normalized/hash representation rather than broadly exposing raw machine identifiers.
-- The contract must tolerate legitimate bounded changes where appropriate and define a recovery path instead of silently creating a second Worker identity.
-- If authorization is absent or fingerprint binding fails, provisioning fails closed.
-
-The exact attribute set/weights and tolerance rules must be grounded against what the supported Windows/BootROM environments can reliably provide before implementation is declared complete.
+- Fingerprint may combine bounded device signals such as TPM/device evidence when available, Windows MachineGuid, motherboard/system/BIOS identifiers, and other reliable supported attributes.
+- Raw attributes do not become the canonical Worker ID.
+- Fingerprint is normalized deterministically before hashing/comparison.
+- Prefer minimum necessary normalized/hash representation.
+- Fingerprint supports binding, duplicate/replay evidence, and recovery decisions.
+- Legitimate hardware changes enter bounded recovery logic; they must not silently create a second Worker ID.
+- Missing/invalid site authorization or fingerprint mismatch fails closed.
 
 ## Enrollment/bootstrap security invariants
 
-- Existing one-time ticket/enrollment primitive may be reused internally.
-- Any ticket/bootstrap artifact used for normal provisioning is issued automatically after authorized site/fleet bootstrap; humans do not copy it machine by machine.
-- Bootstrap artifact is one-time or otherwise replay-resistant, bounded by expiry, and server-side revocable.
-- Bootstrap material is bound to the authorized site/fleet and the intended Worker/machine binding.
-- Ticket/bootstrap redemption is idempotent under safe retry but must reject replay after authoritative consumption.
-- Stolen material from one machine/site must not provision an unrelated machine/site.
+- Existing one-time ticket/enrollment primitives may be reused internally.
+- Humans do not create/copy per-machine tickets in the normal path.
+- Bounded enrollment material is generated automatically by Backend after approved-site authorization is verified.
+- Enrollment material is bound to site/fleet + generated Worker ID + machine/fingerprint evidence.
+- Redemption is idempotent under safe retry and replay-resistant after authoritative consumption.
+- New automatic fingerprint-bound tickets must not be redeemable through a legacy unbound path.
 - No shared per-fleet Worker credential.
 - No Supabase service-role key on Worker or site controller.
 - No long-lived B2 master credential on Worker.
-- Per-Worker credential creation/verification must follow the existing approved Backend enrollment contract; Backend stores only the required verifier/hash where applicable.
-- Windows stores the Worker credential using the canonical DPAPI mechanism; do not print credential plaintext in logs.
-- Production fails closed on missing/invalid authorization, fingerprint mismatch, replay, revocation, invalid binding, or duplicate identity conflict.
+- Per-Worker credentials remain unique and are stored with Windows DPAPI.
+- Credential plaintext must never be logged.
+
+## Normal reboot/reconnect
+
+`load existing Worker identity + DPAPI credential -> Node Agent -> authenticate/heartbeat -> ACTIVE_IDLE`
+
+Normal reboot MUST NOT re-enroll while the credential is valid.
 
 ## Canonical runtime ownership
 
-This spec does NOT change normal task execution ownership:
+This spec does not change task execution ownership:
 
 - Node Agent remains the single resident Windows supervisor.
 - Worker Engine remains task-scoped and is launched only by Node Agent.
-- Existing authenticated Backend Worker gateway remains authoritative.
-- Existing PostgreSQL atomic claim, lease, generation fencing, retry/failover semantics remain unchanged.
-- Worker provisioning is not performed per Job.
-- AI/Founder/Admin are not dependencies in normal Worker runtime.
+- Authenticated Backend Worker gateway remains authoritative.
+- PostgreSQL atomic claim, lease, generation fencing, retry/failover semantics remain unchanged.
+- Provisioning is not performed per Job.
+- AI/Founder/Admin are not normal Worker runtime dependencies.
 
 ## Recovery path
 
-Recovery/re-enrollment is exceptional, not a normal reboot path.
+Recovery/re-enrollment is exceptional.
 
-Allowed triggers include:
+Allowed triggers include credential loss/corruption, explicit revocation, authorized reprovisioning/hardware replacement, per-machine persistent-state loss, or security incident recovery.
 
-- Worker credential missing/corrupt;
-- explicit credential revocation;
-- authorized reprovisioning/hardware replacement;
-- per-machine persistent state lost by BootROM/image reset;
-- security incident requiring identity recovery.
+Recovery remains Backend-authorized and auditable. It must not silently fall back to MachineGuid as Worker ID or manual SQL/row creation.
 
-Recovery must remain Backend-authorized and auditable. It must not silently fall back to MachineGuid as the canonical Worker ID and must not use recovery SQL/manual row creation as the normal provisioning path.
-
-A legitimate hardware metadata change must not automatically create a second Worker ID. Recovery logic must reconcile evidence against the existing canonical identity or require an explicit authorized replacement path.
+Human approval may be required only when recovery changes trust/ownership or is security-sensitive; ordinary credential/token rotation for an approved site should remain automated where policy permits.
 
 ## Non-goals
 
 This specification does not authorize:
 
-- creating a second independent `PCID` namespace;
-- assigning sequential PC numbers as canonical identity;
-- changing Customer workflow;
-- changing payment/pricing/storage ordering;
-- changing Scheduler ownership, task claim, lease, or generation fencing;
-- adding Redis, NATS, Kafka, RabbitMQ, or another broker/control-plane service;
-- creating a new Vercel/Render/Supabase/B2 project/resource;
-- making Worker Engine an always-running second service;
-- cloning one Worker credential into a Golden Image;
-- using hostname/GPU/MachineGuid/fingerprint directly as Worker ID.
+- a second PCID namespace;
+- sequential PC numbers as canonical identity;
+- per-PC Founder/Admin approval;
+- per-batch Founder/Admin approval for an already-approved site/fleet;
+- manual per-machine ticket copying;
+- a shared Worker credential in a Golden Image;
+- site-controller secret in a shared Golden Image;
+- changing Customer workflow, payment/pricing/storage order;
+- changing Scheduler ownership or claim/lease/generation fencing;
+- adding Redis/NATS/Kafka/RabbitMQ/new control-plane infrastructure;
+- creating duplicate Vercel/Render/Supabase/B2 resources.
 
-## Smallest implementation slice approved now
+## Current implementation reconciliation required
 
-1. Ground current enrollment controller/service, ticket schema/RPC, Worker identity bootstrap scripts, DPAPI store, production Node Agent, and current `workers.worker_id` constraints/validators.
-2. Remove/supersede any active implementation path that requires a separate PCID or client/operator-generated Worker ID.
-3. Add the smallest authenticated Backend site/fleet provisioning authorization boundary using existing infrastructure.
-4. Add server-side transactional CSPRNG Worker ID allocation using 128-bit random IDs, canonical `cwsw_<32 hex>` representation unless current validated external constraints require a compatibility normalization.
-5. Enforce/verify database uniqueness and bounded collision retry without overwriting another Worker.
-6. Bind automatically issued bootstrap material to site/fleet + generated Worker ID + normalized fingerprint hash.
-7. Update first-enrollment Worker bootstrap to request authorization, redeem once, persist the single canonical identity + DPAPI credential, then start Node Agent.
-8. Remove MachineGuid-as-Worker-ID fallback from the canonical automatic path; keep MachineGuid only as bounded fingerprint/recovery evidence if justified.
-9. Add targeted security/concurrency/replay/collision tests.
-10. Run exactly ONE physical Worker through provisioning -> authenticated heartbeat -> ACTIVE_IDLE and STOP. Do not scale yet.
+PR #37 established the first automatic provisioning implementation and production migrations 030/031/032. The production Backend now exposes automatic provisioning routes.
 
-## Required verification before claiming production readiness
+However, the current implementation still uses an Admin AAL2 `POST /worker/enrollment/site-bootstrap` issuance step as the immediate way to create a site bootstrap capability. Under the latest Founder decision:
 
-### Backend/code
+- this privileged call is valid for **first site onboarding / explicit trust reset**;
+- it is **not valid as a mandatory action before every new batch** at an already-approved site;
+- approved-site trust must persist independently of short-lived provisioning tokens;
+- an approved site controller/Backend path must autonomously renew/exchange bounded provisioning capability within approved policy.
 
-- canonical `PCID = Worker ID`; no second active PCID namespace;
-- 128-bit CSPRNG ID generation;
-- canonical format validation;
-- database uniqueness constraint verified;
-- simulated/forced collision path rejects and safely retries without overwrite;
-- unique Worker ID generation under concurrent/retried requests;
-- same machine retry does not create a second active Worker identity;
-- site/fleet scope isolation;
-- quota/expiry/revocation enforcement;
-- idempotent provisioning retry;
-- replay rejection after redemption;
-- fingerprint mismatch rejection;
-- duplicate-machine/duplicate-active-identity prevention;
-- no service-role or broad storage secret exposure.
+Therefore the next implementation slice is to remove the batch-level Founder/Admin dependency while preserving all security boundaries.
 
-### Worker
+## Smallest next implementation slice
 
-- first bootstrap requires valid bounded authorization;
-- no operator-entered Worker ID/PCID;
-- no separate PCID provisioning step;
-- no MachineGuid identity fallback in canonical path;
-- DPAPI persistence works under the intended Node Agent Windows identity;
-- credential plaintext is not logged;
-- Node Agent reaches authenticated heartbeat after successful provisioning;
-- reboot/reconnect reuses existing identity without enrollment;
-- revoked/missing/corrupt credential enters bounded recovery, not silent fallback.
+1. Ground current `site-bootstrap`/`provision` controller/service, migrations 030–032, fleet/site schema, staff authorization, Worker bootstrap scripts, and production deployment.
+2. Determine how current CWS stores the durable fact that a site/fleet is approved and who/what owns its site-controller identity.
+3. Add the smallest durable **approved-site provisioning trust** representation using existing Backend/Postgres infrastructure only.
+4. Keep Admin AAL2 site onboarding only for first onboarding, explicit suspension/revocation reversal, root trust reset, ownership change, or similarly exceptional operations.
+5. Add an authenticated site-controller path that can automatically obtain/rotate short-lived provisioning capability while site status remains approved and policy/quota allows it.
+6. Do not put the site-controller secret in the Golden Image; keep it in the approved site/controller secure boundary.
+7. Keep per-PC Worker ID generation, fingerprint binding, ticket creation/redeem, DPAPI, and Node Agent flow automatic.
+8. Add tests proving a second and later batch at an approved site requires **zero Founder/Admin call**.
+9. Add tests proving revoked/suspended site, wrong site controller, exceeded policy/quota, or cross-site use fails closed.
+10. Run exactly ONE physical Worker through the autonomous approved-site path -> heartbeat -> ACTIVE_IDLE and STOP.
 
-### Scale/security
+## Required verification
 
-- 1, 100, 1,000, 10,000 and 1,000,000 logical Worker identities use the same generation/uniqueness contract without per-machine Founder ID entry;
-- bulk/random-ID tests demonstrate no accepted duplicate IDs and database collision guard is exercised;
-- revoking one Worker does not invalidate unrelated Workers;
-- compromising one Worker does not expose site-controller authority;
-- compromising one site-controller capability does not grant another site's authority or broad runtime/payment/storage privileges.
+### Approved-site autonomy
+
+- first site onboarding can remain privileged and audited;
+- once approved, batch 1, batch 2, batch N provisioning does not require Founder/Admin login/action;
+- short-lived token expiry causes automatic renewal/exchange, not human re-approval;
+- site revocation/suspension immediately blocks new provisioning;
+- cross-site controller use fails;
+- quota/capacity/rate policy is enforced server-side;
+- normal site-controller renewal does not escalate scope.
+
+### Worker identity/security
+
+- canonical `PCID = Worker ID`;
+- 128-bit CSPRNG generation;
+- DB uniqueness + bounded collision retry;
+- same-machine retry idempotency;
+- fingerprint mismatch/replay rejected;
+- no manual Worker ID/ticket;
+- no broad secret exposure;
+- DPAPI persistence works;
+- Node Agent reaches authenticated heartbeat and ACTIVE_IDLE.
+
+### Scale rule
+
+The same operating model must remain viable at 1, 100, 1,000, 10,000, and 1,000,000 Workers without a Founder/Admin action per PC **or per batch** at an already-approved site.
 
 ## Current 1-Worker production gate
 
-The physical test PC currently lacks canonical identity/credential state. The next runtime objective is therefore:
+The next runtime objective is:
 
-`automatic first provisioning -> Backend-generated canonical PCID/Worker ID -> DPAPI credential -> CWSNodeAgentProduction -> authenticated heartbeat -> ACTIVE_IDLE -> STOP`
+`approved-site autonomous authorization -> automatic first PC provisioning -> Backend-generated PCID/Worker ID -> DPAPI credential -> CWSNodeAgentProduction -> authenticated heartbeat -> ACTIVE_IDLE -> STOP`
 
 Do not start a second Worker until this gate passes and Founder explicitly allows scale-out.
 
 ## Evidence language
 
-Implementation/tests alone may reach `CODE VERIFIED` or `INTEGRATION VERIFIED` only.
+Implementation/tests alone are `CODE VERIFIED`/`INTEGRATION VERIFIED` only.
 
-Production provisioning is not `PRODUCTION RUNTIME VERIFIED` until a real authorized physical Worker executes the canonical first-enrollment flow and subsequent reboot/reconnect successfully with current production Backend/database evidence.
+Production provisioning is not `PRODUCTION RUNTIME VERIFIED` until a real physical Worker executes the canonical autonomous approved-site flow and reaches authenticated production heartbeat/ACTIVE_IDLE.
 
-Golden Customer E2E remains a separate verification gate.
+Golden Customer E2E remains a separate gate.
