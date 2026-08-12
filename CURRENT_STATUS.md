@@ -51,6 +51,13 @@ Reason: the real physical 1-Worker pilot found no canonical Worker identity or D
 - Canonical Node Agent service path exists; the physical test showed the service stopped because enrollment/credential readiness failed closed.
 - Golden Production E2E: still **NOT PROVEN**.
 
+## Spec 009 Implementation Status — 2026-08-12
+- Automatic provisioning slice implemented locally: site-scoped bootstrap capability, Backend-generated `cwsw_<32 lowercase hex>` Worker ID, additive fingerprint binding, bounded collision retry, and fingerprint-bound enrollment.
+- Worker bootstrap now requests provisioning without an operator-entered Worker ID, persists the returned per-Worker credential through the existing DPAPI store, and retains Node Agent as the runtime supervisor.
+- Backend build and full Jest suite passed: 38 suites / 209 tests (`CODE VERIFIED`).
+- Production schema migration `030_automatic_worker_provisioning.sql` is additive and has **not** been applied from this workspace.
+- Windows/Python tests and the real physical `CWSNodeAgentProduction -> authenticated heartbeat -> ACTIVE_IDLE` trace remain **NOT VERIFIED**.
+
 ## Current Runtime Blocker
 The physical test PC reported missing canonical identity/credential state. Do not bypass this with manual Worker ID, manual per-machine ticket, manual SQL identity fabrication, or MachineGuid-derived identity.
 

@@ -1,4 +1,4 @@
-"""Recovery-only offline provisioning helper for one CWS Worker identity.
+"""Small local helpers for the automatic CWS Worker provisioning path.
 
 Default behavior writes the token into a Windows DPAPI store and writes only
 the SHA-256 hash as SQL. It never prints the plaintext token. Run this on the
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import re
 import secrets
 import sys
 from datetime import datetime, timedelta, timezone
@@ -26,24 +25,12 @@ if str(_SCRIPT_DIR) not in sys.path:
 from windows_credential_store import WindowsProtectedCredentialStore
 
 
-_SAFE_WORKER_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
-
-
 def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
 def credential_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def stable_worker_id(machine_guid: str) -> str:
-    """Derive a stable, non-secret ID from a provisioned Windows host."""
-    normalized = machine_guid.strip().lower()
-    if not normalized:
-        raise ValueError("Windows MachineGuid is empty")
-    digest = hashlib.sha256(f"cws-worker-v1:{normalized}".encode("utf-8")).hexdigest()
-    return f"CWS-{digest[:16].upper()}"
 
 
 def windows_machine_guid() -> str:
@@ -94,7 +81,7 @@ def sql_for_identity(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Provision one CWS Worker credential")
-    parser.add_argument("worker_id", nargs="?", help="omit to derive a stable ID from Windows MachineGuid")
+    parser.add_argument("worker_id", nargs="?", help=argparse.SUPPRESS)
     parser.add_argument("--store", type=Path, required=True, help="DPAPI credential file path")
     parser.add_argument("--sql-out", type=Path, required=True, help="hash-only SQL output path")
     parser.add_argument("--expires-days", type=int, default=90)
@@ -104,9 +91,9 @@ def main() -> int:
     args = parser.parse_args()
     if not 1 <= args.expires_days <= 365:
         parser.error("--expires-days must be between 1 and 365")
-    worker_id = args.worker_id or stable_worker_id(windows_machine_guid())
-    if not _SAFE_WORKER_ID.fullmatch(worker_id):
-        parser.error("worker_id contains unsupported characters or exceeds 128 characters")
+    if args.worker_id:
+        parser.error("operator-entered Worker IDs are not supported; use automatic Backend provisioning")
+    raise RuntimeError("offline/manual identity provisioning is recovery-only; use automatic Backend provisioning")
     if args.fleet_id < 1:
         parser.error("--fleet-id must be positive")
     if args.vram_mb < 0:
