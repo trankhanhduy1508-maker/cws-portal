@@ -1,148 +1,233 @@
 # Spec 008 — Standard Customer Workflow
 
+> Status: FOUNDER APPROVED — ACTIVE
+> Updated: 2026-08-12
+
 ## Goal
-Make the Customer Portal follow one unambiguous production workflow beginning with customer Google authentication and ending with authorized result download. Admin/Host remains a core CWS component, but further Admin refinement is sequenced after the current Customer workflow bottleneck.
 
-## Founder decision
-Updated 2026-08-11:
+Make the Customer Portal follow one deterministic production workflow from Google authentication to authorized result download, with zero Founder/Admin approval in normal runtime and a mandatory input-security gate before Job creation.
 
-1. Customer does **not** choose a render speed/tier, Worker count, GPU or CPU.
-2. The former customer render-tier feature is removed from active UI, API, domain and persistence contracts; it must not be recreated as compatibility behavior.
-3. After validated input, customer presses **Start render** and CWS automatically plans capacity.
-4. CWS targets complete final output within an internal mandatory **45-minute scheduling budget**, including render plus required collection/validation and animation assembly/encode.
-5. Scheduler does not wait for a dedicated benchmark-only phase. It starts useful production work immediately with an initial target of **10 eligible Workers** when capacity permits.
-6. Completed real Tasks/frames provide runtime evidence for the same Job.
-7. If projected final completion threatens the 45-minute target, CWS scales the Job upward subject to eligible fleet capacity.
-8. Capacity calculation adds a configurable safety margin initially in the **20–30%** range and rounds required Worker count **up** to a whole integer.
-9. One Task/frame has one active authoritative owner at a time. Concurrent duplicate rendering of the same frame is forbidden in the normal path; failover remains controlled by lease/generation fencing.
-10. Current MVP parallelism is across independent frames/tasks. Distributed tile/sample rendering of one single slow frame is a future decision, not part of this spec.
+## Founder Decision — 2026-08-12
 
-Admin remains important and will continue to be developed. For the current implementation cycle, prioritize the Customer MVP and adaptive scheduling path; resume non-blocking Admin refinement after the Customer workflow reaches its next production gate.
+The previous active rule:
 
-## Reality / current mismatch
-The public customer-choice gate was removed from canonical `main` after PR #31. This spec now requires removal of the remaining legacy runtime/API/persistence artifacts rather than retaining hidden identifiers.
+`INPUT_READY -> customer presses Start render -> create Job`
 
-The remaining scheduling mismatch is the adaptive Task Graph / Deadline Scheduler path:
+is superseded.
 
-1. Job creation still seeds a single first task through the existing Worker Fleet path.
-2. `SchedulerService` still waits for that task to finish before expanding remaining frames in fixed chunks, which conflicts with the approved work-conserving direction.
-3. The scheduler does not yet establish an initial desired parallel capacity of 10 eligible Workers for the same Job.
-4. Real completed Tasks/frames are not yet used as runtime evidence for deadline projection.
-5. The scheduler does not yet compute projected final completion against the 45-minute target with reserved finalization overhead and configurable safety capacity.
-6. Existing durable PostgreSQL Task ownership, atomic claim, lease, generation fencing, retry/failover, and Worker security boundaries are already valuable and must be preserved rather than replaced.
-7. Finalization/assembly/encode time is not yet explicitly budgeted as part of the 45-minute completion target.
+Canonical New Render initiation is now:
 
-Do not recreate a customer render-choice gate while working on Scheduler convergence.
+`Google Login -> authenticated input submission -> quarantine/materialize -> security + structural validation -> INPUT_SAFE -> automatically create exactly one customer-owned Job`
 
-## Canonical customer journey
-`Google Login -> Submit input -> materialize/validate -> Start render -> create one Job -> analyze frame/work range -> create durable non-overlapping Tasks -> initial desired capacity -> real distinct task claims/render -> observe real task/frame runtimes -> adapt desired Worker count if final-output target is at risk -> collect/validate -> animation assembly/encode when required -> B2 locked output -> 3–5 watermarked previews -> final price + payment reference + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
+Submitting a supported file/Drive input while authenticated is the customer's render intent. There is no mandatory second `Start render` confirmation and no Founder/Admin approval between safe input acceptance and Job creation.
+
+Customer still does not choose render tier, Worker count, GPU or CPU.
+
+## Canonical Customer Journey
+
+`Google Login -> Upload .blend/.zip/.rar OR approved Google Drive -> B2 quarantine/untrusted materialization -> ownership/provider/SSRF/size/signature checks -> anti-malware scan -> archive/Blender structural safety -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze work -> durable non-overlapping Tasks -> adaptive scheduling -> real Worker render -> collect/finalize -> B2 locked output -> watermarked previews -> final price + MB QR -> SePay exact verification -> PAID -> authorized download -> History`
 
 ## Scope
-- Customer Portal is the current implementation focus.
-- Keep Google login as the first operational gate.
-- Keep Upload/Drive authenticated-only.
-- Keep canonical materialized/validated customer-owned input mandatory before Job creation.
-- No customer render speed/tier selection or associated tier identifier is part of the active product contract.
-- Customer presses one Start render action after input readiness.
-- Create exactly one customer-owned Job after Start render.
-- Analyze project/frame range and generate durable non-overlapping Tasks.
-- Preserve PostgreSQL atomic claim + lease + generation fencing.
-- Target initial desired capacity of 10 eligible Workers when runnable Tasks exist and fleet capacity permits.
-- Start useful production work immediately; do not wait for a dedicated benchmark-only Worker.
-- Record observed runtime from completed real Tasks/frames.
-- Project final completion time from observed runtime, remaining work and finalization reserve.
-- Increase desired Worker count when the 45-minute target is threatened.
-- Apply configurable 20–30% safety capacity and round required Worker count up to an integer.
-- Prevent concurrent duplicate active Task/frame ownership.
-- Include collection/validation and animation assembly/encode in the deadline budget.
-- Preserve output-before-payment order: render/finalize -> validate -> B2 full output locked -> previews -> final price/QR -> SePay -> download.
-- Keep History/reattach behavior tied to the same real Job ID.
-- Add regression/E2E coverage for screen/state and scheduling order.
-- Update source-of-truth docs and engineering learning evidence.
 
-## Non-goals for this implementation cycle
-- Do not redesign Admin/Host in this change; this is sequencing, not abandonment.
-- Do not delete, weaken, or de-scope existing Admin/Host architecture or security requirements.
-- Do not create new Vercel/Render/Supabase/B2 resources.
-- Do not change payment method away from MB Bank QR + SePay.
-- Do not invent a new pricing base rate.
-- Do not add unapproved ingestion sources.
-- Do not add customer GPU/CPU/Worker-count selection.
-- Do not add a new Redis/broker/queue service without measured evidence.
-- Do not replace PostgreSQL task ownership/lease/generation fencing.
-- Do not implement distributed single-frame tile/sample rendering in this spec.
-- Do not use speculative duplicate frame rendering in the normal path.
+This spec requires:
 
-## Scheduling invariants
+- Google OAuth as the first operational Customer gate;
+- Upload/Drive available only to an authenticated customer session;
+- canonical materialization before Worker processing;
+- quarantine/untrusted state before security verdict;
+- authoritative server-side `INPUT_SAFE` before Job creation;
+- anti-malware scanning as an additional file-security layer;
+- structural validation independent of malware verdict;
+- automatic idempotent exactly-one Job creation after `INPUT_SAFE`;
+- zero Founder/Admin approval in the normal Customer flow;
+- no mandatory post-validation `Start render` button;
+- Customer cannot choose tier/Worker count/GPU/CPU;
+- PostgreSQL task claim/lease/generation fencing remains authoritative;
+- output-before-payment and exact SePay verification remain unchanged.
 
-### Metadata discovery / first useful task
-- Frame metadata discovery is a bounded preflight on the **first real render Task**, not a separate benchmark-only render phase and not a second customer-visible Job.
-- The first Worker may open the project, read authoritative `frame_start`, `frame_end`, `total_frames` and `fps`, report that metadata through the existing authenticated Backend/Worker security boundary, and then continue useful rendering for its already-owned Task.
-- The Scheduler must not wait for that first Task to finish rendering. As soon as authoritative metadata is durably recorded, it may create the remaining disjoint render Task graph.
-- Metadata reporting must be fenced to the Worker/task/generation that currently owns the first Task; stale or unrelated Workers must not be able to set Job metadata.
-- Do not add a separate benchmark Worker, new queue/broker, or Backend Blender runtime merely to discover frame metadata.
-- The durable Job metadata must represent the actual frame interval, not only an assumed `1..N`; projects whose `frame_start` is not 1 must partition correctly.
+## Non-goals
 
-### Task ownership
-- Each render Task/frame has one active authoritative owner at a time.
-- Claim must remain atomic.
-- Lease/generation fencing remains authoritative for failover/retry.
-- Reassignment after failure/expiry must not allow an old Worker to commit stale completion.
-- Different Task IDs must not cover overlapping frame intervals for the same Job.
-- For a Job frame interval `[S,E]`, the union of render Task ranges must equal exactly `[S,E]` with no gaps and no overlap.
-- Task graph creation/expansion must have one authoritative writer/transactional path and be idempotent under Scheduler retries.
+This spec does not authorize:
 
-### Initial wave
-- Desired initial parallelism is 10 eligible Workers when there are enough runnable Tasks and fleet capacity exists.
-- If fewer than 10 eligible Workers exist, use available capacity and keep the Job observable as capacity-constrained; do not fabricate capacity.
+- removing Google login;
+- creating Jobs before `INPUT_SAFE`;
+- trusting a frontend-provided CLEAN/SAFE flag;
+- sending private customer files to public malware scanning services without separate Founder approval;
+- replacing signature/archive/Blender safety with antivirus alone;
+- creating a new B2 bucket, Render service, Supabase project or other infrastructure without approval;
+- changing Scheduler ownership/fencing;
+- changing payment method/order;
+- changing Worker provisioning architecture;
+- changing Admin security requirements for privileged Admin actions.
 
-### Runtime feedback
-- Useful production Tasks provide benchmark evidence.
-- Maintain enough observations to estimate current seconds/frame or task-runtime distribution without blocking the Job.
-- Do not infer performance solely from GPU model/name when real runtime evidence exists.
-- Existing telemetry/schema is not completion evidence by itself; adaptive scheduling must consume timestamps/events that the canonical production Worker path actually writes.
+## Input Trust Model
 
-### Deadline planning
-- Internal target: final validated deliverable within 45 minutes from render start.
-- Projection must include remaining render work plus reserved finalization overhead.
-- If projected completion exceeds target, increase desired capacity as eligible Workers are available.
-- Safety margin is configurable, initially 20–30%.
-- Required Worker count is an integer and rounds upward.
-- Do not expose the scheduling formula as a Customer choice.
+All Customer inputs are hostile until validated.
 
-## Security / data invariants
-- Customer identity and input ownership are server-side enforced.
-- File extension alone is not trusted.
-- Drive URL is an ingestion source, not a durable Worker dependency.
-- Original customer input stays immutable.
-- Untrusted Blender Python autoexec stays disabled.
-- Full result remains locked until server-side `PAID`.
-- Frontend local state never authorizes payment/download.
-- Worker task ownership remains fenced through authenticated Backend/Postgres contracts.
-- Frontend never calls Worker/Scheduler directly.
+States should converge on an equivalent of:
 
-## Definition of Done
-A real production customer can complete, in order:
+`UPLOADING/RESOLVING -> MATERIALIZED_QUARANTINED -> SECURITY_SCANNING -> INPUT_SAFE | INPUT_REJECTED`
 
-1. Google login.
-2. Authenticated Upload/Drive input.
-3. Real canonical materialization/validation.
-4. Start render with no customer render speed/tier selection.
-5. Exactly one Job creation after input readiness.
-6. Real project/frame-work analysis reports authoritative frame range/fps without waiting for a benchmark render to finish.
-7. Durable non-overlapping Task generation covers the exact authoritative frame interval.
-8. Initial real Worker wave begins useful work immediately after metadata makes runnable Tasks available, targeting 10 eligible Workers when capacity permits.
-9. No two active Workers render the same Task/frame concurrently.
-10. Real completed Tasks/frames produce runtime observations.
-11. Scheduler projects final completion and can increase desired Worker capacity when the 45-minute target is threatened.
-12. Safety capacity is applied and Worker target rounds upward to an integer.
-13. Real Worker/Blender execution reports real progress.
-14. Required collection/validation and animation assembly/encode finish before final-output completion is claimed.
-15. B2 full output is locked before payment.
-16. Real 3–5 watermarked previews are produced.
-17. Final price + exact payment content + MB QR are produced.
-18. Exact/idempotent SePay verification produces PAID.
-19. Authorized download is issued.
-20. Same Job is visible in History.
+A quarantined/rejected object must not receive Worker access or trigger Job creation.
 
-No mock/demo substitute counts as production evidence.
+## Required Security Layers
+
+### Authentication and ownership
+
+- Customer must have a valid Google/Supabase session.
+- Backend binds canonical input ownership to that authenticated customer.
+- Customer A cannot use Customer B's input.
+
+### Google Drive / outbound request safety
+
+- accept approved Google Drive semantics only;
+- validate file/folder identifiers and shareability as required;
+- enforce approved download hosts/redirects;
+- use bounded redirects/timeouts/size;
+- prevent arbitrary user-controlled SSRF destinations;
+- materialize into canonical B2 before Worker processing.
+
+### File validation
+
+- extension allowlist: `.blend`, `.zip`, `.rar`;
+- validate actual signature/content, not extension alone;
+- enforce configured upload/download/resource limits;
+- reject malformed/unsupported input.
+
+### Anti-malware
+
+CWS must add an approved deterministic malware-scanning layer before `INPUT_SAFE`.
+
+Canonical direction is a local/self-hosted scanner compatible with existing approved infrastructure, with ClamAV as the first implementation candidate to evaluate.
+
+Verdict contract:
+
+- `CLEAN` -> continue remaining structural checks;
+- `INFECTED` -> `INPUT_REJECTED`, no Job;
+- scanner unavailable/error/timeout/unknown -> fail closed, no Job.
+
+A CLEAN malware verdict does not imply archive or Blender semantic safety.
+
+Do not upload customer project content to public VirusTotal-style services without a separate Founder decision.
+
+### ZIP/RAR
+
+Archives require bounded structural handling including as applicable:
+
+- path traversal prevention;
+- absolute/device path rejection;
+- sandbox escape prevention;
+- symlink/special-file policy;
+- bounded file count;
+- bounded nesting;
+- bounded extracted size/compression ratio;
+- decompression-bomb protection;
+- time/resource limits;
+- deterministic `.blend` selection;
+- no execution during validation.
+
+### Blender
+
+- customer original remains immutable;
+- untrusted Python autoexec remains disabled;
+- validation must not execute embedded customer scripts;
+- use working copy for safe preparation/optimization;
+- semantic/visual changes require deterministic safety; otherwise fall back to unoptimized working copy.
+
+## Automatic Job Creation Contract
+
+Only authoritative `INPUT_SAFE` may trigger Job creation.
+
+Requirements:
+
+- server-side trigger/path;
+- customer ownership revalidated;
+- exactly one Job for one accepted New Render submission intent;
+- idempotent under retries, refreshes, reconnects and duplicated completion callbacks;
+- quarantined/rejected/unknown input cannot create a Job;
+- frontend cannot forge `INPUT_SAFE`;
+- no Founder/Admin approval;
+- no mandatory customer `Start render` action after validation.
+
+The UI should transition automatically from file checking/security scanning into Job preparation/progress.
+
+## Scheduler / Task Invariants
+
+After automatic Job creation:
+
+- determine authoritative frame/work range;
+- create durable non-overlapping Tasks covering exactly the real interval;
+- preserve atomic claim + lease + generation fencing;
+- one Task/frame has one active authoritative Worker;
+- start useful production work without a blocking benchmark-only phase;
+- initial desired capacity remains 10 eligible Workers when real capacity permits;
+- completed real Tasks/frames supply runtime evidence;
+- project final completion against internal <=45-minute final-output target;
+- increase desired capacity if at risk;
+- use configurable 20–30% safety margin and integer round-up;
+- include required collection/validation/assembly/encode in deadline planning.
+
+## Output / Payment Invariants
+
+Canonical order remains:
+
+`real render/finalize -> validate -> full B2 output LOCKED -> 3–5 real watermarked previews -> final price using approved 2.5x multiplier -> unique payment reference/content + MB QR -> SePay exact/idempotent verification -> PAID -> narrow authorized download`
+
+There is no customer preview-approval gate before payment.
+
+## Required Verification
+
+### Input security
+
+Test at minimum:
+
+- unauthenticated input cannot progress;
+- valid direct `.blend` clean path;
+- valid ZIP clean path;
+- valid RAR clean path;
+- valid Google Drive clean path;
+- signature mismatch -> no Job;
+- unsupported/oversized input -> no Job;
+- malware INFECTED -> no Job;
+- malware scanner error/timeout/unavailable -> no Job;
+- fake frontend CLEAN/INPUT_SAFE -> rejected;
+- ZIP/RAR traversal -> no Job;
+- archive bomb/resource limit -> no Job;
+- unsafe Drive redirect -> rejected;
+- untrusted Blender autoexec remains disabled.
+
+### Job idempotency / ownership
+
+Test:
+
+- one `INPUT_SAFE` acceptance -> exactly one Job;
+- repeated safe-completion callback -> same one Job;
+- customer refresh/retry -> no duplicate Job;
+- Customer A cannot create a Job from Customer B input;
+- rejected/quarantined input never creates Job.
+
+### Production evidence
+
+Do not claim Golden E2E from unit tests alone.
+
+Production verification eventually requires a real customer to complete:
+
+1. Google login;
+2. real upload/Drive submission;
+3. quarantine/materialization;
+4. real security + malware verdict;
+5. `INPUT_SAFE`;
+6. automatic exactly-one Job creation without Founder/Admin or Start Render click;
+7. real Task/Worker render;
+8. final output lock/previews/price/QR;
+9. real SePay verification;
+10. authorized download and History.
+
+## Evidence Language
+
+- docs/spec only = DECISION/SPEC SYNCED;
+- implementation + tests = CODE VERIFIED;
+- scanner + ingestion + Job integration in deployed environment = INTEGRATION VERIFIED;
+- real production Customer flow through download = GOLDEN PRODUCTION E2E VERIFIED.
+
+Do not promote evidence beyond what was actually observed.
