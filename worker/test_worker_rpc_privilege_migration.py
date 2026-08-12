@@ -13,6 +13,7 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
                 "024_worker_input_capability_claim.sql",
                 "025_internal_rpc_gateway_hardening.sql",
                 "027_worker_resilience_policy.sql",
+                "028_report_job_metadata_rpc.sql",
             )
         )
 
@@ -34,6 +35,7 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
             "handle_new_auth_user()",
             "report_worker_failure(bigint,integer,text,text,text)",
             "report_worker_probe(text,text,text)",
+            "report_job_metadata(bigint,integer,text,integer,integer,integer,numeric)",
         }
         compact_sql = re.sub(r"\s+", "", sql)
         for signature in required:
@@ -48,6 +50,34 @@ class WorkerRpcPrivilegeMigrationTests(unittest.TestCase):
         self.assertNotIn(
             "grant execute on function public.%s to authenticated", sql.lower()
         )
+
+
+    def test_metadata_contract_reconciles_seed_and_handles_legacy_rows(self) -> None:
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "worker_migrations"
+            / "028_report_job_metadata_rpc.sql"
+        ).read_text(encoding="utf-8").lower()
+
+        for fragment in (
+            "t.worker_id = p_worker_id",
+            "t.generation = p_generation",
+            "t.status = 'active'",
+            "v_bootstrap",
+            "v_task_start = 1",
+            "v_task_end = 1",
+            "v_task_count = 1",
+            "set frame_start = p_frame_start",
+            "set frame_end = p_frame_start",
+            "v_job_total is not null and v_job_total <> p_total_frames",
+            "(v_job_start is null) <> (v_job_end is null)",
+            "v_job_fps = p_fps",
+            "jobs_frame_metadata_consistency_check",
+        ):
+            self.assertIn(fragment, migration)
+
+        self.assertIn("and t.status = 'active'", migration)
+        self.assertIn("for update", migration)
 
 
 if __name__ == "__main__":
