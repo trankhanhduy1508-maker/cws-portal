@@ -4,104 +4,121 @@
 Customer MVP workflow convergence before Golden Production E2E.
 
 ## Founder Priority — 2026-08-12
-Customer remains the highest-priority product path, but the immediate runtime bottleneck is **automatic first provisioning of exactly one physical Worker through an already-approved site/fleet without repeated Founder/Admin authorization**.
+Customer remains the highest-priority product path.
 
-Do not scale to multiple Workers until the 1-Worker provisioning/runtime gate passes.
+The immediate runtime bottleneck remains **automatic first provisioning of exactly one physical Worker through an already-approved site/fleet without repeated Founder/Admin authorization**.
 
-## Latest Founder Decision — Approved Site/Fleet Must Provision Autonomously
-For a site/fleet that has already completed its initial trust onboarding:
+Do not scale beyond one Worker until the 1-Worker provisioning/runtime gate passes.
 
-**Founder/Admin must not authorize every new PC batch.**
+## Canonical Customer Workflow — Updated 2026-08-12
 
-Canonical operating model:
+The active Customer New Render initiation flow is now:
 
-`site approved once -> durable approved-site trust -> site controller/backend automatically obtains/rotates bounded provisioning capability -> unattended PC bootstrap -> Backend-generated Worker ID -> fingerprint-bound enrollment -> DPAPI -> Node Agent -> heartbeat -> ACTIVE_IDLE`
+`Google Login -> authenticated Upload/Google Drive -> B2 quarantine/materialization -> security + structural validation -> INPUT_SAFE -> automatically create exactly one customer-owned Job -> analyze/tasks/scheduler/render`
 
-A short-lived provisioning token may expire, but token expiry must not force human re-approval of the site. Renewal/exchange is automatic while the site remains approved and within server-side policy.
+The previous active requirement:
 
-Founder/Admin interaction is reserved for exceptional trust events such as first site onboarding, explicit suspension/revocation, ownership/site transfer, root trust reset, major policy/capacity change, or security recovery requiring human judgment.
+`INPUT_READY -> customer presses Start render -> create Job`
 
-The current Admin AAL2 `POST /worker/enrollment/site-bootstrap` path may remain for those exceptional/initial trust operations. It must **not** remain the mandatory gate before every future PC batch at an approved site.
+is superseded.
 
-If current code requires a fresh Founder/Admin AAL2 call before every batch, that is the current implementation gap to remove.
+Submitting a supported input while authenticated represents Customer render intent. There is no mandatory second `Start render` confirmation and no Founder/Admin approval between safe input acceptance and Job creation.
 
-## Canonical Machine Identity
+## Input Security Gate
+
+No production Job may be created before authoritative `INPUT_SAFE`.
+
+Customer input is hostile until it passes, as applicable:
+
+- authenticated customer + server-side ownership;
+- approved source/provider semantics;
+- SSRF-aware Google Drive handling;
+- bounded redirects/timeouts/size;
+- extension + actual content/signature validation;
+- anti-malware scan;
+- ZIP/RAR traversal/bomb/resource/sandbox protections;
+- Blender safety with untrusted Python autoexec disabled.
+
+`INFECTED`, scanner unavailable/error/timeout/unknown, malformed input, unsafe archive, signature mismatch or another failed mandatory security check -> fail closed -> no Job.
+
+Canonical malware-scanning direction is a local/self-hosted implementation compatible with existing approved infrastructure; ClamAV is the first candidate to evaluate. Do not send private Customer project files to public scanning services without Founder approval.
+
+## Automatic Job Creation
+
+Only authoritative `INPUT_SAFE` may trigger Job creation.
+
+Backend must automatically create exactly one customer-owned Job for the accepted New Render submission intent, with:
+
+- server-side ownership enforcement;
+- idempotency under retries/refresh/callback duplication;
+- no duplicate Job from the same accepted submission;
+- no frontend-forged `INPUT_SAFE`;
+- no Job from quarantined/rejected input;
+- zero Founder/Admin approval.
+
+## Customer Scheduling Direction
+
+Customer render tier/speed choice remains removed.
+
+Customer does not choose Worker count, GPU or CPU.
+
+After automatic Job creation:
+
+`authoritative work analysis -> durable non-overlapping Tasks -> initial desired capacity -> real Worker runtime evidence -> adaptive scale-up if <=45-minute final-output target is at risk -> render/finalize`
+
+Post-Job Scheduler semantics remain sequenced behind the current 1-Worker production gate.
+
+## Current Worker Identity / Provisioning Rules
 
 `1 physical PC = 1 canonical PCID/Worker ID`
 
-`PCID` is an alias for the same canonical `worker_id`; no second PC-ID namespace exists.
+`PCID` is an alias of the same canonical `worker_id`; no second PC-ID namespace exists.
 
-Binding rules:
+Backend generates the ID using 128-bit CSPRNG entropy, preferably:
 
-- Backend generates 128-bit CSPRNG IDs.
-- Preferred representation: `cwsw_` + 32 lowercase hex characters.
-- Database uniqueness/primary-key enforcement is authoritative.
-- Collision retry is bounded and may never overwrite another Worker.
-- ID is not derived from hostname, GPU, MachineGuid, fingerprint, serial number, site counter, Job, customer, or sequential PC number.
-- Machine fingerprint is enrollment/recovery evidence only.
-- Normal reboot/reconnect reuses the same Worker ID + DPAPI credential.
+`cwsw_<32 lowercase hex>`
 
-## Current Active Spec
-`specs/009-automatic-worker-provisioning/`
+Database uniqueness is authoritative; collisions retry without overwrite.
 
-The spec now explicitly supersedes any design that requires Founder/Admin authorization per new batch at an already-approved site.
+Machine fingerprint is enrollment/recovery evidence only.
 
-## Verified Current State
+## Approved Site/Fleet Autonomy
 
-- Customer Login Gate: implemented/synced.
-- Customer Input Validation Gate: implemented/synced.
-- Customer render speed/tier removal: merged in PR #33.
-- Task Graph foundation: merged in PR #36.
-- Production Task Graph migration/RPC: applied and verified.
-- Automatic Worker provisioning implementation: merged in PR #37.
-- PR #37 merge commit: `0cbbd1325dd35a50e9d733212ef095dba58d3bba`.
-- Backend/Worker/Windows verification for PR #37: PASS before merge.
-- Production migrations `030_automatic_worker_provisioning`, `031_legacy_enrollment_compatibility_bridge`, and `032_harden_automatic_enrollment_null_inputs`: applied/verified.
-- Production Backend health: verified HTTP 200 after merge.
-- Production routes `/worker/enrollment/site-bootstrap` and `/worker/enrollment/provision`: present; unauthenticated requests fail closed.
-- Golden Production E2E: **NOT PROVEN**.
-- Exact physical Worker heartbeat/`ACTIVE_IDLE`: **NOT YET PROVEN**.
+A site/fleet is approved once. Durable site trust survives individual short-lived provisioning-token expiry.
 
-## Current Runtime Blocker
-The code currently exposes an Admin AAL2 path for creating a site bootstrap capability. That is acceptable for **initial site onboarding or exceptional trust reset**, but the latest Founder decision forbids using it as a repeated batch-level gate for an already-approved site/fleet.
+Canonical direction:
 
-Therefore the immediate blocker is no longer “Founder must log in and issue another bootstrap capability.”
+`site approved once -> durable site trust -> autonomous site-controller capability renewal -> unattended PC provisioning -> Backend-generated Worker ID -> per-Worker credential -> DPAPI -> Node Agent -> heartbeat -> ACTIVE_IDLE`
 
-The blocker is:
+Founder/Admin must not authorize every normal PC or every new batch at an already-approved site.
 
-**reconcile approved-site trust so normal batch provisioning can autonomously obtain/rotate bounded provisioning capability without Founder/Admin interaction.**
+## Verified Recent Worker State
 
-Do not bypass this with manual Worker ID, per-machine ticket, manual SQL identity creation, MachineGuid identity, shared fleet Worker credential, or service-role secret on the Worker/site controller.
+- PR #37 automatic one-Worker provisioning was merged into `main`.
+- Production Backend exposes the new worker provisioning routes and rejects unauthenticated access as expected.
+- Production DB contains the Spec 009 rollout migrations 030/031/032.
+- Code/test evidence for provisioning, fingerprint binding, DPAPI and collision/idempotency exists.
+- Exact physical 1-Worker `authenticated heartbeat -> ACTIVE_IDLE` remains the production runtime gate.
+- Golden Production E2E remains **NOT PROVEN**.
+
+## Current Active Specs
+
+- `specs/008-customer-standard-workflow/` — Customer workflow now includes quarantine/security scan + automatic Job creation after `INPUT_SAFE`.
+- `specs/009-automatic-worker-provisioning/` — active 1-Worker runtime provisioning blocker.
 
 ## Next Required Convergence
 
-1. Ground current site/fleet schema, staff auth, `site-bootstrap`/`provision` routes, migrations 030–032, and Worker bootstrap code.
-2. Identify the durable server-side representation of an approved site/fleet and the site-controller trust owner.
-3. Add the smallest approved-site controller/trust path using existing Backend/Postgres infrastructure only.
-4. Keep Founder/Admin AAL2 only for initial/exceptional trust operations, not every batch.
-5. Allow the approved site controller/Backend to automatically obtain/renew short-lived provisioning capability within scope/quota/rate policy.
-6. Preserve Backend-generated `PCID = Worker ID`, fingerprint binding, collision protection, DPAPI, Node Agent lifecycle, and all existing Worker security boundaries.
-7. Verify exactly one physical PC: autonomous approved-site provisioning -> Worker ID -> DPAPI -> `CWSNodeAgentProduction` -> authenticated heartbeat -> `ACTIVE_IDLE`.
-8. STOP and report evidence.
-9. Only after Founder review: run one-Worker real Job/Task/render, then 2–3 Worker concurrency, then 10-Worker/adaptive scaling.
-
-## Scale Gate
+Current sequencing:
 
 `1 Worker autonomous provisioning/runtime PASS -> Founder review -> 1 Worker real Job/Task/render PASS -> Founder review -> 2–3 Workers -> 10 Workers -> adaptive scaling`
 
-Do not jump directly to 10 Workers.
-
-## Customer Automatic Deadline Scheduling
-The customer render speed/tier feature remains removed.
-
-Customer target flow remains:
-
-`Google Login -> input -> validate/materialize -> Start render -> Job -> durable Tasks -> automatic capacity -> real runtime evidence -> adaptive scale when <=45-minute final-output target is at risk -> final output -> B2 lock -> preview/price/QR -> SePay -> PAID -> download`
-
-Multi-Worker/adaptive work remains sequenced behind the 1-Worker production gate.
+Customer input-security/automatic-Job implementation must be handled as a focused Spec 008 slice and must not weaken or bypass the 1-Worker runtime gate.
 
 ## Golden Production E2E
-Still **NOT PROVEN**. Code, CI, migration, route existence, or deployment health alone does not establish Golden E2E.
+
+Still **NOT PROVEN**.
+
+Builds, tests, merged PRs, deployed routes, migrations, scanner installation, historical Jobs or Worker heartbeat alone do not prove Golden Production E2E.
 
 ## Last Updated
-2026-08-12 — PR #37 merged and automatic provisioning migrations/routes are live. Founder then clarified that an already-approved site/fleet must not require repeated Founder/Admin authorization for each new PC batch. Spec 009 and the active bottleneck were reconciled accordingly.
+2026-08-12 — Founder superseded the post-validation `Start render` gate. Canonical Customer flow now requires quarantine + input security/malware validation, then automatic exactly-one Job creation after authoritative `INPUT_SAFE`, with zero Founder/Admin approval.
