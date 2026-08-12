@@ -64,14 +64,14 @@ begin
 
   select * into capability from public.worker_site_bootstrap_capabilities
   where token_hash = p_bootstrap_hash for update;
-  if not found or capability.revoked_at is not null or capability.expires_at <= now()
-     or capability.used_count >= capability.quota then return; end if;
+  if not found or capability.revoked_at is not null or capability.expires_at <= now() then return; end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_bootstrap_hash || ':' || p_fingerprint_hash, 0));
   select * into binding from public.worker_provisioning_bindings
   where bootstrap_hash = p_bootstrap_hash and fingerprint_hash = p_fingerprint_hash;
 
   if not found then
+    if capability.used_count >= capability.quota then return; end if;
     insert into public.workers(worker_id, fleet_id, hostname, gpu_name, vram_mb, status,
       observed_state, health_state, last_seen_at)
     values (p_worker_id, capability.fleet_id, nullif(p_hostname, ''), nullif(p_gpu_name, ''),
