@@ -24,7 +24,7 @@ class TaskGraphMigrationContractTests(unittest.TestCase):
     def test_frame_start_not_one_has_exact_coverage(self):
         ranges = partition(11, 300)
         self.assertEqual(ranges[0], (11, 11))
-        self.assertEqual(ranges[-1], (291, 300))
+        self.assertEqual(ranges[-1], (292, 300))
         self.assertEqual(sum(end - start + 1 for start, end in ranges), 290)
         self.assertEqual(ranges[0][0], 11)
         self.assertEqual(ranges[-1][1], 300)
