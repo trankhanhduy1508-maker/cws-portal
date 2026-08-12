@@ -15,9 +15,10 @@ The target mental model is not only 1 Worker or 10 Workers. For every design, as
 
 - 100 Workers
 - 1,000 Workers
+- 10,000 Workers
 - 1,000,000 Workers
 
-This does NOT mean prematurely building infrastructure sized for one million machines. It means avoiding architecture whose operating cost, manual work, secret management, provisioning steps, or control-plane complexity grows linearly with every Worker when that growth can reasonably be automated or centralized.
+This does NOT mean prematurely building infrastructure sized for one million machines. It means avoiding architecture whose operating cost, manual work, secret management, provisioning steps, identity collision risk, or control-plane complexity grows badly with every Worker when that growth can reasonably be automated or centralized.
 
 A solution is unacceptable as the long-term canonical design if adding Workers requires the Founder/operator to repeat a manual production action per machine that cannot be safely automated.
 
@@ -27,6 +28,8 @@ Examples of unacceptable fleet-wide patterns:
 - manually copying long-lived secrets onto every Worker
 - manually creating database rows for every Worker when secure enrollment can create them
 - manually choosing/typing Worker IDs for every machine
+- creating a separate PCID namespace that must be reconciled with Worker IDs
+- deriving canonical Worker IDs from hostname, MachineGuid, GPU, serial number, or sequential PC numbering
 - manually issuing/copying one enrollment ticket per normal Worker
 - manually advancing normal job states
 - requiring AI/Codex to operate the runtime
@@ -39,9 +42,9 @@ Examples of unacceptable fleet-wide patterns:
 
 The intended operator experience is:
 
-`authorize fleet/site once -> provision Worker unattended -> system generates identity -> authenticate securely -> become schedulable`
+`authorize fleet/site once -> provision Worker unattended -> Backend generates canonical identity -> authenticate securely -> become schedulable`
 
-Adding Worker N+1 should require approximately the same bounded automated setup flow regardless of whether the fleet has 10, 100, or 100,000 Workers.
+Adding Worker N+1 should require approximately the same bounded automated setup flow regardless of whether the fleet has 10, 100, 10,000, or 1,000,000 Workers.
 
 Bulk enrollment and unattended deployment must be possible without redesigning the runtime architecture.
 
@@ -109,11 +112,28 @@ Admin exists for observability, security exceptions, incident handling, configur
 
 ---
 
-# 7. AUTOMATIC WORKER IDENTITY + ZERO PER-WORKER FOUNDER APPROVAL
+# 7. AUTOMATIC WORKER IDENTITY + ONE CANONICAL PCID/WORKER ID
 
 Founder decision (2026-08-12): normal Worker provisioning must not require the Founder/Admin to choose a Worker ID, issue/copy an enrollment ticket manually for each machine, approve each machine individually, or repeat any enrollment action per job.
 
-Worker identity is system-generated. On first authorized provisioning of a physical PC, the provisioning/enrollment system must automatically create a unique stable Worker ID and obtain/store the machine-bound credential through the authenticated Backend boundary.
+Canonical machine identity rule:
+
+`1 physical PC = 1 canonical PCID/Worker ID`
+
+`PCID` and `Worker ID` are aliases of the same canonical `worker_id` value. CWS must not maintain a second independent PC-ID namespace while one physical PC maps to one Worker runtime.
+
+Worker identity is system-generated. On first authorized provisioning of a physical PC, the Backend must automatically create the unique stable canonical PCID/Worker ID and obtain/store the machine-bound credential through the authenticated Backend boundary.
+
+Canonical ID generation/uniqueness contract:
+
+- Backend generates 128 bits of cryptographically secure random entropy.
+- Preferred representation is `cwsw_` + 32 lowercase hex characters.
+- Database `PRIMARY KEY` or equivalent `UNIQUE` enforcement is mandatory.
+- Any collision is rejected and retried with a fresh random ID; never overwrite or merge another Worker.
+- At 1,000,000 independently generated 128-bit IDs, random birthday collision probability is approximately `1.5e-27` before the uniqueness guard.
+- Correctness relies on the database uniqueness constraint plus bounded retry, not probability alone.
+- Do not derive the ID from hostname, GPU, MachineGuid, fingerprint, motherboard/BIOS serial, site number, Job, customer, or sequential PC number.
+- Machine fingerprint is enrollment/recovery evidence only; it is not a second ID.
 
 The current bounded enrollment-ticket mechanism may remain as an internal security primitive, but its normal use MUST be automated by the provisioning/onboarding system. A human must not need to copy a ticket or type a Worker ID into every PC.
 
@@ -126,7 +146,8 @@ Allowed human interaction:
 
 Not allowed as the canonical normal path:
 
-- Founder chooses or types each Worker ID
+- Founder chooses or types each Worker ID/PCID
+- separate PCID creation/reconciliation
 - Founder approves each Worker
 - Admin issues one ticket manually per normal Worker
 - Founder edits Supabase rows per Worker
@@ -136,11 +157,11 @@ Not allowed as the canonical normal path:
 
 Target fleet behavior:
 
-`fleet/site authorize once -> unattended PC provisioning -> system generates unique stable Worker ID -> authorized bootstrap material is issued/redeemed automatically -> machine-bound credential stored -> Node Agent authenticates -> heartbeat -> schedulable`
+`fleet/site authorize once -> unattended PC provisioning -> Backend generates canonical PCID/Worker ID -> authorized bootstrap material is issued/redeemed automatically -> machine-bound credential stored -> Node Agent authenticates -> heartbeat -> schedulable`
 
-Worker identity is per physical Worker, not per Job. Adding the 101st/1,001st Worker must not create a new manual Founder approval or ticket-copy step.
+Worker identity is per physical Worker, not per Job. Adding the 101st/1,001st/10,001st Worker must not create a new manual Founder approval, PCID reconciliation, or ticket-copy step.
 
-If the current implementation still requires a manually entered Worker ID or manually issued ticket for the single-PC MVP test, that is a **provisioning implementation gap**, not the accepted target workflow.
+If the current implementation still requires a manually entered Worker ID/PCID or manually issued ticket for the single-PC MVP test, that is a **provisioning implementation gap**, not the accepted target workflow.
 
 ---
 
@@ -154,7 +175,7 @@ The Golden Image MUST NOT contain one copied Worker credential used by all machi
 
 Normal reboot behavior:
 
-`boot shared image -> load existing per-machine Worker identity/credential -> Node Agent auto-start -> heartbeat -> ACTIVE_IDLE`
+`boot shared image -> load existing canonical PCID/Worker ID + per-machine credential -> Node Agent auto-start -> heartbeat -> ACTIVE_IDLE`
 
 Normal reboot must not trigger re-enrollment. Enrollment/re-enrollment is limited to first enrollment, credential loss/corruption, reprovisioning/hardware replacement, or explicit revocation recovery.
 
@@ -193,18 +214,20 @@ Before accepting any new production architecture or provisioning design, Codex/a
 2. What manual action is required per job?
 3. What secret exists on each Worker?
 4. What happens if one Worker is compromised?
-5. Does adding the 101st or 1,001st Worker require a new manual process?
+5. Does adding the 101st, 1,001st, 10,001st or 1,000,001st Worker require a new manual process?
 6. What component becomes a bottleneck as fleet size increases?
 7. Can the design be automated without changing the public/runtime contract?
 8. Does the design create one infrastructure resource per Worker unnecessarily?
 9. Does the normal Customer workflow require any Admin approval?
 10. Does the normal Worker lifecycle require per-machine Founder/Admin approval?
-11. Is Worker ID system-generated rather than Founder-entered?
-12. Does normal provisioning avoid manual per-Worker ticket handling?
-13. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
-14. Is there exactly one canonical production startup owner for the Worker host?
+11. Is canonical PCID/Worker ID system-generated rather than Founder-entered?
+12. Is there exactly one machine identity namespace for the current one-PC/one-Worker model?
+13. Is the ID collision-resistant by 128-bit CSPRNG generation plus database uniqueness and bounded collision retry?
+14. Does normal provisioning avoid manual per-Worker ticket handling?
+15. Does a normal partner PC reboot reuse its existing per-machine identity without re-enrollment?
+16. Is there exactly one canonical production startup owner for the Worker host?
 
-If a design obviously creates a linear manual-operations bottleneck, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
+If a design obviously creates a linear manual-operations bottleneck, duplicate identity namespace, or collision-prone identity scheme, agents must reject or mark it temporary and propose the scalable replacement before calling the architecture complete.
 
 ---
 
@@ -216,7 +239,7 @@ Therefore:
 
 - do not build million-node infrastructure before demand exists
 - do not add brokers, microservices, or complex distributed systems without evidence
-- DO choose interfaces, credential boundaries, enrollment flow, storage authorization, and state machines that do not force a rewrite simply because the fleet grows
+- DO choose interfaces, credential boundaries, identity generation, enrollment flow, storage authorization, and state machines that do not force a rewrite simply because the fleet grows
 
 The correct target is: **minimum implementation now, scalable boundary by design.**
 
@@ -228,7 +251,11 @@ A Worker provisioning design is scale-ready only when:
 
 - no Founder-created B2 key is required per Worker
 - no Supabase service-role or account-level storage credential is placed on a Worker
-- Worker ID is generated automatically by the system and remains stable for that physical Worker
+- one physical PC has one canonical PCID/Worker ID; no second active PCID namespace exists
+- canonical Worker ID is generated automatically by Backend with 128-bit CSPRNG entropy
+- database uniqueness/primary-key enforcement prevents accepted duplicate IDs
+- bounded collision retry cannot overwrite/merge another Worker
+- Worker ID remains stable for that physical Worker across normal reboot/reconnect and Jobs
 - Worker identity enrollment is securely automatable
 - normal provisioning does not require Admin to manually issue/copy one enrollment ticket per Worker
 - no enrollment/ticket action is required per customer Job
@@ -237,7 +264,7 @@ A Worker provisioning design is scale-ready only when:
 - normal reboot reuses existing per-machine identity when persistent state is available
 - adding many Workers does not require creating duplicate Vercel/Supabase/B2/Render infrastructure
 - revoking one Worker does not require rotating credentials for the entire fleet
-- the same logical workflow can be bulk-deployed to 100+ Workers without per-machine secret hand-editing
+- the same logical workflow can be bulk-deployed to 100+ Workers without per-machine secret hand-editing or PCID reconciliation
 - normal Customer jobs require zero Admin approval
 - normal Worker enrollment/restart requires zero per-machine Founder/Admin approval
 - there is one canonical Node Agent auto-start path and Worker Engine remains task-scoped/ephemeral
