@@ -59,6 +59,10 @@ def main() -> None:
     cycles = scene.cycles if hasattr(scene, "cycles") else None
     result = {
         "schema_version": "cws.scene-analysis.v1",
+        "frame_start": int(scene.frame_start),
+        "frame_end": int(scene.frame_end),
+        "total_frames": int(scene.frame_end - scene.frame_start + 1),
+        "fps": float(scene.render.fps) / max(float(scene.render.fps_base), 1e-9),
         "blend_path": str(blend_path),
         "render_engine": scene.render.engine,
         "resolution": [scene.render.resolution_x, scene.render.resolution_y, scene.render.resolution_percentage],

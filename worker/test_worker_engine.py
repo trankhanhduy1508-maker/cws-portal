@@ -406,6 +406,58 @@ class WorkerEngineTests(unittest.TestCase):
                 ).run(spec(frame_end=1))
             self.assertNotIn(("complete", "task-1"), reporter.events)
 
+    def test_reports_metadata_before_render_and_continues(self):
+        class MetadataPreflight:
+            def inspect(self, spec, project):
+                return {"frame_start": 5, "frame_end": 6, "total_frames": 2, "fps": 30.0}
+        with tempfile.TemporaryDirectory() as tmp:
+            checkpoints, reporter, metadata = Checkpoints(), Reporter(), []
+            WorkerEngine(
+                Path(tmp), Downloader(), MetadataPreflight(), Renderer(),
+                checkpoints, BasicOutputValidator(10), reporter,
+                metadata_reporter=lambda spec, value: metadata.append(
+                    ("metadata", value, list(checkpoints.puts))
+                ),
+            ).run(spec(frame_start=5, frame_end=6))
+            self.assertEqual(metadata[0][0], "metadata")
+            self.assertEqual(metadata[0][1]["frame_start"], 5)
+            self.assertEqual(metadata[0][2], [])
+            self.assertEqual(checkpoints.puts, [5, 6])
+            self.assertIn(("complete", "task-1"), reporter.events)
+
+
+
+    def test_refreshes_reconciled_seed_spec_before_rendering(self):
+        class MetadataPreflight:
+            def inspect(self, current_spec, project):
+                return {
+                    "frame_start": 11,
+                    "frame_end": 300,
+                    "total_frames": 290,
+                    "fps": 24.0,
+                }
+
+        class RecordingRenderer(Renderer):
+            def __init__(self):
+                self.frames = []
+
+            def render(self, current_spec, project, frame, output):
+                self.frames.append(frame)
+                return super().render(current_spec, project, frame, output)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            renderer = RecordingRenderer()
+            reporter = Reporter()
+            refreshed = spec(frame_start=11, frame_end=11)
+            WorkerEngine(
+                Path(tmp), Downloader(), MetadataPreflight(), renderer,
+                Checkpoints(), BasicOutputValidator(10), reporter,
+                metadata_reporter=lambda _spec, _metadata: refreshed,
+            ).run(spec(frame_start=1, frame_end=1))
+
+            self.assertEqual(renderer.frames, [11])
+            self.assertIn(("complete", "task-1"), reporter.events)
+
 
 if __name__ == "__main__":
     unittest.main()
