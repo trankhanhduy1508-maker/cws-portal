@@ -1,61 +1,36 @@
 .upload-zone {
   position: relative;
   overflow: hidden;
-  border: 1.5px dashed #D4D4D8;
-  border-radius: 24px;
-  padding: 56px 24px;
+  border: 1px dashed #394352;
+  border-radius: 10px;
+  padding: 48px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  background: rgba(255,255,255,0.035);
+  background: #0d1015;
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.upload-zone:hover {
-  border-color: #3B5BFF;
-  background: rgba(93,127,255,0.14);
-}
-
+.upload-zone:hover,
 .upload-zone.is-dragging {
-  border-color: #3B5BFF;
-  background: rgba(93,127,255,0.14);
-  border-style: solid;
+  border-color: #5e95e5;
+  background: #121c2b;
 }
 
-.upload-zone__icon {
-  color: #9cb7ff;
-  margin-bottom: 4px;
-}
+.upload-zone.is-dragging { border-style: solid; }
+.upload-zone__icon { color: #8bb8ff; margin-bottom: 4px; }
+.upload-zone__title { font-size: 16px; font-weight: 650; color: #f3f5f8; }
+.upload-zone__subtitle { font-size: 13px; color: #8f98a8; }
 
-.upload-zone__title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 17px;
-  font-weight: 600;
-  color: #f4f7fb;
-}
-
-.upload-zone__subtitle {
-  font-size: 14px;
-  color: #9aa6ba;
-}
-
-/* Signature element: scan-line quét ngang khi kéo file vào, ẩn dụ
-   cho việc file đang được "đọc" — chỉ 1 hiệu ứng động trong toàn bộ
-   thiết kế, giữ mọi thứ khác tĩnh lặng xung quanh nó. */
 .upload-zone__scanline {
   position: absolute;
   top: 0;
   left: -30%;
   width: 30%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(59, 91, 255, 0.16),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(92,146,223,0.16), transparent);
   animation: scan 1.4s ease-in-out infinite;
 }
 
@@ -67,87 +42,65 @@
 .upload-zone--filled {
   flex-direction: row;
   align-items: center;
-  padding: 20px 24px;
+  padding: 18px 20px;
   cursor: default;
   border-style: solid;
-  border-color: rgba(157,177,216,0.2);
+  border-color: #303845;
   text-align: left;
-  gap: 16px;
+  gap: 14px;
 }
 
-.upload-zone--filled:hover {
-  background: rgba(255,255,255,0.035);
-  border-color: rgba(157,177,216,0.2);
-}
-
+.upload-zone--filled:hover { background: #0d1015; border-color: #303845; }
 .upload-zone__file-icon {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: rgba(93,127,255,0.14);
-  color: #9cb7ff;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #1c2c45;
+  color: #9fc5ff;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
-.upload-zone__file-info {
-  flex: 1;
-  min-width: 0;
-}
-
+.upload-zone__file-info { flex: 1; min-width: 0; }
 .upload-zone__file-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #f4f7fb;
+  color: #f3f5f8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .upload-zone__file-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: #9aa6ba;
-  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: #8f98a8;
+  margin-top: 3px;
 }
-
 .upload-zone__change-btn {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  color: #9cb7ff;
-  padding: 8px 14px;
-  border-radius: 10px;
+  color: #8bb8ff;
+  padding: 8px 10px;
+  border-radius: 6px;
 }
-
-.upload-zone__change-btn:hover {
-  background: rgba(93,127,255,0.14);
-}
-
-.upload-zone.has-error {
-  border-color: #E5484D;
-}
-
+.upload-zone__change-btn:hover { background: #1b2b44; }
+.upload-zone.has-error { border-color: #e06b73; }
 .upload-zone__error {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 10px;
-  padding: 10px 14px;
-  background: #FDECEC;
-  color: #E5484D;
-  border-radius: 10px;
-  font-size: 13.5px;
+  padding: 10px 12px;
+  background: #29191d;
+  color: #ff9aa0;
+  border-radius: 7px;
+  font-size: 12px;
 }
-
-.upload-zone__error svg {
-  flex-shrink: 0;
-}
+.upload-zone__error svg { flex-shrink: 0; }
 
 @media (max-width: 480px) {
-  .upload-zone {
-    padding: 40px 16px;
-  }
+  .upload-zone { padding: 36px 16px; }
+  .upload-zone--filled { padding: 16px; }
 }

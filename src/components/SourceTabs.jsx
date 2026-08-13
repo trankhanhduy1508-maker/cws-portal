@@ -3,17 +3,17 @@ import { FILE_SOURCE } from '../constants/renderConstants';
 import './SourceTabs.css';
 
 const TABS = [
-  { id: FILE_SOURCE.UPLOAD, label: 'Tải file lên', icon: UploadCloud },
-  { id: FILE_SOURCE.GOOGLE_DRIVE, label: 'Link chia sẻ', icon: HardDriveDownload },
+  { id: FILE_SOURCE.UPLOAD, label: 'Upload project', icon: UploadCloud },
+  { id: FILE_SOURCE.GOOGLE_DRIVE, label: 'Google Drive', icon: HardDriveDownload },
 ];
 
 export default function SourceTabs({ active, onChange }) {
   return (
-    <div className="source-tabs" role="tablist">
+    <div className="source-tabs" role="tablist" aria-label="Input source">
       {TABS.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
-          className={`source-tab ${active === id ? 'is-active' : ''}`}
+          className={active === id ? 'source-tab is-active' : 'source-tab'}
           onClick={() => onChange(id)}
           role="tab"
           aria-selected={active === id}

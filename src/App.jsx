@@ -351,6 +351,7 @@ function CustomerPortalApp() {
               resolvedInfo={resolvedInfo}
               isResolving={isResolving}
               onDriveLinkSubmit={submitLink}
+              onDriveLinkChange={clearLink}
               onContinue={handleContinueFromUpload}
               isContinuing={fileUploadResolver.isUploading}
               isAuthenticated={auth.isAuthenticated}

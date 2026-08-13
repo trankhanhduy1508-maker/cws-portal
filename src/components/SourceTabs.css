@@ -1,9 +1,10 @@
 .source-tabs {
   display: flex;
   gap: 6px;
-  background: rgba(255,255,255,0.055);
+  background: #0d1015;
+  border: 1px solid #262d38;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: 8px;
 }
 
 .source-tab {
@@ -13,15 +14,14 @@
   justify-content: center;
   gap: 6px;
   padding: 10px 12px;
-  border-radius: 11px;
+  border-radius: 6px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #9aa6ba;
+  color: #8993a3;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .source-tab.is-active {
-  background: rgba(126,159,255,0.16);
+  background: #233b5e;
   color: #f4f7fb;
-  box-shadow: 0 1px 3px rgba(28,28,30,0.08);
 }
