@@ -8,7 +8,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { AppConfig } from '../config/configuration';
 import { B2StorageService } from './b2-storage.service';
-import { getInputFormat } from './input-file.util';
+import { getInputFormat, ZSTD_BLEND_MAGIC } from './input-file.util';
 
 const FILE_LINK_PATTERN = /\/file\/d\/([\w-]+)/;
 const OPEN_ID_PATTERN = /[?&]id=([\w-]+)/;
@@ -24,7 +24,6 @@ const MAX_WARNING_PAGE_BYTES = 4 * 1024 * 1024;
 const FILE_DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
 // Blender-native compressed .blend files use the standard Zstandard frame
 // magic instead of the ASCII BLENDER header.
-const ZSTD_BLEND_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
 
 type ResolvedDriveFile = {
   fileName: string | null;

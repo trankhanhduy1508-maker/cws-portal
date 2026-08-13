@@ -19,6 +19,14 @@
   unverified until a Founder-approved deployment and Customer E2E gate.
 - **Next highest-priority action:** Independent review of the focused PR before
   Founder merge approval.
+## 2026-08-13 — Shared Blender signature consistency
+
+- **Symptom:** Production Drive ingestion rejected a valid `.blend` with `Chữ ký nội dung không khớp phần mở rộng.`
+- **Evidence:** The Drive response identified `PhongNguRender5.blend`; the actual bytes began with Zstandard magic `28 B5 2F FD`.
+- **Root cause:** The Drive-specific validator accepted the Zstandard Blender representation, while the shared `hasValidInputSignature` helper accepted only the ASCII `BLENDER` header.
+- **Fix:** Centralized the existing Zstandard magic constant and accepted it in the shared `.blend` signature validator.
+- **Verification:** Focused signature tests passed; full backend tests passed 222/222; backend build passed. Repository lint remains blocked by the pre-existing CRLF/Prettier baseline.
+- **Remaining risk:** Production deployment and a fresh authenticated Drive submission remain unverified until Founder review and merge/deployment.
 
 ## 2026-08-10 â€” Node Engine/Worker grounding and readiness foundation
 

@@ -35,6 +35,7 @@ describe('hasValidInputSignature', () => {
 
   const validSignatures: Array<[string, Buffer]> = [
     ['scene.blend', Buffer.from('BLENDER-v305')],
+    ['compressed-scene.blend', Buffer.from([0x28, 0xb5, 0x2f, 0xfd, 0x00])],
     ['project.zip', Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00])],
     ['project-rar4.rar', Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00])],
     ['project-rar5.rar', Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00])],
@@ -48,6 +49,8 @@ describe('hasValidInputSignature', () => {
 
   const mismatchedSignatures: Array<[string, Buffer]> = [
     ['scene.blend', Buffer.from([0x50, 0x4b, 0x03, 0x04])],
+    ['html-error.blend', Buffer.from('<!DOCTYPE html><title>Download error</title>')],
+    ['arbitrary-binary.blend', Buffer.from([0x00, 0x01, 0x02, 0x03, 0x04])],
     ['project.zip', Buffer.from('not-a-zip')],
     ['project.rar', Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07])],
     ['wrong-marker.rar', Buffer.from([0x52, 0x61, 0x72, 0x20, 0x1a, 0x07, 0x00])],
