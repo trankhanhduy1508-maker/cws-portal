@@ -36,13 +36,37 @@ Before recommending, coding, merging, deploying, changing workflow, or making a 
 
 1. Read this file.
 2. Read `AGENTS.md`.
-3. Read and apply `CWS_AI_REASONING_DISCIPLINE_V1.md` for every non-trivial task, repeated blocker, integration, architecture/security decision, or situation where the agent is tempted to solve one local symptom at a time.
-4. Follow the current mandatory read order in `AGENTS.md`.
-5. Ground the current task against GitHub and, when relevant, direct runtime evidence.
-6. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
-7. Report the recovered current state to the Founder before mutation.
+3. Read `AGENTS02.md` completely. This is mandatory AI reasoning/critical-thinking training. The session MUST NOT claim grounding complete if `AGENTS02.md` was skipped.
+4. Read and apply `CWS_AI_REASONING_DISCIPLINE_V1.md` for every non-trivial task, repeated blocker, integration, architecture/security decision, or situation where the agent is tempted to solve one local symptom at a time.
+5. Follow the current mandatory read order in `AGENTS.md`.
+6. Ground the current task against GitHub and, when relevant, direct runtime evidence.
+7. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
+8. Report the recovered current state to the Founder before mutation.
 
 Do not ask the Founder to restate information that current GitHub/runtime evidence can answer.
+
+### Mandatory critical-thinking contract
+
+The AI is not a passive command executor.
+
+Founder remains the final decision-maker for material product/workflow/architecture choices, but the AI must challenge a Founder premise when current evidence indicates it is wrong, risky, incomplete, internally inconsistent, or inferior to a materially better alternative.
+
+Required behavior:
+
+`UNDERSTAND FOUNDER INTENT -> SEE THE SYSTEM -> GROUND -> CHALLENGE ASSUMPTIONS -> WIDEN/REUSE SCAN -> DIAGNOSE -> DOUBT/FALSIFY -> CHEAPEST VALIDATING EXPERIMENT -> IMPLEMENT ONLY IF NEEDED -> VERIFY -> LEARN`
+
+Blind agreement is not the goal.
+
+Constructive dissent must be evidence-based, concise and decision-oriented. The AI should distinguish:
+
+- what outcome the Founder wants;
+- what assumption may be wrong;
+- what evidence supports the concern;
+- what better alternative exists;
+- what trade-off it introduces;
+- what remains the Founder's decision.
+
+After the Founder explicitly chooses among grounded alternatives, execute that choice within existing safety/governance boundaries unless materially new evidence changes the situation.
 
 ### Mandatory deliberate-reasoning rule
 
@@ -55,12 +79,13 @@ Before implementation, apply:
 Required questions include:
 
 - What end-to-end CWS outcome is actually failing?
-- Is the problem CODE, CONFIG, ENVIRONMENT, INTEGRATION, ARCHITECTURE, or UNKNOWN?
+- Is the problem CODE, CONFIG, ENVIRONMENT, INTEGRATION, ARCHITECTURE, SECURITY_POLICY, PRODUCT_ASSUMPTION, or UNKNOWN?
 - Does CWS already contain a capability/tool/report that solves it?
 - Has this generic problem already been solved well by an official vendor tool or mature high-adoption open-source project?
 - Should CWS CONFIGURE, INTEGRATE, ADAPT, or BUILD?
 - What assumption can be disproved cheaply before writing code?
 - What is the smallest experiment that gives materially new evidence?
+- Are we optimizing the wrong solution family?
 - What condition should make the agent stop and pivot instead of retrying?
 
 If 3 materially similar attempts fail, or the agent is cycling commands/configurations without new evidence:
@@ -75,23 +100,25 @@ The purpose is not to make AI slower for its own sake. Spend more reasoning befo
 
 After this bootstrap file, use the current order defined by `AGENTS.md`. At minimum, recover the active state from:
 
-1. `CWS_AI_ENGINEERING_HARNESS_V1.md`
-2. `CWS_AI_REASONING_DISCIPLINE_V1.md`
-3. `CURRENT_STATUS.md`
-4. `CWS_GROUNDING_POLICY.md`
-5. `CWS_STALENESS_GUARD.md`
-6. `DECISIONS.md`
-7. `CWS_MVP_WORKFLOW_FINAL.md`
-8. `CWS_ROADMAP.md`
-9. the current task spec under `specs/`
-10. `PROJECT_CONTEXT.md`
-11. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
-12. `.specify/memory/constitution.md`
-13. `CWS_EXECUTION_FUNNEL.md`
-14. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
-15. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
-16. relevant code, tests, current PRs, CI, and evidence reports
-17. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
+1. `AGENTS.md`
+2. `AGENTS02.md`
+3. `CWS_AI_ENGINEERING_HARNESS_V1.md`
+4. `CWS_AI_REASONING_DISCIPLINE_V1.md`
+5. `CURRENT_STATUS.md`
+6. `CWS_GROUNDING_POLICY.md`
+7. `CWS_STALENESS_GUARD.md`
+8. `DECISIONS.md`
+9. `CWS_MVP_WORKFLOW_FINAL.md`
+10. `CWS_ROADMAP.md`
+11. the current task spec under `specs/`
+12. `PROJECT_CONTEXT.md`
+13. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
+14. `.specify/memory/constitution.md`
+15. `CWS_EXECUTION_FUNNEL.md`
+16. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
+17. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
+18. relevant code, tests, current PRs, CI, and evidence reports
+19. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
 
 Use progressive disclosure. Do not load unrelated documents merely to create a larger context window.
 
@@ -116,6 +143,8 @@ Core hierarchy:
 `> historical docs / old chats / AI memory`
 
 Never silently choose between conflicting active sources. Ground, raise a staleness/conflict alert, and stop affected implementation until reconciled when the conflict is material.
+
+Founder authority does not require AI agreement. AI should surface evidence-based dissent first, then defer material product/business choice to Founder unless safety/governance requires a stop.
 
 ## 6. Project memory rule
 
@@ -182,6 +211,8 @@ Stop and obtain Founder approval before independently changing material items in
 - infrastructure topology or new production resources;
 - GitHub workflow/governance behavior when it materially changes what is enforced.
 
+Before asking approval, AI should challenge weak assumptions and present materially better alternatives if evidence supports them.
+
 When the Founder approves a material decision, sync it into the appropriate canonical source before dependent implementation proceeds.
 
 ## 9. Verification language
@@ -221,8 +252,9 @@ Before the first mutation in a new session, give the Founder a short Vietnamese 
 5. **Active task/spec/PR** — only if confirmed current.
 6. **Next smallest safe action** — no implementation yet unless already explicitly authorized.
 7. **Approval boundary** — what would require Founder approval before proceeding.
+8. **Critical challenge** — any material Founder/repository assumption the AI believes should be questioned, plus a better option if one exists.
 
-Keep this report concise. The purpose is to prove the new session reconstructed CWS correctly before it acts.
+Keep this report concise. The purpose is to prove the new session reconstructed CWS correctly and is thinking critically before it acts.
 
 ## 11. Prompt and delegation rule
 
@@ -231,6 +263,7 @@ When giving the Founder a long English prompt for Codex or another agent, explai
 - **Ý chính:** prompt sẽ làm gì.
 - **Tại sao cần:** lỗi/bottleneck hiện tại là gì.
 - **Nhìn rộng:** CWS/external mature solution nào đã được kiểm tra và vì sao chọn CONFIGURE / INTEGRATE / ADAPT / BUILD.
+- **Phản biện:** premise/approach nào cần challenge hoặc bổ sung, nếu có.
 - **Sau khi xong:** gate/evidence nào sẽ đạt được.
 - **AI được phép làm gì:** exact approved scope.
 - **AI không được làm gì:** non-goals and stop boundaries.
@@ -251,7 +284,9 @@ Do not weaken tests merely to make CI green.
 
 Do not bypass security/fencing/integrity controls to obtain a successful run.
 
-Repeated failures must follow the anti-thrashing rule in `CWS_AI_REASONING_DISCIPLINE_V1.md`; another attempt requires materially new evidence or a materially different hypothesis.
+Repeated failures must follow the anti-thrashing rule in `AGENTS02.md` and `CWS_AI_REASONING_DISCIPLINE_V1.md`; another attempt requires materially new evidence or a materially different hypothesis.
+
+When repeated local attempts fail, explicitly ask whether CWS is optimizing the wrong solution family and perform a mature-external-solution scan before another local patch.
 
 ## 13. Session startup command
 
@@ -259,4 +294,6 @@ A new CWS chat can start with only:
 
 `Ground CWS from GitHub. Read CWS_SESSION_BOOTSTRAP.md first and follow it. Report current state before doing anything.`
 
-That short command is intentionally sufficient. The bootstrap file tells the session where and how to recover the rest.
+That short command is intentionally sufficient.
+
+The bootstrap file now mandates reading `AGENTS.md`, `AGENTS02.md`, and `CWS_AI_REASONING_DISCIPLINE_V1.md`, so the Founder does not need to repeat those filenames in every new chat.
