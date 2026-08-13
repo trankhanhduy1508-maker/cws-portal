@@ -4,6 +4,17 @@ import { Controller, Get } from '@nestjs/common';
 export class AppController {
   @Get('health')
   health() {
-    return { status: 'ok', service: 'cws-backend', timestamp: new Date().toISOString() };
+    const commitSha =
+      process.env.RENDER_GIT_COMMIT ??
+      process.env.VERCEL_GIT_COMMIT_SHA ??
+      process.env.GIT_COMMIT_SHA ??
+      null;
+
+    return {
+      status: 'ok',
+      service: 'cws-backend',
+      commitSha,
+      timestamp: new Date().toISOString(),
+    };
   }
 }
