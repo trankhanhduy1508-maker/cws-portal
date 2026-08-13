@@ -1,10 +1,10 @@
 # CWS AGENTS
 
-> Version: 4.1 — CWS AI Engineering Harness routing, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule — 2026-08-13.
+> Version: 4.2 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule — 2026-08-14.
 
 ## 0. Mandatory first rule — code is last
 
-Before any implementation task, read and apply `CWS_AI_ENGINEERING_HARNESS_V1.md`.
+Before any implementation task, apply `CWS_AI_ENGINEERING_HARNESS_V1.md`.
 
 The default engineering order is:
 
@@ -30,25 +30,55 @@ This rule is part of the canonical AI handoff behavior and must be recovered dur
 
 Before selecting/delegating a model, read `MODEL_POLICY.md`. It is the model-routing source of truth.
 
-## Source of Truth — mandatory read order
+## Source of Truth — routed startup
 
-1. `CWS_AI_ENGINEERING_HARNESS_V1.md` — mandatory AI-assisted engineering framework, risk classification, autonomy/Founder boundaries, verification ladder, prompt/debug/review discipline.
-2. `CURRENT_STATUS.md` — current phase, current task, next verified bottleneck.
-3. `CWS_GROUNDING_POLICY.md` — mandatory evidence-grounding gate before trusting any material claim.
-4. `CWS_STALENESS_GUARD.md` — mandatory semantic-drift check before trusting governing prose.
-5. `DECISIONS.md` — active explicit Founder/product/architecture/security/payment decisions.
-6. `CWS_MVP_WORKFLOW_FINAL.md` — canonical customer business workflow.
-7. `CWS_ROADMAP.md` — single canonical roadmap for production direction and milestone status.
-8. Current task spec under `specs/`.
-9. `PROJECT_CONTEXT.md` — compact current product/architecture context.
-10. `CWS_DATABASE_SCHEMA.md` + applied migrations — data model/runtime schema truth.
-11. `.specify/memory/constitution.md` — governing Spec Kit execution principles.
-12. `CWS_EXECUTION_FUNNEL.md` — Reality/Diagnosis/Root Cause/One Bottleneck gate.
-13. `CWS_AI_OPERATING_PLAYBOOK.md` — deterministic-vs-AI production boundary, authority, eval/security/cost/fail-safe/observability rules when AI/agents are part of the system being built.
-14. `FOUNDER_IDEA_VAULT.md` — dormant future initiatives and activation gates; memory only, never permission to implement.
-15. Relevant architecture/scale docs, code, tests, and current evidence under `reports/`.
+`CWS_SESSION_BOOTSTRAP.md` is the canonical new-session entrypoint.
 
-Use progressive disclosure: read the mandatory governance/current-task layer first, then only task-relevant specialist docs. Do not load unrelated documents merely to increase context.
+`CWS_KNOWLEDGE_ROUTER.yaml` is the repository catalog/router. It does not override product/runtime truth; it selects the smallest correct source set for the current task.
+
+Default startup order:
+
+1. `CWS_SESSION_BOOTSTRAP.md`
+2. `CWS_KNOWLEDGE_ROUTER.yaml`
+3. `CURRENT_STATUS.md`
+4. classify the task by domain/topic
+5. follow the router to the minimum authoritative/current sources required
+6. inspect exact code/tests/schema/runtime evidence when the claim depends on implementation or production state
+7. expand into historical/research/legacy material only when current sources are insufficient, conflicting, or root-cause/regression archaeology requires it
+
+Canonical routing shape:
+
+`BOOTSTRAP -> ROUTER -> CURRENT STATUS -> CLASSIFY -> FILTER -> RANK -> READ MINIMUM -> EXPAND ONLY IF NEEDED`
+
+Do **not** begin a normal task by reading the entire repository or the entire governance corpus.
+
+The following governance remains binding even when its full text is not loaded into the initial context window:
+
+- `AGENTS.md`
+- `AGENTS02.md`
+- `FOUNDER_RULES.md`
+- `CWS_AI_ENGINEERING_HARNESS_V1.md`
+- `CWS_AI_REASONING_DISCIPLINE_V1.md`
+- `CWS_GROUNDING_POLICY.md`
+- `CWS_STALENESS_GUARD.md`
+- `.specify/memory/constitution.md`
+- `CWS_EXECUTION_FUNNEL.md`
+
+Read the exact governing document completely when the router selects it, the task changes governance/architecture/security/payment/data/product behavior, a Founder-approval boundary is unclear, or conflict/staleness resolution requires the exact rule.
+
+Task-specific authorities remain owned by their canonical documents. Examples:
+
+- `DECISIONS.md` — explicit active Founder/product/architecture/security/payment decisions
+- `CWS_MVP_WORKFLOW_FINAL.md` — canonical customer business ordering
+- `CWS_ROADMAP.md` — only active roadmap
+- active task spec under `specs/` — approved execution intent for that task, subordinate to active Founder decisions
+- `CWS_DATABASE_SCHEMA.md` + applied migrations — data/schema authority when relevant
+- current code/config/runtime evidence — actual implementation/runtime truth
+- `CWS_SECURITY_MASTER_INDEX.md` — security-domain routing/index when security is in scope
+- `CWS_AI_OPERATING_PLAYBOOK.md` — AI-in-product operating governance when AI/agents are part of the system
+- `FOUNDER_IDEA_VAULT.md` — dormant memory only, never implementation permission
+
+Historical reports, completed specs, changelogs, research notes, old chats, and legacy code are cold memory by default. Search/read them only when the current task requires them.
 
 ## Grounding gate — mandatory
 
@@ -143,6 +173,7 @@ If not satisfied, keep it dormant.
 - `CWS_AI_ENGINEERING_HARNESS_V1.md` governs how AI-assisted engineering is executed; it does not override product/runtime truth.
 - `CWS_AI_OPERATING_PLAYBOOK.md` governs AI inside the product/system; it does not override product/architecture/runtime truth.
 - `FOUNDER_IDEA_VAULT.md` is memory, not roadmap or implementation permission.
+- `CWS_KNOWLEDGE_ROUTER.yaml` is a routing catalog, not a competing product/runtime authority.
 - When active sources conflict, ground facts, invoke the staleness guard, stop affected implementation, report, and reconcile first.
 
 ## Mandatory execution funnel
@@ -196,15 +227,21 @@ Clarify only when repository/evidence cannot resolve a material product/security
 
 ## Canonical product invariants
 
+Customer business ordering is owned by `CWS_MVP_WORKFLOW_FINAL.md`. This section is a compact summary only and must not override that file.
+
 Current Customer MVP flow:
 
-`Google Login -> Upload/approved Drive -> canonical B2 materialize/validate/ownership -> Start Render -> exactly one customer-owned Job -> analyze project/work range -> durable non-overlapping Tasks -> Adaptive Deadline Scheduler -> real Worker execution -> collect/validate/finalize -> B2 full output LOCKED -> watermarked previews -> final price + MB QR -> SePay exact match -> PAID -> authorized download -> History/cleanup`
+`Google Login -> authenticated Upload/approved Google Drive -> temporary quarantine/staging outside canonical B2 -> ownership/provider/SSRF/size/signature checks -> anti-malware scan -> archive/Blender structural safety -> CLEAN/SAFE -> canonical B2 input upload -> verify B2 object -> INPUT_SAFE -> auto-create exactly one customer-owned Job -> analyze project/work range -> durable non-overlapping Tasks -> Adaptive Deadline Scheduler -> real Worker execution -> collect/validate/finalize -> B2 full output LOCKED -> watermarked previews -> final price + MB QR -> SePay exact match -> PAID -> authorized download -> History/cleanup`
 
-Binding rules:
+Binding summary:
 
+- Google login is the first operational Customer gate;
+- normal Customer runtime requires zero Founder/Admin approval;
+- authenticated supported input submission expresses render intent;
+- there is no mandatory post-validation `Start Render` confirmation;
+- no production Job before authoritative `INPUT_SAFE`;
 - customer render speed/tier selection is removed from the active product and must not be recreated;
 - customer does not choose Worker count/GPU/CPU;
-- upload/materialize/validate occurs before Job creation;
 - initial desired capacity targets 10 eligible Workers when useful runnable work and real capacity exist;
 - useful real tasks begin immediately; no blocking benchmark-only phase;
 - completed real tasks provide runtime evidence for adaptive capacity planning;
@@ -254,6 +291,7 @@ After completed work update, as applicable:
 - current task spec
 - `CWS_AI_ENGINEERING_HARNESS_V1.md` when engineering governance itself changes
 - `CWS_AI_OPERATING_PLAYBOOK.md` when AI-in-product governance changes
+- `CWS_KNOWLEDGE_ROUTER.yaml` when routing/taxonomy/authority/lifecycle rules change
 - evidence/report under `reports/`
 - `ENGINEERING_LEARNING_LOG.md` with problems, root causes, fixes, failed approaches, evidence, lessons/rules, remaining risks and next verified bottleneck.
 
@@ -274,7 +312,7 @@ If evidence is insufficient, downgrade to `NEEDS_VERIFICATION`/`BLOCKED` instead
 - Next
 - Last Updated + evidence links
 
-Historical detail belongs in `reports/` and git history.
+Historical detail belongs in `reports/` and git history and is cold memory by default.
 
 ## Roadmap status labels
 
@@ -296,3 +334,4 @@ Use only:
 - Historical evidence may refer to old roadmap names; evidence is immutable history, not current direction.
 - Dormant ideas in `FOUNDER_IDEA_VAULT.md` are preserved memory, not permission to implement them.
 - A generated handoff/bundle is not canonical until the intended real repository paths are updated and verified.
+- Do not move/rename/archive large parts of the repository merely to make the tree look cleaner; improve retrieval first and preserve links/history unless a later evidence-backed cleanup is approved.
