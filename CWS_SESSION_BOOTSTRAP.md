@@ -2,7 +2,7 @@
 
 > Purpose: deterministic startup instructions for a new ChatGPT/Codex/AI session working on CWS.
 > Status: routing/reference document only. It does not override current Founder decisions, canonical product documents, runtime evidence, code, schema, or applied migrations.
-> Last updated: 2026-08-12.
+> Last updated: 2026-08-13.
 
 ## 1. Why this file exists
 
@@ -36,33 +36,62 @@ Before recommending, coding, merging, deploying, changing workflow, or making a 
 
 1. Read this file.
 2. Read `AGENTS.md`.
-3. Follow the current mandatory read order in `AGENTS.md`.
-4. Ground the current task against GitHub and, when relevant, direct runtime evidence.
-5. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
-6. Report the recovered current state to the Founder before mutation.
+3. Read and apply `CWS_AI_REASONING_DISCIPLINE_V1.md` for every non-trivial task, repeated blocker, integration, architecture/security decision, or situation where the agent is tempted to solve one local symptom at a time.
+4. Follow the current mandatory read order in `AGENTS.md`.
+5. Ground the current task against GitHub and, when relevant, direct runtime evidence.
+6. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
+7. Report the recovered current state to the Founder before mutation.
 
 Do not ask the Founder to restate information that current GitHub/runtime evidence can answer.
+
+### Mandatory deliberate-reasoning rule
+
+For non-trivial work, do not assume the next visible error is a local code defect.
+
+Before implementation, apply:
+
+`UNDERSTAND SYSTEM -> GROUND -> WIDEN/REUSE SCAN -> DIAGNOSE -> DOUBT/FALSIFY -> CHEAPEST VALIDATING EXPERIMENT -> IMPLEMENT ONLY IF NEEDED -> VERIFY -> LEARN`
+
+Required questions include:
+
+- What end-to-end CWS outcome is actually failing?
+- Is the problem CODE, CONFIG, ENVIRONMENT, INTEGRATION, ARCHITECTURE, or UNKNOWN?
+- Does CWS already contain a capability/tool/report that solves it?
+- Has this generic problem already been solved well by an official vendor tool or mature high-adoption open-source project?
+- Should CWS CONFIGURE, INTEGRATE, ADAPT, or BUILD?
+- What assumption can be disproved cheaply before writing code?
+- What is the smallest experiment that gives materially new evidence?
+- What condition should make the agent stop and pivot instead of retrying?
+
+If 3 materially similar attempts fail, or the agent is cycling commands/configurations without new evidence:
+
+`STOP -> RE-GROUND -> WIDEN SEARCH -> RECLASSIFY PROBLEM -> PIVOT`
+
+Do not continue because of sunk cost.
+
+The purpose is not to make AI slower for its own sake. Spend more reasoning before expensive action.
 
 ## 4. Mandatory source-of-truth recovery order
 
 After this bootstrap file, use the current order defined by `AGENTS.md`. At minimum, recover the active state from:
 
 1. `CWS_AI_ENGINEERING_HARNESS_V1.md`
-2. `CURRENT_STATUS.md`
-3. `CWS_GROUNDING_POLICY.md`
-4. `CWS_STALENESS_GUARD.md`
-5. `DECISIONS.md`
-6. `CWS_MVP_WORKFLOW_FINAL.md`
-7. `CWS_ROADMAP.md`
-8. the current task spec under `specs/`
-9. `PROJECT_CONTEXT.md`
-10. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
-11. `.specify/memory/constitution.md`
-12. `CWS_EXECUTION_FUNNEL.md`
-13. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
-14. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
-15. relevant code, tests, current PRs, CI, and evidence reports
-16. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
+2. `CWS_AI_REASONING_DISCIPLINE_V1.md`
+3. `CURRENT_STATUS.md`
+4. `CWS_GROUNDING_POLICY.md`
+5. `CWS_STALENESS_GUARD.md`
+6. `DECISIONS.md`
+7. `CWS_MVP_WORKFLOW_FINAL.md`
+8. `CWS_ROADMAP.md`
+9. the current task spec under `specs/`
+10. `PROJECT_CONTEXT.md`
+11. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
+12. `.specify/memory/constitution.md`
+13. `CWS_EXECUTION_FUNNEL.md`
+14. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
+15. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
+16. relevant code, tests, current PRs, CI, and evidence reports
+17. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
 
 Use progressive disclosure. Do not load unrelated documents merely to create a larger context window.
 
@@ -201,6 +230,7 @@ When giving the Founder a long English prompt for Codex or another agent, explai
 
 - **Ý chính:** prompt sẽ làm gì.
 - **Tại sao cần:** lỗi/bottleneck hiện tại là gì.
+- **Nhìn rộng:** CWS/external mature solution nào đã được kiểm tra và vì sao chọn CONFIGURE / INTEGRATE / ADAPT / BUILD.
 - **Sau khi xong:** gate/evidence nào sẽ đạt được.
 - **AI được phép làm gì:** exact approved scope.
 - **AI không được làm gì:** non-goals and stop boundaries.
@@ -220,6 +250,8 @@ Do not turn one approved fix into an open-ended cleanup campaign.
 Do not weaken tests merely to make CI green.
 
 Do not bypass security/fencing/integrity controls to obtain a successful run.
+
+Repeated failures must follow the anti-thrashing rule in `CWS_AI_REASONING_DISCIPLINE_V1.md`; another attempt requires materially new evidence or a materially different hypothesis.
 
 ## 13. Session startup command
 
