@@ -61,6 +61,23 @@ service-role.
 - B2: read/write within the staging prefix for checkpoint HEAD/upload/verification;
   no delete, bucket-admin, lifecycle-admin, or production access.
 
+## Latest re-grounding and local preparation
+
+- Read-only Supabase inventory found an existing project named `cws-staging`, but
+  its current status is `INACTIVE`; the production project is separate and was not
+  used.
+- No safe active staging Supabase endpoint/key is configured locally. Restoring the
+  inactive project is an external service mutation and was not performed.
+- No B2 connector or local staging B2 endpoint/key was available. No B2 resource was
+  created or inferred from historical names.
+- Blender 5.2.0 LTS was installed under `.codex-staging-workspace` from the official
+  Blender archive, archive integrity was checked, and `blender.exe --version`
+  passed. A factory-startup `safe_scene.blend` was created locally with no customer
+  data or secrets.
+- The Blender process emitted a non-fatal user-thumbnail write warning while saving;
+  the `.blend` was created successfully. No staging E2E was started because the
+  backend/B2 trust boundary remains unavailable.
+
 ## Grounded conclusion
 
 The legacy implementation is a capability reference only. The canonical path has
