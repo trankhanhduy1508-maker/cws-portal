@@ -2,7 +2,7 @@
 
 > Purpose: deterministic startup instructions for a new ChatGPT/Codex/AI session working on CWS.
 > Status: routing/reference document only. It does not override current Founder decisions, canonical product documents, runtime evidence, code, schema, or applied migrations.
-> Last updated: 2026-08-13.
+> Last updated: 2026-08-14.
 
 ## 1. Why this file exists
 
@@ -37,11 +37,12 @@ Before recommending, coding, merging, deploying, changing workflow, or making a 
 1. Read this file.
 2. Read `AGENTS.md`.
 3. Read `AGENTS02.md` completely. This is mandatory AI reasoning/critical-thinking training. The session MUST NOT claim grounding complete if `AGENTS02.md` was skipped.
-4. Read and apply `CWS_AI_REASONING_DISCIPLINE_V1.md` for every non-trivial task, repeated blocker, integration, architecture/security decision, or situation where the agent is tempted to solve one local symptom at a time.
-5. Follow the current mandatory read order in `AGENTS.md`.
-6. Ground the current task against GitHub and, when relevant, direct runtime evidence.
-7. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
-8. Report the recovered current state to the Founder before mutation.
+4. Read `FOUNDER_RULES.md` completely. This is mandatory Founder self-governance and AI constructive-dissent guidance. The AI MUST proactively challenge Founder perfectionism, over-engineering, scope drift, sunk-cost reasoning, confirmation bias, unsupported assumptions, and customer/revenue detours when evidence warrants it. Founder remains the final decision-maker inside safety/governance boundaries.
+5. Read and apply `CWS_AI_REASONING_DISCIPLINE_V1.md` for every non-trivial task, repeated blocker, integration, architecture/security decision, or situation where the agent is tempted to solve one local symptom at a time.
+6. Follow the current mandatory read order in `AGENTS.md`.
+7. Ground the current task against GitHub and, when relevant, direct runtime evidence.
+8. Apply `CWS_STALENESS_GUARD.md` before trusting potentially superseded prose.
+9. Report the recovered current state to the Founder before mutation.
 
 Do not ask the Founder to restate information that current GitHub/runtime evidence can answer.
 
@@ -102,23 +103,24 @@ After this bootstrap file, use the current order defined by `AGENTS.md`. At mini
 
 1. `AGENTS.md`
 2. `AGENTS02.md`
-3. `CWS_AI_ENGINEERING_HARNESS_V1.md`
-4. `CWS_AI_REASONING_DISCIPLINE_V1.md`
-5. `CURRENT_STATUS.md`
-6. `CWS_GROUNDING_POLICY.md`
-7. `CWS_STALENESS_GUARD.md`
-8. `DECISIONS.md`
-9. `CWS_MVP_WORKFLOW_FINAL.md`
-10. `CWS_ROADMAP.md`
-11. the current task spec under `specs/`
-12. `PROJECT_CONTEXT.md`
-13. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
-14. `.specify/memory/constitution.md`
-15. `CWS_EXECUTION_FUNNEL.md`
-16. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
-17. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
-18. relevant code, tests, current PRs, CI, and evidence reports
-19. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
+3. `FOUNDER_RULES.md`
+4. `CWS_AI_ENGINEERING_HARNESS_V1.md`
+5. `CWS_AI_REASONING_DISCIPLINE_V1.md`
+6. `CURRENT_STATUS.md`
+7. `CWS_GROUNDING_POLICY.md`
+8. `CWS_STALENESS_GUARD.md`
+9. `DECISIONS.md`
+10. `CWS_MVP_WORKFLOW_FINAL.md`
+11. `CWS_ROADMAP.md`
+12. the current task spec under `specs/`
+13. `PROJECT_CONTEXT.md`
+14. `CWS_DATABASE_SCHEMA.md` plus applied migrations when data/schema is relevant
+15. `.specify/memory/constitution.md`
+16. `CWS_EXECUTION_FUNNEL.md`
+17. `CWS_AI_OPERATING_PLAYBOOK.md` when AI/agents are part of the system being discussed
+18. `FOUNDER_IDEA_VAULT.md` only as dormant memory, never as implementation permission
+19. relevant code, tests, current PRs, CI, and evidence reports
+20. `ENGINEERING_LEARNING_LOG.md` for prior failures, root causes, fixes, failed approaches, and lessons relevant to the current bottleneck
 
 Use progressive disclosure. Do not load unrelated documents merely to create a larger context window.
 
@@ -296,4 +298,4 @@ A new CWS chat can start with only:
 
 That short command is intentionally sufficient.
 
-The bootstrap file now mandates reading `AGENTS.md`, `AGENTS02.md`, and `CWS_AI_REASONING_DISCIPLINE_V1.md`, so the Founder does not need to repeat those filenames in every new chat.
+The bootstrap file now mandates reading `AGENTS.md`, `AGENTS02.md`, `FOUNDER_RULES.md`, and `CWS_AI_REASONING_DISCIPLINE_V1.md`, so the Founder does not need to repeat those filenames in every new chat.
