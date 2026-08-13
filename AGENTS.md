@@ -1,6 +1,6 @@
 # CWS AGENTS
 
-> Version: 4.0 — CWS AI Engineering Harness routing, implementation-last discipline, grounding/staleness/AI gates — 2026-08-11.
+> Version: 4.1 — CWS AI Engineering Harness routing, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule — 2026-08-13.
 
 ## 0. Mandatory first rule — code is last
 
@@ -11,6 +11,20 @@ The default engineering order is:
 `UNDERSTAND -> GROUND -> DIAGNOSE -> DECIDE -> SPECIFY -> PLAN -> ANALYZE -> IMPLEMENT -> VERIFY -> SYNC -> LEARN -> STOP`
 
 Do not jump from an idea, screenshot, error, or Founder message directly to code. Small low-risk fixes may use the Harness L1 shortened path, but must still ground, diagnose, fix narrowly, test, and verify.
+
+## Founder Codex prompt handoff rule — mandatory
+
+When ChatGPT analyzes a Founder-provided CWS screenshot/log/result and the next useful action should be delegated to Codex:
+
+1. Analyze the evidence first; do not merely transcribe the screenshot.
+2. Explain to the Founder in Vietnamese why the proposed Codex prompt is needed and summarize the prompt's main intent, expected action, safety boundary, and expected result.
+3. Write the actual Codex execution prompt in English.
+4. The Codex prompt must preserve current grounding, governance, smallest-safe-slice, security, Founder-approval, evidence, and no-speculative-coding rules.
+5. End the Codex prompt by requiring a concise completion/blocker report through the existing configured CWS Telegram reporting mechanism when available.
+6. Never hard-code, print, expose, invent, or request unnecessary Telegram tokens/chat IDs. If Telegram reporting is unavailable or unconfigured, Codex must report that fact safely in its normal execution report rather than weakening secret boundaries.
+7. A screenshot alone is not permission to modify code, architecture, workflow, security boundaries, production data, credentials, deployment, or infrastructure. Normal Founder approval gates still apply.
+
+This rule is part of the canonical AI handoff behavior and must be recovered during future grounding through `AGENTS.md`.
 
 ## Model Policy
 
