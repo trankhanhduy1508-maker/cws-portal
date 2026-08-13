@@ -45,6 +45,44 @@ Target flow:
 - Prefer configurable routing/policy tables or adapters when routing is implemented in code.
 - Model routing must optimize both quality and cost; token/context reduction should happen before model escalation where practical.
 
+## Codex Telegram Completion Notification
+
+For local Founder/Codex work, Telegram is an operator convenience only. It is not part of CWS production runtime and must never become a Customer/Worker/Scheduler/payment/storage/auth dependency.
+
+Canonical rule:
+
+`Founder prompt -> Codex work -> required verification -> diff/self-review when applicable -> final Codex report -> exactly one Telegram completion notification`
+
+The notification must be sent only after the current prompt's required work and final report are complete. A generic Stop event by itself is not proof that the full Founder prompt is complete.
+
+Allowed completion results:
+
+- `PASS` — all requested work and required verification completed;
+- `BLOCKED` — work cannot continue without missing evidence/access/external action or Founder approval;
+- `NEEDS REVIEW` — requested implementation/verification reached its gate but review or protected merge/deploy approval remains.
+
+Recommended message format:
+
+```text
+CWS Codex: DONE
+Task: <short summary>
+Result: PASS | BLOCKED | NEEDS REVIEW
+```
+
+Hard rules:
+
+- exactly one notification per completed prompt/task;
+- no premature completion notification;
+- do not report PASS while required prompt items remain incomplete;
+- never include secrets, credentials, customer data, private project content, or sensitive logs in Telegram;
+- read `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` only from local Windows User environment variables;
+- never hard-code or commit Telegram credentials;
+- machine-local Codex config/script remain outside the repository under `%USERPROFILE%\.codex\` unless a separately sanitized template is explicitly approved;
+- Telegram failure must not change CWS task correctness or production state;
+- Telegram notification never authorizes automatic merge, deploy, migration, reboot, shutdown, or movement across Founder approval boundaries.
+
+Detailed setup/recovery and verification guidance: `CWS_CODEX_TELEGRAM_COMPLETION_HOOK.md`.
+
 ## Vercel / Deployment Rules
 
 ### NO NEW VERCEL PROJECTS WITHOUT OWNER APPROVAL
