@@ -32,6 +32,14 @@ Default branch:
 
 Do not assume another CWS-like repository, local folder, old branch, generated bundle, old report, or previous chat is canonical unless current repository/runtime evidence explicitly proves it.
 
+For any Git branch, pull request, reconciliation, or repository-cleanup task, read and apply `CWS_BRANCH_HYGIENE_POLICY.md` before creating a new branch or deciding that an old branch is still active knowledge.
+
+Default branch behavior:
+
+`REUSE EXISTING ACTIVE BRANCH > UPDATE EXISTING PR > CREATE NEW BRANCH`
+
+`main` owns canonical knowledge after merge; merged/closed/superseded branches are cold history unless a task explicitly requires them.
+
 ## 3. Mandatory fast-grounding sequence
 
 Before recommending, coding, merging, deploying, changing workflow, or making a material technical claim:
@@ -63,6 +71,7 @@ The following governance remains binding even when its full text is not loaded i
 - `CWS_AI_REASONING_DISCIPLINE_V1.md`
 - `CWS_GROUNDING_POLICY.md`
 - `CWS_STALENESS_GUARD.md`
+- `CWS_BRANCH_HYGIENE_POLICY.md` for Git branch/PR/repository-hygiene tasks
 - `.specify/memory/constitution.md`
 - `CWS_EXECUTION_FUNNEL.md`
 
@@ -73,7 +82,8 @@ Read any of these completely when:
 - a Founder approval boundary is unclear;
 - an architecture/security/payment/data/product decision may change;
 - a conflict or staleness decision requires the exact rule;
-- implementation is about to cross a Founder-controlled boundary.
+- implementation is about to cross a Founder-controlled boundary;
+- the task creates, reuses, reconciles, closes, or cleans Git branches/PRs.
 
 The goal is not to weaken governance. The goal is to stop repeatedly loading the same large governance corpus when its detailed wording is unrelated to the current task.
 
@@ -135,6 +145,7 @@ Examples:
 - Database issue -> Database route -> applied migrations/DB evidence + schema/code relevant to the exact contract.
 - Business/Revenue Bridge issue -> Business or Revenue Bridge route -> Founder Rules + relevant business/legacy/security evidence.
 - Legacy audit -> current canonical comparator + exact legacy material; legacy does not become canonical merely because it is being read.
+- Git/branch/PR task -> `CWS_BRANCH_HYGIENE_POLICY.md` + current `main` + only task-relevant open PRs/active branches; do not treat every remote branch as current work.
 
 Historical reports, old/completed specs, changelogs, experiments, old directives and legacy runtime material are **search-only by default** unless the active task explicitly requires them.
 
@@ -230,7 +241,8 @@ Cold/search-only categories include:
 - experimental/sandbox material;
 - legacy Worker/launcher material;
 - old session/directive files;
-- historical Engineering Learning Log entries.
+- historical Engineering Learning Log entries;
+- merged/closed/superseded Git branches when the task does not explicitly require them.
 
 Expand into cold memory only when:
 
