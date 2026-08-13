@@ -1,5 +1,25 @@
 # Engineering Learning Log
 
+## 2026-08-13 — Google Drive submission UX contract
+
+- **Symptom:** The Drive modal described the canonical submission as a separate
+  link-check/confirmation step, and structured backend errors could be coerced
+  into unreadable customer text.
+- **Root cause:** Frontend copy did not match the direct-submit contract, while
+  response errors were selected with `body.message` without recursively
+  normalizing structured values.
+- **Fix:** Made the modal submit directly into the existing authenticated
+  `DRIVE_RESOLVE` path, normalized structured errors, and required the
+  Backend-created `jobId` before accepting Drive success.
+- **Verification:** Frontend tests 46/46, build PASS, lint PASS with existing
+  warnings. No backend, schema, production, or deployment changes.
+- **New rule:** Customer Drive success must be a readable, backend-owned
+  `jobId` result; missing identity or structured error data fails closed.
+- **Remaining risk:** Production browser behavior and deployed bundle remain
+  unverified until a Founder-approved deployment and Customer E2E gate.
+- **Next highest-priority action:** Independent review of the focused PR before
+  Founder merge approval.
+
 ## 2026-08-10 â€” Node Engine/Worker grounding and readiness foundation
 
 - **What changed:** Confirmed the production-backed repository and commit;

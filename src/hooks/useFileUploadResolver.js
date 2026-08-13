@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { uploadFile } from '../services/RenderService';
+import { toReadableErrorMessage, uploadFile } from '../services/RenderService';
 
 /**
  * Hook thực hiện việc "tải file lên" (gọi RenderService.uploadFile())
@@ -24,7 +24,7 @@ export function useFileUploadResolver() {
       }
       return result; // { fileRef, fileName, fileSizeBytes, jobId }
     } catch (err) {
-      setUploadError(err.message || 'Tải file thất bại');
+      setUploadError(toReadableErrorMessage(err, 'Tải file thất bại'));
       throw err;
     } finally {
       setIsUploading(false);

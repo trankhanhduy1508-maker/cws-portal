@@ -12,7 +12,7 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
   };
 
   return (
-    <Modal title="Dán link chia sẻ" onClose={onClose}>
+    <Modal title="Gửi link Google Drive" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ position: 'relative' }}>
           <Link2
@@ -24,7 +24,7 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="https://drive.google.com/file/d/... hoặc OneDrive/Dropbox/Direct Link"
+            placeholder="https://drive.google.com/file/d/..."
             style={{
               width: '100%',
               padding: '14px 14px 14px 40px',
@@ -46,14 +46,12 @@ export default function GoogleDriveModal({ onClose, onSubmit, linkError, isResol
         )}
 
         <p style={{ fontSize: 13, color: '#B0B0B5', lineHeight: 1.5 }}>
-          Đảm bảo file đã bật chia sẻ "Bất kỳ ai có link". Lưu ý: chỉ Google
-          Drive được kiểm tra quyền truy cập tự động — OneDrive/Dropbox/
-          Direct Link chưa kiểm tra được, hãy tự xác nhận link đã mở
-          chia sẻ đúng hoặc tải trực tiếp được.
+          CWS sẽ tự động kiểm tra quyền truy cập và an toàn của file qua Backend.
+          Chỉ dữ liệu vượt qua các bước kiểm tra mới được tiếp tục xử lý.
         </p>
 
         <Button onClick={handleSubmit} disabled={!value.trim() || isResolving}>
-          {isResolving ? 'Đang kiểm tra...' : 'Xác nhận link'}
+          {isResolving ? 'Đang gửi link...' : 'Gửi link Drive'}
         </Button>
       </div>
     </Modal>

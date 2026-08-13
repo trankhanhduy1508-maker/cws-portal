@@ -16,6 +16,31 @@ function requireBackend() {
   }
 }
 
+export function toReadableErrorMessage(value, fallback) {
+  const MAX_CUSTOMER_ERROR_LENGTH = 500;
+  const visit = (candidate) => {
+    if (typeof candidate === 'string') {
+      const text = candidate.trim();
+      return text && text !== '[object Object]'
+        ? text.slice(0, MAX_CUSTOMER_ERROR_LENGTH)
+        : null;
+    }
+    if (Array.isArray(candidate)) {
+      const text = candidate.map(visit).filter(Boolean).join('; ');
+      return text || null;
+    }
+    if (candidate && typeof candidate === 'object') {
+      for (const key of ['message', 'error', 'detail', 'reason']) {
+        const text = visit(candidate[key]);
+        if (text) return text;
+      }
+    }
+    return null;
+  };
+
+  return visit(value) || fallback;
+}
+
 export async function uploadFile(file) {
   const { valid, error } = validateFile(file);
   if (!valid) throw new Error(error);
@@ -36,7 +61,7 @@ export async function uploadFile(file) {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message || `Tải file thất bại (${res.status})`);
+    throw new Error(toReadableErrorMessage(body, `Tải file thất bại (${res.status})`));
   }
   const data = await res.json();
   const materialized = validateMaterializedInput(data);
@@ -51,7 +76,7 @@ export async function submitGoogleDrive(rawLink) {
 
   requireBackend();
   const token = await getAccessToken();
-  if (!token) throw new Error('Cần đăng nhập Google trước khi kiểm tra Google Drive');
+  if (!token) throw new Error('Cần đăng nhập Google trước khi gửi link Google Drive');
   let res;
   try {
     res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DRIVE_RESOLVE}`, {
@@ -67,11 +92,17 @@ export async function submitGoogleDrive(rawLink) {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message || `Không đọc được thông tin file từ Google Drive (${res.status})`);
+    throw new Error(toReadableErrorMessage(
+      body,
+      `Không đọc được thông tin file từ Google Drive (${res.status})`,
+    ));
   }
   const data = await res.json();
   const materialized = validateMaterializedInput(data);
   if (!materialized.valid) throw new Error(materialized.error);
+  if (typeof data.jobId !== 'string' || !data.jobId.trim()) {
+    throw new Error('Backend chưa trả về Job sau INPUT_SAFE');
+  }
   return { driveLink: data.resolvedDriveLink || driveLink, ...data };
 }
 
