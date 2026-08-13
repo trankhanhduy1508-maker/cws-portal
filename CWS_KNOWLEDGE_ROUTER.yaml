@@ -1,0 +1,320 @@
+version: 1
+status: ACTIVE
+purpose: >-
+  Route each CWS task to the smallest correct set of authoritative sources.
+  This file is a catalog, not a competing source of truth. It must never copy
+  detailed product/runtime rules that already have an owner elsewhere.
+
+principles:
+  - CLASSIFY -> FILTER -> RANK -> READ -> EXPAND ONLY IF NEEDED
+  - RIGHT_CONTEXT > MAXIMUM_CONTEXT
+  - ONE_FACT -> ONE_CANONICAL_OWNER -> OTHER_DOCS_SUMMARIZE_OR_LINK
+  - COLD_MEMORY_IS_SEARCH_ONLY_BY_DEFAULT
+  - RUNTIME_EVIDENCE_OUTRANKS_PROSE_FOR_RUNTIME_CLAIMS
+  - UNKNOWN_IS_NOT_FACT
+
+always_read:
+  - CWS_SESSION_BOOTSTRAP.md
+  - CURRENT_STATUS.md
+
+always_apply_without_full_read_unless_task_requires_detail:
+  - AGENTS.md
+  - AGENTS02.md
+  - FOUNDER_RULES.md
+  - CWS_AI_ENGINEERING_HARNESS_V1.md
+  - CWS_AI_REASONING_DISCIPLINE_V1.md
+  - CWS_GROUNDING_POLICY.md
+  - CWS_STALENESS_GUARD.md
+  - .specify/memory/constitution.md
+  - CWS_EXECUTION_FUNNEL.md
+
+# Authority is task-sensitive. A legacy file can be low authority for canonical
+# runtime but high relevance for a legacy audit.
+authority_ranks:
+  A0:
+    name: DIRECT_RUNTIME_TRUTH
+    examples:
+      - production logs
+      - deployed configuration
+      - applied migrations / authoritative DB state
+      - current runtime responses
+      - current code when describing actual implementation
+  A1:
+    name: CANONICAL_AUTHORITY
+    examples:
+      - DECISIONS.md
+      - CWS_MVP_WORKFLOW_FINAL.md
+      - CWS_ROADMAP.md
+      - current architecture/security authority documents
+  A2:
+    name: ACTIVE_EXECUTION
+    examples:
+      - active Spec Kit specs
+      - active plans/tasks
+  A3:
+    name: CURRENT_SUPPORTING_REFERENCE
+    examples:
+      - focused design docs
+      - current evidence reports
+      - current engineering rules
+  A4:
+    name: RESEARCH_OR_HYPOTHESIS
+    examples:
+      - startup/business-model
+      - external research notes
+      - idea exploration
+  A5:
+    name: HISTORICAL_EVIDENCE
+    examples:
+      - reports archives
+      - completed specs
+      - changelogs
+      - old session reports
+  A6:
+    name: LEGACY_OR_SUPERSEDED
+    examples:
+      - cws_worker_full.py
+      - cws_worker.bat
+      - superseded directives
+
+lifecycle:
+  allowed:
+    - ACTIVE
+    - CURRENT_SUPPORTING
+    - EXPERIMENTAL
+    - DORMANT
+    - SUPERSEDED
+    - HISTORICAL
+    - LEGACY
+  default_read:
+    - ACTIVE
+    - CURRENT_SUPPORTING
+  search_only_by_default:
+    - EXPERIMENTAL
+    - DORMANT
+    - SUPERSEDED
+    - HISTORICAL
+    - LEGACY
+
+active_specs:
+  - specs/008-customer-standard-workflow/
+  - specs/009-automatic-worker-provisioning/
+
+historical_or_completed_spec_prefixes:
+  - specs/001-
+  - specs/003-
+  - specs/004-
+  - specs/005-
+  - specs/006-
+  - specs/007-
+
+routes:
+  GOVERNANCE:
+    read:
+      - FOUNDER_RULES.md
+      - AGENTS.md
+      - AGENTS02.md
+      - CWS_AI_ENGINEERING_HARNESS_V1.md
+      - CWS_AI_REASONING_DISCIPLINE_V1.md
+      - CWS_GROUNDING_POLICY.md
+      - CWS_STALENESS_GUARD.md
+      - .specify/memory/constitution.md
+      - CWS_EXECUTION_FUNNEL.md
+    expand_when:
+      - governance conflict
+      - approval boundary unclear
+
+  CUSTOMER:
+    read:
+      - CURRENT_STATUS.md
+      - CWS_MVP_WORKFLOW_FINAL.md
+      - specs/008-customer-standard-workflow/spec.md
+    then_search:
+      - src/
+      - backend/src/
+      - backend/test/
+      - reports/
+    expand:
+      - DECISIONS.md
+      - CWS_ROADMAP.md
+      - PROJECT_CONTEXT.md
+    cold_memory_only_if_needed:
+      - historical customer reports
+      - completed customer specs
+
+  WORKER:
+    read:
+      - CURRENT_STATUS.md
+      - specs/009-automatic-worker-provisioning/spec.md
+      - DECISIONS.md
+    then_search:
+      - worker/
+      - backend/src/worker-auth/
+      - backend/src/jobs/
+      - backend/test/
+      - reports/worker/
+      - docs/worker-node-agent/
+    expand:
+      - CWS_ROADMAP.md
+      - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
+    cold_memory_only_if_needed:
+      - docs/WORKER_FLEET_AUDIT.md
+      - historical worker reports
+      - cws_worker_full.py
+      - cws_worker.bat
+
+  SCHEDULER:
+    read:
+      - CURRENT_STATUS.md
+      - DECISIONS.md
+      - CWS_ROADMAP.md
+    then_search:
+      - backend/src/scheduler/
+      - backend/src/jobs/
+      - backend/test/
+      - worker/
+    expand_when:
+      - lease/generation semantics unclear
+      - adaptive deadline logic involved
+
+  SECURITY:
+    read:
+      - CURRENT_STATUS.md
+      - CWS_SECURITY_MASTER_INDEX.md
+      - CWS_MVP_WORKFLOW_FINAL.md
+      - specs/008-customer-standard-workflow/spec.md
+    then_search:
+      - backend/src/
+      - worker/
+      - backend/test/
+      - reports/
+    expand_by_master_index: true
+    cold_memory_only_if_needed:
+      - historical security reports
+      - old security PR evidence
+
+  STORAGE_INPUT_OUTPUT:
+    read:
+      - CURRENT_STATUS.md
+      - DECISIONS.md
+      - CWS_MVP_WORKFLOW_FINAL.md
+    then_search:
+      - backend/src/
+      - worker/
+      - backend/test/
+      - reports/
+    expand_when:
+      - B2 capability scope unclear
+      - input canonicalization unclear
+      - output locking/delivery unclear
+
+  PAYMENT:
+    read:
+      - CURRENT_STATUS.md
+      - DECISIONS.md
+      - CWS_MVP_WORKFLOW_FINAL.md
+    then_search:
+      - backend/src/payments/
+      - backend/test/
+      - backend/migrations/
+      - reports/
+    cold_memory_only_if_needed:
+      - reports/SEPAY_PAYMENT_ARCHITECTURE_RESEARCH.md
+      - historical payment reports
+
+  ADMIN:
+    read:
+      - CURRENT_STATUS.md
+      - DECISIONS.md
+      - CWS_ROADMAP.md
+    then_search:
+      - src/
+      - backend/src/
+      - backend/test/
+      - reports/
+    cold_memory_only_if_needed:
+      - completed admin specs
+      - historical admin reports
+
+  DATABASE:
+    read:
+      - CURRENT_STATUS.md
+      - CWS_DATABASE_SCHEMA.md
+      - DECISIONS.md
+    then_search:
+      - backend/migrations/
+      - worker_migrations/
+      - backend/src/
+      - backend/test/
+    authority_note: Applied migrations and authoritative DB state outrank schema prose.
+
+  BUSINESS:
+    read:
+      - FOUNDER_RULES.md
+      - CURRENT_STATUS.md
+      - startup/business-model/README.md
+    then_search:
+      - startup/business-model/
+      - startup/
+      - FOUNDER_IDEA_VAULT.md
+    authority_note: >-
+      Business notes are research/hypothesis unless promoted into an explicit
+      Founder decision. Preserve FACT / SOURCE-DERIVED LESSON /
+      FOUNDER HYPOTHESIS / AI INFERENCE / UNVERIFIED IDEA distinctions.
+
+  REVENUE_BRIDGE:
+    read:
+      - FOUNDER_RULES.md
+      - CURRENT_STATUS.md
+      - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
+      - cws_worker_full.py
+      - cws_worker.bat
+    then_search:
+      - reports/worker/
+      - worker/
+      - security-related reports
+    constraints:
+      - MANUAL_REVENUE_BRIDGE_PASS_IS_NOT_GOLDEN_E2E
+      - PROPORTIONAL_SECURITY_WITH_P0_SAFETY_FLOOR
+      - DO_NOT_SILENTLY_RESTORE_LEGACY_AS_CANONICAL_RUNTIME
+
+  AI_ENGINEERING:
+    read:
+      - AGENTS.md
+      - AGENTS02.md
+      - CWS_AI_ENGINEERING_HARNESS_V1.md
+      - CWS_AI_REASONING_DISCIPLINE_V1.md
+    then_search:
+      - knowledge/github-patterns/
+      - .agents/skills/
+      - .specify/
+      - ENGINEERING_LEARNING_LOG.md
+
+  LEGACY_AUDIT:
+    read:
+      - current canonical authority for the compared domain
+      - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
+    then_search:
+      - cws_worker_full.py
+      - cws_worker.bat
+      - historical reports
+    constraints:
+      - LEGACY_IS_REFERENCE_NOT_CURRENT_AUTHORITY_UNLESS_TASK_IS_EXPLICITLY_LEGACY
+
+expansion_rules:
+  expand_only_if:
+    - current sources conflict
+    - required fact remains UNKNOWN
+    - root-cause investigation needs historical evidence
+    - regression archaeology is needed
+    - active source explicitly routes to another source
+  do_not_expand_for:
+    - curiosity
+    - broad repository reading without task relevance
+    - duplicated confirmation when higher-authority evidence is already sufficient
+
+completion_rules:
+  - Material claims must state the highest evidence level actually reached.
+  - CODE/TEST evidence must not be reported as production runtime evidence.
+  - Historical or legacy success must not be reported as current Golden E2E.
+  - When a route is insufficient, record the missing route rather than reading the entire repository.
