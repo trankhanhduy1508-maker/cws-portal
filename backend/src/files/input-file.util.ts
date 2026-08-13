@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 export type SupportedInputFormat = 'blend' | 'zip' | 'rar';
 
 export const ACCEPTED_INPUT_EXTENSIONS = ['.blend', '.zip', '.rar'] as const;
+export const ZSTD_BLEND_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
 
 export function getInputFormat(
   fileName: string | null | undefined,
@@ -42,7 +43,10 @@ export async function hasValidInputSignature(
   if (!header) return false;
 
   if (format === 'blend') {
-    return header.subarray(0, 7).toString('ascii') === 'BLENDER';
+    return (
+      header.subarray(0, 7).toString('ascii') === 'BLENDER'
+      || header.subarray(0, 4).equals(ZSTD_BLEND_MAGIC)
+    );
   }
 
   if (format === 'zip') {
