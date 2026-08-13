@@ -6,6 +6,8 @@
 > Scope: partner-host trust, job/data isolation, temporary capabilities, worker posture, cleanup, audit, confidentiality, ingress scanning and large-file handling.  
 > Authority: latest Founder decisions + runtime evidence + `DECISIONS.md` + canonical workflow + Harness/Spec Kit remain authoritative.
 
+> Drive-folder hardening extension: see `CWS_SECURITY_ARCHITECTURE_V1_2_DRIVE_MANIFEST_HARDENING.md` for Google Drive manifest enumeration, per-file security verdicts, multi-`.blend` handling and aggregate CLEAN/SAFE gating.
+
 ## 1. What was learned from mature render systems
 
 CWS should not treat antivirus as the security architecture. Mature render/cloud-render systems rely on **multiple security boundaries** around data, credentials, workers and job execution.
