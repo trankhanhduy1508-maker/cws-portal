@@ -12,7 +12,7 @@ vi.mock('./apiConfig', () => ({
 }));
 
 import { getAccessToken } from './AuthService';
-import { submitGoogleDrive, uploadFile } from './RenderService';
+import { submitGoogleDrive, toReadableErrorMessage, uploadFile } from './RenderService';
 
 describe('RenderService.uploadFile authentication', () => {
   beforeEach(() => {
@@ -77,6 +77,7 @@ describe('RenderService.uploadFile authentication', () => {
         resolvedDriveLink: 'https://drive.google.com/file/d/id/view',
         fileName: 'scene.blend',
         fileSizeBytes: 7,
+        jobId: 'job-drive-1',
       }),
     });
 
@@ -84,6 +85,7 @@ describe('RenderService.uploadFile authentication', () => {
       fileRef: 'uploads/drive-scene.blend',
       fileName: 'scene.blend',
       fileSizeBytes: 7,
+      jobId: 'job-drive-1',
     });
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/drive/resolve'),
@@ -94,5 +96,50 @@ describe('RenderService.uploadFile authentication', () => {
         },
       }),
     );
+  });
+
+  it('normalizes structured backend Drive errors without object coercion', async () => {
+    getAccessToken.mockResolvedValue('customer-access-token');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({ message: { detail: 'File chưa vượt qua kiểm tra an toàn' } }),
+    });
+
+    await expect(submitGoogleDrive('https://drive.google.com/file/d/id/view'))
+      .rejects.toThrow('File chưa vượt qua kiểm tra an toàn');
+    expect(toReadableErrorMessage({ message: { detail: 'Readable error' } }, 'fallback'))
+      .toBe('Readable error');
+    expect(toReadableErrorMessage({ message: { code: 'UNKNOWN' } }, 'fallback'))
+      .toBe('fallback');
+    expect(toReadableErrorMessage({ message: {} }, 'fallback')).not.toContain('[object Object]');
+    expect(toReadableErrorMessage({ message: 'x'.repeat(600) }, 'fallback')).toHaveLength(500);
+  });
+
+  it('normalizes structured direct-upload errors through the same customer-safe helper', async () => {
+    getAccessToken.mockResolvedValue('customer-access-token');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({ message: { detail: 'File không an toàn' } }),
+    });
+
+    await expect(uploadFile(new File(['scene'], 'scene.blend')))
+      .rejects.toThrow('File không an toàn');
+  });
+
+  it('fails closed when Drive success omits the Backend-created jobId', async () => {
+    getAccessToken.mockResolvedValue('customer-access-token');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        fileRef: 'uploads/drive-scene.blend',
+        fileName: 'scene.blend',
+        fileSizeBytes: 7,
+      }),
+    });
+
+    await expect(submitGoogleDrive('https://drive.google.com/file/d/id/view'))
+      .rejects.toThrow('Backend chưa trả về Job sau INPUT_SAFE');
   });
 });

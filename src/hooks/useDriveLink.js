@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { submitGoogleDrive } from '../services/RenderService';
+import { submitGoogleDrive, toReadableErrorMessage } from '../services/RenderService';
 
 /**
  * Hook quản lý việc nhập link Google Drive: validate cú pháp + resolve
@@ -33,7 +33,7 @@ export function useDriveLink() {
       });
       return true;
     } catch (err) {
-      setLinkError(err.message || 'Link không hợp lệ');
+      setLinkError(toReadableErrorMessage(err, 'Không thể gửi link Google Drive'));
       setDriveLinkState(null);
       setResolvedInfo(null);
       return false;

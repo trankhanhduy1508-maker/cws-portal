@@ -2,7 +2,7 @@ import { HardDriveDownload } from 'lucide-react';
 import './UploadZone.css'; // tái dùng .upload-zone--filled đã có sẵn
 
 export default function DriveLinkCard({ driveLink, resolvedInfo, isResolving, onChange }) {
-  const displayName = resolvedInfo?.fileName || (isResolving ? 'Đang kiểm tra file...' : 'Chưa xác định được tên file');
+  const displayName = resolvedInfo?.fileName || (isResolving ? 'Đang gửi link...' : 'Chưa xác định được tên file');
 
   return (
     <div className="upload-zone upload-zone--filled">
