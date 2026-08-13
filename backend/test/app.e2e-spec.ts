@@ -26,6 +26,7 @@ describe('AppController (e2e)', () => {
       .expect(({ body }) => {
         expect(body.status).toBe('ok');
         expect(body.service).toBe('cws-backend');
+        expect(body).toHaveProperty('commitSha');
       });
   });
 });
