@@ -456,3 +456,54 @@ Sau khi lưu quy tắc, báo cáo:
 2. Nội dung quy tắc chính đã lưu.
 3. Xác nhận Opus/Fable bị cấm.
 4. Không thực hiện thay đổi nào ngoài phạm vi yêu cầu này.
+
+==================================================
+11. FOUNDER ROLE ASSIGNMENT — GPT IMPLEMENTS, CODEX REVIEWS
+==================================================
+
+Founder decision effective 2026-08-13:
+
+### GPT / ChatGPT
+GPT is the PRIMARY implementation owner for CWS engineering work.
+
+GPT responsibilities:
+- ground canonical `main` before material work;
+- diagnose the current first failing boundary;
+- specify/plan according to the CWS Harness and Spec Kit;
+- implement code changes directly when the approved scope allows;
+- run or coordinate relevant tests and verification;
+- prepare focused commits/PRs;
+- maintain engineering learning evidence and source-of-truth sync;
+- stop at Founder-controlled architecture/security/infrastructure/payment boundaries.
+
+GPT must not use Codex as the default coder merely to offload implementation.
+
+### Codex
+Codex becomes the PRIMARY independent final reviewer after GPT has completed an implementation slice.
+
+Codex responsibilities:
+- independently ground current canonical repo and the exact GPT PR/head SHA;
+- review the complete diff, tests, migrations, runtime assumptions and evidence;
+- look specifically for correctness, regressions, security issues, workflow drift, schema/runtime mismatch, concurrency/idempotency issues and missing tests;
+- verify the implementation against the active spec, Founder decisions, Harness, workflow and current production evidence;
+- return PASS / REQUEST_CHANGES / BLOCKED with exact evidence;
+- when changes are needed, describe the smallest required correction instead of silently redesigning the system.
+
+Codex must NOT:
+- become the default implementation owner;
+- silently rewrite GPT's implementation;
+- merge automatically unless Founder explicitly authorizes merge;
+- change workflow, architecture, security, payment, storage or infrastructure boundaries during review;
+- treat review suggestions as production truth without evidence.
+
+### Default delivery sequence
+
+For implementation work, use:
+
+`Founder intent -> GPT ground/diagnose/spec/plan -> GPT implement -> GPT verify -> focused PR/head SHA -> Codex independent full review -> GPT addresses proven findings -> Codex re-review if material -> Founder merge/production gate`
+
+For urgent low-risk L1 fixes, GPT may use the shortened Harness path, but Codex remains the preferred final reviewer before merge when the change affects production behavior.
+
+For non-code research/design work, GPT may complete the work without involving Codex unless an independent review materially improves confidence.
+
+This role assignment changes agent responsibility, NOT the canonical CWS workflow, production architecture, or Founder approval boundaries.
