@@ -1,6 +1,6 @@
 # CWS AGENTS
 
-> Version: 4.2 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule — 2026-08-14.
+> Version: 4.3 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule, repeatable-action automation rule — 2026-08-14.
 
 ## 0. Mandatory first rule — code is last
 
@@ -25,6 +25,52 @@ When ChatGPT analyzes a Founder-provided CWS screenshot/log/result and the next 
 7. A screenshot alone is not permission to modify code, architecture, workflow, security boundaries, production data, credentials, deployment, or infrastructure. Normal Founder approval gates still apply.
 
 This rule is part of the canonical AI handoff behavior and must be recovered during future grounding through `AGENTS.md`.
+
+## Repeatable-action automation rule — mandatory
+
+When ChatGPT/Codex observes the same operational or development action being repeated manually, it must proactively evaluate whether the repeated sequence should be converted into a reusable quick-start/bootstrap tool instead of being re-executed step by step forever.
+
+Think in terms of the common denominator:
+
+`REPEATED MANUAL STEPS -> COMMON PATTERN -> SAFE REUSABLE AUTOMATION -> ONE-CLICK / ONE-COMMAND START`
+
+Examples include, but are not limited to:
+
+- setting up a new CWS development machine;
+- checking/installing required tools;
+- cloning/verifying the canonical repository;
+- refreshing environment/PATH state;
+- launching a standard local workflow;
+- running the same diagnostic sequence;
+- performing the same bounded verification or packaging routine;
+- any other repeated Founder/Codex procedure with stable inputs and predictable safe outputs.
+
+Before creating a new automation file/tool:
+
+1. Search the repository and router first for an existing equivalent capability.
+2. Prefer extending or consolidating an existing tool over creating another overlapping script.
+3. Do not create a new branch merely because a repeated task was noticed; follow repository branch hygiene and keep branch count minimal.
+4. Do not create a new tool for a one-off action or an unstable process that has not repeated enough to justify abstraction.
+5. The automation must be idempotent/re-runnable where practical, detect already-completed work, and avoid destructive resets or duplicate clones/installations.
+6. Do not hard-code secrets, credentials, machine-specific tokens, or Founder-private values into GitHub.
+7. Keep the first version small: BAT/PowerShell/script/Make/task wrapper before GUI/installer/service unless evidence shows the heavier form is needed.
+8. Preserve Founder-only approval/authentication steps when they cannot be safely automated; automation may open the correct browser/flow and stop at that exact boundary.
+9. Record reusable defects encountered while building/running the automation in `ENGINEERING_LEARNING_LOG.md`, avoiding duplicate knowledge.
+10. If the automation changes workflow, architecture, security/trust boundaries, production infrastructure, payment/data behavior, or customer-facing behavior, normal Founder approval gates still apply.
+
+AI should proactively flag a candidate when repeated manual friction is observed using a concise note such as:
+
+`AUTOMATION CANDIDATE — <repeated action>`
+
+Then state:
+
+- what is repeating;
+- approximate manual cost/friction;
+- the smallest reusable automation that would remove the repetition;
+- whether an existing tool can be extended instead of creating a new file;
+- any Founder-only step that must remain interactive.
+
+The purpose is to continuously compress recurring operational work without creating script sprawl or branch sprawl.
 
 ## Model Policy
 
