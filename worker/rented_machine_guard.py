@@ -23,6 +23,12 @@ from pathlib import Path
 ES_CONTINUOUS = 0x80000000
 ES_SYSTEM_REQUIRED = 0x00000001
 BLOCKED_PROCESS_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}\.exe$")
+CUSTOMER_NOTICE_COOLDOWN_SEC = 4.0
+CUSTOMER_NOTICE_TEXT = (
+    "Máy đang được CWS thuê.\r\n"
+    "Xin quý khách vui lòng chọn máy khác.\r\n"
+    "Xin cảm ơn."
+)
 NEVER_TERMINATE = {
     "blender.exe", "python.exe", "powershell.exe", "pwsh.exe", "cmd.exe",
     "conhost.exe", "explorer.exe", "csrss.exe", "dwm.exe", "services.exe",
@@ -33,7 +39,7 @@ NEVER_TERMINATE = {
 class RentedMachineGuard:
     """Own and release one local render lease on Windows."""
 
-    def __init__(self, base_dir: Path, policy_path: Path | None = None, poll_seconds: float = 2.0):
+    def __init__(self, base_dir: Path, policy_path: Path | None = None, poll_seconds: float = 1.0):
         if os.name != "nt":
             raise RuntimeError("RENTED_MACHINE_GUARD_V1 requires Windows")
         self.base_dir = Path(base_dir)
@@ -47,6 +53,7 @@ class RentedMachineGuard:
         self._ui: subprocess.Popen[str] | None = None
         self._lease: dict[str, object] | None = None
         self._console_hwnd = None
+        self._last_customer_notice_at = 0.0
         self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
 
@@ -73,12 +80,9 @@ class RentedMachineGuard:
         self._block_shutdown(True)
         self._start_notice()
 
-        # A render lease must reserve the machine before Blender starts.  The
-        # background poller is useful for launch attempts that happen later,
-        # but it is not enough when a customer game is ALREADY running at
-        # lease acquisition time.  Clear configured conflicts synchronously
-        # and verify that they are gone; otherwise fail closed so Track A does
-        # not begin rendering beside a known game workload.
+        # Reserve the machine before Blender starts.  If a configured game is
+        # already running, terminate it and verify that it is gone before the
+        # render is allowed to start.
         if not self._clear_configured_game_conflicts(timeout_seconds=12.0):
             remaining = sorted(self._list_running_blocked_processes())
             self._event("game_conflict_unresolved", processes=remaining)
@@ -164,6 +168,7 @@ class RentedMachineGuard:
         if not first:
             return True
         self._event("game_conflict_detected", processes=sorted(first))
+        self._show_customer_rented_notice(next(iter(sorted(first))))
 
         while time.monotonic() < deadline:
             self._terminate_configured_games()
@@ -194,6 +199,13 @@ class RentedMachineGuard:
                 pid = int(pid_text)
                 if pid == os.getpid():
                     continue
+
+                # Customer feedback belongs to the launch attempt itself.  A
+                # rate limit prevents Steam helper trees from creating dozens
+                # of overlapping popups while still making a fresh click feel
+                # like the game simply did not open because the machine is rented.
+                self._show_customer_rented_notice(name)
+
                 stop = subprocess.run(
                     ["taskkill", "/PID", str(pid), "/T", "/F"],
                     capture_output=True, text=True, timeout=5, check=False,
@@ -203,11 +215,53 @@ class RentedMachineGuard:
         except (OSError, subprocess.SubprocessError) as exc:
             self._event("process_policy_error", error=type(exc).__name__)
 
+    def _show_customer_rented_notice(self, process_name: str) -> None:
+        now = time.monotonic()
+        if now - self._last_customer_notice_at < CUSTOMER_NOTICE_COOLDOWN_SEC:
+            return
+        self._last_customer_notice_at = now
+
+        message = CUSTOMER_NOTICE_TEXT.replace("'", "''")
+        script = f"""
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.ShowInTaskbar = $false
+$owner.WindowState = 'Minimized'
+$owner.Opacity = 0
+$owner.Show()
+[System.Windows.Forms.MessageBox]::Show(
+  $owner,
+  '{message}',
+  'CWS - Máy đang được thuê',
+  [System.Windows.Forms.MessageBoxButtons]::OK,
+  [System.Windows.Forms.MessageBoxIcon]::Information
+) | Out-Null
+$owner.Close()
+"""
+        encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+        try:
+            subprocess.Popen(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                text=True,
+            )
+            self._event("customer_rented_notice_shown", process=self._safe_id(process_name))
+        except OSError:
+            self._event("customer_rented_notice_unavailable", process=self._safe_id(process_name))
+
     def _load_blocked_processes(self) -> set[str]:
         try:
             data = json.loads(self.policy_path.read_text(encoding="utf-8"))
             values = data.get("blocked_processes", [])
-            return {value.strip().lower() for value in values if isinstance(value, str) and BLOCKED_PROCESS_RE.fullmatch(value.strip().lower())}
+            return {
+                value.strip().lower()
+                for value in values
+                if isinstance(value, str) and BLOCKED_PROCESS_RE.fullmatch(value.strip().lower())
+            }
         except (OSError, ValueError, TypeError):
             return set()
 
