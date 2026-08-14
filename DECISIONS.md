@@ -1,6 +1,6 @@
 # CWS Official Decisions — Active
 
-> Reconciled 2026-08-12. This file contains current active decisions only. Superseded detail remains available in git history and `reports/`.
+> Reconciled 2026-08-14. This file contains current active decisions only. Superseded detail remains available in git history and `reports/`.
 
 ## Product / Roadmap
 
@@ -92,7 +92,7 @@ After all mandatory pre-B2 checks pass:
 
 `temporary quarantine -> CLEAN/SAFE -> canonical B2 upload -> integrity/ownership verification -> INPUT_SAFE`
 
-Google Drive is an ingestion source, not a Worker dependency. Worker never needs the customer Drive URL/API key after canonical B2 materialization.
+Google Drive is an ingestion source, not a Worker dependency in the canonical automated flow.
 
 Do not create a new B2 bucket or new storage service merely for quarantine without Founder approval.
 
@@ -121,7 +121,7 @@ Untrusted Blender Python autoexec remains OFF. Automatic optimization may not si
 ## Customer Job / Scheduler
 
 ### [ACTIVE — 2026-08-12] Automatic exactly-one Job creation
-Only authoritative `INPUT_SAFE` may create a production Job.
+Only authoritative `INPUT_SAFE` may create a production Job in the canonical automated flow.
 
 Backend automatically creates exactly one customer-owned Job for the accepted New Render submission intent.
 
@@ -138,10 +138,10 @@ Requirements:
 ### [ACTIVE] Customer render speed/tier feature is removed
 Customer does not choose render tier, Worker count, GPU, CPU or hardware. Active UI/API/domain/persistence must not require a tier identifier.
 
-### [ACTIVE] CWS Adaptive Deadline Scheduler
-CWS uses a work-conserving deadline scheduler on the existing PostgreSQL durable Task model.
+### [ACTIVE] CWS Adaptive Deadline Scheduler — future automated track
+The existing work-conserving deadline scheduler design remains the intended automated Track B direction, but it is not the current operational Worker priority.
 
-Canonical behavior:
+When Track B is resumed, canonical automated behavior remains:
 
 1. Analyze authoritative project/work range and create durable non-overlapping Tasks.
 2. Start useful production work immediately; no benchmark-only blocking phase.
@@ -151,8 +151,8 @@ Canonical behavior:
 6. Increase desired capacity if completion is at risk.
 7. Use configurable 20–30% safety capacity and round Worker count upward to an integer.
 
-### [ACTIVE] No concurrent duplicate frame ownership
-One Task/frame has one active authoritative Worker at a time.
+### [ACTIVE] No concurrent duplicate frame ownership — Track B automated path
+For the automated Track B path, one Task/frame has one active authoritative Worker at a time.
 
 Atomic claim + lease + generation fencing remains authoritative. Failed/expired work is reassigned only after old ownership is no longer authoritative and generation advances.
 
@@ -185,11 +185,46 @@ Full validated output is stored in B2 and LOCKED before payment. After `PAID`, B
 
 ## Worker / Provisioning / Security
 
-### [ACTIVE] Production runtime must work without AI/Admin
-Normal scheduling, Worker claim/heartbeat, render, retries, storage, payment matching, delivery, cleanup and recovery cannot require ChatGPT/Codex/Founder/Admin intervention.
+### [ACTIVE — 2026-08-14] Two Worker tracks with Operational/Revenue Worker as current priority
+The Founder has explicitly reprioritized Worker execution.
 
-### [ACTIVE — 2026-08-12] One physical PC = one canonical PCID/Worker ID
-`PCID` and `Worker ID` are aliases of the same canonical `worker_id`; there is no second independent PC-ID namespace.
+**Track A — current operational/revenue priority:**
+
+`cws_worker.bat -> cws_worker_full.py -> Blender/render/output handling`
+
+These files are no longer legacy/reference-only for current CWS work. They are the Founder-controlled operational Worker path to audit, repair, and use for real rendering/revenue learning.
+
+**Track B — sandbox/staging research for automated E2E later:**
+
+`Node Agent -> authenticated heartbeat/presence -> claim/lease/generation fencing -> task-scoped Worker Engine -> Blender -> verified output -> cleanup`
+
+Track B code/spec/tests/evidence remain preserved, but its provisioning/heartbeat gate is not the current blocker for Track A work.
+
+`TRACK_A_REAL_RENDER_PASS != TRACK_B_GOLDEN_E2E_PASS`
+
+The detailed boundary is owned by `CWS_WORKER_TRACKS.md`.
+
+### [ACTIVE — 2026-08-14] Track A operational safety floor
+Founder-controlled operation permits simpler/manual orchestration, but security is not disabled.
+
+Track A must not rely on:
+
+- committed secrets or broad production credentials inside tracked `.bat`/`.py` files;
+- destructive modification of customer originals;
+- unnecessary Supabase service-role/B2 master credential on the render PC;
+- accidental execution of untrusted embedded Blender Python;
+- silent completion before render/output/upload verification;
+- unsafe automatic self-update or dependency mutation without bounded design.
+
+Historical behavior in `cws_worker_full.py` / `cws_worker.bat` is not automatically approved merely because Track A is active.
+
+### [ACTIVE] Production runtime should ultimately work without AI/Admin
+The long-term automated CWS production control loop should not require ChatGPT/Codex/Founder/Admin intervention for normal scheduling, Worker claim/heartbeat, render, retries, storage, payment matching, delivery, cleanup and recovery.
+
+This is a Track B automation objective and does not prohibit the current Founder-controlled Track A operational/revenue bridge.
+
+### [ACTIVE — 2026-08-12] One physical PC = one canonical PCID/Worker ID — Track B automated model
+For the automated Track B provisioning model, `PCID` and `Worker ID` are aliases of the same canonical `worker_id`; there is no second independent PC-ID namespace.
 
 Backend generates the canonical ID during first provisioning using 128 bits of cryptographically secure random entropy, preferably:
 
@@ -201,8 +236,8 @@ Worker ID is opaque and is not derived from hostname, site, GPU, MachineGuid, se
 
 Machine fingerprint is security evidence only, not a second identity.
 
-### [ACTIVE — 2026-08-12] Worker provisioning has no per-machine or per-batch Founder operation
-Founder/Admin must not:
+### [ACTIVE — 2026-08-12] Worker provisioning has no per-machine or per-batch Founder operation — Track B target
+When automated Track B provisioning is resumed, Founder/Admin must not:
 
 - type Worker IDs;
 - create Worker rows manually;
@@ -213,21 +248,21 @@ Founder/Admin must not:
 
 Internal one-time ticket material may remain as an automated bounded security primitive.
 
-### [ACTIVE — 2026-08-12] Approved site/fleet autonomy
+### [ACTIVE — 2026-08-12] Approved site/fleet autonomy — Track B research direction
 Site/fleet trust is approved once through a privileged authenticated boundary and becomes durable server-side trust.
 
-Canonical direction:
+Automated direction:
 
 `site approved once -> durable site trust -> autonomous site-controller capability renewal -> unattended PC bootstrap -> fingerprint evidence -> Backend-generated Worker ID -> bounded enrollment material -> per-Worker credential -> DPAPI -> Node Agent -> heartbeat -> ACTIVE_IDLE`
 
-Short-lived provisioning token expiry is not site approval expiry. While site trust remains APPROVED and policy permits, capability renewal/exchange must be automatic without Founder/Admin AAL2 per batch.
+Short-lived provisioning token expiry is not site approval expiry. While site trust remains APPROVED and policy permits, capability renewal/exchange should be automatic without Founder/Admin AAL2 per batch.
 
 Site controller capability is provisioning-only, site-scoped, revocable/auditable, and is not a Worker credential, Supabase service-role, payment authority or B2 master authority.
 
 Founder/Admin interaction after initial approval is reserved for exceptional trust/security events such as suspension/revocation recovery, ownership change, explicit trust reset or root credential rotation.
 
-### [ACTIVE] Partner Golden Image model
-Approved partner runtime may be baked into Windows/BootROM Golden Image:
+### [ACTIVE] Partner Golden Image model — Track B research direction
+Approved partner automated runtime may eventually be baked into Windows/BootROM Golden Image:
 
 - bootstrap/startup wrapper;
 - Node Agent;
@@ -239,20 +274,24 @@ Golden Image must not contain shared Worker credential, Supabase service-role, B
 
 Each physical PC retains its own identity/credential in supported per-machine persistent state.
 
-### [ACTIVE] Canonical Windows lifecycle
-Node Agent is the single resident production supervisor.
+### [ACTIVE] Automated Windows lifecycle — Track B only
+Node Agent is the single resident supervisor for the Track B automated design.
 
 `Windows boot -> Node Agent service -> authenticated heartbeat -> ACTIVE_IDLE -> claim -> launch task-scoped Worker Engine -> Blender/render/upload/verify -> Worker Engine exits -> cleanup -> ACTIVE_IDLE`
 
-Worker Engine is not a second permanent service. Duplicate Node Agent startup paths are forbidden.
+Worker Engine is not a second permanent service. Duplicate Node Agent startup paths are forbidden inside Track B.
 
-### [ACTIVE] Worker gateway / storage boundary
-Workers use the authenticated Backend gateway and never receive Supabase service-role credentials.
+This lifecycle does not define the current Track A operational launcher path.
+
+### [ACTIVE] Worker gateway / storage boundary — Track B automated design
+Automated Track B Workers use the authenticated Backend gateway and should never receive Supabase service-role credentials.
 
 Long-lived B2/account credentials remain server-side. Workers receive only narrow task/object-scoped storage capabilities.
 
-### [ACTIVE] Scheduler boundary
-Keep PostgreSQL durable queue + atomic claim + lease + generation fencing. No Redis/NATS/Kafka/RabbitMQ/new control-plane service without measured evidence and Founder approval.
+Track A should follow the same least-privilege direction where practical, but may use a simpler Founder-controlled operational integration provided the Track A safety floor is preserved.
+
+### [ACTIVE] Scheduler boundary — Track B automated design
+Keep PostgreSQL durable queue + atomic claim + lease + generation fencing for Track B. No Redis/NATS/Kafka/RabbitMQ/new control-plane service without measured evidence and Founder approval.
 
 ## Admin / Staff
 
@@ -266,7 +305,7 @@ Both use the same canonical repo/backend/Supabase/B2/SePay business-data sources
 ### [ACTIVE] Admin authentication
 Admin/Host use Google OAuth through Supabase plus required TOTP/AAL2 and explicit staff role authorization.
 
-Admin AAL2 protects privileged Admin/staff actions. It is not a mandatory step in normal Customer execution, normal Worker lifecycle/provisioning, or each normal new batch at an already-approved site.
+Admin AAL2 protects privileged Admin/staff actions. It is not a mandatory step in normal Customer execution or the future normal automated Worker lifecycle/provisioning at an already-approved site.
 
 ### [ACTIVE] Customer CRM
 Authenticated customer profile/account information may be available in Admin Dashboard for authorized support/management purposes.
@@ -278,10 +317,10 @@ Use the canonical repo, existing Render service, production Supabase, B2 resourc
 
 Do not create duplicate/new production infrastructure without Founder approval.
 
-### [ACTIVE] Scale without linear manual operations
-Architecture should remain logically viable toward 100/1,000/10,000/1,000,000 Workers without per-machine/per-job/per-batch Founder operations, copied master secrets, manual Worker-ID entry, manual ticket handling or AI runtime dependence.
+### [ACTIVE] Scale without linear manual operations — long-term Track B objective
+Long-term automated architecture should remain logically viable toward 100/1,000/10,000/1,000,000 Workers without per-machine/per-job/per-batch Founder operations, copied master secrets, manual Worker-ID entry, manual ticket handling or AI runtime dependence.
 
-This is a design constraint, not a claim those fleet sizes are deployed.
+This long-term scale objective does not block the current small Founder-controlled Track A operational/revenue experiments.
 
 ### [ACTIVE] Evidence levels
 Keep distinct:
