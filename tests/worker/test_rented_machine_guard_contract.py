@@ -40,6 +40,19 @@ def test_guard_clears_existing_game_conflicts_before_background_monitoring():
     )
 
 
+def test_blocked_game_launch_shows_customer_rented_popup():
+    assert "_show_customer_rented_notice" in GUARD
+    assert "CUSTOMER_NOTICE_COOLDOWN_SEC" in GUARD
+    assert "customer_rented_notice_shown" in GUARD
+    assert "Máy đang được CWS thuê." in GUARD
+    assert "Xin quý khách vui lòng chọn máy khác." in GUARD
+    assert "Xin cảm ơn." in GUARD
+    assert "CWS - Máy đang được thuê" in GUARD
+    assert GUARD.index("self._show_customer_rented_notice(name)") < GUARD.index(
+        '["taskkill", "/PID", str(pid), "/T", "/F"]'
+    )
+
+
 def test_policy_is_small_explicit_and_contains_no_credentials():
     assert "steam.exe" in POLICY
     assert "epicgameslauncher.exe" in POLICY
