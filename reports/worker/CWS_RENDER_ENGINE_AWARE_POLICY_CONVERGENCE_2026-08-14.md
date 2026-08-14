@@ -48,13 +48,12 @@ path.
 ## Canonical research applied
 
 The policy uses `worker/archviz_profiles.json`,
-`worker/render/BLENDER_CYCLES_OPTIMIZATION_KNOWLEDGE.md`, the Archviz
-preflight report, and the recorded EEVEE stress evidence. The requested files
-`worker/render/EEVEE_OPTIMIZATION_KNOWLEDGE_V1.md` and
-`reports/worker/CWS_RENDER_OPTIMIZATION_POLICY_CONVERGENCE_2026-08-14.md`
-were not present in the grounded canonical checkout; the existing EEVEE stress
-flow and Archviz render research were used instead, without inventing a
-duplicate policy document.
+`worker/render/BLENDER_CYCLES_OPTIMIZATION_KNOWLEDGE.md`,
+`worker/render/EEVEE_OPTIMIZATION_KNOWLEDGE_V1.md`, the Archviz preflight
+report, `reports/worker/CWS_RENDER_OPTIMIZATION_POLICY_CONVERGENCE_2026-08-14.md`,
+and the recorded EEVEE stress evidence. The two convergence documents arrived
+on `origin/main` during this task; the local change was rebased onto them
+before the final push. No duplicate policy document was created.
 
 No backend, Supabase, B2, scheduler, Worker lifecycle, or render output
 contract is changed by this slice.
