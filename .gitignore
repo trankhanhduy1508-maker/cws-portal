@@ -40,3 +40,6 @@ __pycache__/
 
 # Local Blender stress-render artifacts; keep the reproducible scene/script.
 /tests/artifacts/
+
+# Machine-specific output from the one-click Windows development setup.
+CWS_DEV_SETUP_REPORT.txt

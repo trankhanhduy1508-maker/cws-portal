@@ -135,3 +135,22 @@
 - **Lesson learned:** metadata discovery must be a first-class fenced event on the real Task, not an unfenced replacement for total_frames.
 - **Rule for future:** do not expand or partition Tasks until metadata is durably accepted for the owning task/generation; do not treat CI success as runtime/production proof.
 - **Remaining risks:** Scheduler Task Graph expansion, disjoint-range enforcement, runtime evidence wiring and adaptive scaling remain unimplemented and are the next bottleneck.
+
+## 2026-08-14 - Track A per-job coupling audit
+
+- **Problem:** Founder operations still appeared to require changing or regenerating `cws_worker_full.py` for each new Blender file.
+- **Root cause:** The active render core already removed the old hardcoded claim dependency: `claim_next_task()` selects across the Supabase task queue and `_load_job_context(job_id)` reads each job's input dynamically. The remaining manual coupling is upstream job/task seeding and the absence of a local per-job deliverable/intake contract.
+- **Failed approach:** Treating the old `JOB_ID` comments/history as the active execution boundary would have led to editing the renderer or adding a second competing supervisor.
+- **Fix/design:** Keep `cws_worker.bat` as the sole process restart shell and `cws_worker_full.py` as the queue claimant; design a local SQLite intake manifest that submits through an approved authenticated backend bridge and observes authoritative completion/output state.
+- **Verification:** Current-code audit of `claim_next_task()`, `_load_job_context()`, `worker_loop()`, B2 key construction, `JobsService`, and `WorkerFleetGateway`; recorded in `reports/worker/CWS_TRACK_A_SUPERVISOR_V1_AUDIT_2026-08-14.md`.
+- **Future rule:** Before changing Worker code for per-job friction, trace the full intake -> internal jobs/tasks -> claim -> output path. Do not reintroduce job identity into stable renderer code or write directly to Supabase from a local queue.
+- **Remaining risks:** No local Founder intake bridge exists yet; deliverable types are not part of the legacy render core; tracked launcher credential material requires Founder-controlled rotation/removal before claiming the P0 safety floor is satisfied.
+
+## 2026-08-14 - Windows development setup preflight
+
+- **Problem:** The new one-click setup could not reach the install phase on this host.
+- **Root cause:** The Windows host has no `winget` command/App Installer package available in PATH; Python is also absent, while Git, VS Code, GitHub CLI and Node/npm are already present.
+- **Failed approach:** Assuming `winget` was universally available on Windows 10/11 would have produced an unclear install failure.
+- **Fix:** The setup script performs DNS/HTTPS and elevation checks, detects each tool independently, stops clearly when the package manager prerequisite is missing, and writes a machine-local report without secrets.
+- **Verification:** Elevated preflight: Windows/Admin/DNS/HTTPS PASS; `winget` MISSING; no package was installed and no repository state was changed by the setup run.
+- **Future rule:** Treat package-manager availability as an explicit preflight boundary; never silently fall back to arbitrary download/install sources or ask the Founder to edit script placeholders.
