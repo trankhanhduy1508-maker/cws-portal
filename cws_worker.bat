@@ -38,6 +38,8 @@ set "PYTHON_EXE=%PYTHON_DIR%\python.exe"
 set "PYTHON_VERSION=3.12.7"
 set "PYTHON_ZIP_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip"
 set "GETPIP_URL=https://bootstrap.pypa.io/get-pip.py"
+set "PYTHON_ZIP_SHA256=0D57BB6CB078B74D23DBFE91F77D6780D45BED328911609F1F7EE2BA1606BF44"
+set "GETPIP_SHA256=FB24E693BAB954209A063D90953621412CCAD4A500905A726286E038F508DDF6"
 
 REM ----- Cau hinh cho Self Recovery + Auto Update (dua theo condor_master
 REM cua HTCondor: tien trinh cha DON GIAN, tu khoi dong lai neu con crash,
@@ -70,8 +72,14 @@ if exist "%PYTHON_EXE%" (
 echo [setup] Chua co Python, dang tu dong tai ban portable %PYTHON_VERSION%...
 if not exist "%PYTHON_DIR%" mkdir "%PYTHON_DIR%"
 
-REM ----- Buoc 2: Tai file zip Python Embeddable -----
-curl -L -o "%PYTHON_DIR%\python_embed.zip" "%PYTHON_ZIP_URL%"
+REM ----- Buoc 2: Tai va kiem tra hash Python Embeddable -----
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -UseBasicParsing -Uri '%PYTHON_ZIP_URL%' -OutFile '%PYTHON_DIR%\python_embed.zip'; $h=(Get-FileHash -LiteralPath '%PYTHON_DIR%\python_embed.zip' -Algorithm SHA256).Hash; if($h -ne '%PYTHON_ZIP_SHA256%'){Remove-Item -LiteralPath '%PYTHON_DIR%\python_embed.zip' -Force -ErrorAction SilentlyContinue; exit 42} } catch { exit 1 }"
+if errorlevel 42 (
+    echo [LOI] Hash Python khong khop, da xoa artifact khong hop le.
+    pause
+    exit /b 1
+)
 if not exist "%PYTHON_DIR%\python_embed.zip" (
     echo [LOI] Tai Python that bai. Kiem tra ket noi mang roi thu lai.
     pause
@@ -82,6 +90,17 @@ REM ----- Buoc 3: Giai nen (dung tinh nang tar co san tren Windows 10/11) -----
 echo [setup] Dang giai nen...
 tar -xf "%PYTHON_DIR%\python_embed.zip" -C "%PYTHON_DIR%"
 del "%PYTHON_DIR%\python_embed.zip"
+if not exist "%PYTHON_EXE%" (
+    echo [LOI] Python archive khong tao ra python.exe.
+    pause
+    exit /b 1
+)
+"%PYTHON_EXE%" --version
+if errorlevel 1 (
+    echo [LOI] Python portable khong chay duoc sau khi giai nen.
+    pause
+    exit /b 1
+)
 
 REM ----- Buoc 4: Bat lai pip (ban Embeddable mac dinh TAT tim module ngoai
 REM qua file ._pth - PHAI sua file nay, neu khong "pip install" se khong
@@ -97,9 +116,26 @@ REM khi chay get-pip.py hoac import mot so module chuan (da xac nhan qua
 REM nhieu bao cao loi thuc te khi setup Python Embeddable) -----
 if not exist "%PYTHON_DIR%\DLLs" mkdir "%PYTHON_DIR%\DLLs"
 
-REM ----- Buoc 5: Tai va chay get-pip.py de cai dat pip -----
-curl -L -o "%PYTHON_DIR%\get-pip.py" "%GETPIP_URL%"
+REM ----- Buoc 5: Tai, kiem tra hash va chay get-pip.py -----
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -UseBasicParsing -Uri '%GETPIP_URL%' -OutFile '%PYTHON_DIR%\get-pip.py'; $h=(Get-FileHash -LiteralPath '%PYTHON_DIR%\get-pip.py' -Algorithm SHA256).Hash; if($h -ne '%GETPIP_SHA256%'){Remove-Item -LiteralPath '%PYTHON_DIR%\get-pip.py' -Force -ErrorAction SilentlyContinue; exit 42} } catch { exit 1 }"
+if errorlevel 42 (
+    echo [LOI] Hash get-pip.py khong khop, da xoa artifact khong hop le.
+    pause
+    exit /b 1
+)
+if not exist "%PYTHON_DIR%\get-pip.py" (
+    echo [LOI] Tai get-pip.py that bai.
+    pause
+    exit /b 1
+)
 "%PYTHON_EXE%" "%PYTHON_DIR%\get-pip.py" --quiet
+if errorlevel 1 (
+    echo [LOI] Cai pip that bai.
+    del "%PYTHON_DIR%\get-pip.py"
+    pause
+    exit /b 1
+)
 del "%PYTHON_DIR%\get-pip.py"
 
 echo [setup] Da cai xong Python portable + pip tai: %PYTHON_DIR%

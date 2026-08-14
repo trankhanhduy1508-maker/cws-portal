@@ -21,6 +21,11 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
 import subprocess
 import sys
 
+REQUIRED_PYTHON_PACKAGES = (
+    ("requests", "requests>=2.31,<3"),
+    ("boto3", "boto3>=1.35,<2"),
+    ("PIL", "Pillow>=10,<13"),
+)
 
 def ensure_package_installed(import_name, pip_name=None):
     """Tu dong kiem tra + cai 1 thu vien Python neu chua co. Dung cho ca
@@ -34,7 +39,11 @@ def ensure_package_installed(import_name, pip_name=None):
     except ImportError:
         print(f"[setup] Chua co thu vien '{pip_name}', dang tu dong cai...")
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", pip_name, "--quiet"],
+            [
+                sys.executable, "-m", "pip", "install", pip_name,
+                "--quiet", "--disable-pip-version-check", "--no-input",
+                "--only-binary=:all:", "--index-url", "https://pypi.org/simple",
+            ],
             check=True
         )
         print(f"[setup] Da cai xong '{pip_name}'.")
@@ -43,9 +52,8 @@ def ensure_package_installed(import_name, pip_name=None):
 # Tu dong cai ca 3 thu vien TRUOC KHI import - phai lam o day, truoc moi
 # dong code khac, vi cac module ben duoi (requests/boto3/PIL) can duoc cai
 # xong thi cau lenh "import" o duoi moi chay duoc.
-ensure_package_installed("requests")
-ensure_package_installed("boto3")
-ensure_package_installed("PIL", pip_name="Pillow")
+for _import_name, _pip_spec in REQUIRED_PYTHON_PACKAGES:
+    ensure_package_installed(_import_name, pip_name=_pip_spec)
 
 import requests
 import boto3
@@ -59,6 +67,8 @@ import time
 import threading
 import uuid
 import random
+import shutil
+import tempfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -225,26 +235,63 @@ def ensure_blender_installed():
 
     print(f"[setup] Chua co Blender, dang tai ban {BLENDER_VERSION}...")
     BLENDER_DIR.mkdir(parents=True, exist_ok=True)
-    zip_path = BLENDER_DIR / "blender.zip"
+    zip_path = BLENDER_DIR / "blender.zip.part"
+    staging_dir = Path(tempfile.mkdtemp(prefix="blender-staging-", dir=BLENDER_DIR))
+    expected_root_name = f"blender-{BLENDER_VERSION}-windows-x64"
+    try:
+        with requests.get(BLENDER_ZIP_URL, stream=True, timeout=300) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            if total > 2 * 1024 * 1024 * 1024:
+                raise RuntimeError("Blender archive exceeds the 2 GiB bootstrap limit")
+            downloaded = 0
+            with open(zip_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if not chunk:
+                        continue
+                    downloaded += len(chunk)
+                    if downloaded > 2 * 1024 * 1024 * 1024:
+                        raise RuntimeError("Blender archive exceeded the 2 GiB bootstrap limit")
+                    f.write(chunk)
+                    if total:
+                        percent = downloaded * 100 // total
+                        print(f"\r[setup] Dang tai Blender: {percent}%", end="")
+        print("\n[setup] Tai xong, dang kiem tra va giai nen...")
 
-    with requests.get(BLENDER_ZIP_URL, stream=True, timeout=300) as r:
-        r.raise_for_status()
-        total = int(r.headers.get("content-length", 0))
-        downloaded = 0
-        with open(zip_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
-                f.write(chunk)
-                downloaded += len(chunk)
-                if total:
-                    percent = downloaded * 100 // total
-                    print(f"\r[setup] Dang tai Blender: {percent}%", end="")
-    print("\n[setup] Tai xong, dang giai nen...")
+        if not zipfile.is_zipfile(zip_path):
+            raise RuntimeError("Downloaded Blender artifact is not a valid ZIP archive")
+        with zipfile.ZipFile(zip_path, "r") as z:
+            members = z.infolist()
+            if len(members) > 100000:
+                raise RuntimeError("Blender archive contains too many members")
+            extracted_size = 0
+            for member in members:
+                normalized = member.filename.replace("\\", "/")
+                parts = [part for part in normalized.split("/") if part]
+                if not parts or normalized.startswith("/") or ":" in parts[0]:
+                    raise RuntimeError("Blender archive contains an absolute member path")
+                if ".." in parts:
+                    raise RuntimeError("Blender archive contains a traversal member path")
+                extracted_size += member.file_size
+                if extracted_size > 4 * 1024 * 1024 * 1024:
+                    raise RuntimeError("Blender archive expands beyond the 4 GiB bootstrap limit")
+            expected_member = f"{expected_root_name}/blender.exe"
+            if not any(item.filename.replace("\\", "/").lower() == expected_member.lower() for item in members):
+                raise RuntimeError("Blender archive does not contain the expected blender.exe")
+            z.extractall(staging_dir)
 
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(BLENDER_DIR)
-
-    zip_path.unlink()
-    print(f"[setup] Da cai Blender xong tai: {BLENDER_EXE}")
+        staged_exe = staging_dir / expected_root_name / "blender.exe"
+        if not staged_exe.is_file():
+            raise RuntimeError("Blender extraction did not produce blender.exe")
+        target_root = BLENDER_DIR / expected_root_name
+        if target_root.exists():
+            raise RuntimeError("Blender target exists but its executable was not valid")
+        shutil.move(str(staging_dir / expected_root_name), str(target_root))
+        print(f"[setup] Da cai Blender xong tai: {BLENDER_EXE}")
+    finally:
+        if zip_path.exists():
+            zip_path.unlink()
+        shutil.rmtree(staging_dir, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------

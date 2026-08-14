@@ -174,6 +174,15 @@
 - **Verification:** `git diff --check`, source-level service/mutation scan, and Worker-core diff checks PASS. Python and Blender executables are absent on this host, so test execution and Blender runtime evidence remain NOT VERIFIED.
 - **Future rule:** Before adding a preflight/analyzer, search all Worker/render paths and extend the existing authoritative analyzer when its boundary already matches. Apply file mutations atomically and verify status immediately after an interrupted patch.
 
+## 2026-08-14 - Track A self-bootstrap convergence
+
+- **Problem:** The normal Worker entrypoint attempted to recover Python, but a reset/diskless machine could receive an unverified archive, an unverified `get-pip.py`, or unbounded package installation; Blender recovery also lacked archive safety checks.
+- **Root cause:** Bootstrap behavior had grown incrementally inside the launcher and Worker without one bounded integrity/provenance contract. The development setup script was winget-based, while the render host must work without winget.
+- **Failed approach:** Reusing the general winget setup as a render-time dependency path would add a package-manager prerequisite and would not satisfy the portable/diskless runtime contract. A broad pip upgrade would also create unrelated compatibility drift.
+- **Fix:** Kept the existing Worker entrypoint and portable cache, added official Python/get-pip SHA-256 pins, executable/exit-code checks, constrained binary-only package recovery, and bounded Blender ZIP validation with staging extraction and traversal/member/size checks.
+- **Verification:** Static bootstrap contract checks and `git diff --check` pass. Python and Blender are absent on this host, so runtime bootstrap and full-render verification remain explicitly unverified; the production launcher was not executed.
+- **Future rule:** Repeated runtime preparation belongs behind the normal Worker entrypoint, but every remote artifact must have an approved source, bounded download, integrity/provenance check where available, deterministic cache, and explicit verification before execution. Do not claim runtime readiness from source inspection alone.
+
 ## 2026-08-14 - Track A engine-aware optimization convergence
 
 - **Problem:** The legacy `cws_worker_full.py` path contained overlapping inline analysis and active quality-sensitive mutations, including Samples/Shadow/Simplify/Caustics/Clamp and automatic lighting behavior.
