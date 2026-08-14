@@ -62,6 +62,8 @@ import random
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+UNKNOWN = "UNKNOWN"
+
 # ===== SUPABASE =====
 SUPABASE_URL = os.environ.get("CWS_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("CWS_SUPABASE_KEY") or os.environ.get("SUPABASE_KEY")
@@ -1517,6 +1519,97 @@ print("CWS_ANALYZER_JSON_END")
     return report
 
 
+def _normalize_render_engine(raw_engine):
+    """Normalize Blender scene data without guessing from job metadata."""
+    return {
+        "CYCLES": "CYCLES",
+        "BLENDER_EEVEE": "EEVEE_LEGACY",
+        "BLENDER_EEVEE_NEXT": "EEVEE_NEXT",
+    }.get(raw_engine, "UNKNOWN")
+
+
+def analyze_blend_scene_v2(blend_path):
+    """Run the canonical read-only Archviz analyzer for the active Worker.
+
+    The analyzer opens the actual .blend with auto-execution disabled and
+    reads ``scene.render.engine``.  If the analyzer fails or the engine is
+    unknown, the caller receives diagnostics only and the original render
+    settings remain untouched.
+    """
+    analyzer = Path(__file__).resolve().parent / "worker" / "blender_scene_analyzer.py"
+    output = Path(blend_path).with_name("archviz-preflight.json")
+    env = os.environ.copy()
+    env["CWS_ANALYZER_OUTPUT"] = str(output)
+    command = [
+        str(BLENDER_EXE), "--background", "--disable-autoexec",
+        "--python-exit-code", "1", str(blend_path), "--python", str(analyzer),
+    ]
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=300,
+            env=env, check=False,
+        )
+        if result.returncode != 0 or not output.is_file():
+            print("[SCENE PREFLIGHT] Analyzer failed; preserve customer settings.")
+            return None
+        report = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        print(f"[SCENE PREFLIGHT] Diagnostics unavailable ({type(exc).__name__}); preserve settings.")
+        return None
+    finally:
+        output.unlink(missing_ok=True)
+
+    raw_engine = report.get("render_engine") or report.get("render", {}).get("engine")
+    normalized = _normalize_render_engine(raw_engine)
+    render = report.get("render", {})
+    geometry = report.get("geometry", {})
+    lighting = report.get("materials_lighting", {})
+    assets = report.get("assets", {})
+    project = report.get("project", {})
+    risk_codes = {item.get("code") for item in report.get("risk_flags", [])}
+    characteristics = {
+        "SHADOW_HEAVY": lighting.get("lights", 0) >= 20,
+        "MANY_LIGHTS": lighting.get("lights", 0) >= 8,
+        "TRANSPARENCY_HEAVY": bool(lighting.get("transparent_alpha_materials")),
+        "GLASS_TRANSMISSION_HEAVY": bool(lighting.get("glass_transmission_materials")),
+        "VOLUME_HEAVY": bool(lighting.get("volume_materials")) or bool(geometry.get("volume_nodes")),
+        "TEXTURE_HEAVY": assets.get("estimated_texture_bytes", 0) >= 2 * 1024**3,
+        "VRAM_RISK": "TEXTURE_MEMORY" in risk_codes or "GEOMETRY_COMPLEXITY" in risk_codes,
+        "GEOMETRY_HEAVY": "GEOMETRY_COMPLEXITY" in risk_codes,
+        "GEOMETRY_NODES": bool(geometry.get("geometry_nodes")),
+        "SUBDIV_DISPLACEMENT_HEAVY": bool(geometry.get("subdivision_modifiers") or geometry.get("displacement_indicators")),
+        "PARTICLE_HAIR_HEAVY": UNKNOWN,
+        "INDIRECT_LIGHT_HEAVY": UNKNOWN,
+        "ANIMATION_REBUILD_HEAVY": bool(render.get("total_frames", 1) > 1 and (geometry.get("geometry_nodes") or geometry.get("displacement_indicators"))),
+    }
+    profile = project.get("profile", "UNKNOWN")
+    level = 3 if any(item.get("severity") == "HIGH" for item in report.get("risk_flags", [])) else 1 if report.get("risk_flags") else 0
+    report.update({
+        "engine": raw_engine or UNKNOWN,
+        "engine_normalized": normalized,
+        "engine_generation": "Cycles" if normalized == "CYCLES" else "EEVEE" if normalized in ("EEVEE_LEGACY", "EEVEE_NEXT") else UNKNOWN,
+        "workload_profile": profile,
+        "characteristics": characteristics,
+        "total_lights": lighting.get("lights", 0),
+        "shadow_lights": UNKNOWN,
+        "max_texture_res": max((item.get("width", 0) for item in assets.get("images", [])), default=0),
+        "texture_count": assets.get("texture_count", 0),
+        "polygon_count": geometry.get("polygons", 0),
+        "samples": render.get("samples"),
+        "motion_blur": UNKNOWN,
+        "volumetric_count": len(lighting.get("volume_nodes", [])),
+        "suggested_level": level,
+        "reasons": [item.get("reason", item.get("code", "")) for item in report.get("risk_flags", [])],
+        "scene_profile_v1": {"profile": profile, "characteristics": characteristics},
+        "safe_optimizations": {},
+        "gentle_optimizations": {},
+        "level2_safe_optimizations": {},
+        "no_light_warning": None,
+    })
+    print(f"[SCENE PREFLIGHT] engine={normalized} raw={raw_engine or UNKNOWN} profile={profile} characteristics={','.join(key for key, value in characteristics.items() if value is True) or 'NONE'}")
+    return report
+
+
 def get_or_create_optimization_plan(blend_path, job_id):
     """PHUONG AN C (de xuat 22/07/2026, sua lai 22/07/2026 theo phan bien
     cua Dy - tach bang rieng thay vi nhet vao jobs): chi 1 worker PHAN
@@ -1555,7 +1648,9 @@ def get_or_create_optimization_plan(blend_path, job_id):
     # qua RPC set_optimization_plan_if_missing - xem them RPC nay co
     # UPSERT/GHI DE hay chi "insert neu chua co", can xac nhan them neu
     # muon Plan moi thuc su thay the Plan cu tren Supabase).
-    REQUIRED_PLAN_FIELDS = ("oversized_textures", "total_frames")
+    REQUIRED_PLAN_FIELDS = (
+        "oversized_textures", "total_frames", "engine_normalized", "characteristics"
+    )
     url = f"{SUPABASE_URL}/rest/v1/job_optimization?job_id=eq.{job_id}&select=analysis"
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
@@ -1579,7 +1674,10 @@ def get_or_create_optimization_plan(blend_path, job_id):
 
     # Chua co Plan (hoac khong kiem tra duoc) - worker nay TU PHAN TICH
     print("[OPTIMIZATION PLAN] Chua co san, dang tu phan tich file .blend...")
-    my_report = analyze_blend_scene(blend_path)
+    # The active path uses the canonical read-only Archviz analyzer.  The
+    # historical inline analyzer above is retained only for cold-history
+    # comparison and is no longer an execution dependency.
+    my_report = analyze_blend_scene_v2(blend_path)
     if my_report is None:
         print("[OPTIMIZATION PLAN DEBUG] analyze_blend_scene() tra ve None - "
               "phan tich that bai (xem log [SCENE ANALYZER] phia tren de biet ly do).")
@@ -1618,6 +1716,9 @@ def get_or_create_optimization_plan(blend_path, job_id):
               "tu phan tich cua chinh worker nay.")
         return my_report
 
+    if isinstance(final_plan, dict) and any(field not in final_plan for field in REQUIRED_PLAN_FIELDS):
+        print("[OPTIMIZATION PLAN] Backend returned a legacy plan; using this worker's engine-aware diagnostics only.")
+        return my_report
     return final_plan
 
 
@@ -1996,6 +2097,34 @@ def apply_safe_optimizations_args(plan):
     return "\n".join(lines)
 
 
+def apply_engine_aware_optimization_policy(plan):
+    """Return diagnostics-only Blender code for the active Track A path.
+
+    The historical mutation builder above is intentionally not called.  Its
+    former Samples/Shadow/Simplify/Caustics/Clamp/lighting changes are
+    quality-sensitive and therefore benchmark-only or forbidden by the
+    canonical research.  Track A currently starts a fresh Blender process per
+    frame, so Persistent Data cannot provide normal cross-frame reuse here.
+    """
+    if not isinstance(plan, dict):
+        return ""
+    normalized = plan.get("engine_normalized", UNKNOWN)
+    profile = plan.get("workload_profile", UNKNOWN)
+    characteristics = plan.get("characteristics", {})
+    return (
+        "try:\n"
+        "    import bpy\n"
+        f"    _cws_engine = {normalized!r}\n"
+        f"    _cws_profile = {profile!r}\n"
+        f"    _cws_characteristics = {characteristics!r}\n"
+        "    print('[ENGINE-AWARE POLICY] diagnostics-only; preserve customer settings')\n"
+        "    print(f'[ENGINE-AWARE POLICY] engine={_cws_engine} profile={_cws_profile} '\n"
+        "          f'characteristics={_cws_characteristics}')\n"
+        "except Exception as _cws_policy_error:\n"
+        "    print(f'[ENGINE-AWARE POLICY] diagnostics unavailable: {_cws_policy_error}')\n"
+    )
+
+
 LEVEL_SUGGESTIONS = {
     0: "Khong can toi uu. Giu nguyen cau hinh goc.",
     1: "Level 1 (An toan): co the bo texture/light trung lap, bat Persistent "
@@ -2275,7 +2404,7 @@ def _load_job_context(job_id, _cache={}):
     optimization_plan = get_or_create_optimization_plan(blend_path, job_id)
     print_scene_analysis_report(optimization_plan, job_id)
 
-    optimization_code = get_driver_namespace_fix_code() + apply_safe_optimizations_args(optimization_plan)
+    optimization_code = get_driver_namespace_fix_code() + apply_engine_aware_optimization_policy(optimization_plan)
     if ENABLE_GPU_TEXTURE_RELOAD_FIX:
         optimization_code += get_gpu_texture_reload_fix_code()
 

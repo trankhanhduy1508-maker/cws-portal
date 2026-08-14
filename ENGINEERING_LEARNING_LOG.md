@@ -173,3 +173,12 @@
 - **Fix:** Extended `worker/blender_scene_analyzer.py` in place with the `cws.archviz-preflight.v1` envelope, preserving Worker-compatible fields. Added deterministic risk flags, profile hints, Cycles/light-path observations, dependency/cache/texture/geometry indicators, and static safety checks. The analyzer remains no-render, no-save, no-autoexec and service-free.
 - **Verification:** `git diff --check`, source-level service/mutation scan, and Worker-core diff checks PASS. Python and Blender executables are absent on this host, so test execution and Blender runtime evidence remain NOT VERIFIED.
 - **Future rule:** Before adding a preflight/analyzer, search all Worker/render paths and extend the existing authoritative analyzer when its boundary already matches. Apply file mutations atomically and verify status immediately after an interrupted patch.
+
+## 2026-08-14 - Track A engine-aware optimization convergence
+
+- **Problem:** The legacy `cws_worker_full.py` path contained overlapping inline analysis and active quality-sensitive mutations, including Samples/Shadow/Simplify/Caustics/Clamp and automatic lighting behavior.
+- **Root cause:** Historical Founder decisions were embedded as executable strings after the canonical research had classified most of those changes as benchmark-only or do-not-auto-change. The path also did not have one explicit engine gate before policy routing.
+- **Failed approach:** Treating `safe_optimizations` and `level2_safe_optimizations` field names as current permission would have applied visual changes across engines and would have called Persistent Data useful despite a fresh Blender process per frame.
+- **Fix:** Routed the active path through the existing Archviz analyzer, normalized actual `scene.render.engine` to CYCLES/EEVEE_LEGACY/EEVEE_NEXT/UNKNOWN, added deterministic characteristics, and replaced the active policy call with diagnostics-only code. Unknown/failed detection preserves settings.
+- **Verification:** Static source contract and diff checks are added. Python/Blender runtime verification remains unavailable on this host; no render, backend, Supabase or B2 operation was run.
+- **Future rule:** `NO ENGINE DETECTION = NO AUTO OPTIMIZATION`; engine-specific quality changes require a separate benchmark on a derived working copy and must never be smuggled through a “safe” plan field.
