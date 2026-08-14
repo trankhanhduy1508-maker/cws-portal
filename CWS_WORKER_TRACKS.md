@@ -16,7 +16,7 @@ Current priority is functional reliability:
 
 - start reliably on the Founder-controlled Windows machine;
 - obtain the intended render input under the approved manual/controlled trust decision;
-- prepare a safe working copy/workspace;
+- prepare the intended working copy/workspace;
 - invoke the intended Blender executable and render correctly;
 - detect success/failure accurately;
 - validate expected output;
@@ -25,21 +25,57 @@ Current priority is functional reliability:
 - clean temporary/job-scoped files without damaging the customer original;
 - produce useful logs/evidence for diagnosis.
 
-### Operational safety floor
+### Track A trust boundary and proportional security posture
 
-Track A is intentionally simpler and more Founder-controlled than the future automated multi-tenant system, but SECURITY IS NOT OFF.
+Track A is a **Founder-controlled concierge/operational path**, not the future public unattended multi-tenant Worker system.
 
-Minimum non-negotiable safety:
+Current trust model:
 
-- no secrets or broad production credentials committed in tracked `.bat`/`.py` files;
-- no destructive modification of the customer original;
-- no unnecessary Supabase service-role/B2 master credential on the render PC;
-- no accidental execution of untrusted embedded Blender Python merely because a file is rendered;
-- no silent success before render/output/upload verification;
-- no unsafe automatic self-update or dependency mutation without explicit bounded design;
-- failures must be visible and diagnosable.
+- Founder receives/controls the customer submission used for Track A;
+- Founder decides what file/job is allowed to enter the Track A render machine;
+- customer does not receive or operate `cws_worker.bat`, `cws_worker_full.py`, Worker credentials, or the render host;
+- customer only receives the resulting output through the Founder-controlled delivery process;
+- Track A may use manual Founder orchestration where this reduces friction and increases real-render/revenue learning.
 
-Historical behavior inside these files is not automatically approved merely because Track A is now active. Each unsafe/stale behavior must still be audited and corrected.
+Therefore, **functional reliability and smooth rendering outrank future-production hardening on Track A**.
+
+AI/Codex MUST NOT make every production-grade automated/multi-tenant security control a blocker for Track A. A warning is not automatically a stop condition merely because the same design would be unacceptable for Track B.
+
+Some Track A shortcuts or broader local capabilities may be intentionally accepted by the Founder when they materially reduce render friction inside this controlled trust boundary. Do not remove or redesign such behavior solely to satisfy future Track B security architecture. First ask: does the behavior create a real catastrophic risk inside the current Founder-controlled operating model, or is it mainly a future automation concern?
+
+### Track A P0 safety floor — small and non-negotiable
+
+Security is proportional, not disabled. Only catastrophic/irreversible risks should block Track A by default.
+
+Minimum P0 floor:
+
+- do not commit live secrets/credentials into the public/canonical Git repository;
+- do not destroy, overwrite, or irreversibly modify the customer original;
+- do not perform destructive host/data actions outside the intended Founder-approved render operation;
+- do not report render/upload success when required output is missing, corrupt, or unverified;
+- do not silently expose customer files or credentials to unnecessary third parties;
+- surface material security findings to the Founder, but classify non-P0 hardening as deferred rather than automatically blocking operational rendering.
+
+The following are **not automatic Track A blockers** merely because Track B will eventually require stronger treatment:
+
+- manual Founder-controlled job/file selection;
+- simplified local workspace assumptions;
+- broader local permissions that are knowingly limited to the Founder-controlled render machine;
+- manual configuration or operational steps;
+- missing unattended multi-tenant isolation;
+- missing full least-privilege automation;
+- missing automatic provisioning/heartbeat/fencing architecture;
+- security hardening whose main value appears only once unknown/untrusted parties can directly drive the Worker.
+
+If a security change materially increases render complexity or failure risk while providing little benefit inside the current controlled boundary, prefer to **record/defer it for Track B** instead of forcing it into Track A.
+
+### Track A engineering rule
+
+For Track A, use this priority order:
+
+`RENDER CORRECTLY -> RECOVER RELIABLY -> VERIFY OUTPUT -> KEEP P0 SAFETY FLOOR -> IMPROVE CONVENIENCE -> DEFER NON-ESSENTIAL HARDENING`
+
+Do not turn Track A into a second Node Agent/Worker Engine architecture.
 
 ## Track B — Node Agent / Worker Engine Auto-E2E Research — SANDBOX / LATER
 
@@ -60,16 +96,18 @@ For now:
 - do not report Track B code/tests as current operational runtime evidence;
 - do not make Track B provisioning/heartbeat gates block Track A real-render experiments.
 
+Track B is where stronger unattended/public/multi-tenant security hardening belongs when that work becomes active again.
+
 ## Relationship between the tracks
 
 Track A and Track B serve different current purposes:
 
-- Track A optimizes for **real render capability, revenue evidence, learn-from-doing, and Founder-controlled operation now**.
+- Track A optimizes for **real render capability, revenue evidence, learn-from-doing, low operational friction, and Founder-controlled operation now**.
 - Track B optimizes for **future unattended automation, scale, stronger multi-tenant isolation, authenticated lifecycle control, and Golden E2E later**.
 
-Do not silently merge the two architectures.
+Do not silently merge the two architectures or security postures.
 
-Useful capabilities may be transferred only when they solve a demonstrated Track A problem with acceptable complexity and do not reintroduce stale/unsafe assumptions.
+Useful capabilities may be transferred only when they solve a demonstrated Track A problem with acceptable complexity and do not reintroduce unnecessary architecture.
 
 Likewise, Track A success does not prove Track B Golden E2E.
 
@@ -81,7 +119,8 @@ Until the Founder changes priority again:
 
 1. audit `cws_worker_full.py` and `cws_worker.bat` as active operational files;
 2. reproduce and fix real functional defects;
-3. strengthen the minimum safety floor needed for controlled real work;
-4. verify a real Founder-controlled Blender render and output path;
-5. learn from real customer/render evidence;
-6. keep Node Agent/Worker Engine research preserved but secondary.
+3. preserve only the small P0 safety floor appropriate to the Founder-controlled boundary;
+4. do not let future-production hardening block smooth Track A rendering without a concrete current risk;
+5. verify a real Founder-controlled Blender render and output path;
+6. learn from real customer/render evidence;
+7. keep Node Agent/Worker Engine research preserved but secondary.
