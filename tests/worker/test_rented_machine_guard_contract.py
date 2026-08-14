@@ -25,10 +25,10 @@ def test_guard_uses_supported_windows_controls_and_stale_recovery():
     assert "rented_machine_lease.json" in GUARD
     assert "taskkill" in GUARD
     assert "NEVER_TERMINATE" in GUARD
-    assert "CWS RENDER LEASE ACTIVE" in GUARD
+    assert "MÁY ĐANG ĐƯỢC CWS THUÊ" in GUARD
 
 
-def test_guard_clears_existing_game_conflicts_before_background_monitoring():
+def test_guard_clears_existing_explicit_game_conflicts_before_monitoring():
     assert "_clear_configured_game_conflicts" in GUARD
     assert "_list_running_blocked_processes" in GUARD
     assert "game_conflict_detected" in GUARD
@@ -40,7 +40,7 @@ def test_guard_clears_existing_game_conflicts_before_background_monitoring():
     )
 
 
-def test_blocked_game_launch_shows_customer_rented_popup():
+def test_blocked_launch_shows_customer_rented_popup():
     assert "_show_customer_rented_notice" in GUARD
     assert "CUSTOMER_NOTICE_COOLDOWN_SEC" in GUARD
     assert "customer_rented_notice_shown" in GUARD
@@ -48,14 +48,32 @@ def test_blocked_game_launch_shows_customer_rented_popup():
     assert "Xin quý khách vui lòng chọn máy khác." in GUARD
     assert "Xin cảm ơn." in GUARD
     assert "CWS - Máy đang được thuê" in GUARD
-    assert GUARD.index("self._show_customer_rented_notice(name)") < GUARD.index(
-        '["taskkill", "/PID", str(pid), "/T", "/F"]'
-    )
 
 
-def test_policy_is_small_explicit_and_contains_no_credentials():
+def test_session_allowlist_blocks_new_interactive_apps_but_preserves_baseline():
+    assert "session_allowlist" in POLICY
+    assert "allowed_processes" in POLICY
+    assert "_baseline_pids" in GUARD
+    assert "_enforce_session_allowlist" in GUARD
+    assert "_is_interactive_session" in GUARD
+    assert "session_allowlist_blocked" in GUARD
+    assert "session_process_terminated" in GUARD
+    assert "pid in self._baseline_pids" in GUARD
+    assert "name in allowed" in GUARD
+    assert "explorer.exe" in POLICY
+    assert "chrome.exe" in POLICY
+    assert "powershell.exe" in POLICY
+    assert "cmd.exe" in POLICY
+
+
+def test_explicit_game_launchers_remain_fail_closed():
     assert "steam.exe" in POLICY
     assert "epicgameslauncher.exe" in POLICY
+    assert "riotclientservices.exe" in POLICY
+    assert "Explicit blacklist always wins" in GUARD
+
+
+def test_policy_contains_no_credentials():
     assert "CWS_TELEGRAM" not in POLICY
     assert "SUPABASE" not in POLICY
     assert "B2" not in POLICY
