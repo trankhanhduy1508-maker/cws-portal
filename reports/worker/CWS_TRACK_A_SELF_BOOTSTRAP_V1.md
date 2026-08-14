@@ -29,4 +29,26 @@ Python 3.12.7 is retained as the existing Worker compatibility pin. The official
 
 Static contract checks and `git diff --check` are the verification available on this host. Python and Blender are not installed here, so no production Worker launch or full render was run. Running `cws_worker.bat` was intentionally avoided because its normal path performs update checks and enters the production Worker loop.
 
-Next smallest safe action: run the launcher once on a Founder-controlled machine with a durable `CWS_DIR`, then capture bootstrap/runtime evidence before measuring the full customer project render.
+The normal launcher now also supports `cws_worker.bat --bootstrap-only`. This
+path verifies Python packages and the cached Blender executable, then exits
+before update checks, Supabase/B2 calls, task claiming or rendering. It is the
+smallest safe runtime gate before the full customer render.
+
+Next smallest safe action: run the bootstrap-only path once on a
+Founder-controlled machine with a durable `CWS_DIR`, then capture runtime
+evidence before measuring the full customer project render.
+
+## Current runtime evidence
+
+- Bootstrap-only first run: PASS after fixing the embeddable-Python script-path
+  import boundary.
+- Bootstrap-only rerun: PASS; cached Python 3.12.7, package imports and Blender
+  5.2.0 were reused without redownload.
+- Google Drive metadata: expected file name confirmed, stored size 929,022,719
+  bytes.
+- Google Drive raw connector fetch: refused by the connector's 100 MiB limit.
+- Existing Track A HTTP download: redirected to Google sign-in and therefore
+  stopped with an explicit authenticated-session error. No customer `.blend`
+  bytes were uploaded or sent to a third-party scanner.
+- Full project render: BLOCKED until an authenticated, approved transfer path
+  can materialize the original working copy locally.

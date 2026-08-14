@@ -32,7 +32,7 @@ REM dia cu the la gi.
 REM
 REM Gia tri hien tai (G:\) la cau hinh THAT SU cua doi tac anh Thong,
 REM xac nhan 22/07/2026 - KHONG PHAI mac dinh chung cho moi doi tac.
-set "CWS_DIR=G:\CWS_Render"
+if "%CWS_DIR%"=="" set "CWS_DIR=G:\CWS_Render"
 set "PYTHON_DIR=%CWS_DIR%\PythonEmbed"
 set "PYTHON_EXE=%PYTHON_DIR%\python.exe"
 set "PYTHON_VERSION=3.12.7"
@@ -66,6 +66,7 @@ if not exist "%CWS_DIR%" mkdir "%CWS_DIR%"
 REM ----- Buoc 1: Kiem tra Python portable da co san chua -----
 if exist "%PYTHON_EXE%" (
     echo [setup] Python portable da co san: %PYTHON_EXE%
+    if /I "%~1"=="--bootstrap-only" goto :bootstrap_only
     goto :run_worker
 )
 
@@ -139,6 +140,7 @@ if errorlevel 1 (
 del "%PYTHON_DIR%\get-pip.py"
 
 echo [setup] Da cai xong Python portable + pip tai: %PYTHON_DIR%
+if /I "%~1"=="--bootstrap-only" goto :bootstrap_only
 
 :run_worker
 REM =====================================================================
@@ -231,3 +233,15 @@ echo [supervisor] Worker da thoat. Doi %COOLDOWN_SEC%s truoc khi tu khoi dong la
 echo [supervisor] Nhan Ctrl+C ngay bay gio neu muon dung han.
 timeout /t %COOLDOWN_SEC% /nobreak >nul 2>nul
 goto :check_update
+
+:bootstrap_only
+echo =====================================================================
+echo CWS bootstrap-only: chi kiem tra Python packages va Blender portable.
+"%PYTHON_EXE%" "%~dp0cws_worker_full.py" --bootstrap-only
+if errorlevel 1 (
+    echo [LOI] Bootstrap-only that bai.
+    pause
+    exit /b 1
+)
+echo [setup] Bootstrap-only PASS. Khong chay Worker, Supabase, B2 hoac Blender render.
+exit /b 0

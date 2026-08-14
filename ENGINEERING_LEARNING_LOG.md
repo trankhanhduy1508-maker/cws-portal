@@ -182,6 +182,11 @@
 - **Fix:** Kept the existing Worker entrypoint and portable cache, added official Python/get-pip SHA-256 pins, executable/exit-code checks, constrained binary-only package recovery, and bounded Blender ZIP validation with staging extraction and traversal/member/size checks.
 - **Verification:** Static bootstrap contract checks and `git diff --check` pass. Python and Blender are absent on this host, so runtime bootstrap and full-render verification remain explicitly unverified; the production launcher was not executed.
 - **Future rule:** Repeated runtime preparation belongs behind the normal Worker entrypoint, but every remote artifact must have an approved source, bounded download, integrity/provenance check where available, deterministic cache, and explicit verification before execution. Do not claim runtime readiness from source inspection alone.
+- **Follow-up:** Added `cws_worker.bat --bootstrap-only` so runtime dependency verification can run without update checks, Supabase/B2 access, task claims, or Blender rendering. Use this gate before any real customer render.
+- **Runtime defect found:** The first bootstrap-only execution installed Python 3.12.7 and the required packages, then failed because Python embeddable's isolated path did not include the script directory and could not import the companion `worker` Guard module.
+- **Fix and verification:** Inserted the Worker script directory into `sys.path` before the companion import; bootstrap-only will be rerun against the same local cache. Future rule: every embeddable-Python runtime must verify both package imports and repository companion-module imports, not only `python.exe --version`.
+- **Drive runtime finding:** The provided `.blend` metadata is available, but the connector rejects the 929 MB raw download at its 100 MiB limit and the legacy HTTP path receives an authenticated Google sign-in page rather than a virus-warning payload.
+- **Boundary:** The failed approach was to infer a new `uuid` from the sign-in HTML or bypass the authenticated file boundary. The fix is an explicit fail-closed error; future rule: do not claim download/render readiness until the approved authenticated transfer produces and validates a local immutable working copy.
 
 ## 2026-08-14 - Track A rented-machine guard V1
 

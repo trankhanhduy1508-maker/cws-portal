@@ -19,8 +19,14 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
 """
 
 import atexit
+import os as _bootstrap_os
 import subprocess
 import sys
+
+BOOTSTRAP_ONLY = "--bootstrap-only" in sys.argv
+_script_dir = _bootstrap_os.path.dirname(_bootstrap_os.path.abspath(__file__))
+if _script_dir not in sys.path:
+    sys.path.insert(0, _script_dir)
 
 REQUIRED_PYTHON_PACKAGES = (
     ("requests", "requests>=2.31,<3"),
@@ -91,7 +97,7 @@ B2_APP_KEY = os.environ.get("CWS_B2_APP_KEY")
 B2_ENDPOINT = os.environ.get("CWS_B2_ENDPOINT")
 B2_BUCKET = os.environ.get("CWS_B2_BUCKET")
 
-if not all((SUPABASE_URL, SUPABASE_KEY, B2_KEY_ID, B2_APP_KEY, B2_ENDPOINT, B2_BUCKET)):
+if not BOOTSTRAP_ONLY and not all((SUPABASE_URL, SUPABASE_KEY, B2_KEY_ID, B2_APP_KEY, B2_ENDPOINT, B2_BUCKET)):
     raise RuntimeError("legacy worker requires Supabase/B2 configuration from environment; no secret fallback exists")
 
 # ===== BLENDER =====
@@ -305,6 +311,12 @@ def ensure_blender_installed():
         shutil.rmtree(staging_dir, ignore_errors=True)
 
 
+if BOOTSTRAP_ONLY:
+    ensure_blender_installed()
+    print("[setup] Bootstrap-only PASS: Python packages and Blender verified; production Worker not started.")
+    raise SystemExit(0)
+
+
 # ---------------------------------------------------------------------
 # GOOGLE DRIVE DOWNLOAD (cong thuc confirm=t da kiem chung)
 # ---------------------------------------------------------------------
@@ -332,6 +344,11 @@ def download_from_drive(drive_link, dest_path):
     content_type = response.headers.get("Content-Type", "")
 
     if "text/html" in content_type:
+        if "accounts.google.com" in response.url or "signin" in response.url.lower():
+            raise RuntimeError(
+                "Google Drive requires an authenticated download session for this file; "
+                "the Worker has no browser-cookie or credential fallback."
+            )
         # Day la trang canh bao virus scan (file lon), can lay uuid tu form HTML
         html = response.text
         uuid_match = re.search(r'name="uuid"\s+value="([^"]+)"', html)
