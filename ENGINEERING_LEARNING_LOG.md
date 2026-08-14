@@ -164,3 +164,12 @@
 - **Verification:** Static contract scan, no-integration scan, diff check and secret-value scan PASS. Python runtime tests are NOT VERIFIED because this host has neither `python`, `python3`, nor `py` available; the launcher reports that prerequisite clearly.
 - **Future rule:** Keep local manifest state separate from authoritative backend/Worker state. `READY_TO_SUBMIT` is never `INPUT_SAFE`, submitted, rendered, uploaded, paid or delivered.
 - **Remaining risks:** Authenticated backend intake adapter, authoritative status observation, deliverable finalization and real Track A runtime remain future slices; no production writes were attempted.
+
+## 2026-08-14 - Track A Archviz preflight V1
+
+- **Problem:** Track A needed a scene-cost/dependency preflight for architectural visualization, but a scene analyzer already existed and was already part of the Worker path.
+- **Root cause:** The existing analyzer had the correct read-only/headless boundary but exposed only a narrow legacy report; creating a second analyzer would duplicate the Worker integration and risk contract drift.
+- **Failed approach:** An intermediate file replacement applied the delete phase before the add phase, temporarily showing the existing analyzer as deleted in the worktree. It was immediately restored before sync; no commit or production runtime used the transient state.
+- **Fix:** Extended `worker/blender_scene_analyzer.py` in place with the `cws.archviz-preflight.v1` envelope, preserving Worker-compatible fields. Added deterministic risk flags, profile hints, Cycles/light-path observations, dependency/cache/texture/geometry indicators, and static safety checks. The analyzer remains no-render, no-save, no-autoexec and service-free.
+- **Verification:** `git diff --check`, source-level service/mutation scan, and Worker-core diff checks PASS. Python and Blender executables are absent on this host, so test execution and Blender runtime evidence remain NOT VERIFIED.
+- **Future rule:** Before adding a preflight/analyzer, search all Worker/render paths and extend the existing authoritative analyzer when its boundary already matches. Apply file mutations atomically and verify status immediately after an interrupted patch.
