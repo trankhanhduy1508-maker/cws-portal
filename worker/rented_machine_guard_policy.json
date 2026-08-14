@@ -1,0 +1,8 @@
+{
+  "blocked_processes": [
+    "steam.exe",
+    "steamwebhelper.exe",
+    "epicgameslauncher.exe",
+    "riotclientservices.exe"
+  ]
+}

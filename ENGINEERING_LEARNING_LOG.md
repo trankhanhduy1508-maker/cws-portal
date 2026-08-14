@@ -183,6 +183,15 @@
 - **Verification:** Static bootstrap contract checks and `git diff --check` pass. Python and Blender are absent on this host, so runtime bootstrap and full-render verification remain explicitly unverified; the production launcher was not executed.
 - **Future rule:** Repeated runtime preparation belongs behind the normal Worker entrypoint, but every remote artifact must have an approved source, bounded download, integrity/provenance check where available, deterministic cache, and explicit verification before execution. Do not claim runtime readiness from source inspection alone.
 
+## 2026-08-14 - Track A rented-machine guard V1
+
+- **Problem:** A gaming-host customer can start a game, sleep, or accidentally shut down the PC while a claimed render task is active; wallpaper alone is only a notice.
+- **Root cause:** Track A had no local lease-owned host control. The Worker claim/task state was remote, while Windows power/process controls were not tied to the actual render lifecycle.
+- **Failed approach:** Reusing Track B Node Agent/Worker Engine or making the Guard active whenever the Worker/Blender process existed would cross the Track A boundary and would lock idle machines without a real task lease.
+- **Fix:** Added a local lease-scoped Windows Guard with explicit acquire/state/release transitions, stale-PID recovery, a generic fullscreen notice, supported keep-awake/shutdown-block APIs, and a small exact-name process policy. It is integrated around the existing claimed-task render path only.
+- **Verification:** Static contract checks and diff checks are the available evidence. Python/Blender runtime and real Windows process/power/UI behavior are NOT VERIFIED on this host. The existing B2 update path also still packages only `cws_worker_full.py`; companion Guard files need a packaging/runtime check before deployment.
+- **Future rule:** Host controls must be tied to a concrete local lease, have a bounded policy and protected process exclusions, release on every terminal path, and recover stale ownership. Never claim host enforcement from static code alone; verify the exact packaged artifacts on the partner machine.
+
 ## 2026-08-14 - Track A engine-aware optimization convergence
 
 - **Problem:** The legacy `cws_worker_full.py` path contained overlapping inline analysis and active quality-sensitive mutations, including Samples/Shadow/Simplify/Caustics/Clamp and automatic lighting behavior.

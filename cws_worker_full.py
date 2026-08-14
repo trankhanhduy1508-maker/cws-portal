@@ -18,6 +18,7 @@ Cach chay (chi can Python cai san, moi thu con lai TU DONG):
     python cws_worker_full.py
 """
 
+import atexit
 import subprocess
 import sys
 
@@ -71,6 +72,7 @@ import shutil
 import tempfile
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from worker.rented_machine_guard import RentedMachineGuard
 
 UNKNOWN = "UNKNOWN"
 
@@ -112,6 +114,15 @@ BASE_DIR = Path(os.environ.get("CWS_DIR", "G:/CWS_Render"))
 BLENDER_DIR = BASE_DIR / "Blender"
 BLENDER_EXE = BLENDER_DIR / f"blender-{BLENDER_VERSION}-windows-x64" / "blender.exe"
 WORK_DIR = BASE_DIR / "work"
+ACTIVE_MACHINE_GUARD = None
+
+
+def _release_active_machine_guard() -> None:
+    if ACTIVE_MACHINE_GUARD is not None:
+        ACTIVE_MACHINE_GUARD.release("worker_exit")
+
+
+atexit.register(_release_active_machine_guard)
 
 # ===== WORKER CONFIG =====
 # CAP NHAT 25/07/2026: chuyen tu CWS-JOB2 (Goros Lair) sang CWS-JOB3 (Rui
@@ -411,11 +422,21 @@ def render_single_frame(blend_path, frame_num, output_dir, optimization_code="",
     print(f"    [render] Dang render frame {frame_num}...")
     render_start_time = time.time()
 
+    process = None
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if ACTIVE_MACHINE_GUARD is not None:
+            ACTIVE_MACHINE_GUARD.set_blender_pid(process.pid)
+        stdout_text, stderr_text = process.communicate()
+        result = subprocess.CompletedProcess(cmd, process.returncode, stdout_text, stderr_text)
     except Exception as e:
+        if ACTIVE_MACHINE_GUARD is not None:
+            ACTIVE_MACHINE_GUARD.set_blender_pid(None)
         print(f"    [render] LOI: khong the khoi dong Blender: {e}")
         return None, "persistent", None
+    finally:
+        if ACTIVE_MACHINE_GUARD is not None:
+            ACTIVE_MACHINE_GUARD.set_blender_pid(None)
 
     render_duration_sec = time.time() - render_start_time
     stderr_text = (result.stdout or "") + (result.stderr or "")
@@ -2465,6 +2486,7 @@ def _load_job_context(job_id, _cache={}):
 
 
 def worker_loop():
+    global ACTIVE_MACHINE_GUARD
     ensure_blender_installed()
     worker_id = get_worker_id()
     worker_vram_mb = get_worker_vram_mb()  # Lay 1 lan luc khoi dong (may khong doi GPU giua chung)
@@ -2533,6 +2555,23 @@ def worker_loop():
         blend_path = job_ctx["blend_path"]
         optimization_code = job_ctx["optimization_code"]
 
+        machine_guard = RentedMachineGuard(
+            BASE_DIR,
+            policy_path=Path(__file__).resolve().parent / "worker" / "rented_machine_guard_policy.json",
+        )
+        try:
+            machine_guard.acquire(
+                lease_id=f"{worker_id}-{task_id}-{generation}",
+                job_id=current_job_id,
+                worker_process_id=os.getpid(),
+            )
+        except Exception as exc:
+            print(f"[GUARD] Khong the acquire rented-machine lease: {exc}")
+            fail_task(task_id, generation, worker_id, "transient")
+            continue
+
+        ACTIVE_MACHINE_GUARD = machine_guard
+
         print(f"\n[NHAN VIEC] Job {current_job_id} - Task {task_id}: frame "
               f"{frame_start}-{frame_end} (generation={generation})")
         log_task_event(task_id, worker_id, f"Nhan viec, dang render frame {frame_start}-{frame_end}")
@@ -2549,6 +2588,7 @@ def worker_loop():
         hb_thread.start()
 
         output_dir = WORK_DIR / f"output_task_{task_id}"
+        machine_guard.set_state("RENDERING")
 
         # ----- INCREMENTAL RECOVERY (them 22/07/2026 dem, thiet ke chot
         # trong CWS_ThietKe_GC_va_IncrementalRecovery_v2.md) - goi DUNG 1
@@ -2641,6 +2681,8 @@ def worker_loop():
                       f"CHU DONG dung lai, nhuong phan con lai cho may khac (transient, "
                       f"KHONG tinh la loi that) de som update len ban moi.")
                 stop_event.set()  # dung heartbeat truoc khi thoat
+                machine_guard.release("update_between_frames")
+                ACTIVE_MACHINE_GUARD = None
                 fail_task(task_id, generation, worker_id, "transient")
                 apply_update_jitter_and_exit(f"dung giua task {task_id} de nhuong viec")
                 return
@@ -2672,6 +2714,8 @@ def worker_loop():
                       f"da bi giao cho worker khac tu truoc.")
             else:
                 print("[FAIL_TASK] LOI: khong goi duoc fail_task, kiem tra ket noi Supabase.")
+            machine_guard.release("render_failed")
+            ACTIVE_MACHINE_GUARD = None
             continue
 
         # Bao toc do render cho he thong Dynamic Chunk Size (Chuong 8).
@@ -2699,14 +2743,19 @@ def worker_loop():
                           f"con lai se requeue")
             fail_result = fail_task(task_id, generation, worker_id, error_category or "transient")
             print(f"[FAIL_TASK] Task {task_id} bao loi mot phan: {fail_result}")
+            machine_guard.release("partial_render")
+            ACTIVE_MACHINE_GUARD = None
             continue
 
+        machine_guard.set_state("FINALIZING")
         ok = complete_task(task_id, generation, worker_id)
         if ok:
             print(f"[HOAN THANH] Task {task_id} da render + upload B2 + ghi nhan thanh cong.")
             log_task_event(task_id, worker_id, "Hoan thanh: render + upload B2 thanh cong")
         else:
             print(f"[BI TU CHOI] Task {task_id} - da bi requeue cho worker khac giua chung.")
+        machine_guard.release("completed" if ok else "completion_rejected")
+        ACTIVE_MACHINE_GUARD = None
 
         # ----- REMOTE SHUTDOWN: dat SAU Auto Update ben duoi (xem giai
         # thich thu tu o nhanh "dang ranh") - Auto Update chay truoc de
