@@ -188,6 +188,14 @@
 - **Drive runtime finding:** The provided `.blend` metadata is available, but the connector rejects the 929 MB raw download at its 100 MiB limit and the legacy HTTP path receives an authenticated Google sign-in page rather than a virus-warning payload.
 - **Boundary:** The failed approach was to infer a new `uuid` from the sign-in HTML or bypass the authenticated file boundary. The fix is an explicit fail-closed error; future rule: do not claim download/render readiness until the approved authenticated transfer produces and validates a local immutable working copy.
 
+## 2026-08-14 - Track A Drive large-file flow verification
+
+- **Exact evidence:** A fresh no-cookie request to `/uc?export=download&id=...` returned `303` to `drive.usercontent.google.com/download` with query keys `id` and `export`; following that redirect returned `302` to `accounts.google.com`. The final response is an authenticated sign-in boundary, not the historical virus-warning form.
+- **Classification:** This is case B (the file is not downloadable through the unauthenticated HTTP session available to Track A). It is not a missing `uuid`, `confirm=t`, or redirect-parser defect.
+- **Failed approach:** Treating the final sign-in HTML as a large-file warning and searching for `uuid` would misclassify the permission boundary. The connector can read metadata but refuses the 929 MB raw download at its 100 MiB limit.
+- **Fix/verification:** Keep the existing downloader fail-closed on sign-in redirects; do not scrape browser cookies or invent a token. Full render remains blocked until an approved authenticated transfer session can materialize the exact file locally.
+- **Future rule:** Record redirect status/host/type before changing large-file parsing. A Drive metadata read or browser page open is not proof that an unauthenticated Worker HTTP session can download the binary.
+
 ## 2026-08-14 - Track A rented-machine guard V1
 
 - **Problem:** A gaming-host customer can start a game, sleep, or accidentally shut down the PC while a claimed render task is active; wallpaper alone is only a notice.
