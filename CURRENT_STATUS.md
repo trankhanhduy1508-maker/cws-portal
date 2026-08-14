@@ -1,18 +1,42 @@
 # CURRENT_STATUS
 
 ## Current Phase
-Customer MVP workflow convergence before Golden Production E2E.
+Customer MVP + Founder-controlled operational render convergence before Golden Production E2E.
 
-## Founder Priority — 2026-08-12
-Customer remains the highest-priority product path.
+## Founder Priority — 2026-08-14
+The current Worker execution priority has changed.
 
-The immediate runtime bottleneck remains **automatic first provisioning of exactly one physical Worker through an already-approved site/fleet without repeated Founder/Admin authorization**.
+**Track A — Operational / Revenue Worker is now the active priority:**
 
-Do not scale beyond one Worker until the 1-Worker provisioning/runtime gate passes.
+`cws_worker.bat -> cws_worker_full.py -> Blender/render/output handling`
+
+These files are no longer treated as legacy/reference-only for current operational work. They are the Founder-controlled Worker path to be audited, repaired, and used for real rendering/revenue learning.
+
+**Track B — Node Agent + Worker Engine is retained as sandbox/staging research for future automated E2E, unattended operation, scale, and Golden E2E.**
+
+Track B is not the current blocker for today's operational/revenue work and its provisioning/heartbeat gate must not block Track A experiments.
+
+See `CWS_WORKER_TRACKS.md` for the active role boundary.
+
+## Operational Worker Safety Floor
+
+Track A is simpler and Founder-controlled, but security is not disabled.
+
+Before real customer use, at minimum:
+
+- no secrets or broad production credentials committed in tracked `.bat`/`.py` files;
+- customer originals remain immutable;
+- no unnecessary Supabase service-role/B2 master credential on the render PC;
+- no accidental execution of untrusted embedded Blender Python;
+- no success/completion before output/upload verification;
+- no unsafe automatic self-update/dependency mutation;
+- failures remain visible and diagnosable.
+
+Historical behavior inside `cws_worker_full.py` / `cws_worker.bat` is not automatically approved merely because Track A is active.
 
 ## Canonical Customer Workflow — Updated 2026-08-12
 
-The active Customer New Render initiation flow is now:
+The active Customer New Render initiation flow remains:
 
 `Google Login -> authenticated Upload/Google Drive -> temporary quarantine/staging outside canonical B2 -> anti-malware + security/structural validation -> CLEAN/SAFE -> upload/promote canonical input to B2 -> verify object -> INPUT_SAFE -> automatically create exactly one customer-owned Job -> analyze/tasks/scheduler/render`
 
@@ -23,9 +47,11 @@ Two previous active ideas are superseded:
 
 Submitting a supported input while authenticated represents Customer render intent. There is no mandatory second `Start render` confirmation and no Founder/Admin approval between safe input acceptance and Job creation.
 
+For the Founder-controlled Track A operational bridge, manual orchestration may temporarily replace parts of the automated downstream Worker path while the canonical automated flow continues to exist as future Track B work. A Track A pass must not be reported as Golden E2E.
+
 ## Input Security Gate
 
-No customer input may enter canonical B2 input storage and no production Job may be created before the mandatory pre-B2 security gate passes.
+No customer input may enter canonical B2 input storage and no production Job may be created before the mandatory pre-B2 security gate passes in the canonical automated customer flow.
 
 Customer input is hostile until it passes, as applicable:
 
@@ -57,11 +83,11 @@ Canonical order:
 
 `temporary quarantine -> security scan/validation -> CLEAN/SAFE -> canonical B2 upload -> integrity/ownership verification -> INPUT_SAFE`
 
-Temporary quarantine must use existing approved infrastructure and remain inaccessible to Workers. Do not create a new bucket/service without Founder approval.
+Temporary quarantine must use existing approved infrastructure and remain inaccessible to automated Workers. Do not create a new bucket/service without Founder approval.
 
 ## Automatic Job Creation
 
-Only authoritative `INPUT_SAFE` may trigger Job creation.
+Only authoritative `INPUT_SAFE` may trigger Job creation in the canonical automated Customer flow.
 
 Backend must automatically create exactly one customer-owned Job for the accepted New Render submission intent, with:
 
@@ -79,63 +105,56 @@ Customer render tier/speed choice remains removed.
 
 Customer does not choose Worker count, GPU or CPU.
 
-After automatic Job creation:
+The automated scheduler/Node Agent/Worker Engine path is preserved as Track B research and is currently secondary to Track A operational rendering.
 
-`authoritative work analysis -> durable non-overlapping Tasks -> initial desired capacity -> real Worker runtime evidence -> adaptive scale-up if <=45-minute final-output target is at risk -> render/finalize`
+## Current Worker Track State
 
-Post-Job Scheduler semantics remain sequenced behind the current 1-Worker production gate.
+### Track A — ACTIVE PRIORITY
 
-## Current Worker Identity / Provisioning Rules
+Files:
 
-`1 physical PC = 1 canonical PCID/Worker ID`
+- `cws_worker_full.py`
+- `cws_worker.bat`
 
-`PCID` is an alias of the same canonical `worker_id`; no second PC-ID namespace exists.
+Current task:
 
-Backend generates the ID using 128-bit CSPRNG entropy, preferably:
+`audit -> reproduce real defects -> smallest safe fixes -> focused tests -> real Founder-controlled Blender render -> output verification -> learn`
 
-`cwsw_<32 lowercase hex>`
+Do not redesign Track A into the whole Node Agent/Worker Engine architecture merely for parity.
 
-Database uniqueness is authoritative; collisions retry without overwrite.
+### Track B — SANDBOX / RESEARCH
 
-Machine fingerprint is enrollment/recovery evidence only.
+Components include:
 
-## Approved Site/Fleet Autonomy
+- Node Agent;
+- Worker Engine;
+- automatic approved-site provisioning;
+- authenticated heartbeat / `ACTIVE_IDLE`;
+- atomic claim / lease / generation fencing;
+- unattended automated E2E.
 
-A site/fleet is approved once. Durable site trust survives individual short-lived provisioning-token expiry.
-
-Canonical direction:
-
-`site approved once -> durable site trust -> autonomous site-controller capability renewal -> unattended PC provisioning -> Backend-generated Worker ID -> per-Worker credential -> DPAPI -> Node Agent -> heartbeat -> ACTIVE_IDLE`
-
-Founder/Admin must not authorize every normal PC or every new batch at an already-approved site.
-
-## Verified Recent Worker State
-
-- PR #37 automatic one-Worker provisioning was merged into `main`.
-- Production Backend exposes the new worker provisioning routes and rejects unauthenticated access as expected.
-- Production DB contains the Spec 009 rollout migrations 030/031/032.
-- Code/test evidence for provisioning, fingerprint binding, DPAPI and collision/idempotency exists.
-- Exact physical 1-Worker `authenticated heartbeat -> ACTIVE_IDLE` remains the production runtime gate.
-- Golden Production E2E remains **NOT PROVEN**.
+Code/test evidence exists, but physical production runtime remains unverified. This is preserved for future research and no longer blocks Track A.
 
 ## Current Active Specs
 
-- `specs/008-customer-standard-workflow/` — Customer workflow now requires temporary quarantine + pre-B2 malware/security validation + canonical B2 promotion + automatic Job creation after `INPUT_SAFE`.
-- `specs/009-automatic-worker-provisioning/` — active 1-Worker runtime provisioning blocker.
+- `specs/008-customer-standard-workflow/` — canonical automated Customer workflow.
+- `specs/009-automatic-worker-provisioning/` — Track B automated Worker provisioning research/spec; preserved but not today's execution priority.
 
 ## Next Required Convergence
 
-Current sequencing:
+Current sequencing for today:
 
-`1 Worker autonomous provisioning/runtime PASS -> Founder review -> 1 Worker real Job/Task/render PASS -> Founder review -> 2–3 Workers -> 10 Workers -> adaptive scaling`
+`audit cws_worker_full.py + cws_worker.bat -> remove P0 unsafe assumptions -> fix functional defects -> harmless real render -> real controlled render/output -> operational learning/revenue evidence`
 
-Customer input-security/automatic-Job implementation must be handled as a focused Spec 008 slice and must not weaken or bypass the 1-Worker runtime gate.
+Track B can resume later under explicit Founder reprioritization.
 
 ## Golden Production E2E
 
 Still **NOT PROVEN**.
 
+A Track A Founder-controlled real render is operational/revenue evidence, not Golden Production E2E.
+
 Builds, tests, merged PRs, deployed routes, migrations, scanner installation, historical Jobs or Worker heartbeat alone do not prove Golden Production E2E.
 
 ## Last Updated
-2026-08-12 — Founder clarified the security order: Customer input must be scanned/validated in temporary quarantine before canonical B2 input upload. CLEAN/SAFE input is then canonicalized to B2, verified, marked `INPUT_SAFE`, and automatically creates exactly one Job with zero Founder/Admin approval.
+2026-08-14 — Founder reprioritized CWS Worker execution: `cws_worker_full.py` + `cws_worker.bat` are now the active Founder-controlled operational/revenue Worker track; Node Agent + Worker Engine remain preserved as sandbox/staging research for automated E2E later.
