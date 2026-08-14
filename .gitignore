@@ -43,3 +43,6 @@ __pycache__/
 
 # Machine-specific output from the one-click Windows development setup.
 CWS_DEV_SETUP_REPORT.txt
+
+# Machine-local Track A Supervisor V1 databases.
+/tools/track-a-supervisor/*.sqlite3

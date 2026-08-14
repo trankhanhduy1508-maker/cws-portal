@@ -153,3 +153,16 @@ silently becoming an untrusted Supabase control plane.
 `CODE VERIFIED` for the coupling map and design constraints. No local queue was
 implemented in this audit slice, and no real Track A render or B2 delivery was
 claimed.
+
+## Slice 1 implementation update
+
+The local-only intake slice is now implemented under `tools/track-a-supervisor/`:
+
+- SQLite manifest at `%LOCALAPPDATA%\\CWS\\track-a-supervisor\\jobs.sqlite3`;
+- prompt-driven multi-job add flow;
+- `list`, `show`, `edit`, and guarded `delete` commands;
+- structural validation and generated job-scoped output namespace;
+- no Backend, Supabase, B2, Blender, or Worker calls.
+
+The implementation intentionally stops at `LOCAL_QUEUED`, `INVALID`, and
+`READY_TO_SUBMIT`. It does not submit or claim work.

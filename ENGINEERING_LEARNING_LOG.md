@@ -154,3 +154,13 @@
 - **Fix:** The setup script performs DNS/HTTPS and elevation checks, detects each tool independently, stops clearly when the package manager prerequisite is missing, and writes a machine-local report without secrets.
 - **Verification:** Elevated preflight: Windows/Admin/DNS/HTTPS PASS; `winget` MISSING; no package was installed and no repository state was changed by the setup run.
 - **Future rule:** Treat package-manager availability as an explicit preflight boundary; never silently fall back to arbitrary download/install sources or ask the Founder to edit script placeholders.
+
+## 2026-08-14 - Track A Supervisor V1 local manifest slice
+
+- **Problem:** Founder needs to prepare multiple per-customer Blender jobs without editing the stable Worker source for each file.
+- **Root cause:** The remaining friction is local intake/task preparation, while Track A already claims queued jobs dynamically; a second render supervisor would duplicate process/claim ownership.
+- **Failed approach:** No backend submission or direct Supabase write was added; doing so before the authenticated intake boundary is defined would create an unsafe local control plane.
+- **Fix:** Added a standard-library SQLite manifest and prompt-driven Windows launcher with generated IDs, multi-job entry, validation, list/show/edit, and deletion restricted to local-only states.
+- **Verification:** Static contract scan, no-integration scan, diff check and secret-value scan PASS. Python runtime tests are NOT VERIFIED because this host has neither `python`, `python3`, nor `py` available; the launcher reports that prerequisite clearly.
+- **Future rule:** Keep local manifest state separate from authoritative backend/Worker state. `READY_TO_SUBMIT` is never `INPUT_SAFE`, submitted, rendered, uploaded, paid or delivered.
+- **Remaining risks:** Authenticated backend intake adapter, authoritative status observation, deliverable finalization and real Track A runtime remain future slices; no production writes were attempted.
