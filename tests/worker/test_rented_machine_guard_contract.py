@@ -28,6 +28,18 @@ def test_guard_uses_supported_windows_controls_and_stale_recovery():
     assert "CWS RENDER LEASE ACTIVE" in GUARD
 
 
+def test_guard_clears_existing_game_conflicts_before_background_monitoring():
+    assert "_clear_configured_game_conflicts" in GUARD
+    assert "_list_running_blocked_processes" in GUARD
+    assert "game_conflict_detected" in GUARD
+    assert "game_conflict_cleared" in GUARD
+    assert "game_conflict_unresolved" in GUARD
+    assert "render lease was released" in GUARD
+    assert GUARD.index("_clear_configured_game_conflicts(timeout_seconds=12.0)") < GUARD.index(
+        'threading.Thread(target=self._run, name="cws-rented-machine-guard"'
+    )
+
+
 def test_policy_is_small_explicit_and_contains_no_credentials():
     assert "steam.exe" in POLICY
     assert "epicgameslauncher.exe" in POLICY
