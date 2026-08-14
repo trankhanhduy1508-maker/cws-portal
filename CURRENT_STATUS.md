@@ -16,23 +16,37 @@ These files are no longer treated as legacy/reference-only for current operation
 
 Track B is not the current blocker for today's operational/revenue work and its provisioning/heartbeat gate must not block Track A experiments.
 
-See `CWS_WORKER_TRACKS.md` for the active role boundary.
+See `CWS_WORKER_TRACKS.md` for the active role boundary and Track A proportional-security rule.
 
-## Operational Worker Safety Floor
+## Operational Worker Trust Boundary / Security Posture
 
-Track A is simpler and Founder-controlled, but security is not disabled.
+Track A is Founder-controlled concierge operation, not a public unattended multi-tenant Worker path.
 
-Before real customer use, at minimum:
+Current operating assumption:
 
-- no secrets or broad production credentials committed in tracked `.bat`/`.py` files;
-- customer originals remain immutable;
-- no unnecessary Supabase service-role/B2 master credential on the render PC;
-- no accidental execution of untrusted embedded Blender Python;
-- no success/completion before output/upload verification;
-- no unsafe automatic self-update/dependency mutation;
-- failures remain visible and diagnosable.
+- Founder receives/controls the customer file/job used for Track A;
+- customer does not receive or operate the Worker files, credentials, or render host;
+- Founder controls when/what is rendered and what output is delivered;
+- smooth, reliable rendering and real operational/revenue evidence are the primary optimization goals today.
 
-Historical behavior inside `cws_worker_full.py` / `cws_worker.bat` is not automatically approved merely because Track A is active.
+Therefore non-essential future-production hardening must **not** automatically block Track A.
+
+Some simplified or broader local behavior may be intentionally accepted when it reduces render friction inside this controlled boundary. AI/Codex should flag material findings, but should distinguish:
+
+- **P0 CURRENT RISK** — credible catastrophic/irreversible risk inside the Founder-controlled Track A model; may block until resolved;
+- **DEFERRED HARDENING** — primarily needed for future unattended/public/multi-tenant Track B; record it, but do not automatically block Track A rendering.
+
+Track A P0 safety floor remains small:
+
+- do not commit live secrets/credentials into the canonical/public repo;
+- customer originals must not be destroyed/overwritten/irreversibly modified;
+- no destructive host/data action outside the intended Founder-approved render operation;
+- no false render/upload success when required output is missing/corrupt/unverified;
+- do not silently expose customer files or credentials to unnecessary third parties.
+
+Missing full least-privilege automation, unattended isolation, automatic provisioning, heartbeat/fencing, or other Track B hardening is **not by itself a Track A blocker**.
+
+If a proposed security hardening materially increases render complexity/failure risk while adding little safety inside the current controlled boundary, defer it to Track B and prioritize functional reliability.
 
 ## Canonical Customer Workflow — Updated 2026-08-12
 
@@ -118,9 +132,13 @@ Files:
 
 Current task:
 
-`audit -> reproduce real defects -> smallest safe fixes -> focused tests -> real Founder-controlled Blender render -> output verification -> learn`
+`audit -> reproduce real defects -> smallest functional fixes -> focused tests -> real Founder-controlled Blender render -> output verification -> learn`
 
-Do not redesign Track A into the whole Node Agent/Worker Engine architecture merely for parity.
+Engineering priority:
+
+`RENDER CORRECTLY -> RECOVER RELIABLY -> VERIFY OUTPUT -> KEEP P0 SAFETY FLOOR -> IMPROVE CONVENIENCE -> DEFER NON-ESSENTIAL HARDENING`
+
+Do not redesign Track A into the whole Node Agent/Worker Engine architecture merely for parity or future security posture.
 
 ### Track B — SANDBOX / RESEARCH
 
@@ -131,7 +149,8 @@ Components include:
 - automatic approved-site provisioning;
 - authenticated heartbeat / `ACTIVE_IDLE`;
 - atomic claim / lease / generation fencing;
-- unattended automated E2E.
+- unattended automated E2E;
+- stronger future unattended/public/multi-tenant security hardening.
 
 Code/test evidence exists, but physical production runtime remains unverified. This is preserved for future research and no longer blocks Track A.
 
@@ -144,7 +163,7 @@ Code/test evidence exists, but physical production runtime remains unverified. T
 
 Current sequencing for today:
 
-`audit cws_worker_full.py + cws_worker.bat -> remove P0 unsafe assumptions -> fix functional defects -> harmless real render -> real controlled render/output -> operational learning/revenue evidence`
+`audit cws_worker_full.py + cws_worker.bat -> fix functional defects -> preserve only Track A P0 safety floor -> harmless real render -> real controlled render/output -> operational learning/revenue evidence`
 
 Track B can resume later under explicit Founder reprioritization.
 
@@ -157,4 +176,4 @@ A Track A Founder-controlled real render is operational/revenue evidence, not Go
 Builds, tests, merged PRs, deployed routes, migrations, scanner installation, historical Jobs or Worker heartbeat alone do not prove Golden Production E2E.
 
 ## Last Updated
-2026-08-14 — Founder reprioritized CWS Worker execution: `cws_worker_full.py` + `cws_worker.bat` are now the active Founder-controlled operational/revenue Worker track; Node Agent + Worker Engine remain preserved as sandbox/staging research for automated E2E later.
+2026-08-14 — Founder clarified Track A trust/security posture: `cws_worker_full.py` + `cws_worker.bat` prioritize smooth Founder-controlled real rendering and functional reliability; only a small P0 safety floor blocks by default, while future unattended/multi-tenant hardening is deferred to Track B.
