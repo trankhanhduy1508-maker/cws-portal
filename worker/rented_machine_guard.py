@@ -1,8 +1,9 @@
 """Local Windows guard for the Founder-controlled Track A render lease.
 
-This is an operational host notice/keep-awake/process-policy helper. It is
-not a kiosk, security boundary, scheduler, or replacement for Track B's Node
-Agent. The guard is active only while the current Worker owns a task lease.
+V1.1 adds a conservative session allowlist: processes that already existed
+when the lease was acquired are left alone, known CWS/admin applications are
+allowed to start, and new interactive-session applications outside that
+allowlist are terminated with a customer-facing rented-machine notice.
 """
 
 from __future__ import annotations
@@ -19,10 +20,9 @@ import time
 from ctypes import wintypes
 from pathlib import Path
 
-
 ES_CONTINUOUS = 0x80000000
 ES_SYSTEM_REQUIRED = 0x00000001
-BLOCKED_PROCESS_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}\.exe$")
+PROCESS_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}\.exe$")
 CUSTOMER_NOTICE_COOLDOWN_SEC = 4.0
 CUSTOMER_NOTICE_TEXT = (
     "Máy đang được CWS thuê.\r\n"
@@ -30,9 +30,9 @@ CUSTOMER_NOTICE_TEXT = (
     "Xin cảm ơn."
 )
 NEVER_TERMINATE = {
-    "blender.exe", "python.exe", "powershell.exe", "pwsh.exe", "cmd.exe",
-    "conhost.exe", "explorer.exe", "csrss.exe", "dwm.exe", "services.exe",
-    "svchost.exe", "wininit.exe", "winlogon.exe", "lsass.exe",
+    "blender.exe", "python.exe", "pythonw.exe", "powershell.exe", "pwsh.exe",
+    "cmd.exe", "conhost.exe", "explorer.exe", "csrss.exe", "dwm.exe",
+    "services.exe", "svchost.exe", "wininit.exe", "winlogon.exe", "lsass.exe",
 }
 
 
@@ -54,6 +54,7 @@ class RentedMachineGuard:
         self._lease: dict[str, object] | None = None
         self._console_hwnd = None
         self._last_customer_notice_at = 0.0
+        self._baseline_pids: set[int] = set()
         self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
 
@@ -65,6 +66,12 @@ class RentedMachineGuard:
                 raise RuntimeError("another active CWS rented-machine lease already exists")
             self._event("stale_lease_recovered", previous_lease_id=stale.get("lease_id"))
             self.lease_path.unlink(missing_ok=True)
+
+        # Preserve services, cafe-management software, antivirus and other
+        # machine-specific background processes that already existed before
+        # CWS acquired the render lease. Explicit blocked game launchers are
+        # still removed below even if they existed in this snapshot.
+        self._baseline_pids = {item[1] for item in self._enumerate_processes()}
 
         self._lease = {
             "lease_id": self._safe_id(lease_id),
@@ -80,16 +87,11 @@ class RentedMachineGuard:
         self._block_shutdown(True)
         self._start_notice()
 
-        # Reserve the machine before Blender starts.  If a configured game is
-        # already running, terminate it and verify that it is gone before the
-        # render is allowed to start.
         if not self._clear_configured_game_conflicts(timeout_seconds=12.0):
             remaining = sorted(self._list_running_blocked_processes())
             self._event("game_conflict_unresolved", processes=remaining)
             self.release("game_conflict")
-            raise RuntimeError(
-                "configured game process is still running; render lease was released"
-            )
+            raise RuntimeError("configured game process is still running; render lease was released")
 
         self._thread = threading.Thread(target=self._run, name="cws-rented-machine-guard", daemon=True)
         self._thread.start()
@@ -128,39 +130,117 @@ class RentedMachineGuard:
         self._event("lease_released", lease_id=lease_id, reason=self._safe_id(reason))
         self._lease = None
         self._thread = None
+        self._baseline_pids.clear()
 
     def _run(self) -> None:
         last_write = 0.0
         while not self._stop.wait(self.poll_seconds):
             self._set_system_required(True)
-            self._terminate_configured_games()
+            self._enforce_session_allowlist()
             now = time.time()
             if self._lease and now - last_write >= 10:
                 self._lease["last_seen_at"] = now
                 self._write_lease()
                 last_write = now
 
-    def _list_running_blocked_processes(self) -> set[str]:
-        blocked = self._load_blocked_processes()
-        if not blocked:
-            return set()
-        running: set[str] = set()
+    def _enumerate_processes(self) -> list[tuple[str, int, str]]:
+        """Return (image_name, pid, session_name) from supported tasklist."""
         try:
             result = subprocess.run(
                 ["tasklist", "/FO", "CSV", "/NH"],
                 capture_output=True, text=True, timeout=5, check=False,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
-            rows = csv.reader(result.stdout.splitlines())
-            for row in rows:
-                if len(row) < 2:
+            values: list[tuple[str, int, str]] = []
+            for row in csv.reader(result.stdout.splitlines()):
+                if len(row) < 4:
                     continue
-                name, pid_text = row[0].strip().lower(), row[1].strip()
-                if name in blocked and name not in NEVER_TERMINATE and pid_text.isdigit():
-                    running.add(name)
+                name = row[0].strip().lower()
+                pid_text = row[1].strip()
+                session_name = row[2].strip().lower()
+                if pid_text.isdigit():
+                    values.append((name, int(pid_text), session_name))
+            return values
         except (OSError, subprocess.SubprocessError) as exc:
             self._event("process_policy_error", error=type(exc).__name__)
-        return running
+            return []
+
+    def _load_policy(self) -> dict[str, object]:
+        try:
+            data = json.loads(self.policy_path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def _load_process_set(self, key: str) -> set[str]:
+        values = self._load_policy().get(key, [])
+        if not isinstance(values, list):
+            return set()
+        return {
+            value.strip().lower()
+            for value in values
+            if isinstance(value, str) and PROCESS_NAME_RE.fullmatch(value.strip().lower())
+        }
+
+    def _load_blocked_processes(self) -> set[str]:
+        return self._load_process_set("blocked_processes")
+
+    def _load_allowed_processes(self) -> set[str]:
+        return self._load_process_set("allowed_processes") | NEVER_TERMINATE
+
+    def _session_allowlist_enabled(self) -> bool:
+        return self._load_policy().get("mode") == "session_allowlist"
+
+    def _is_interactive_session(self, session_name: str) -> bool:
+        # Windows service/session-0 processes are not customer applications.
+        value = (session_name or "").strip().lower()
+        return value not in {"", "services", "service", "0"}
+
+    def _terminate_pid(self, name: str, pid: int, event_name: str) -> None:
+        if pid == os.getpid() or name in NEVER_TERMINATE:
+            return
+        self._show_customer_rented_notice(name)
+        stop = subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True, text=True, timeout=5, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        self._event(event_name, process=name, pid=pid, exit_code=stop.returncode)
+
+    def _enforce_session_allowlist(self) -> None:
+        blocked = self._load_blocked_processes()
+        allowed = self._load_allowed_processes()
+        allowlist_mode = self._session_allowlist_enabled()
+
+        for name, pid, session_name in self._enumerate_processes():
+            if name in NEVER_TERMINATE or pid == os.getpid():
+                continue
+
+            # Explicit blacklist always wins, including launchers that were
+            # already running before CWS acquired the machine.
+            if name in blocked:
+                self._terminate_pid(name, pid, "configured_process_terminated")
+                continue
+
+            if not allowlist_mode:
+                continue
+            if name in allowed:
+                continue
+            if pid in self._baseline_pids:
+                continue
+            if not self._is_interactive_session(session_name):
+                continue
+
+            self._event("session_allowlist_blocked", process=name, pid=pid, session=session_name)
+            self._terminate_pid(name, pid, "session_process_terminated")
+
+    def _list_running_blocked_processes(self) -> set[str]:
+        blocked = self._load_blocked_processes()
+        return {
+            name
+            for name, pid, _session in self._enumerate_processes()
+            if name in blocked and name not in NEVER_TERMINATE and pid != os.getpid()
+        }
 
     def _clear_configured_game_conflicts(self, timeout_seconds: float) -> bool:
         deadline = time.monotonic() + max(1.0, timeout_seconds)
@@ -169,9 +249,8 @@ class RentedMachineGuard:
             return True
         self._event("game_conflict_detected", processes=sorted(first))
         self._show_customer_rented_notice(next(iter(sorted(first))))
-
         while time.monotonic() < deadline:
-            self._terminate_configured_games()
+            self._enforce_session_allowlist()
             remaining = self._list_running_blocked_processes()
             if not remaining:
                 self._event("game_conflict_cleared")
@@ -179,48 +258,11 @@ class RentedMachineGuard:
             time.sleep(0.5)
         return not self._list_running_blocked_processes()
 
-    def _terminate_configured_games(self) -> None:
-        blocked = self._load_blocked_processes()
-        if not blocked:
-            return
-        try:
-            result = subprocess.run(
-                ["tasklist", "/FO", "CSV", "/NH"],
-                capture_output=True, text=True, timeout=5, check=False,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            rows = csv.reader(result.stdout.splitlines())
-            for row in rows:
-                if len(row) < 2:
-                    continue
-                name, pid_text = row[0].strip().lower(), row[1].strip()
-                if name not in blocked or name in NEVER_TERMINATE or not pid_text.isdigit():
-                    continue
-                pid = int(pid_text)
-                if pid == os.getpid():
-                    continue
-
-                # Customer feedback belongs to the launch attempt itself.  A
-                # rate limit prevents Steam helper trees from creating dozens
-                # of overlapping popups while still making a fresh click feel
-                # like the game simply did not open because the machine is rented.
-                self._show_customer_rented_notice(name)
-
-                stop = subprocess.run(
-                    ["taskkill", "/PID", str(pid), "/T", "/F"],
-                    capture_output=True, text=True, timeout=5, check=False,
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-                self._event("configured_process_terminated", process=name, pid=pid, exit_code=stop.returncode)
-        except (OSError, subprocess.SubprocessError) as exc:
-            self._event("process_policy_error", error=type(exc).__name__)
-
     def _show_customer_rented_notice(self, process_name: str) -> None:
         now = time.monotonic()
         if now - self._last_customer_notice_at < CUSTOMER_NOTICE_COOLDOWN_SEC:
             return
         self._last_customer_notice_at = now
-
         message = CUSTOMER_NOTICE_TEXT.replace("'", "''")
         script = f"""
 Add-Type -AssemblyName System.Windows.Forms
@@ -243,27 +285,12 @@ $owner.Close()
         try:
             subprocess.Popen(
                 ["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                text=True,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), text=True,
             )
             self._event("customer_rented_notice_shown", process=self._safe_id(process_name))
         except OSError:
             self._event("customer_rented_notice_unavailable", process=self._safe_id(process_name))
-
-    def _load_blocked_processes(self) -> set[str]:
-        try:
-            data = json.loads(self.policy_path.read_text(encoding="utf-8"))
-            values = data.get("blocked_processes", [])
-            return {
-                value.strip().lower()
-                for value in values
-                if isinstance(value, str) and BLOCKED_PROCESS_RE.fullmatch(value.strip().lower())
-            }
-        except (OSError, ValueError, TypeError):
-            return set()
 
     def _start_notice(self) -> None:
         job = str(self._lease.get("job_id", "")) if self._lease else ""
@@ -279,7 +306,7 @@ $label.Font = New-Object System.Drawing.Font('Segoe UI', 28, [System.Drawing.Fon
 $form.Controls.Add($label)
 $timer = New-Object System.Windows.Forms.Timer; $timer.Interval = 1000
 $timer.Add_Tick({{
-  try {{ $j = Get-Content -LiteralPath '{path}' -Raw | ConvertFrom-Json; $elapsed = ([DateTimeOffset]::Now - [DateTimeOffset]::FromUnixTimeSeconds([int64]$j.started_at)).ToString('hh\\:mm\\:ss'); $label.Text = "CWS RENDER LEASE ACTIVE`n`nMachine is rented for rendering.`nState: $($j.state)`nJob: {job}`nElapsed: $elapsed" }} catch {{ $form.Close() }}
+  try {{ $j = Get-Content -LiteralPath '{path}' -Raw | ConvertFrom-Json; $elapsed = ([DateTimeOffset]::Now - [DateTimeOffset]::FromUnixTimeSeconds([int64]$j.started_at)).ToString('hh\\:mm\\:ss'); $label.Text = "MÁY ĐANG ĐƯỢC CWS THUÊ`n`nXin quý khách vui lòng chọn máy khác.`nXin cảm ơn.`n`nTrạng thái: $($j.state)`nJob: {job}`nThời gian: $elapsed" }} catch {{ $form.Close() }}
 }})
 $timer.Start(); [System.Windows.Forms.Application]::Run($form)
 """
