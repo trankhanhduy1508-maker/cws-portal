@@ -1,4 +1,4 @@
-version: 1
+version: 2
 status: ACTIVE
 purpose: >-
   Route each CWS task to the smallest correct set of authoritative sources.
@@ -27,9 +27,9 @@ always_apply_without_full_read_unless_task_requires_detail:
   - CWS_STALENESS_GUARD.md
   - .specify/memory/constitution.md
   - CWS_EXECUTION_FUNNEL.md
+  - CWS_BRANCH_HYGIENE_POLICY.md
 
-# Authority is task-sensitive. A legacy file can be low authority for canonical
-# runtime but high relevance for a legacy audit.
+# Authority is task-sensitive.
 authority_ranks:
   A0:
     name: DIRECT_RUNTIME_TRUTH
@@ -45,6 +45,7 @@ authority_ranks:
       - DECISIONS.md
       - CWS_MVP_WORKFLOW_FINAL.md
       - CWS_ROADMAP.md
+      - CWS_WORKER_TRACKS.md
       - current architecture/security authority documents
   A2:
     name: ACTIVE_EXECUTION
@@ -73,9 +74,8 @@ authority_ranks:
   A6:
     name: LEGACY_OR_SUPERSEDED
     examples:
-      - cws_worker_full.py
-      - cws_worker.bat
       - superseded directives
+      - obsolete worker branches/reports
 
 lifecycle:
   allowed:
@@ -98,6 +98,8 @@ lifecycle:
 
 active_specs:
   - specs/008-customer-standard-workflow/
+
+secondary_research_specs:
   - specs/009-automatic-worker-provisioning/
 
 historical_or_completed_spec_prefixes:
@@ -120,6 +122,7 @@ routes:
       - CWS_STALENESS_GUARD.md
       - .specify/memory/constitution.md
       - CWS_EXECUTION_FUNNEL.md
+      - CWS_BRANCH_HYGIENE_POLICY.md
     expand_when:
       - governance conflict
       - approval boundary unclear
@@ -143,8 +146,44 @@ routes:
       - completed customer specs
 
   WORKER:
+    authority_note: >-
+      First read CWS_WORKER_TRACKS.md and classify whether the task is the active
+      Operational/Revenue Worker or the Auto-E2E research track. Do not mix the
+      two architectures by default.
     read:
       - CURRENT_STATUS.md
+      - CWS_WORKER_TRACKS.md
+      - DECISIONS.md
+    then_route_to:
+      - OPERATIONAL_WORKER
+      - AUTO_E2E_RESEARCH
+
+  OPERATIONAL_WORKER:
+    status: CURRENT_PRIORITY
+    read:
+      - CURRENT_STATUS.md
+      - CWS_WORKER_TRACKS.md
+      - DECISIONS.md
+      - cws_worker_full.py
+      - cws_worker.bat
+    then_search:
+      - reports/worker/
+      - ENGINEERING_LEARNING_LOG.md
+      - backend/src/
+      - tests/
+    constraints:
+      - ACTIVE_FOUNDER_CONTROLLED_OPERATIONAL_TRACK
+      - FUNCTIONAL_RELIABILITY_AND_REAL_RENDER_EVIDENCE_FIRST
+      - PROPORTIONAL_SECURITY_WITH_P0_SAFETY_FLOOR
+      - DO_NOT_COMMIT_SECRETS_OR_BROAD_PRODUCTION_CREDENTIALS
+      - DO_NOT_SILENTLY_IMPORT_THE_FULL_NODE_AGENT_WORKER_ENGINE_ARCHITECTURE
+      - TRACK_A_REAL_RENDER_PASS_IS_NOT_TRACK_B_GOLDEN_E2E
+
+  AUTO_E2E_RESEARCH:
+    status: SANDBOX_RESEARCH_SECONDARY
+    read:
+      - CURRENT_STATUS.md
+      - CWS_WORKER_TRACKS.md
       - specs/009-automatic-worker-provisioning/spec.md
       - DECISIONS.md
     then_search:
@@ -157,17 +196,17 @@ routes:
     expand:
       - CWS_ROADMAP.md
       - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
-    cold_memory_only_if_needed:
-      - docs/WORKER_FLEET_AUDIT.md
-      - historical worker reports
-      - cws_worker_full.py
-      - cws_worker.bat
+    constraints:
+      - PRESERVE_FOR_FUTURE_AUTOMATED_E2E
+      - DO_NOT_BLOCK_CURRENT_OPERATIONAL_WORKER_WITH_PHYSICAL_ACTIVE_IDLE_GATE
+      - DO_NOT_REPORT_CODE_TESTS_AS_CURRENT_OPERATIONAL_RUNTIME
 
   SCHEDULER:
     read:
       - CURRENT_STATUS.md
       - DECISIONS.md
       - CWS_ROADMAP.md
+      - CWS_WORKER_TRACKS.md
     then_search:
       - backend/src/scheduler/
       - backend/src/jobs/
@@ -176,6 +215,7 @@ routes:
     expand_when:
       - lease/generation semantics unclear
       - adaptive deadline logic involved
+    authority_note: Automated scheduler work is currently Track B research unless Founder reprioritizes it.
 
   SECURITY:
     read:
@@ -186,6 +226,8 @@ routes:
     then_search:
       - backend/src/
       - worker/
+      - cws_worker_full.py
+      - cws_worker.bat
       - backend/test/
       - reports/
     expand_by_master_index: true
@@ -201,6 +243,7 @@ routes:
     then_search:
       - backend/src/
       - worker/
+      - cws_worker_full.py
       - backend/test/
       - reports/
     expand_when:
@@ -266,17 +309,17 @@ routes:
     read:
       - FOUNDER_RULES.md
       - CURRENT_STATUS.md
-      - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
+      - CWS_WORKER_TRACKS.md
       - cws_worker_full.py
       - cws_worker.bat
     then_search:
       - reports/worker/
-      - worker/
       - security-related reports
+      - ENGINEERING_LEARNING_LOG.md
     constraints:
-      - MANUAL_REVENUE_BRIDGE_PASS_IS_NOT_GOLDEN_E2E
+      - TRACK_A_IS_CURRENT_OPERATIONAL_REVENUE_WORKER
+      - TRACK_A_REAL_RENDER_PASS_IS_NOT_GOLDEN_E2E
       - PROPORTIONAL_SECURITY_WITH_P0_SAFETY_FLOOR
-      - DO_NOT_SILENTLY_RESTORE_LEGACY_AS_CANONICAL_RUNTIME
 
   AI_ENGINEERING:
     read:
@@ -293,13 +336,12 @@ routes:
   LEGACY_AUDIT:
     read:
       - current canonical authority for the compared domain
-      - FEATURE_PARITY_LEGACY_VS_PRODUCTION.md
     then_search:
-      - cws_worker_full.py
-      - cws_worker.bat
       - historical reports
+      - superseded worker branches/docs
     constraints:
       - LEGACY_IS_REFERENCE_NOT_CURRENT_AUTHORITY_UNLESS_TASK_IS_EXPLICITLY_LEGACY
+      - CWS_WORKER_FULL_AND_BAT_ARE_NOT_LEGACY_WHEN_ROUTED_AS_OPERATIONAL_WORKER
 
 expansion_rules:
   expand_only_if:
@@ -316,5 +358,5 @@ expansion_rules:
 completion_rules:
   - Material claims must state the highest evidence level actually reached.
   - CODE/TEST evidence must not be reported as production runtime evidence.
-  - Historical or legacy success must not be reported as current Golden E2E.
+  - Track A Founder-controlled success must not be reported as Track B Golden E2E.
   - When a route is insufficient, record the missing route rather than reading the entire repository.
