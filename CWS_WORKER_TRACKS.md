@@ -6,11 +6,47 @@
 
 ## Track A — Operational / Revenue Worker — CURRENT PRIORITY
 
-The current Founder-priority Worker path is:
+The current Founder-priority Worker/render path is deliberately small:
 
-`cws_worker.bat -> cws_worker_full.py -> Blender/render/output handling`
+`cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> validated render output -> B2 upload/delivery`
 
-These files are no longer classified as legacy/reference-only for current CWS work. They are the **Founder-controlled operational/revenue Worker track** to be used and improved for real rendering while CWS learns from real work.
+These two Worker files are the **current render core**. They are no longer legacy/reference-only for current operational work.
+
+### Founder architecture clarification — 2026-08-14
+
+For current rendering, do **not** insert Node Agent, Worker Engine, Windows service supervision, fleet heartbeat, provisioning, claim/lease/fencing, or another canonical renderer layer into the render core.
+
+The boundary is:
+
+**Render plane / render core now**
+
+`cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> output validation -> B2`
+
+Responsibilities include:
+
+- launch the Worker reliably;
+- obtain/prepare the intended render input under the approved controlled trust boundary;
+- invoke Blender/Cycles correctly;
+- render frames/chunks;
+- detect failures accurately and recover from bounded failures;
+- validate expected output;
+- upload/deliver validated output to B2 when B2 is used;
+- report useful render evidence/state;
+- clean job-scoped temporary files without damaging the customer original.
+
+**Outer control plane later**
+
+Supabase/backend may later coordinate many Workers: job assignment, Worker/job state, orchestration, completion state, and related multi-worker control. That control plane is outside the two-file render core and must not replace it merely to perform rendering.
+
+**Node Agent / Worker Engine**
+
+Node Agent, Worker Engine, Windows-service supervision, heartbeat/presence, automated provisioning and fleet lifecycle remain separate future automation/research concerns. They are not dependencies of the current Track A render path.
+
+Do not silently turn Track A into:
+
+`Node Agent -> Worker Engine -> renderer -> Blender`
+
+when the task is to make the Founder-approved operational render core work.
 
 Current priority is functional reliability:
 
@@ -73,7 +109,7 @@ If a security change materially increases render complexity or failure risk whil
 
 For Track A, use this priority order:
 
-`RENDER CORRECTLY -> RECOVER RELIABLY -> VERIFY OUTPUT -> KEEP P0 SAFETY FLOOR -> IMPROVE CONVENIENCE -> DEFER NON-ESSENTIAL HARDENING`
+`RENDER CORRECTLY -> RECOVER RELIABLY -> VERIFY OUTPUT -> UPLOAD/DELIVER -> KEEP P0 SAFETY FLOOR -> IMPROVE CONVENIENCE -> DEFER NON-ESSENTIAL HARDENING`
 
 Do not turn Track A into a second Node Agent/Worker Engine architecture.
 
@@ -81,11 +117,9 @@ Do not turn Track A into a second Node Agent/Worker Engine architecture.
 
 The Node Agent + Worker Engine architecture is retained as the **automated E2E / scale / unattended-worker research track**.
 
-Current conceptual direction remains useful for future automation:
+Current conceptual direction remains useful for future automation, but it is separate from the current render core.
 
-`Windows boot -> Node Agent -> authenticated presence -> claim/lease/fencing -> task-scoped Worker Engine -> Blender -> verified output -> cleanup`
-
-However, this track is **not the current execution blocker for today's operational/revenue work** and is not the default Worker implementation target unless the Founder explicitly switches priority back to automated E2E.
+Possible future concerns include Windows startup, authenticated presence, provisioning, fleet lifecycle, multi-worker scheduling and stronger unattended/public/multi-tenant security. Their eventual integration must preserve the Founder-approved render-core boundary unless the Founder explicitly changes it.
 
 For now:
 
@@ -96,31 +130,31 @@ For now:
 - do not report Track B code/tests as current operational runtime evidence;
 - do not make Track B provisioning/heartbeat gates block Track A real-render experiments.
 
-Track B is where stronger unattended/public/multi-tenant security hardening belongs when that work becomes active again.
+## Relationship between render plane and control plane
 
-## Relationship between the tracks
+Current architecture intent:
 
-Track A and Track B serve different current purposes:
+`Control plane (later: Supabase/backend/multi-worker coordination)`
 
-- Track A optimizes for **real render capability, revenue evidence, learn-from-doing, low operational friction, and Founder-controlled operation now**.
-- Track B optimizes for **future unattended automation, scale, stronger multi-tenant isolation, authenticated lifecycle control, and Golden E2E later**.
+`        -> assigns/coordinates work`
 
-Do not silently merge the two architectures or security postures.
+`Render plane: cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> validated output -> B2`
 
-Useful capabilities may be transferred only when they solve a demonstrated Track A problem with acceptable complexity and do not reintroduce unnecessary architecture.
+The control plane may coordinate the render core; it must not be confused with or silently replace the render core.
 
-Likewise, Track A success does not prove Track B Golden E2E.
+Track A success does not prove future unattended/automated Golden E2E.
 
-`TRACK_A_REAL_RENDER_PASS != TRACK_B_GOLDEN_E2E_PASS`
+`TRACK_A_REAL_RENDER_PASS != FUTURE_GOLDEN_E2E_PASS`
 
 ## Current engineering priority
 
 Until the Founder changes priority again:
 
-1. audit `cws_worker_full.py` and `cws_worker.bat` as active operational files;
+1. audit `cws_worker_full.py` and `cws_worker.bat` as the active render core;
 2. reproduce and fix real functional defects;
 3. preserve only the small P0 safety floor appropriate to the Founder-controlled boundary;
-4. do not let future-production hardening block smooth Track A rendering without a concrete current risk;
-5. verify a real Founder-controlled Blender render and output path;
+4. verify Blender/Cycles frame/chunk rendering and automatic progression;
+5. verify output integrity and B2 upload/delivery behavior;
 6. learn from real customer/render evidence;
-7. keep Node Agent/Worker Engine research preserved but secondary.
+7. keep Supabase/backend multi-worker coordination outside the render core;
+8. keep Node Agent/Worker Engine research preserved but secondary and non-blocking.
