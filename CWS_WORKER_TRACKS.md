@@ -34,9 +34,49 @@ Responsibilities include:
 - report useful render evidence/state;
 - clean job-scoped temporary files without damaging the customer original.
 
+### Track A B2 output / finalization rule — Founder decision 2026-08-14
+
+Each Job owns its own B2 output namespace/folder/prefix.
+
+For frame/image-sequence work, the durable unit is a **validated rendered frame**:
+
+`render frame -> validate frame -> upload frame into that Job's B2 output prefix`
+
+A completed validated frame should not be kept only on the local render PC while later frames are still rendering when B2 upload is available.
+
+Example logical structure:
+
+`jobs/{job_id}/frames/frame_000391.png`
+
+The exact storage key format is an implementation detail; the invariant is that outputs are isolated by Job and validated before being treated as complete.
+
+**Final assembly/encode is conditional, not universal.**
+
+Some customer Jobs only require image/frame outputs and must **not** be forced through video assembly.
+
+Whether a Job requires finalization/assembly is determined by the requested customer output for that Job.
+
+Two valid paths therefore exist:
+
+**A. Image / frame-output Job**
+
+`render frame(s) -> validate -> upload validated frame(s) to the Job B2 prefix -> deliver according to the Job's requested output`
+
+**B. Animation / assembled-output Job**
+
+`render frame(s) -> validate -> upload durable frame(s) to the Job B2 prefix -> verify required frame set complete -> assemble/encode -> validate final artifact -> upload final artifact to the Job B2 final-output prefix`
+
+Do not infer that every animation-like scene requires assembly. The customer's requested deliverable is authoritative for whether assembly/finalization is needed.
+
+Do not mark a Job's requested final deliverable complete merely because individual frames exist when that Job explicitly requires an assembled artifact.
+
+Do not delay durable storage of successfully validated frames solely because an assembled artifact will be produced later.
+
 **Outer control plane later**
 
 Supabase/backend may later coordinate many Workers: job assignment, Worker/job state, orchestration, completion state, and related multi-worker control. That control plane is outside the two-file render core and must not replace it merely to perform rendering.
+
+Existing Supabase claim/heartbeat/status behavior already inside `cws_worker_full.py` may remain temporarily when it supports current Track A operation. Do not perform a large control-plane/render-plane refactor merely for architectural purity. Separate it later only when multi-worker evidence or a demonstrated defect justifies the change.
 
 **Node Agent / Worker Engine**
 
@@ -154,7 +194,8 @@ Until the Founder changes priority again:
 2. reproduce and fix real functional defects;
 3. preserve only the small P0 safety floor appropriate to the Founder-controlled boundary;
 4. verify Blender/Cycles frame/chunk rendering and automatic progression;
-5. verify output integrity and B2 upload/delivery behavior;
-6. learn from real customer/render evidence;
-7. keep Supabase/backend multi-worker coordination outside the render core;
-8. keep Node Agent/Worker Engine research preserved but secondary and non-blocking.
+5. verify per-Job output integrity and durable B2 upload behavior;
+6. finalize/assemble only when the customer's requested Job output requires it;
+7. learn from real customer/render evidence;
+8. keep Supabase/backend multi-worker coordination outside the conceptual render core while allowing existing Track A orchestration code to remain until evidence justifies refactoring;
+9. keep Node Agent/Worker Engine research preserved but secondary and non-blocking.
