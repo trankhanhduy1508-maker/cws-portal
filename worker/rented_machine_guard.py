@@ -72,6 +72,21 @@ class RentedMachineGuard:
         self._set_system_required(True)
         self._block_shutdown(True)
         self._start_notice()
+
+        # A render lease must reserve the machine before Blender starts.  The
+        # background poller is useful for launch attempts that happen later,
+        # but it is not enough when a customer game is ALREADY running at
+        # lease acquisition time.  Clear configured conflicts synchronously
+        # and verify that they are gone; otherwise fail closed so Track A does
+        # not begin rendering beside a known game workload.
+        if not self._clear_configured_game_conflicts(timeout_seconds=12.0):
+            remaining = sorted(self._list_running_blocked_processes())
+            self._event("game_conflict_unresolved", processes=remaining)
+            self.release("game_conflict")
+            raise RuntimeError(
+                "configured game process is still running; render lease was released"
+            )
+
         self._thread = threading.Thread(target=self._run, name="cws-rented-machine-guard", daemon=True)
         self._thread.start()
         self._event("lease_acquired", lease_id=self._lease["lease_id"], job_id=self._lease["job_id"])
@@ -120,6 +135,44 @@ class RentedMachineGuard:
                 self._lease["last_seen_at"] = now
                 self._write_lease()
                 last_write = now
+
+    def _list_running_blocked_processes(self) -> set[str]:
+        blocked = self._load_blocked_processes()
+        if not blocked:
+            return set()
+        running: set[str] = set()
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=5, check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            rows = csv.reader(result.stdout.splitlines())
+            for row in rows:
+                if len(row) < 2:
+                    continue
+                name, pid_text = row[0].strip().lower(), row[1].strip()
+                if name in blocked and name not in NEVER_TERMINATE and pid_text.isdigit():
+                    running.add(name)
+        except (OSError, subprocess.SubprocessError) as exc:
+            self._event("process_policy_error", error=type(exc).__name__)
+        return running
+
+    def _clear_configured_game_conflicts(self, timeout_seconds: float) -> bool:
+        deadline = time.monotonic() + max(1.0, timeout_seconds)
+        first = self._list_running_blocked_processes()
+        if not first:
+            return True
+        self._event("game_conflict_detected", processes=sorted(first))
+
+        while time.monotonic() < deadline:
+            self._terminate_configured_games()
+            remaining = self._list_running_blocked_processes()
+            if not remaining:
+                self._event("game_conflict_cleared")
+                return True
+            time.sleep(0.5)
+        return not self._list_running_blocked_processes()
 
     def _terminate_configured_games(self) -> None:
         blocked = self._load_blocked_processes()
