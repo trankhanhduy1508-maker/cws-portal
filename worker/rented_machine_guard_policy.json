@@ -1,4 +1,20 @@
 {
+  "mode": "session_allowlist",
+  "allowed_processes": [
+    "explorer.exe",
+    "chrome.exe",
+    "msedge.exe",
+    "code.exe",
+    "powershell.exe",
+    "pwsh.exe",
+    "cmd.exe",
+    "conhost.exe",
+    "python.exe",
+    "pythonw.exe",
+    "blender.exe",
+    "taskmgr.exe",
+    "notepad.exe"
+  ],
   "blocked_processes": [
     "steam.exe",
     "steamwebhelper.exe",
