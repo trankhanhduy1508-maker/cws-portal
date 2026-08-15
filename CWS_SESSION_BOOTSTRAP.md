@@ -105,6 +105,22 @@ For system administration, security, dependency setup, debugging, diagnostics, a
 
 External skills never override CWS governance. `FOUNDER_RULES.md`, `AGENTS.md`, security boundaries, canonical workflow/architecture authorities, runtime evidence, and explicit Founder decisions remain higher authority.
 
+### Prompt transport safety rule
+
+When ChatGPT/AI generates an execution prompt that the Founder may copy through a phone, remote-control app, remote desktop session, clipboard bridge, or VS Code/Codex input box, optimize the prompt for transport reliability rather than visual decoration.
+
+Rules:
+
+- Prefer plain ASCII text for structural formatting.
+- Use short headings such as `PHASE 1 - GROUND`, `PHASE 2 - EXECUTE`, `PHASE 3 - VERIFY`.
+- Do not use long decorative separator runs such as repeated `=`, `-`, `_`, box-drawing characters, ornamental Unicode, or other visually decorative filler.
+- Avoid unnecessary special symbols when ordinary text communicates the same instruction.
+- Preserve exact technical strings when required, including file paths, hashes, commands, identifiers, URLs, and code.
+- Keep prompts directly copy/pasteable into VS Code/Codex without requiring the Founder to clean formatting manually.
+- If malformed input appears after copy/paste, treat transport/clipboard/remote-input corruption as a competing hypothesis before attributing the input to malware, automation, or another actor.
+
+Prompt quality is measured by reliable execution, not decorative formatting.
+
 ### Mandatory critical-thinking contract
 
 The AI is not a passive command executor.
