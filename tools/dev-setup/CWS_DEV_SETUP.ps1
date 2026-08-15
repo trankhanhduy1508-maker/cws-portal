@@ -54,12 +54,77 @@ function Get-ToolVersion([string]$CommandName, [string[]]$Arguments = @('--versi
     } catch { return $null }
 }
 
+function Get-ExecutableVersion([string]$Path, [string[]]$Arguments = @('--version')) {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $output = & $Path @Arguments 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { return $null }
+        return ($output.Trim() -split "`r?`n")[0]
+    } catch { return $null }
+}
+
+function Find-BlenderPath {
+    $commandPath = Find-CommandPath @('blender.exe', 'blender')
+    if ($commandPath) { return $commandPath }
+
+    $roots = @(
+        (Join-Path $env:ProgramFiles 'Blender Foundation'),
+        (Join-Path ${env:ProgramFiles(x86)} 'Blender Foundation'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\Blender Foundation')
+    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) }
+
+    foreach ($root in $roots) {
+        $candidate = Get-ChildItem -LiteralPath $root -Filter blender.exe -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        if ($candidate) { return $candidate.FullName }
+    }
+    return $null
+}
+
 function Install-WingetPackage([string]$Id, [string]$Label) {
     Write-Host "[setup] Installing missing $Label ($Id) with winget..." -ForegroundColor Yellow
     & winget.exe install --id $Id --exact --source winget --silent --accept-source-agreements --accept-package-agreements
     if ($LASTEXITCODE -ne 0) {
         throw "winget failed while installing $Label ($Id), exit code $LASTEXITCODE"
     }
+}
+
+function Ensure-Pytest([string]$PythonExe) {
+    if (-not $PythonExe -or -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
+        throw 'Python executable unavailable while ensuring pytest.'
+    }
+
+    & $PythonExe -m pytest --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host '[keep] pytest already available.' -ForegroundColor Green
+        return
+    }
+
+    Write-Host '[setup] Installing missing pytest with python -m pip...' -ForegroundColor Yellow
+    & $PythonExe -m pip install --disable-pip-version-check --quiet pytest
+    if ($LASTEXITCODE -ne 0) { throw 'pytest installation failed.' }
+
+    & $PythonExe -m pytest --version *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'pytest verification failed after installation.' }
+}
+
+function Ensure-CodexExtension {
+    $codePath = Find-CommandPath @('code.cmd', 'code.exe', 'code')
+    if (-not $codePath) { throw 'VS Code unavailable while ensuring Codex extension.' }
+
+    $extensions = & $codePath --list-extensions 2>$null
+    if ($extensions -contains 'openai.chatgpt') {
+        Write-Host '[keep] OpenAI Codex IDE extension already installed.' -ForegroundColor Green
+        return
+    }
+
+    Write-Host '[setup] Installing OpenAI Codex IDE extension (openai.chatgpt)...' -ForegroundColor Yellow
+    & $codePath --install-extension openai.chatgpt --force
+    if ($LASTEXITCODE -ne 0) { throw 'OpenAI Codex IDE extension installation failed.' }
+
+    $extensions = & $codePath --list-extensions 2>$null
+    if ($extensions -notcontains 'openai.chatgpt') { throw 'OpenAI Codex IDE extension verification failed.' }
 }
 
 function Get-ConfigPresence([string]$Name) {
@@ -97,7 +162,7 @@ function Write-SetupReport {
 
 try {
     Write-Host 'CWS Windows development setup' -ForegroundColor Cyan
-    Write-Host 'Safe to rerun: missing tools only; no reset, overwrite, or credential creation.'
+    Write-Host 'Safe to rerun: detect first, install only missing prerequisites, preserve repo and credentials.'
 
     Write-Step 'Preflight'
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'This setup is Windows-only.' }
@@ -138,6 +203,9 @@ try {
         $detectedVersion = Get-ToolVersion $tool.Command
         Write-Result $tool.Name ($(if ($detectedVersion) { $detectedVersion } else { 'MISSING' })) $(if ($detectedVersion) { 'Green' } else { 'Yellow' })
     }
+    $initialBlender = Find-BlenderPath
+    Write-Result 'Blender' ($(if ($initialBlender) { $initialBlender } else { 'MISSING' })) $(if ($initialBlender) { 'Green' } else { 'Yellow' })
+
     if ($Blockers.Count -gt 0) { throw ($Blockers -join '; ') }
 
     Write-Step 'Detect and install missing tools'
@@ -153,6 +221,20 @@ try {
         else { Write-Host "[keep] $($package.Label) already available." -ForegroundColor Green }
         Refresh-ProcessPath
     }
+
+    $blenderPath = Find-BlenderPath
+    if (-not $blenderPath) {
+        Install-WingetPackage 'BlenderFoundation.Blender' 'Blender'
+        Refresh-ProcessPath
+        $blenderPath = Find-BlenderPath
+    } else {
+        Write-Host '[keep] Blender already available.' -ForegroundColor Green
+    }
+    if (-not $blenderPath) { throw 'Blender installation completed but blender.exe could not be located.' }
+
+    $pythonPath = Find-CommandPath @('python.exe', 'python')
+    Ensure-Pytest $pythonPath
+    Ensure-CodexExtension
     Write-Result 'Tools_Install' 'PASS'
 
     Write-Step 'Verify toolchain'
@@ -170,6 +252,22 @@ try {
         if (-not $version) { throw "Verification failed for $($check.Name)." }
         Write-Result $check.Name $version
     }
+
+    $pythonPath = Find-CommandPath @('python.exe', 'python')
+    $pytestVersion = (& $pythonPath -m pytest --version 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'pytest verification failed.' }
+    Write-Result 'pytest' (($pytestVersion -split "`r?`n")[0])
+
+    $blenderPath = Find-BlenderPath
+    $blenderVersion = Get-ExecutableVersion $blenderPath @('--version')
+    if (-not $blenderVersion) { throw 'Blender verification failed.' }
+    Write-Result 'Blender_Path' $blenderPath
+    Write-Result 'Blender_Version' $blenderVersion
+
+    $codePath = Find-CommandPath @('code.cmd', 'code.exe', 'code')
+    $extensions = & $codePath --list-extensions 2>$null
+    if ($extensions -notcontains 'openai.chatgpt') { throw 'Codex IDE extension verification failed.' }
+    Write-Result 'Codex_IDE' 'openai.chatgpt PRESENT'
 
     Write-Step 'GitHub browser authentication'
     & gh.exe auth status 2>&1 | Out-Null
@@ -212,7 +310,7 @@ try {
 
     if (-not $SkipOpenCode -and $Blockers.Count -eq 0) {
         Write-Step 'Open canonical repository in VS Code'
-        & code.cmd $CanonicalRepoPath
+        & $codePath $CanonicalRepoPath
         Write-Result 'VSCode_Open' 'PASS'
     } elseif ($SkipOpenCode) { Write-Result 'VSCode_Open' 'SKIPPED' Yellow }
 
