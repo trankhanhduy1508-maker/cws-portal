@@ -2,7 +2,7 @@
 
 > Purpose: deterministic startup instructions for a new ChatGPT/Codex/AI session working on CWS.
 > Status: canonical session entrypoint and routing document only. It does not override current Founder decisions, runtime evidence, code, schema, applied migrations, or domain authorities.
-> Last updated: 2026-08-14.
+> Last updated: 2026-08-15.
 
 ## 1. Why this file exists
 
@@ -86,6 +86,24 @@ Read any of these completely when:
 - the task creates, reuses, reconciles, closes, or cleans Git branches/PRs.
 
 The goal is not to weaken governance. The goal is to stop repeatedly loading the same large governance corpus when its detailed wording is unrelated to the current task.
+
+### External AI engineering skill source — Superpowers
+
+For AI-assisted engineering, debugging, planning, verification, parallel-agent work, Git worktrees, or repeated development operations, treat the upstream repository below as an approved external skill source to inspect when relevant:
+
+`https://github.com/obra/superpowers`
+
+The purpose is not to copy the repository into CWS. The purpose is to let future ChatGPT/Codex/AI sessions discover and use mature existing skills instead of repeatedly inventing equivalent workflows from scratch.
+
+When an applicable skill or existing tool is available, prefer actual invocation/execution of that capability over merely reading, summarizing, or reimplementing its contents.
+
+Default tool-first order:
+
+`NATIVE OS / INSTALLED TOOL -> EXISTING REPO TOOL -> EXISTING SKILL -> OFFICIAL CLI/API -> MATURE OPEN-SOURCE TOOL -> CUSTOM IMPLEMENTATION LAST`
+
+For system administration, security, dependency setup, debugging, diagnostics, automation, and similar tasks, explicitly check native/installed capabilities before creating custom scripts. On Windows this includes relevant built-in or installed mechanisms such as Microsoft Defender/Windows Security, Event Logs, Task Scheduler, package managers, vendor utilities, and existing CWS bootstrap tooling when applicable.
+
+External skills never override CWS governance. `FOUNDER_RULES.md`, `AGENTS.md`, security boundaries, canonical workflow/architecture authorities, runtime evidence, and explicit Founder decisions remain higher authority.
 
 ### Mandatory critical-thinking contract
 
