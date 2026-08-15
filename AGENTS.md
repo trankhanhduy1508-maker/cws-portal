@@ -1,6 +1,6 @@
 # CWS AGENTS
 
-> Version: 4.3 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule, repeatable-action automation rule — 2026-08-14.
+> Version: 4.4 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule, repeatable-action automation rule, VS Code environment rule — 2026-08-15.
 
 ## 0. Mandatory first rule — code is last
 
@@ -71,6 +71,50 @@ Then state:
 - any Founder-only step that must remain interactive.
 
 The purpose is to continuously compress recurring operational work without creating script sprawl or branch sprawl.
+
+## VS Code environment rule — mandatory for local Codex work
+
+When operating locally in the Founder CWS workspace, treat VS Code as the primary development environment, not merely as a terminal container.
+
+At the start of a local task, explicitly determine which surface is active:
+
+- `CODEX IDE EXTENSION`
+- `CODEX CLI IN TERMINAL`
+
+If operating through the Codex IDE extension, prefer available IDE context and capabilities when they are the better tool:
+
+- currently open files and selected code;
+- workspace/global search;
+- symbol/reference navigation;
+- Problems diagnostics;
+- Source Control and inline diff review;
+- Testing integration;
+- existing `.vscode` Tasks and Run/Debug configurations;
+- Integrated Browser for local/preview UI verification when relevant.
+
+Use the integrated terminal when the terminal is the authoritative or natural interface, including:
+
+- `cws_worker.bat` / Track A runtime;
+- Python and Blender CLI execution;
+- canonical test/build commands;
+- Git commands when exact repository state is required;
+- runtime logs and environment/network diagnostics.
+
+Do not default to recursive PowerShell/file dumps to simulate capabilities that VS Code already provides more safely and contextually.
+
+If operating only as Codex CLI inside the VS Code terminal:
+
+- do not claim access to VS Code UI state such as Problems, open editor selections, Testing results, Source Control UI, or browser state unless that state is explicitly exposed to the CLI;
+- use repository/runtime evidence available to the CLI and clearly label IDE-only evidence as unavailable;
+- do not infer that "running inside a VS Code terminal" means the CLI has full IDE-extension context.
+
+For repeated local workflows, search `.vscode/` before creating a new Task/launch configuration. Prefer one canonical Task over repeatedly typing long command sequences, but do not create task/config sprawl for one-off actions.
+
+Recommended local execution pattern when available:
+
+`IDE CONTEXT -> WORKSPACE/SYMBOL SEARCH -> DIFF/PROBLEMS -> FOCUSED TEST -> TERMINAL RUNTIME WHEN NEEDED -> SOURCE CONTROL REVIEW -> VERIFY`
+
+VS Code configuration is development tooling only. Production Worker behavior must not depend on VS Code being installed.
 
 ## Model Policy
 
