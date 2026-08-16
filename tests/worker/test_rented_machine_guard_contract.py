@@ -13,6 +13,33 @@ POLICY = (ROOT / "worker" / "rented_machine_guard_policy.json").read_text(encodi
 LAUNCHER = (ROOT / "cws_worker.bat").read_text(encoding="utf-8")
 
 
+def _simulate_launcher_update(
+    *,
+    update_check_available=True,
+    same_version=False,
+    installed_bundle_valid=True,
+    b2_auth_succeeds=True,
+    bundle_download_succeeds=True,
+    replacement_succeeds=True,
+):
+    """Model the BAT update decisions; this is not native Windows execution."""
+    current_version = "1.0.0"
+    latest_version = "1.0.0" if same_version else "2.0.0"
+    installed_bundle_invalid = False
+
+    if not update_check_available:
+        return "launch", current_version
+    if same_version and installed_bundle_valid:
+        return "launch", current_version
+    if same_version:
+        installed_bundle_invalid = True
+    if not b2_auth_succeeds or not bundle_download_succeeds:
+        return ("retry" if installed_bundle_invalid else "launch"), current_version
+    if replacement_succeeds:
+        return "launch", latest_version
+    return ("retry" if installed_bundle_invalid else "launch"), current_version
+
+
 def test_guard_is_lease_scoped_and_releases_on_worker_exit():
     assert "RentedMachineGuard" in WORKER
     assert "machine_guard.acquire(" in WORKER
@@ -99,6 +126,49 @@ def test_self_update_fails_closed_when_guard_companions_are_absent():
     assert 'if not exist "%~dp0worker\\rented_machine_guard.py"' in LAUNCHER
     assert 'if not exist "%~dp0worker\\rented_machine_guard_policy.json"' in LAUNCHER
     assert "khong khoi dong Worker khong day du Guard" in LAUNCHER
+
+
+def test_launcher_tracks_known_invalid_bundle_separately_from_network_unknown():
+    assert 'set "INSTALLED_BUNDLE_INVALID=0"' in LAUNCHER
+    assert 'set "INSTALLED_BUNDLE_INVALID=1"' in LAUNCHER
+    assert LAUNCHER.count(
+        'if "%INSTALLED_BUNDLE_INVALID%"=="1" goto :update_retry'
+    ) == 3
+
+
+def test_update_check_unavailable_before_integrity_failure_may_launch_existing_worker():
+    assert _simulate_launcher_update(update_check_available=False) == ("launch", "1.0.0")
+
+
+def test_same_version_integrity_mismatch_and_b2_auth_failure_must_not_launch():
+    assert _simulate_launcher_update(
+        same_version=True, installed_bundle_valid=False, b2_auth_succeeds=False
+    ) == ("retry", "1.0.0")
+
+
+def test_same_version_integrity_mismatch_and_download_failure_must_not_launch():
+    assert _simulate_launcher_update(
+        same_version=True,
+        installed_bundle_valid=False,
+        bundle_download_succeeds=False,
+    ) == ("retry", "1.0.0")
+
+
+def test_same_version_integrity_mismatch_and_valid_repair_may_launch():
+    assert _simulate_launcher_update(
+        same_version=True, installed_bundle_valid=False
+    ) == ("launch", "1.0.0")
+
+
+def test_new_version_replacement_failure_does_not_advance_version():
+    assert _simulate_launcher_update(replacement_succeeds=False) == ("launch", "1.0.0")
+
+
+def test_synchronized_replacement_launches_and_advances_version_only_after_success():
+    assert _simulate_launcher_update() == ("launch", "2.0.0")
+    transaction_success = LAUNCHER.index("if not errorlevel 1 (")
+    version_advance = LAUNCHER.index('echo %LATEST_VERSION% > "%VERSION_FILE%"')
+    assert transaction_success < version_advance
 
 
 def test_release_packager_emits_complete_integrity_manifest(tmp_path):
