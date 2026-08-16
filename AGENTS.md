@@ -1,6 +1,6 @@
 # CWS AGENTS
 
-> Version: 4.4 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule, repeatable-action automation rule, VS Code environment rule — 2026-08-15.
+> Version: 4.5 — knowledge-router startup, implementation-last discipline, grounding/staleness/AI gates, Founder Codex prompt handoff rule, repeatable-action automation rule, VS Code environment rule, stable-change discipline — 2026-08-16.
 
 ## 0. Mandatory first rule — code is last
 
@@ -297,6 +297,39 @@ Record as applicable:
 For AI-involved product tasks, also record applicable AI Operator questions from `CWS_AI_OPERATING_PLAYBOOK.md`.
 
 Clarify only when repository/evidence cannot resolve a material product/security/architecture decision.
+
+## Stable Change Discipline — mandatory
+
+If current behavior is verified and the current task does not require changing it, do not change it.
+
+Required behavior:
+
+1. **Stable behavior first.** Treat verified working behavior as an asset, not an invitation to rewrite.
+2. **Minimum change surface.** Modify only the smallest boundary required by the grounded task or root cause.
+3. **Data is not code.** Per-job, customer, or runtime data changes must not require source-code edits when a stable data/config/job interface can represent them.
+4. **No opportunistic refactor.** Do not combine a functional fix with unrelated cleanup, renaming, formatting, dependency replacement, architecture changes, or modernization.
+5. **Verified reason before refactor/migration.** Refactor only to solve a demonstrated defect, measured constraint, material security/reliability risk, or proven maintainability problem.
+6. **Preserve known-good behavior with regression verification.** If a stable path must change, rerun the relevant previously verified behaviors before promoting PASS.
+7. **Risk-based rollout.** Prefer harmless, local, or controlled verification before broader runtime or production exposure.
+8. **Rollback before risky rollout.** For material changes, identify a safe known-good rollback or recovery path before increasing exposure.
+9. **Observe before concluding.** Logs, exit status, outputs, tests, runtime evidence, and other direct observations outrank AI confidence or aesthetic preference.
+10. **Avoid speculative architecture.** Do not add services, brokers, abstractions, frameworks, or migrations for unmeasured future problems.
+11. **Preserve compatibility during migration where practical.** Change internal implementation without unnecessarily breaking stable consumers or contracts.
+12. **AI task scope is a contract.** A narrow task is not permission to beautify or restructure unrelated code.
+
+Compact execution heuristic:
+
+`STABLE FIRST -> CHANGE MINIMUM -> VERIFY REALITY -> ROLLOUT GRADUALLY -> OBSERVE -> EXPAND ONLY WHEN PROVEN`
+
+Combined with existing tool-first governance:
+
+`EXISTING TOOL FIRST -> STABLE CODE FIRST -> MINIMUM CHANGE -> VERIFY REGRESSION -> CUSTOM/REWRITE LAST`
+
+CWS-specific example:
+
+If Job 1 is runtime verified and Job 2 differs only by Google Drive URL or job metadata, do not rewrite `cws_worker_full.py` merely to process Job 2. Prefer a stable job-data/config/API boundary. Worker code changes require an actual Worker defect or capability reason.
+
+This discipline does not freeze defective or unsafe code forever. It does not block evidence-backed refactoring, weaken security/tests, or override Founder approval, grounding, Spec Kit, workflow, architecture, or other canonical authorities.
 
 ## Core engineering rules
 
