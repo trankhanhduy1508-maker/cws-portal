@@ -1,3 +1,8 @@
+import hashlib
+import json
+import subprocess
+import sys
+import zipfile
 from pathlib import Path
 
 
@@ -5,6 +10,7 @@ ROOT = Path(__file__).parents[2]
 WORKER = (ROOT / "cws_worker_full.py").read_text(encoding="utf-8")
 GUARD = (ROOT / "worker" / "rented_machine_guard.py").read_text(encoding="utf-8")
 POLICY = (ROOT / "worker" / "rented_machine_guard_policy.json").read_text(encoding="utf-8")
+LAUNCHER = (ROOT / "cws_worker.bat").read_text(encoding="utf-8")
 
 
 def test_guard_is_lease_scoped_and_releases_on_worker_exit():
@@ -77,3 +83,43 @@ def test_policy_contains_no_credentials():
     assert "CWS_TELEGRAM" not in POLICY
     assert "SUPABASE" not in POLICY
     assert "B2" not in POLICY
+
+
+def test_self_update_requires_one_versioned_hashed_worker_guard_bundle():
+    assert "worker-releases/cws_worker_bundle.zip" in LAUNCHER
+    assert "worker_bundle_manifest.json" in LAUNCHER
+    assert "$manifest.version -ne '%LATEST_VERSION%'" in LAUNCHER
+    assert "Get-FileHash -Algorithm SHA256" in LAUNCHER
+    assert "$targets=$required+@('worker_bundle_manifest.json')" in LAUNCHER
+    assert "thieu/sai Guard manifest; tai lai bundle dong bo" in LAUNCHER
+    assert "cws_worker_full.py.new" not in LAUNCHER
+
+
+def test_self_update_fails_closed_when_guard_companions_are_absent():
+    assert 'if not exist "%~dp0worker\\rented_machine_guard.py"' in LAUNCHER
+    assert 'if not exist "%~dp0worker\\rented_machine_guard_policy.json"' in LAUNCHER
+    assert "khong khoi dong Worker khong day du Guard" in LAUNCHER
+
+
+def test_release_packager_emits_complete_integrity_manifest(tmp_path):
+    output = tmp_path / "cws_worker_bundle.zip"
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "package_track_a_worker.py"), "--output", str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    reported = json.loads(result.stdout)
+
+    with zipfile.ZipFile(output) as archive:
+        manifest = json.loads(archive.read("worker_bundle_manifest.json"))
+        required = {
+            "cws_worker_full.py",
+            "worker/rented_machine_guard.py",
+            "worker/rented_machine_guard_policy.json",
+        }
+        assert required <= set(archive.namelist())
+        assert set(manifest["files"]) == required
+        assert reported["version"] == manifest["version"]
+        for relative in required:
+            assert hashlib.sha256(archive.read(relative)).hexdigest() == manifest["files"][relative]

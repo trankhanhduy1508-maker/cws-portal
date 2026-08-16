@@ -213,3 +213,21 @@
 - **Fix:** Routed the active path through the existing Archviz analyzer, normalized actual `scene.render.engine` to CYCLES/EEVEE_LEGACY/EEVEE_NEXT/UNKNOWN, added deterministic characteristics, and replaced the active policy call with diagnostics-only code. Unknown/failed detection preserves settings.
 - **Verification:** Static source contract and diff checks are added. Python/Blender runtime verification remains unavailable on this host; no render, backend, Supabase or B2 operation was run.
 - **Future rule:** `NO ENGINE DETECTION = NO AUTO OPTIMIZATION`; engine-specific quality changes require a separate benchmark on a derived working copy and must never be smuggled through a “safe” plan field.
+# 2026-08-16 — Track A Guard companions must ship as one verified bundle
+
+- **Problem:** the existing B2 self-update replaced only
+  `cws_worker_full.py`, while RENTED_MACHINE_GUARD_V1 also imports a Python
+  companion and reads a policy companion.
+- **Root cause:** the release unit remained a single historical Worker file
+  after the Guard became a multi-file runtime dependency.
+- **Minimum fix:** retain the existing BAT/B2/Supabase update boundary, but
+  make its release unit one versioned ZIP with required-file SHA-256 manifest,
+  pre-mutation validation, bounded backup/rollback, and absent/mismatch
+  fail-closed behavior.
+- **Reusable rule:** when a stable runtime gains mandatory companions, update
+  the release unit and integrity contract together; never advance the recorded
+  version after only a partial file replacement.
+- **Evidence:** focused Guard/update tests, Python compilation and generated
+  ZIP integrity pass in Cloud. Windows PowerShell/B2/physical process behavior
+  remains explicitly unverified pending the controlled host procedure in
+  `reports/worker/RENTED_MACHINE_GUARD_V1.md`.

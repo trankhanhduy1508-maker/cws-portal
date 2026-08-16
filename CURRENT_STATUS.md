@@ -132,7 +132,7 @@ Files:
 
 Current task:
 
-`audit -> reproduce real defects -> smallest functional fixes -> focused tests -> real Founder-controlled Blender render -> output verification -> learn`
+`RENTED_MACHINE_GUARD_V1 bundle/update code verified -> physical Windows Guard lifecycle + process-policy + RELEASE verification`
 
 Engineering priority:
 
@@ -163,7 +163,7 @@ Code/test evidence exists, but physical production runtime remains unverified. T
 
 Current sequencing for today:
 
-`audit cws_worker_full.py + cws_worker.bat -> fix functional defects -> preserve only Track A P0 safety floor -> harmless real render -> real controlled render/output -> operational learning/revenue evidence`
+`package/upload one versioned Worker + Guard bundle -> controlled physical Windows Guard verification -> harmless real render -> real controlled render/output -> operational learning/revenue evidence`
 
 Track B can resume later under explicit Founder reprioritization.
 
@@ -176,4 +176,4 @@ A Track A Founder-controlled real render is operational/revenue evidence, not Go
 Builds, tests, merged PRs, deployed routes, migrations, scanner installation, historical Jobs or Worker heartbeat alone do not prove Golden Production E2E.
 
 ## Last Updated
-2026-08-14 — Founder clarified Track A trust/security posture: `cws_worker_full.py` + `cws_worker.bat` prioritize smooth Founder-controlled real rendering and functional reliability; only a small P0 safety floor blocks by default, while future unattended/multi-tenant hardening is deferred to Track B.
+2026-08-16 — RENTED_MACHINE_GUARD_V1 Worker/Guard bundle and fail-safe update contract are code verified in Cloud; real Windows popup/process/RELEASE/update behavior still requires the controlled physical-host procedure in `reports/worker/RENTED_MACHINE_GUARD_V1.md`.
