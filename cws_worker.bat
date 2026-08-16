@@ -59,7 +59,7 @@ REM phan phoi cho nhieu may ma khong lo lo du lieu khach hang) -----
 set "B2_KEY_ID=00483fb516ab3b10000000002"
 set "B2_APP_KEY=K00404F3uE/NN9Iq5o5rkUd5twmspK8"
 set "B2_BUCKET_NAME=MTEB90"
-set "B2_FILE_NAME=worker-releases/cws_worker_full.py"
+set "B2_FILE_NAME=worker-releases/cws_worker_bundle.zip"
 
 if not exist "%CWS_DIR%" mkdir "%CWS_DIR%"
 
@@ -179,11 +179,17 @@ if "%LATEST_VERSION%"=="" (
 )
 
 if "%LATEST_VERSION%"=="%CURRENT_VERSION%" (
-    echo [update] Dang dung ban moi nhat: %CURRENT_VERSION%
-    goto :launch_python
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+      "$ErrorActionPreference='Stop'; $root=[IO.Path]::GetFullPath('%~dp0'); $manifest=Get-Content -LiteralPath (Join-Path $root 'worker_bundle_manifest.json') -Raw | ConvertFrom-Json; if ($manifest.version -ne '%CURRENT_VERSION%') { exit 1 }; foreach ($relative in @('cws_worker_full.py','worker/rented_machine_guard.py','worker/rented_machine_guard_policy.json')) { $path=Join-Path $root $relative; $expected=$manifest.files.$relative; if (!(Test-Path -LiteralPath $path -PathType Leaf) -or !$expected) { exit 1 }; if ((Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() -ne ([string]$expected).ToLowerInvariant()) { exit 1 } }; exit 0" >nul 2>nul
+    if not errorlevel 1 (
+        echo [update] Dang dung bundle Worker + Guard moi nhat: %CURRENT_VERSION%
+        goto :launch_python
+    )
+    echo [update] Ban %CURRENT_VERSION% thieu/sai Guard manifest; tai lai bundle dong bo.
 )
 
-echo [update] Phat hien ban moi: %CURRENT_VERSION% -^> %LATEST_VERSION%, dang tai ve tu B2...
+:download_update
+echo [update] Dang tai bundle Worker + Guard: %CURRENT_VERSION% -^> %LATEST_VERSION%...
 
 REM ----- Buoc A: Xin authorizationToken tu B2 (bucket dang PRIVATE, khong
 REM the tai bang link tinh don gian nhu bucket public - can xac thuc truoc) -----
@@ -203,21 +209,39 @@ if "%B2_TOKEN%"=="" (
     goto :launch_python
 )
 
-REM ----- Buoc B: Dung token vua xin de tai file that (bucket private
-REM CAN header Authorization, khac hoan toan link tinh cua bucket public) -----
-curl -s -o "%~dp0cws_worker_full.py.new" ^
+REM ----- Buoc B: Tai mot bundle versioned gom Worker + Guard companions.
+REM Bundle chi duoc thay sau khi manifest/version/SHA-256 cua TAT CA file
+REM deu hop le. Neu bat ky buoc nao loi, giu nguyen bo file dang chay. -----
+set "UPDATE_BUNDLE=%TEMP%\cws_worker_bundle_%RANDOM%.zip"
+if exist "%UPDATE_BUNDLE%" del /q "%UPDATE_BUNDLE%"
+curl -f -sS -o "%UPDATE_BUNDLE%" ^
   -H "Authorization: %B2_TOKEN%" ^
   "%B2_DOWNLOAD_URL%/file/%B2_BUCKET_NAME%/%B2_FILE_NAME%"
 
-if exist "%~dp0cws_worker_full.py.new" (
-    move /y "%~dp0cws_worker_full.py.new" "%~dp0cws_worker_full.py" >nul
+if not exist "%UPDATE_BUNDLE%" (
+    echo [update] Tai bundle moi that bai, tam dung ban hien co %CURRENT_VERSION%.
+    goto :launch_python
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference='Stop'; $root=[IO.Path]::GetFullPath('%~dp0'); $stage=Join-Path $env:TEMP ('cws-worker-stage-'+[guid]::NewGuid()); $backup=Join-Path $env:TEMP ('cws-worker-backup-'+[guid]::NewGuid()); $required=@('cws_worker_full.py','worker/rented_machine_guard.py','worker/rented_machine_guard_policy.json'); $targets=$required+@('worker_bundle_manifest.json'); try { Expand-Archive -LiteralPath '%UPDATE_BUNDLE%' -DestinationPath $stage; $manifestPath=Join-Path $stage 'worker_bundle_manifest.json'; if (!(Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'missing worker_bundle_manifest.json' }; $manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json; if ($manifest.version -ne '%LATEST_VERSION%') { throw 'bundle version does not match worker_config' }; foreach ($relative in $required) { $source=Join-Path $stage $relative; if (!(Test-Path -LiteralPath $source -PathType Leaf)) { throw ('missing required bundle file: '+$relative) }; $expected=$manifest.files.$relative; if (!$expected) { throw ('missing manifest hash: '+$relative) }; $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash.ToLowerInvariant(); if ($actual -ne ([string]$expected).ToLowerInvariant()) { throw ('SHA-256 mismatch: '+$relative) } }; New-Item -ItemType Directory -Force -Path $backup | Out-Null; foreach ($relative in $targets) { $destination=Join-Path $root $relative; if (Test-Path -LiteralPath $destination -PathType Leaf) { $saved=Join-Path $backup $relative; New-Item -ItemType Directory -Force -Path (Split-Path $saved) | Out-Null; Copy-Item -LiteralPath $destination -Destination $saved -Force } }; try { foreach ($relative in $targets) { $destination=Join-Path $root $relative; New-Item -ItemType Directory -Force -Path (Split-Path $destination) | Out-Null; Copy-Item -LiteralPath (Join-Path $stage $relative) -Destination $destination -Force } } catch { foreach ($relative in $targets) { $saved=Join-Path $backup $relative; $destination=Join-Path $root $relative; if (Test-Path -LiteralPath $saved -PathType Leaf) { Copy-Item -LiteralPath $saved -Destination $destination -Force } else { Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue } }; throw }; exit 0 } catch { Write-Error $_; exit 1 } finally { Remove-Item -LiteralPath $stage,$backup -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '%UPDATE_BUNDLE%' -Force -ErrorAction SilentlyContinue }"
+
+if not errorlevel 1 (
     echo %LATEST_VERSION% > "%VERSION_FILE%"
-    echo [update] Da cap nhat xong len ban %LATEST_VERSION%.
+    echo [update] Da cap nhat dong bo Worker + Guard len ban %LATEST_VERSION%.
 ) else (
-    echo [update] Tai ban moi that bai, tam dung ban hien co %CURRENT_VERSION%.
+    echo [update] Bundle khong hop le hoac thay file that bai; da giu/khoi phuc ban %CURRENT_VERSION%.
 )
 
 :launch_python
+if not exist "%~dp0worker\rented_machine_guard.py" (
+    echo [LOI] Thieu worker\rented_machine_guard.py; khong khoi dong Worker khong day du Guard.
+    goto :update_retry
+)
+if not exist "%~dp0worker\rented_machine_guard_policy.json" (
+    echo [LOI] Thieu worker\rented_machine_guard_policy.json; khong khoi dong Worker khong day du Guard.
+    goto :update_retry
+)
 echo =====================================================================
 echo Dang khoi dong CWS Worker...
 echo =====================================================================
@@ -228,6 +252,7 @@ REM Python khac khong tuong thich)
 "%PYTHON_EXE%" "%~dp0cws_worker_full.py"
 
 REM ----- Neu chay den day nghia la Python DA THOAT (du crash hay Ctrl+C) -----
+:update_retry
 echo.
 echo [supervisor] Worker da thoat. Doi %COOLDOWN_SEC%s truoc khi tu khoi dong lai...
 echo [supervisor] Nhan Ctrl+C ngay bay gio neu muon dung han.

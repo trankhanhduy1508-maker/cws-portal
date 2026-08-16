@@ -210,7 +210,7 @@ POLL_INTERVAL_SEC = 15
 # nhat cot latest_version trong bang worker_config (Supabase) tuong ung,
 # de cws_worker.bat (lop vo ngoai) biet khi nao can tu tai ban moi ve.
 # Xem 10_setup_worker_selfheal.sql.
-WORKER_VERSION = "1.16.5"
+WORKER_VERSION = "1.16.6"
 
 # JITTER cho Auto Update (them 22/07/2026 toi): khi phat hien co ban moi,
 # CHO NGAU NHIEN 1 khoang trong [0, AUTO_UPDATE_JITTER_MAX_SEC] giay TRUOC
