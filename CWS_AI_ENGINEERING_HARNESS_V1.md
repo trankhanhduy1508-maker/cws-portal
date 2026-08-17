@@ -1,7 +1,7 @@
 # CWS AI ENGINEERING HARNESS V1
 
 > **Status:** ACTIVE — Founder approved
-> **Version:** 1.3
+> **Version:** 1.4
 > **Date:** 2026-08-17
 > **Owner:** Founder / Project Owner
 > **Purpose:** Give AI enough freedom to ship small verified increments quickly while preventing silent changes to product intent, workflow, architecture, security, infrastructure, data, and business rules.
@@ -268,7 +268,36 @@ Review intent correctness, security/P0 safety, data integrity, state invariants,
 
 Do not modify verified stable behavior unless the current task requires it.
 
-## 18. Infrastructure and Security Defaults
+## 18. Candidate-Before-Canonical Experiment Rule
+
+> **Canonical production code is not a laboratory.**
+
+For material experimental behavior, especially Worker/render/security/runtime changes, test outside the canonical implementation first whenever practical.
+
+Default pattern:
+
+`CANONICAL -> TEMPORARY CANDIDATE/SHADOW PATH -> TEST -> REAL RUNTIME EVIDENCE -> PROMOTE MINIMAL PROVEN DIFF -> CANONICAL`
+
+Rules:
+
+1. Keep the current canonical implementation unchanged while the experiment is unproven.
+2. Candidate/shadow implementations are temporary and must not become a second permanent product path.
+3. Prefer moving experimental logic into small reusable modules rather than copying large canonical files.
+4. If a full candidate copy is temporarily necessary, keep its scope narrow and time-bounded.
+5. Compare candidate versus canonical behavior, complexity, dependencies, regressions, and runtime evidence.
+6. Promotion requires relevant automated verification plus the highest practical runtime evidence for the changed boundary.
+7. Promote only the smallest proven diff or reusable module. Do not blindly replace canonical code with the entire experiment.
+8. If the candidate fails to justify itself, discard/reset it instead of contaminating canonical code.
+9. After successful promotion, remove or reset the temporary candidate path so CWS does not accumulate parallel implementations.
+10. Experimental work must preserve Founder boundaries, customer originals, security invariants, and previously verified behavior.
+
+For Track A Worker experimentation, `cws_worker_full.py` remains canonical. A temporary candidate such as `cws_worker_full_candidate.py` may be used for bounded testing, but it must not become an independently maintained Worker.
+
+Canonical shorthand:
+
+`EXPERIMENT OFF CANONICAL -> PROVE -> PROMOTE MINIMAL DIFF`
+
+## 19. Infrastructure and Security Defaults
 
 Existing infrastructure first. New production infrastructure requires Founder approval.
 
@@ -276,7 +305,7 @@ Production fails closed at real auth/authorization/ownership/security boundaries
 
 Track-specific proportional-security decisions remain owned by current canonical Worker/security documents; this Harness does not silently redefine them.
 
-## 19. Learning Without Document Inflation
+## 20. Learning Without Document Inflation
 
 For meaningful failures record only durable reusable learning: symptom/evidence, root cause, fix, failed approach if useful, verification ceiling, remaining risk, next bottleneck.
 
@@ -298,7 +327,7 @@ Canonical rule:
 
 This rule exists to reduce ceremony, duplicated grounding, repeated reports, and activity that looks productive but does not move the current Ship Goal.
 
-## 20. Research Stop Rule
+## 21. Research Stop Rule
 
 Research is a tool for changing a decision, selecting an implementation, or explaining a failure. Research is not progress by itself.
 
@@ -320,7 +349,7 @@ rather than:
 
 `RESEARCH UNTIL NOTHING REMAINS UNKNOWN`.
 
-## 21. Source-of-Truth and Routing
+## 22. Source-of-Truth and Routing
 
 Read `CWS_SESSION_BOOTSTRAP.md` first and follow `CWS_KNOWLEDGE_ROUTER.yaml`.
 
@@ -328,7 +357,7 @@ Use progressive disclosure: load governance/source-of-truth entry layer, then on
 
 Current Founder decisions override stale handoffs, but material decisions must be synchronized into their canonical owner.
 
-## 22. CWS-Specific Binding
+## 23. CWS-Specific Binding
 
 Track A operational/revenue work remains focused on real rendering and revenue evidence according to current `CURRENT_STATUS.md`, `CWS_WORKER_TRACKS.md`, `DECISIONS.md`, and runtime evidence.
 
@@ -336,7 +365,7 @@ Do not allow Track B fleet/provisioning architecture, Development Observatory, U
 
 `TRACK_A_REAL_RENDER_PASS != GOLDEN_E2E_PASS`
 
-## 23. Anti-Patterns
+## 24. Anti-Patterns
 
 Reject:
 
@@ -356,8 +385,10 @@ Reject:
 - asking Founder to perform commands the agent can execute;
 - adding infrastructure before measuring the current bottleneck;
 - creating duplicate implementations when one configurable canonical implementation can serve multiple Jobs;
-- optimizing for hypothetical future scale while current real-customer runtime still fails.
+- optimizing for hypothetical future scale while current real-customer runtime still fails;
+- experimenting directly inside canonical production code when a bounded candidate/shadow path can prove the change safely;
+- allowing a temporary candidate to become a second permanent Worker implementation.
 
-## 24. Final Rule
+## 25. Final Rule
 
 > **Move fast inside a narrow evidence-backed box. Use the simplest effective method. Ship the smallest verified customer/runtime outcome. Stop only at the edge of Founder authority or a real external/safety boundary.**
