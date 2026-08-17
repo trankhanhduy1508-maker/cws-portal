@@ -2,7 +2,7 @@
 
 > Purpose: deterministic startup instructions for a new ChatGPT/Codex/AI session working on CWS.
 > Status: canonical session entrypoint and routing document only. It does not override current Founder decisions, runtime evidence, code, schema, applied migrations, or domain authorities.
-> Last updated: 2026-08-15.
+> Last updated: 2026-08-18.
 
 ## 1. Why this file exists
 
@@ -87,23 +87,38 @@ Read any of these completely when:
 
 The goal is not to weaken governance. The goal is to stop repeatedly loading the same large governance corpus when its detailed wording is unrelated to the current task.
 
-### External AI engineering skill source — Superpowers
+### Canonical AI engineering execution workflow — gstack
 
-For AI-assisted engineering, debugging, planning, verification, parallel-agent work, Git worktrees, or repeated development operations, treat the upstream repository below as an approved external skill source to inspect when relevant:
+For normal CWS engineering execution, use this official workflow:
 
-`https://github.com/obra/superpowers`
+`CWS AUTHORITY -> GSTACK SKILL FIT FOR THE TASK -> IMPLEMENTATION -> TEST/RUNTIME EVIDENCE -> SHIP`
 
-The purpose is not to copy the repository into CWS. The purpose is to let future ChatGPT/Codex/AI sessions discover and use mature existing skills instead of repeatedly inventing equivalent workflows from scratch.
+Default gstack capability mapping:
 
-When an applicable skill or existing tool is available, prefer actual invocation/execution of that capability over merely reading, summarizing, or reimplementing its contents.
+- bug / root-cause investigation -> `investigate`
+- code review -> `review`
+- QA -> `qa`
+- security review -> `cso`
+- release / shipping -> `ship`
+- learning / retrospective -> `retro` + `learn`
+
+GitHub Spec Kit remains available for **material specification work only**. It is not a mandatory ceremony for ordinary bounded bugs, diagnostics, reviews, QA, or small implementation work.
+
+Superpowers is not a mandatory CWS execution layer. Do not add it back into normal routing when gstack already provides the required capability.
+
+The purpose is to reduce competing process layers, not add gstack as another layer. Prefer one appropriate gstack capability over reimplementing an equivalent generic engineering workflow in CWS documentation or prompts.
+
+CWS-specific authority always remains above gstack. Founder decisions, domain authorities, security boundaries, immutable customer-original rules, evidence levels, runtime truth, and explicit approval boundaries cannot be overridden by a gstack skill.
+
+The engineering execution path should therefore stay simple:
+
+`GROUND CWS -> APPLY CWS AUTHORITY -> USE THE SMALLEST FITTING GSTACK SKILL -> IMPLEMENT MINIMUM -> VERIFY WITH REAL EVIDENCE -> SHIP -> SYNC DURABLE LEARNING`
 
 Default tool-first order:
 
-`NATIVE OS / INSTALLED TOOL -> EXISTING REPO TOOL -> EXISTING SKILL -> OFFICIAL CLI/API -> MATURE OPEN-SOURCE TOOL -> CUSTOM IMPLEMENTATION LAST`
+`NATIVE OS / INSTALLED TOOL -> EXISTING REPO TOOL -> EXISTING GSTACK SKILL -> OFFICIAL CLI/API -> MATURE OPEN-SOURCE TOOL -> CUSTOM IMPLEMENTATION LAST`
 
 For system administration, security, dependency setup, debugging, diagnostics, automation, and similar tasks, explicitly check native/installed capabilities before creating custom scripts. On Windows this includes relevant built-in or installed mechanisms such as Microsoft Defender/Windows Security, Event Logs, Task Scheduler, package managers, vendor utilities, and existing CWS bootstrap tooling when applicable.
-
-External skills never override CWS governance. `FOUNDER_RULES.md`, `AGENTS.md`, security boundaries, canonical workflow/architecture authorities, runtime evidence, and explicit Founder decisions remain higher authority.
 
 ### Prompt transport safety rule
 
@@ -300,9 +315,13 @@ Repeated durable lessons should be promoted into current rules/governance so fut
 
 Routing completion is not implementation permission.
 
-Material implementation still follows the applicable CWS process:
+Normal bounded engineering execution follows:
 
-`GROUND -> DIAGNOSE -> ONE BOTTLENECK -> FOUNDER BOUNDARY -> SPEC KIT WHEN REQUIRED -> IMPLEMENT MINIMUM -> VERIFY -> SYNC -> LEARN`
+`GROUND -> CWS AUTHORITY -> GSTACK SKILL -> IMPLEMENT MINIMUM -> TEST/RUNTIME EVIDENCE -> SHIP -> SYNC/LEARN`
+
+When the change is material specification work, insert Spec Kit before implementation:
+
+`GROUND -> CWS AUTHORITY -> SPEC KIT -> GSTACK EXECUTION AS NEEDED -> IMPLEMENT -> VERIFY -> SHIP -> SYNC/LEARN`
 
 Do not weaken tests/security/fencing/integrity controls merely to obtain a successful run.
 
