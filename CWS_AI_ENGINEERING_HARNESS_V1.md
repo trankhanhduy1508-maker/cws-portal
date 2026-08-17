@@ -1,258 +1,301 @@
 # CWS AI ENGINEERING HARNESS V1
 
-> **Status:** ACTIVE — Founder approved  
-> **Version:** 1.1  
-> **Date:** 2026-08-17  
-> **Owner:** Founder / Project Owner  
-> **Purpose:** Give AI enough freedom to engineer quickly while preventing silent changes to product intent, workflow, architecture, security, infrastructure, data, and business rules.
+> **Status:** ACTIVE — Founder approved
+> **Version:** 1.2
+> **Date:** 2026-08-17
+> **Owner:** Founder / Project Owner
+> **Purpose:** Give AI enough freedom to ship small verified increments quickly while preventing silent changes to product intent, workflow, architecture, security, infrastructure, data, and business rules.
 
 ## 1. Core Principle
 
 > **AI may choose implementation details inside an approved boundary. AI may not move the boundary itself.**
 
-For CWS, code is the final execution phase, not the starting point.
+CWS optimizes for verified customer/runtime outcomes, not engineering ceremony.
 
-Material work follows:
+Default daily execution loop:
 
-UNDERSTAND
-GROUND
-DIAGNOSE
-DECIDE
-SPECIFY
-PLAN
-ANALYZE
-IMPLEMENT
-VERIFY
-SYNC
-LEARN
-STOP
+`ONE OUTCOME -> ONE BOTTLENECK -> ONE SMALL CHANGE -> REAL EVIDENCE -> SHIP -> NEXT`
 
-The purpose is not ceremony. The purpose is to prevent AI from implementing the wrong problem quickly and creating more rework than value.
+For ordinary bounded work, use the smallest process that safely produces new evidence. Full governance remains mandatory when risk or Founder-controlled boundaries require it.
 
-## 2. Roles and Authority
+## 2. CWS Ship Loop
+
+Every active P0 should move through:
+
+1. OUTCOME — define one customer/runtime result.
+2. REPRODUCE — recover the nearest verified checkpoint and first failing boundary.
+3. FIX — make the smallest reversible change that tests the current hypothesis.
+4. VERIFY — run targeted automated verification and the highest relevant runtime boundary available.
+5. SHIP SMALL — commit/PR/deploy/controlled-run only the bounded change appropriate to its risk class.
+6. OBSERVE — collect actual evidence; do not infer success from code/tests alone.
+7. LEARN / NEXT — record only durable lessons, preserve passed checkpoints, choose the next bottleneck.
+
+A later failure never erases earlier verified boundaries.
+
+Do not repeat an unchanged verified checkpoint unless relevant code/input/environment changed or evidence shows the checkpoint is stale.
+
+## 3. One Ship Goal / WIP Limit
+
+At any moment CWS has one primary Ship Goal on the critical path.
+
+Research, UI, observability, documentation, and independent work may proceed in parallel only when they do not block or distract from the Ship Goal.
+
+Name one first blocking link. Do not redesign unrelated downstream systems because they are nearby.
+
+For current Track A work, the operational goal remains the smallest real customer render outcome required by current canonical status/evidence. Ground CURRENT_STATUS.md and runtime evidence before naming the exact failing boundary.
+
+## 4. Roles and Authority
 
 ### Founder
 
-Founder owns product intent and priorities, customer workflow and public behavior, business/pricing/payment rules, major architecture direction, security/trust boundaries, infrastructure approval, irreversible/destructive decisions, and major tradeoffs.
+Founder owns product intent and priorities, customer workflow/public behavior, business/pricing/payment rules, major architecture direction, security/trust boundaries, infrastructure approval, irreversible/destructive decisions, and major tradeoffs.
 
-Founder does not need to decide ordinary implementation details such as function names, helpers, test layout, local refactors, or equivalent internal algorithms that preserve approved behavior.
+Founder does not need to decide ordinary implementation details that preserve approved behavior.
 
 ### ChatGPT — Intent Compiler / Technical Coordinator
 
-ChatGPT should understand the Founder’s natural-language intent, ground canonical repo/runtime/evidence, detect Founder-approval boundaries, convert approved intent into concise Codex prompts, verify Codex claims where possible, and prevent implementation from silently becoming product policy.
+Ground current evidence, identify the Ship Goal and first failing boundary, detect Founder-approval boundaries, convert intent into concise execution prompts, and prevent stale governance or chat history from becoming product policy.
 
-When the Founder sends a screenshot or runtime image for analysis, ChatGPT should normally do both in the same response when an actionable engineering next step is clear:
-
-1. analyze what the screenshot actually proves and what remains uncertain;
-2. provide a ready-to-run English Codex prompt for the next smallest safe action.
-
-Do not force the Founder to ask a second time for the execution prompt when the required action is already clear. If the screenshot does not establish enough evidence for a safe action, report the uncertainty instead of inventing a task.
+When actionable evidence is already sufficient, provide the next execution action without forcing Founder to ask again.
 
 ### Codex / Coding Agent — Engineering Executor
 
-Codex may inspect, design internal modules, write tests, debug, refactor locally, implement, and verify inside approved scope.
+Codex may inspect, diagnose, test, implement, refactor locally, and verify inside approved scope. It should execute rather than repeatedly plan once grounding and the boundary are clear.
 
 Codex must stop before independently redefining product workflow, pricing/payment order, authentication/authorization policy, scheduler ownership semantics, storage/security boundaries, infrastructure topology, or destructive migration/data policy.
 
 ### Deterministic Production Software
 
-Anything that can be deterministic should remain deterministic, including auth, authorization, payment matching, task ownership, lease/generation fencing, file validation, state transitions, retries, cleanup, and accounting.
+Anything that can be deterministic should remain deterministic, including auth, authorization, payment matching, task ownership, lease/generation fencing, file validation, state transitions, retries, cleanup, and accounting. Normal production control loops must not depend on natural-language AI judgment.
 
-AI may help build or inspect those mechanisms. Normal production control loops must not depend on natural-language AI judgment.
+## 5. Risk Classes — Process Must Match Risk
 
-## 3. Mandatory Pre-Code Gates
+### S — Small / Reversible
 
-### Gate A — Ground Reality
+Examples: bounded bug fix, diagnostics/logging, targeted test, UI copy, safe internal helper/refactor preserving behavior.
 
-Use current evidence, not memory or plausibility. Ground canonical branch/commit, active decisions/spec/workflow, code/tests, and relevant runtime evidence.
+Default path:
 
-Material claims must remain distinguishable as FACT, INFERENCE, HYPOTHESIS, or UNKNOWN. UNKNOWN must not be written as FACT.
+`GROUND RELEVANT SCOPE -> REPRODUCE -> SMALLEST FIX -> TARGETED TEST -> RELEVANT RUNTIME VERIFY -> PR/SHIP`
 
-### Gate B — Diagnose Before Fix
+No new Spec Kit artifact, research report, roadmap update, or Founder approval is required solely because code changes, unless the change crosses a controlled boundary.
 
-Use this reasoning order:
+### M — Material / Bounded
 
-Observed reality
-Expected versus actual
-First failing boundary
-Root cause or falsifiable hypothesis
-One current bottleneck
-Minimum safe fix
+Examples: meaningful Worker/Guard behavior, storage/auth implementation that preserves an approved contract, significant internal feature.
 
-Do not use shotgun debugging.
+Default path:
 
-### Gate C — Decision Boundary
+`GROUND -> DIAGNOSE -> EXISTING SPEC OR SHORT SPEC -> PLAN ONLY AS NEEDED -> IMPLEMENT -> INDEPENDENT VERIFY -> PR -> CONTROLLED ROLLOUT`
 
-If a fix changes product, workflow, architecture, security, infrastructure, payment, destructive data behavior, or another active Founder decision, STOP and obtain/record the decision before implementation.
+Reuse existing specs and PRs before creating new ones.
 
-### Gate D — Source-of-Truth First
+### X — Founder / Architecture Boundary
 
-For a material decision, update the relevant active decision/spec/workflow/roadmap before code. Current Founder decisions override older conflicting instructions but must be recorded canonically when material.
+Examples: customer journey/order, payment/pricing, supported input contract, scheduler semantics/ownership, database architecture, authentication/authorization boundary, Worker trust model, production security boundary, new production infrastructure, multi-machine assignment architecture, destructive data behavior.
 
-### Gate E — Spec / Plan / Analyze
+Path:
 
-For non-trivial work define goal, non-goals, invariants, constraints, inputs/outputs/state transitions, failure behavior, acceptance evidence, and stop condition. Use existing GitHub Spec Kit rather than inventing a competing process.
+`GROUND -> DIAGNOSE -> FOUNDER DECISION -> CANONICAL DECISION/SPEC -> PLAN -> IMPLEMENT -> REVIEW -> VERIFY -> CONTROLLED ROLLOUT`
 
-## 4. Risk Levels
+Founder approval is mandatory before moving the boundary.
 
-L0 Read/Explain: Ground, Report. No mutation.
+### Critical / Irreversible Execution
 
-L1 Local/Low Risk: Ground, Diagnose, Smallest Fix, Targeted Test, Verify, Report.
+Explicit Founder approval immediately before execution remains mandatory.
 
-L2 Feature/Contract Change: Ground, Diagnose, Constitution, Specify, Clarify if needed, Plan, Tasks, Analyze, Implement, Tests, Verify, Sync.
+## 6. Mandatory Gates
 
-L3 System/High Risk: Reality, Diagnosis, Root Cause, Founder Boundary, Constitution, Specify, Clarify, Plan, Tasks, Analyze, Implement, Review, Verify, Controlled Rollout.
+### Ground Reality
 
-L4 Irreversible/Critical: explicit Founder approval immediately before execution.
+Ground only the smallest authoritative context required by the task. Use runtime/code/current canonical evidence over memory. UNKNOWN is not FACT.
 
-## 5. One-Bottleneck Rule
+### Diagnose Before Fix
 
-At any moment, name one first blocking link. Do not redesign unrelated downstream systems because they are nearby. Discovered unrelated issues may be reported but must not silently expand implementation scope.
+Use:
 
-## 6. Source-of-Truth Hierarchy
+`Observed reality -> Expected vs actual -> First failing boundary -> One falsifiable hypothesis -> Minimum safe experiment/fix`
 
-1. latest explicit Founder decision in active working context;
-2. DECISIONS.md;
-3. canonical workflow/current task spec;
-4. CWS_ROADMAP.md;
-5. CURRENT_STATUS.md;
-6. current runtime/code/schema evidence;
-7. tests;
-8. historical documents;
-9. agent memory/assumptions.
+No shotgun debugging and no three identical retries.
 
-Use CWS_GROUNDING_POLICY.md and CWS_STALENESS_GUARD.md when evidence conflicts.
+### Existing Capability First
 
-## 7. Repository Governance Routing
+Before custom implementation:
 
-AGENTS.md is the coding-agent entry point.
+`NATIVE/INSTALLED -> EXISTING CWS -> EXISTING SKILL -> OFFICIAL CLI/API/SDK -> MATURE OPEN SOURCE -> CUSTOM LAST`
 
-.specify/memory/constitution.md is the existing Spec Kit foundation.
+### Founder Boundary
 
-CWS_AI_ENGINEERING_HARNESS_V1.md is this AI-assisted engineering control framework.
+If the smallest fix crosses a Class X boundary, stop and obtain Founder approval.
 
-CWS_AI_OPERATING_PLAYBOOK.md controls deterministic-versus-AI production boundaries.
+## 7. Spec Kit Role
 
-ENGINEERING_LEARNING_LOG.md records meaningful failures, root causes, fixes, failed approaches, evidence, lessons, remaining risk, and next bottleneck.
+GitHub Spec Kit remains the lifecycle controller for material feature/contract/architecture work where a specification is needed.
 
-Project specs contain feature-specific intent and acceptance rules.
+It is not mandatory ceremony for every Class S bug fix or diagnostic change.
 
-## 8. AI Autonomy vs Founder Approval
+Do not create a new spec when an active canonical spec already owns the requirement. Do not create documentation merely to prove that process happened.
 
-AI may normally decide names/helpers, local module boundaries, internal types, test organization, error structure, equivalent deterministic algorithms, small correctness/performance refactors, and implementation sequencing inside an approved plan.
+## 8. Evidence-Driven Next Action
 
-AI must stop for Founder approval before changing customer journey, public service choices, pricing/payment rules, supported input contract, major provider/architecture choices, scheduler ownership architecture, authentication/authorization boundaries, Worker trust model, privileged API boundaries, new production infrastructure, destructive migrations, or user-data deletion.
+Evidence level must control the next action.
 
-## 9. Prompt Protocol
+Verification ladder:
 
-Founder should speak naturally. Founder does not need to write machine-like prompts.
+- V0 DESIGN REVIEWED
+- V1 CODE VERIFIED
+- V2 INTEGRATION VERIFIED
+- V3 RUNTIME VERIFIED
+- V4 PRODUCTION RUNTIME VERIFIED
+- V5 GOLDEN E2E VERIFIED
 
-For material work, ChatGPT should derive GOAL, WHY, CURRENT REALITY, BINDING DECISION, INVARIANTS, ALLOWED AUTONOMY, FOUNDER-APPROVAL BOUNDARIES, ACCEPTANCE EVIDENCE, and STOP CONDITION.
+If a boundary is already V3 and relevant inputs/code/environment are unchanged, continue from the next unresolved boundary instead of replaying it.
 
-Prompts should be as small as repo context permits, identify proof required, define stop conditions, and avoid compensating for stale governance with giant prompts.
+Unit tests are not real render proof. Device enumeration is not GPU-render proof. Schema/code is not runtime task-claim proof. AI saying PASS is never evidence.
 
-Codex execution prompts should be written in English unless the Founder explicitly asks otherwise. Explanations and summaries to the Founder may remain in Vietnamese.
+## 9. Shipping and Branch Discipline
 
-## 10. Native and Interactive Path First
+Prefer:
 
-Before inventing scripts, terminal plumbing, tokens, custom installers, or manual shell instructions, use this preference order:
+`REUSE ACTIVE BRANCH/PR -> SMALL CHANGE -> VERIFY -> MERGE/CLOSE -> MAIN OWNS KNOWLEDGE`
 
-1. already authenticated or already installed capability;
+Avoid long-lived divergent branches and duplicate PRs. Keep unrelated changes separate. Do not opportunistically refactor stable behavior while fixing a local blocker.
+
+Main should remain as close to shippable as practical.
+
+## 10. Automation as Release Memory
+
+Repeated release/build/test/package checks should live in deterministic automation rather than Founder memory.
+
+Where appropriate, CI/pipeline should automatically perform relevant lint/build/tests/package/integrity checks and expose clear pass/fail evidence.
+
+Founder should not have to remember a long sequence of terminal commands for normal engineering delivery.
+
+Do not add infrastructure merely to automate a rare step; automate high-frequency/repeatable work first.
+
+## 11. Progressive Exposure
+
+Prefer small controlled runtime exposure over large unverified releases.
+
+Use the smallest blast radius appropriate to CWS scale: local/controlled host, staging, one Worker, one representative real frame/job, then broader scope only after evidence passes.
+
+Rollback/recovery must be easier than a big-bang change.
+
+Do not scale to Worker 2 or broader fleet behavior merely because code tests pass; require the current one-Worker/runtime gate first when applicable.
+
+## 12. Flow Metrics
+
+CWS engineering success is not measured by number of prompts, documents, branches, commits, tests, or hours an agent runs.
+
+Track or make observable where practical:
+
+1. Lead Time to Evidence — time from hypothesis/start to new meaningful runtime/integration evidence.
+2. Blocker Age — how long the current P0 first failing boundary remains unresolved.
+3. Rework Ratio — repeated work/checks that do not create new evidence.
+4. Change Failure Rate — changes that regress previously verified behavior.
+5. Recovery Time — time to restore known-good behavior after a regression.
+
+Use metrics to reduce delay, not to create reporting ceremony.
+
+## 13. Development Observatory Boundary
+
+Development Observatory is useful when it exposes flow, but it is out-of-band and non-blocking.
+
+V1 should prioritize five questions:
+
+- What is the current Ship Goal?
+- Which boundaries have passed?
+- What is the first failing boundary?
+- Who/what owns it?
+- How old is the blocker / what is the next action?
+
+Worker, Guard, render, Supabase runtime, B2 runtime, and customer portal must never depend on Observatory availability.
+
+Do not let Observatory V2 polish block Track A real rendering.
+
+## 14. Native and Interactive Path First
+
+Before scripts, terminal plumbing, tokens, custom installers, or manual shell instructions:
+
+1. already authenticated/installed capability;
 2. native product UI or installed integration;
 3. official interactive OAuth/browser/device flow;
 4. existing CWS automation;
 5. official CLI/API/SDK;
 6. mature open source;
-7. custom implementation last.
+7. custom implementation.
 
-Authentication rule:
+Do not instruct Founder to manually type commands the agent can execute. Never print or commit secrets.
 
-For GitHub, Google, Vercel, Render, Supabase, B2, and similar services, prefer an existing authenticated session or official UI/OAuth connection when it satisfies the task. Do not default to PowerShell, PATs, manually copied tokens, or custom credential scripts merely because they are technically possible.
+## 15. Systematic Debugging
 
-If local GitHub CLI authentication is genuinely required, Codex should execute the official authentication command itself and launch the browser/device flow. Founder interaction should be limited to unavoidable human authorization such as approving OAuth, entering a device code, CAPTCHA, MFA, or account consent.
+Preferred loop:
 
-Do not instruct the Founder to manually type PowerShell/terminal commands that the agent can execute itself.
+`FIRST FAILURE -> ONE HYPOTHESIS -> ONE TEST -> SMALLEST SAFE CORRECTION -> RETEST FROM NEAREST SAFE CHECKPOINT`
 
-Do not ask for secrets that are already configured or discoverable through the approved environment.
+Preserve passed evidence. Stop repeating unchanged checks. Resolve, escalate, or use an already-approved independent path.
 
-Never print credentials, access tokens, refresh tokens, private keys, or secrets into prompts, logs, screenshots, or reports.
+## 16. Review Order
 
-A CLI is not preferred merely because it is automatable. Prefer the shortest reliable official path with the least Founder interaction.
+Review intent correctness, security/P0 safety, data integrity, state invariants, failure/retry behavior, concurrency, API compatibility, tests, performance, then style.
 
-If the preferred native/UI path is unavailable, record why before falling back to the next layer.
+## 17. Stable Change Discipline
 
-## 11. Progressive Disclosure / Context Control
+`STABLE FIRST -> CHANGE MINIMUM -> VERIFY REALITY -> NO OPPORTUNISTIC REFACTOR`
 
-Load governance/source-of-truth entry layer first, then only task-relevant details. Do not load every project document into every task.
+Do not modify verified stable behavior unless the current task requires it.
 
-## 12. Verification Ladder
+## 18. Infrastructure and Security Defaults
 
-V0 DESIGN REVIEWED: inspection/reasoning only.
+Existing infrastructure first. New production infrastructure requires Founder approval.
 
-V1 CODE VERIFIED: targeted tests, lint, compile/build.
+Production fails closed at real auth/authorization/ownership/security boundaries. Never silently fall back to demo mode, anonymous authorization, guessed identity, or shared long-lived secret.
 
-V2 INTEGRATION VERIFIED: real module/service interaction in integration environment.
+Track-specific proportional-security decisions remain owned by current canonical Worker/security documents; this Harness does not silently redefine them.
 
-V3 RUNTIME VERIFIED: actual running process/service and real state transition.
+## 19. Learning Without Document Inflation
 
-V4 PRODUCTION RUNTIME VERIFIED: production service/dependencies and real production state.
+For meaningful failures record only durable reusable learning: symptom/evidence, root cause, fix, failed approach if useful, verification ceiling, remaining risk, next bottleneck.
 
-V5 GOLDEN E2E VERIFIED: complete real customer trace through every required production stage.
+Do not create a new report when an existing canonical log/status/spec can absorb the information cleanly.
 
-A completion claim may never exceed its evidence level. AI said PASS is never evidence.
+`ONE FACT -> ONE CANONICAL OWNER`
 
-Before DONE report what changed, requirement satisfied, evidence, what remains unverified, workflow/architecture/security deviation YES/NO, canonical GitHub sync status, and whether runtime verification remains separate.
+## 20. Source-of-Truth and Routing
 
-## 13. Systematic Debugging
+Read `CWS_SESSION_BOOTSTRAP.md` first and follow `CWS_KNOWLEDGE_ROUTER.yaml`.
 
-Reproduce the actual failure, locate the first failing boundary, inspect code/log/state there, form one evidence-backed hypothesis, test it with the smallest experiment, fix root cause, add regression protection, and record meaningful learning.
+Use progressive disclosure: load governance/source-of-truth entry layer, then only task-relevant detail. Do not ground the entire repository repeatedly without staleness or a task-specific need.
 
-Preferred pattern: failure, boundary, cause, one fix, proof.
+Current Founder decisions override stale handoffs, but material decisions must be synchronized into their canonical owner.
 
-## 14. Review Order
+## 21. CWS-Specific Binding
 
-Review intent correctness, security, data integrity, state invariants, failure/retry behavior, concurrency, API compatibility, tests, performance, then style.
+Track A operational/revenue work remains focused on real rendering and revenue evidence according to current `CURRENT_STATUS.md`, `CWS_WORKER_TRACKS.md`, `DECISIONS.md`, and runtime evidence.
 
-## 15. Distributed-System and Security Defaults
+Do not allow Track B fleet/provisioning architecture, Development Observatory, UI polish, or unrelated research to become a prerequisite for the current Track A Ship Goal unless current evidence proves it is necessary.
 
-Durable backend state owns task ownership, lease, generation, completion, retry, and cancellation. Default is one authoritative active owner per task.
+`TRACK_A_REAL_RENDER_PASS != GOLDEN_E2E_PASS`
 
-Production fails closed. Missing or invalid identity, authorization, ownership, credential, or capability means reject.
+## 22. Anti-Patterns
 
-Never silently fall back to demo mode, anonymous authorization, guessed identity, or shared long-lived secret.
+Reject:
 
-## 16. Infrastructure Default
+- coding before understanding the current failing boundary;
+- planning after sufficient evidence already permits execution;
+- full Spec Kit ceremony for every small reversible fix;
+- repeated full-repo grounding without staleness;
+- repeating already-verified checkpoints;
+- multiple simultaneous P0 goals;
+- long-lived divergent branches/duplicate PRs;
+- research without a decision it can change;
+- documentation created only to demonstrate activity;
+- architecture rewrites to fix local defects;
+- mocks/tests presented as runtime proof;
+- terminal-first auth when official authenticated/UI paths exist;
+- asking Founder to perform commands the agent can execute;
+- adding infrastructure before measuring the current bottleneck.
 
-Existing infrastructure first. Do not add new infrastructure because it looks sophisticated. Show measured evidence that current architecture is the bottleneck. New production infrastructure requires Founder approval.
+## 23. Final Rule
 
-## 17. Engineering Learning Loop
-
-For meaningful work record symptom, evidence, root cause, fix, failed approaches, verification, reusable lesson, remaining risk, and next highest-priority action.
-
-Repeated lesson promotion follows incident, learning log, repeated evidence, then Harness/constitution/protocol rule.
-
-## 18. CWS-Specific Active Bindings
-
-Canonical GitHub main is the engineering source of truth. Normal production runtime must work without AI/Founder/Admin intervention. Existing durable task ownership, atomic claim, lease, and generation fencing remain authoritative unless Founder changes them. New production infrastructure and payment/security/customer-workflow changes require Founder approval.
-
-Current customer flow and scheduler details remain authoritative in current canonical workflow/spec documents and must be grounded rather than copied from stale prompts.
-
-## 19. Anti-Patterns
-
-Reject coding before understanding current system, rewriting architecture to fix local bugs, creating tools/services merely to look sophisticated, mock tests presented as production proof, confident guesses presented as facts, stale docs overriding newer Founder decisions, AI changing product intent to simplify implementation, terminal-first authentication when an official connected/UI path already works, asking Founder to type commands the agent can run, and requesting already-configured secrets.
-
-## 20. Harness Governance
-
-This Harness evolves from evidence. Material changes to Founder approval boundaries, irreversible-action policy, evidence levels, source-of-truth rules, or AI permission to alter workflow/architecture/security require Founder approval.
-
-Measure success by reduced regressions, repeated bugs, architecture drift, hallucinated completion, rework, context loss, and debugging cycles. Do not measure success by number of documents or ceremony.
-
-## 21. Reference Patterns Studied
-
-This is an original CWS framework informed by GitHub Spec Kit, OpenAI Codex/AGENTS.md patterns, obra/superpowers, GitHub Awesome Copilot, 12-Factor Agents, BMAD Method, and prompt engineering patterns. CWS learns patterns; it does not blindly copy or install all frameworks.
-
-## 22. Final Rule
-
-> **AI should move fast inside a narrow, evidence-backed, Founder-approved box and stop when it reaches the edge of that box.**
-
-Code is intentionally late in the process. Evidence and intent come first.
+> **Move fast inside a narrow evidence-backed box. Ship the smallest verified customer/runtime outcome. Stop only at the edge of Founder authority or a real external/safety boundary.**
