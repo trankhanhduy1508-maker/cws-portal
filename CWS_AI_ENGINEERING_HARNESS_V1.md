@@ -1,7 +1,7 @@
 # CWS AI ENGINEERING HARNESS V1
 
 > **Status:** ACTIVE — Founder approved
-> **Version:** 1.2
+> **Version:** 1.3
 > **Date:** 2026-08-17
 > **Owner:** Founder / Project Owner
 > **Purpose:** Give AI enough freedom to ship small verified increments quickly while preventing silent changes to product intent, workflow, architecture, security, infrastructure, data, and business rules.
@@ -14,9 +14,32 @@ CWS optimizes for verified customer/runtime outcomes, not engineering ceremony.
 
 Default daily execution loop:
 
+`SEE -> FIX -> PROVE -> SHIP`
+
+Expanded form:
+
 `ONE OUTCOME -> ONE BOTTLENECK -> ONE SMALL CHANGE -> REAL EVIDENCE -> SHIP -> NEXT`
 
-For ordinary bounded work, use the smallest process that safely produces new evidence. Full governance remains mandatory when risk or Founder-controlled boundaries require it.
+For ordinary bounded work, use the smallest process that safely produces new evidence. Full governance remains mandatory only when risk or Founder-controlled boundaries require it.
+
+### Simplest Effective Method Rule
+
+Prefer the simplest method that satisfies all current requirements, preserves verified behavior, and produces sufficient evidence.
+
+Simple does not mean careless. Simplicity means fewer moving parts, fewer duplicated paths, fewer manual steps, fewer sources of truth, and easier rollback/debugging.
+
+When two approaches are both safe and satisfy the same requirement, prefer the one with:
+
+1. fewer components;
+2. fewer runtime dependencies;
+3. fewer manual operations;
+4. fewer code paths;
+5. less state to synchronize;
+6. easier verification;
+7. easier rollback;
+8. lower long-term maintenance cost.
+
+Do not add complexity for hypothetical future scale before current evidence requires it.
 
 ## 2. CWS Ship Loop
 
@@ -261,7 +284,43 @@ Do not create a new report when an existing canonical log/status/spec can absorb
 
 `ONE FACT -> ONE CANONICAL OWNER`
 
-## 20. Source-of-Truth and Routing
+### Action-Value Filter
+
+Before any research, planning, documentation, audit, or repeated verification step, ask:
+
+`Will this step create a new decision, necessary code change, or meaningful evidence?`
+
+If the answer is NO, skip the step unless it is required by safety, compliance, or a Founder-controlled approval boundary.
+
+Canonical rule:
+
+> **If a step does not create a new decision, necessary code change, or meaningful evidence, remove it from the normal engineering path.**
+
+This rule exists to reduce ceremony, duplicated grounding, repeated reports, and activity that looks productive but does not move the current Ship Goal.
+
+## 20. Research Stop Rule
+
+Research is a tool for changing a decision, selecting an implementation, or explaining a failure. Research is not progress by itself.
+
+Before starting research, define:
+
+- the decision it may change;
+- the unknown it must resolve;
+- the stop condition.
+
+Stop research when enough evidence exists to make the next safe decision.
+
+Do not continue broad research merely because more information exists.
+
+Prefer:
+
+`KNOWN ENOUGH TO ACT SAFELY -> EXECUTE -> MEASURE -> LEARN`
+
+rather than:
+
+`RESEARCH UNTIL NOTHING REMAINS UNKNOWN`.
+
+## 21. Source-of-Truth and Routing
 
 Read `CWS_SESSION_BOOTSTRAP.md` first and follow `CWS_KNOWLEDGE_ROUTER.yaml`.
 
@@ -269,7 +328,7 @@ Use progressive disclosure: load governance/source-of-truth entry layer, then on
 
 Current Founder decisions override stale handoffs, but material decisions must be synchronized into their canonical owner.
 
-## 21. CWS-Specific Binding
+## 22. CWS-Specific Binding
 
 Track A operational/revenue work remains focused on real rendering and revenue evidence according to current `CURRENT_STATUS.md`, `CWS_WORKER_TRACKS.md`, `DECISIONS.md`, and runtime evidence.
 
@@ -277,7 +336,7 @@ Do not allow Track B fleet/provisioning architecture, Development Observatory, U
 
 `TRACK_A_REAL_RENDER_PASS != GOLDEN_E2E_PASS`
 
-## 22. Anti-Patterns
+## 23. Anti-Patterns
 
 Reject:
 
@@ -289,13 +348,16 @@ Reject:
 - multiple simultaneous P0 goals;
 - long-lived divergent branches/duplicate PRs;
 - research without a decision it can change;
+- research that continues after the next safe action is already known;
 - documentation created only to demonstrate activity;
 - architecture rewrites to fix local defects;
 - mocks/tests presented as runtime proof;
 - terminal-first auth when official authenticated/UI paths exist;
 - asking Founder to perform commands the agent can execute;
-- adding infrastructure before measuring the current bottleneck.
+- adding infrastructure before measuring the current bottleneck;
+- creating duplicate implementations when one configurable canonical implementation can serve multiple Jobs;
+- optimizing for hypothetical future scale while current real-customer runtime still fails.
 
-## 23. Final Rule
+## 24. Final Rule
 
-> **Move fast inside a narrow evidence-backed box. Ship the smallest verified customer/runtime outcome. Stop only at the edge of Founder authority or a real external/safety boundary.**
+> **Move fast inside a narrow evidence-backed box. Use the simplest effective method. Ship the smallest verified customer/runtime outcome. Stop only at the edge of Founder authority or a real external/safety boundary.**
