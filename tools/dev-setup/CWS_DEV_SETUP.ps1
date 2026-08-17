@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$CanonicalRepoPath = (Join-Path $env:USERPROFILE 'cws-portal-canonical-main'),
-    [switch]$SkipOpenCode
+    [string]$RuntimeRoot = (Join-Path $env:SystemDrive 'CWS_Render'),
+    [switch]$SkipOpenCode,
+    [switch]$SkipGitHubAuth
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +16,11 @@ $ExpectedBranch = 'main'
 $ReportPath = Join-Path $CanonicalRepoPath 'CWS_DEV_SETUP_REPORT.txt'
 $Results = [ordered]@{}
 $Blockers = New-Object System.Collections.Generic.List[string]
+$Warnings = New-Object System.Collections.Generic.List[string]
+
+$PythonFallbackVersion = '3.12.10'
+$BlenderVersion = '5.2.0'
+$BlenderSeries = 'Blender5.2'
 
 function Write-Step([string]$Message) {
     Write-Host "`n=== $Message ===" -ForegroundColor Cyan
@@ -22,6 +29,11 @@ function Write-Step([string]$Message) {
 function Write-Result([string]$Name, [string]$Value, [ConsoleColor]$Color = [ConsoleColor]::Green) {
     $Results[$Name] = $Value
     Write-Host ("[{0}] {1}" -f $Name, $Value) -ForegroundColor $Color
+}
+
+function Add-Warning([string]$Message) {
+    if (-not $Warnings.Contains($Message)) { $Warnings.Add($Message) }
+    Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
 function Test-IsAdministrator {
@@ -63,6 +75,33 @@ function Get-ExecutableVersion([string]$Path, [string[]]$Arguments = @('--versio
     } catch { return $null }
 }
 
+function Find-PythonPath {
+    $commandPath = Find-CommandPath @('python.exe', 'python', 'py.exe')
+    if ($commandPath) {
+        if ((Split-Path -Leaf $commandPath).ToLowerInvariant() -eq 'py.exe') {
+            try {
+                $resolved = (& $commandPath -3 -c "import sys; print(sys.executable)" 2>$null | Select-Object -First 1)
+                if ($resolved -and (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $resolved }
+            } catch {}
+        }
+        return $commandPath
+    }
+
+    $roots = @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\Python'),
+        (Join-Path $env:ProgramFiles 'Python*'),
+        (Join-Path $RuntimeRoot 'Python')
+    )
+
+    foreach ($root in $roots) {
+        $items = Get-ChildItem -Path $root -Filter python.exe -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending
+        $candidate = $items | Select-Object -First 1
+        if ($candidate) { return $candidate.FullName }
+    }
+    return $null
+}
+
 function Find-BlenderPath {
     $commandPath = Find-CommandPath @('blender.exe', 'blender')
     if ($commandPath) { return $commandPath }
@@ -70,7 +109,8 @@ function Find-BlenderPath {
     $roots = @(
         (Join-Path $env:ProgramFiles 'Blender Foundation'),
         (Join-Path ${env:ProgramFiles(x86)} 'Blender Foundation'),
-        (Join-Path $env:LOCALAPPDATA 'Programs\Blender Foundation')
+        (Join-Path $env:LOCALAPPDATA 'Programs\Blender Foundation'),
+        (Join-Path $RuntimeRoot 'Blender')
     ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) }
 
     foreach ($root in $roots) {
@@ -82,31 +122,173 @@ function Find-BlenderPath {
     return $null
 }
 
-function Install-WingetPackage([string]$Id, [string]$Label) {
-    Write-Host "[setup] Installing missing $Label ($Id) with winget..." -ForegroundColor Yellow
-    & winget.exe install --id $Id --exact --source winget --silent --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) {
-        throw "winget failed while installing $Label ($Id), exit code $LASTEXITCODE"
+function Invoke-Download([string]$Uri, [string]$Destination) {
+    $parent = Split-Path -Parent $Destination
+    if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $partial = "$Destination.part"
+    Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+    Write-Host "[download] $Uri" -ForegroundColor DarkCyan
+    Invoke-WebRequest -Uri $Uri -OutFile $partial -UseBasicParsing
+    if (-not (Test-Path -LiteralPath $partial -PathType Leaf)) { throw "Download did not create file: $Destination" }
+    if ((Get-Item -LiteralPath $partial).Length -lt 1024) { throw "Downloaded file is unexpectedly small: $Destination" }
+    Move-Item -LiteralPath $partial -Destination $Destination -Force
+}
+
+function Assert-ValidSignature([string]$Path) {
+    $signature = Get-AuthenticodeSignature -FilePath $Path
+    if ($signature.Status -ne 'Valid') {
+        throw "Authenticode verification failed for $Path ($($signature.Status))."
     }
 }
 
-function Ensure-Pytest([string]$PythonExe) {
-    if (-not $PythonExe -or -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
-        throw 'Python executable unavailable while ensuring pytest.'
+function Install-Exe([string]$Uri, [string]$Label, [string[]]$Arguments) {
+    $file = Join-Path $env:TEMP ("cws-" + [Guid]::NewGuid().ToString('N') + '.exe')
+    try {
+        Write-Host "[setup] Installing missing $Label from official fallback source..." -ForegroundColor Yellow
+        Invoke-Download $Uri $file
+        Assert-ValidSignature $file
+        $process = Start-Process -FilePath $file -ArgumentList $Arguments -Wait -PassThru
+        if ($process.ExitCode -notin @(0, 3010)) { throw "$Label installer failed with exit code $($process.ExitCode)." }
+    } finally {
+        Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
     }
+}
 
-    & $PythonExe -m pytest --version *> $null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host '[keep] pytest already available.' -ForegroundColor Green
+function Install-Msi([string]$Uri, [string]$Label) {
+    $file = Join-Path $env:TEMP ("cws-" + [Guid]::NewGuid().ToString('N') + '.msi')
+    try {
+        Write-Host "[setup] Installing missing $Label from official fallback source..." -ForegroundColor Yellow
+        Invoke-Download $Uri $file
+        Assert-ValidSignature $file
+        $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/i', "`"$file`"", '/qn', '/norestart') -Wait -PassThru
+        if ($process.ExitCode -notin @(0, 3010)) { throw "$Label MSI failed with exit code $($process.ExitCode)." }
+    } finally {
+        Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-GitHubReleaseAssetUrl([string]$Repository, [string]$AssetRegex) {
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest" -Headers @{ 'User-Agent' = 'CWS-Dev-Setup' }
+    $asset = $release.assets | Where-Object { $_.name -match $AssetRegex } | Select-Object -First 1
+    if (-not $asset) { throw "No matching official release asset found for $Repository ($AssetRegex)." }
+    return $asset.browser_download_url
+}
+
+function Install-WingetPackage([string]$Id, [string]$Label) {
+    $winget = Find-CommandPath @('winget.exe', 'winget')
+    if (-not $winget) { return $false }
+    Write-Host "[setup] Installing missing $Label ($Id) with winget..." -ForegroundColor Yellow
+    & $winget install --id $Id --exact --source winget --silent --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        Add-Warning "winget failed for $Label; trying official fallback."
+        return $false
+    }
+    Refresh-ProcessPath
+    return $true
+}
+
+function Install-OfficialFallback([string]$Name) {
+    switch ($Name) {
+        'Git' {
+            $uri = Get-GitHubReleaseAssetUrl 'git-for-windows/git' '64-bit\.exe$'
+            Install-Exe $uri 'Git' @('/VERYSILENT', '/NORESTART', '/NOCANCEL', '/SP-')
+        }
+        'VSCode' {
+            Install-Exe 'https://update.code.visualstudio.com/latest/win32-x64-system/stable' 'Visual Studio Code' @('/VERYSILENT', '/NORESTART', '/MERGETASKS=!runcode')
+        }
+        'GitHubCLI' {
+            $uri = Get-GitHubReleaseAssetUrl 'cli/cli' 'windows_amd64\.msi$'
+            Install-Msi $uri 'GitHub CLI'
+        }
+        'Python' {
+            $uri = "https://www.python.org/ftp/python/$PythonFallbackVersion/python-$PythonFallbackVersion-amd64.exe"
+            Install-Exe $uri "Python $PythonFallbackVersion" @('/quiet', 'InstallAllUsers=1', 'PrependPath=1', 'Include_pip=1', 'Include_test=0')
+        }
+        'Node' {
+            $index = Invoke-RestMethod -Uri 'https://nodejs.org/dist/index.json'
+            $lts = $index | Where-Object { $_.lts -and ($_.files -contains 'win-x64-msi') } | Select-Object -First 1
+            if (-not $lts) { throw 'Could not resolve current Node.js LTS Windows MSI.' }
+            $uri = "https://nodejs.org/dist/$($lts.version)/node-$($lts.version)-x64.msi"
+            Install-Msi $uri 'Node.js LTS'
+        }
+        default { throw "No official fallback is defined for $Name." }
+    }
+    Refresh-ProcessPath
+}
+
+function Ensure-CoreTool([string]$Name, [string[]]$Commands, [string]$WingetId) {
+    if (Find-CommandPath $Commands) {
+        Write-Host "[keep] $Name already available." -ForegroundColor Green
         return
     }
+    $installed = Install-WingetPackage $WingetId $Name
+    if (-not $installed -or -not (Find-CommandPath $Commands)) {
+        Install-OfficialFallback $Name
+    }
+    if (-not (Find-CommandPath $Commands)) { throw "$Name installation completed but executable is still unavailable." }
+}
 
-    Write-Host '[setup] Installing missing pytest with python -m pip...' -ForegroundColor Yellow
-    & $PythonExe -m pip install --disable-pip-version-check --quiet pytest
-    if ($LASTEXITCODE -ne 0) { throw 'pytest installation failed.' }
+function Ensure-Blender {
+    $existing = Find-BlenderPath
+    if ($existing) {
+        Write-Host '[keep] Blender already available.' -ForegroundColor Green
+        return $existing
+    }
+
+    $installed = Install-WingetPackage 'BlenderFoundation.Blender' 'Blender'
+    if ($installed) {
+        $existing = Find-BlenderPath
+        if ($existing) { return $existing }
+    }
+
+    Write-Host '[setup] winget unavailable/failed; using official Blender portable ZIP fallback...' -ForegroundColor Yellow
+    $blenderRoot = Join-Path $RuntimeRoot 'Blender'
+    $zip = Join-Path $env:TEMP "blender-$BlenderVersion-windows-x64.zip"
+    $uri = "https://download.blender.org/release/$BlenderSeries/blender-$BlenderVersion-windows-x64.zip"
+    try {
+        Invoke-Download $uri $zip
+        New-Item -ItemType Directory -Path $blenderRoot -Force | Out-Null
+        Expand-Archive -LiteralPath $zip -DestinationPath $blenderRoot -Force
+    } finally {
+        Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
+    }
+
+    $existing = Find-BlenderPath
+    if (-not $existing) { throw 'Blender portable fallback completed but blender.exe could not be located.' }
+    return $existing
+}
+
+function Ensure-PythonPackages([string]$PythonExe) {
+    if (-not $PythonExe -or -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
+        throw 'Python executable unavailable while ensuring Python packages.'
+    }
+
+    & $PythonExe -m pip --version *> $null
+    if ($LASTEXITCODE -ne 0) {
+        & $PythonExe -m ensurepip --upgrade
+        if ($LASTEXITCODE -ne 0) { throw 'pip bootstrap failed.' }
+    }
+
+    $packages = @(
+        @{ Import = 'pytest'; Spec = 'pytest>=8,<10' },
+        @{ Import = 'requests'; Spec = 'requests>=2.31,<3' },
+        @{ Import = 'boto3'; Spec = 'boto3>=1.35,<2' },
+        @{ Import = 'PIL'; Spec = 'Pillow>=10,<13' }
+    )
+
+    foreach ($package in $packages) {
+        & $PythonExe -c "import $($package.Import)" *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[keep] Python package $($package.Import) already available." -ForegroundColor Green
+            continue
+        }
+        Write-Host "[setup] Installing $($package.Spec)..." -ForegroundColor Yellow
+        & $PythonExe -m pip install --disable-pip-version-check --quiet --no-input $package.Spec
+        if ($LASTEXITCODE -ne 0) { throw "Python package installation failed: $($package.Spec)" }
+    }
 
     & $PythonExe -m pytest --version *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'pytest verification failed after installation.' }
+    if ($LASTEXITCODE -ne 0) { throw 'pytest verification failed after package setup.' }
 }
 
 function Ensure-CodexExtension {
@@ -154,6 +336,7 @@ function Write-SetupReport {
     $lines.Add(('Machine: {0}' -f $env:COMPUTERNAME))
     $lines.Add(('User: {0}' -f $env:USERNAME))
     foreach ($key in $Results.Keys) { $lines.Add(('{0}: {1}' -f $key, $Results[$key])) }
+    $lines.Add(('Warnings: {0}' -f ($(if ($Warnings.Count) { $Warnings -join '; ' } else { 'NONE' }))))
     $lines.Add(('Blocker: {0}' -f ($(if ($Blockers.Count) { $Blockers -join '; ' } else { 'NONE' }))))
     $lines.Add(('Overall: {0}' -f ($(if ($Blockers.Count) { 'BLOCKED' } else { 'PASS' }))))
     $lines | Set-Content -LiteralPath $ReportPath -Encoding UTF8
@@ -163,12 +346,17 @@ function Write-SetupReport {
 try {
     Write-Host 'CWS Windows development setup' -ForegroundColor Cyan
     Write-Host 'Safe to rerun: detect first, install only missing prerequisites, preserve repo and credentials.'
+    Write-Host 'winget is optional: official-source fallbacks are used when winget is unavailable.'
 
     Write-Step 'Preflight'
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'This setup is Windows-only.' }
     Write-Result 'Windows' ([Environment]::OSVersion.Version.ToString())
     if (-not (Test-IsAdministrator)) { throw 'Administrator elevation is required. Run CWS_DEV_SETUP.bat and approve UAC.' }
     Write-Result 'Administrator' 'PASS'
+
+    New-Item -ItemType Directory -Path $RuntimeRoot -Force | Out-Null
+    $env:CWS_DIR = $RuntimeRoot
+    Write-Result 'CWS_DIR_Process' $RuntimeRoot
 
     try {
         Resolve-DnsName github.com -ErrorAction Stop | Select-Object -First 1 | Out-Null
@@ -184,13 +372,15 @@ try {
         $Blockers.Add('HTTPS connectivity to github.com failed')
         Write-Result 'Internet_HTTPS' 'FAIL' Red
     }
+    if ($Blockers.Count -gt 0) { throw ($Blockers -join '; ') }
 
     Refresh-ProcessPath
     $wingetPath = Find-CommandPath @('winget.exe', 'winget')
-    if (-not $wingetPath) {
-        $Blockers.Add('winget is missing; install/update Microsoft App Installer, then rerun')
-        Write-Result 'winget' 'MISSING' Red
-    } else { Write-Result 'winget' (Get-ToolVersion 'winget.exe') }
+    if ($wingetPath) {
+        Write-Result 'winget' (Get-ToolVersion 'winget.exe')
+    } else {
+        Write-Result 'winget' 'MISSING - OFFICIAL FALLBACK ENABLED' Yellow
+    }
 
     foreach ($tool in @(
         [pscustomobject]@{ Name = 'Git'; Command = 'git.exe' },
@@ -206,34 +396,17 @@ try {
     $initialBlender = Find-BlenderPath
     Write-Result 'Blender' ($(if ($initialBlender) { $initialBlender } else { 'MISSING' })) $(if ($initialBlender) { 'Green' } else { 'Yellow' })
 
-    if ($Blockers.Count -gt 0) { throw ($Blockers -join '; ') }
-
     Write-Step 'Detect and install missing tools'
-    $packages = @(
-        [pscustomobject]@{ Command = @('git.exe', 'git'); Label = 'Git'; Id = 'Git.Git' },
-        [pscustomobject]@{ Command = @('code.cmd', 'code.exe', 'code'); Label = 'Visual Studio Code'; Id = 'Microsoft.VisualStudioCode' },
-        [pscustomobject]@{ Command = @('gh.exe', 'gh'); Label = 'GitHub CLI'; Id = 'GitHub.cli' },
-        [pscustomobject]@{ Command = @('python.exe', 'python'); Label = 'Python 3.12'; Id = 'Python.Python.3.12' },
-        [pscustomobject]@{ Command = @('node.exe', 'node'); Label = 'Node.js LTS'; Id = 'OpenJS.NodeJS.LTS' }
-    )
-    foreach ($package in $packages) {
-        if (-not (Find-CommandPath $package.Command)) { Install-WingetPackage $package.Id $package.Label }
-        else { Write-Host "[keep] $($package.Label) already available." -ForegroundColor Green }
-        Refresh-ProcessPath
-    }
+    Ensure-CoreTool 'Git' @('git.exe', 'git') 'Git.Git'
+    Ensure-CoreTool 'VSCode' @('code.cmd', 'code.exe', 'code') 'Microsoft.VisualStudioCode'
+    Ensure-CoreTool 'GitHubCLI' @('gh.exe', 'gh') 'GitHub.cli'
+    Ensure-CoreTool 'Python' @('python.exe', 'python') 'Python.Python.3.12'
+    Ensure-CoreTool 'Node' @('node.exe', 'node') 'OpenJS.NodeJS.LTS'
+    Refresh-ProcessPath
 
-    $blenderPath = Find-BlenderPath
-    if (-not $blenderPath) {
-        Install-WingetPackage 'BlenderFoundation.Blender' 'Blender'
-        Refresh-ProcessPath
-        $blenderPath = Find-BlenderPath
-    } else {
-        Write-Host '[keep] Blender already available.' -ForegroundColor Green
-    }
-    if (-not $blenderPath) { throw 'Blender installation completed but blender.exe could not be located.' }
-
-    $pythonPath = Find-CommandPath @('python.exe', 'python')
-    Ensure-Pytest $pythonPath
+    $blenderPath = Ensure-Blender
+    $pythonPath = Find-PythonPath
+    Ensure-PythonPackages $pythonPath
     Ensure-CodexExtension
     Write-Result 'Tools_Install' 'PASS'
 
@@ -242,7 +415,6 @@ try {
         [pscustomobject]@{ Name = 'Git'; Command = 'git.exe'; Arguments = @('--version') },
         [pscustomobject]@{ Name = 'VSCode'; Command = 'code.cmd'; Arguments = @('--version') },
         [pscustomobject]@{ Name = 'GitHubCLI'; Command = 'gh.exe'; Arguments = @('--version') },
-        [pscustomobject]@{ Name = 'Python'; Command = 'python.exe'; Arguments = @('--version') },
         [pscustomobject]@{ Name = 'Node'; Command = 'node.exe'; Arguments = @('--version') },
         [pscustomobject]@{ Name = 'npm'; Command = 'npm.cmd'; Arguments = @('--version') }
     )
@@ -253,10 +425,21 @@ try {
         Write-Result $check.Name $version
     }
 
-    $pythonPath = Find-CommandPath @('python.exe', 'python')
+    $pythonPath = Find-PythonPath
+    $pythonVersion = Get-ExecutableVersion $pythonPath @('--version')
+    if (-not $pythonVersion) { throw 'Python verification failed.' }
+    Write-Result 'Python_Path' $pythonPath
+    Write-Result 'Python_Version' $pythonVersion
+
     $pytestVersion = (& $pythonPath -m pytest --version 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'pytest verification failed.' }
     Write-Result 'pytest' (($pytestVersion -split "`r?`n")[0])
+
+    foreach ($module in @('requests', 'boto3', 'PIL')) {
+        & $pythonPath -c "import $module" *> $null
+        if ($LASTEXITCODE -ne 0) { throw "Python import verification failed: $module" }
+        Write-Result "Python_$module" 'PASS'
+    }
 
     $blenderPath = Find-BlenderPath
     $blenderVersion = Get-ExecutableVersion $blenderPath @('--version')
@@ -268,15 +451,6 @@ try {
     $extensions = & $codePath --list-extensions 2>$null
     if ($extensions -notcontains 'openai.chatgpt') { throw 'Codex IDE extension verification failed.' }
     Write-Result 'Codex_IDE' 'openai.chatgpt PRESENT'
-
-    Write-Step 'GitHub browser authentication'
-    & gh.exe auth status 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host '[ACTION] GitHub CLI is not authenticated. Opening browser authorization...' -ForegroundColor Yellow
-        & gh.exe auth login --hostname github.com --git-protocol https --web
-    }
-    & gh.exe auth status 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) { Write-Result 'GitHub_Auth' 'PASS' } else { $Blockers.Add('GitHub browser authorization did not complete'); Write-Result 'GitHub_Auth' 'BLOCKED' Red }
 
     Write-Step 'Canonical repository'
     $parent = Split-Path -Parent $CanonicalRepoPath
@@ -291,8 +465,10 @@ try {
     $origin = (Invoke-Git @('remote', 'get-url', 'origin')).Output
     if ($origin.TrimEnd('/') -ne $CanonicalUrl.TrimEnd('/')) { throw "origin mismatch: $origin" }
     Write-Result 'Repo_Origin' $origin
+
     $fetch = Invoke-Git @('fetch', '--prune')
     if ($fetch.ExitCode -ne 0) { $Blockers.Add('git fetch --prune failed') }
+
     $branch = (Invoke-Git @('branch', '--show-current')).Output
     $status = (Invoke-Git @('status', '--short', '--branch')).Output
     $head = (Invoke-Git @('log', '-1', '--oneline')).Output
@@ -301,6 +477,19 @@ try {
     Write-Result 'Repo_Status' $status
     if ($branch -ne $ExpectedBranch) { $Blockers.Add("canonical clone is on '$branch', expected '$ExpectedBranch'; no checkout performed") }
     if ($status -match '(?m)^## .*\[behind ') { $Blockers.Add('canonical main is behind origin/main; no automatic pull/reset performed') }
+
+    Write-Step 'GitHub CLI authentication'
+    if ($SkipGitHubAuth) {
+        Write-Result 'GitHub_Auth' 'SKIPPED' Yellow
+    } else {
+        & gh.exe auth status 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Result 'GitHub_Auth' 'PASS'
+        } else {
+            Add-Warning 'GitHub CLI is not authenticated. Normal Git operations remain usable if repository fetch succeeds.'
+            Write-Result 'GitHub_Auth' 'UNAUTHENTICATED - OPTIONAL' Yellow
+        }
+    }
 
     Write-Step 'Telegram and B2 configuration presence'
     foreach ($name in @('CWS_TELEGRAM_BOT_TOKEN', 'CWS_TELEGRAM_CHAT_ID', 'CWS_B2_KEY_ID', 'CWS_B2_APP_KEY', 'CWS_B2_ENDPOINT', 'CWS_B2_BUCKET')) {
@@ -321,6 +510,10 @@ try {
         exit 2
     }
     Write-Host "`n=== PASS ===" -ForegroundColor Green
+    if ($Warnings.Count -gt 0) {
+        Write-Host 'Warnings:' -ForegroundColor Yellow
+        $Warnings | ForEach-Object { Write-Host "- $_" -ForegroundColor Yellow }
+    }
     exit 0
 } catch {
     if (-not $Blockers.Contains($_.Exception.Message)) { $Blockers.Add($_.Exception.Message) }
