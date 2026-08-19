@@ -1,0 +1,1003 @@
+# CWS UE5 RENDER KNOWLEDGE V1
+
+> Status: CURRENT_SUPPORTING / EXPERIMENTAL
+> Date: 2026-08-19
+> Scope: Blender -> GLB -> Unreal Engine 5.8 -> Movie Render Queue -> PNG -> FFmpeg
+> Canonical repository: `trankhanhduy1508-maker/cws-portal`
+> Current physical test host: `MAY083`
+> Purpose: preserve verified UE5 render lessons, failed approaches, API/version traps, crash evidence, and the exact continuation point so future AI sessions do not repeat the same mistakes.
+
+## 0. Authority and boundary
+
+This document is a focused UE5 render knowledge base. It is NOT a replacement for CWS canonical product or Worker authority.
+
+Before using this document, a new AI session must still follow:
+
+1. `CWS_SESSION_BOOTSTRAP.md`
+2. `CWS_KNOWLEDGE_ROUTER.yaml`
+3. `CURRENT_STATUS.md`
+4. `CWS_WORKER_TRACKS.md`
+5. `DECISIONS.md`
+6. `FOUNDER_RULES.md` when debugging or changing architecture/governance
+
+Current CWS authority remains:
+
+- Track A Operational / Revenue Worker is the current operational priority.
+- Canonical current Track A render core remains `cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> validated output -> B2`.
+- UE5 work is an experimental render acceleration / alternate render research path.
+- Do NOT silently replace the canonical Blender/Cycles render core with UE5.
+- A UE5 experimental render PASS is NOT Golden Production E2E.
+- No runtime evidence means no runtime PASS claim.
+
+Founder technical-debugging rule applies:
+
+`RUNTIME EVIDENCE -> OFFICIAL DOCS -> RELEVANT COMMUNITY CASES -> COMPARE -> FALSIFIABLE HYPOTHESIS -> MINIMAL TEST -> FIX -> VERIFY`
+
+Always distinguish:
+
+- `FACT`
+- `INFERENCE`
+- `HYPOTHESIS`
+- `UNKNOWN`
+
+## 1. Why UE5 is being tested
+
+The Founder is testing whether Unreal Engine 5 can become a much faster render path for suitable Blender/archviz jobs.
+
+Current experimental pipeline:
+
+`customer .blend -> Blender headless export -> scene.glb -> UE5 Interchange scene import -> non-World-Partition level -> LevelSequence/camera -> MRQ -> PNG frames -> FFmpeg -> MP4`
+
+The current representative source is:
+
+`C:\Users\Administrator\Downloads\PhongNguRender6.blend`
+
+The current intermediate format is:
+
+`GLB / glTF Binary`
+
+Reason for GLB:
+
+- carries scene geometry;
+- materials/textures to the extent supported by glTF;
+- cameras;
+- animation;
+- one compact binary artifact;
+- UE5 Interchange supports glTF scene import.
+
+Do not assume visual parity with Blender merely because GLB import succeeds. Blender shading, World lighting, Area lights, Cycles-specific nodes, procedural data, modifiers, constraints and other Blender semantics may not transfer 1:1.
+
+## 2. Current test machine and paths
+
+Host:
+
+`MAY083`
+
+Hardware observed during this work:
+
+- Windows 10 Pro 22H2
+- Intel Core i3-12100F
+- NVIDIA RTX 2060 SUPER 8 GB
+- about 16 GB system RAM
+
+Blender:
+
+`C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`
+
+Unreal Engine:
+
+`C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe`
+
+UE sandbox project that previously rendered successfully:
+
+`C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\CWS_UE_LIGHT_TEST.uproject`
+
+A manually created/tested UE project involved in the later World Partition crash:
+
+`C:\Users\Administrator\Downloads\P6\P6.uproject`
+
+Portable FFmpeg already exists under:
+
+`C:\Users\Administrator\Downloads\CWS_UE_TOOLS\ffmpeg\extracted\ffmpeg-9.0.1-essentials_build\bin\`
+
+UE job workspace pattern:
+
+`C:\Users\Administrator\Downloads\CWS_UE_JOBS\JOB_<timestamp>\`
+
+Founder prefers PowerShell automation and headless UE operation instead of repetitive manual UI work.
+
+## 3. Verified pipeline evidence
+
+### 3.1 UE command-line + MRQ control scene works
+
+A native UE control scene was created and rendered with:
+
+- native UE StaticMeshActor cube;
+- CineCameraActor;
+- light;
+- fresh LevelSequence;
+- Movie Render Queue;
+- PNG output.
+
+Result:
+
+`CWS_CONTROL_PREP_DONE=True`
+`CWS_CONTROL_PNG_COUNT=1`
+`CWS_CONTROL_RENDER_DONE`
+
+The Founder visually opened:
+
+`C:\Users\Administrator\Desktop\CWS_CONTROL_CUBE.png`
+
+and the cube was visible.
+
+This proves on MAY083:
+
+`UnrealEditor-Cmd + MRQ + native UE geometry + camera + light + PNG`
+
+can produce a visible output.
+
+Therefore, when imported customer content renders black, do NOT immediately blame MRQ, UnrealEditor-Cmd, GPU, or PNG output. The failure can be upstream in imported content, camera state, material/light transfer, LevelSequence or scene conversion.
+
+### 3.2 Customer-map A/B control also rendered
+
+A later A/B diagnostic cloned the customer-derived UE map and placed the already proven native UE cube + light in front of the customer camera.
+
+The fresh one-frame sequence rendered successfully.
+
+This further narrowed black customer output toward imported Blender/Interchange content rather than the base UE render stack.
+
+### 3.3 Camera binding was eventually verified correctly
+
+Early camera-binding diagnosis was wrong because:
+
+`str(unreal.Guid)`
+
+does NOT print the useful GUID value. It prints a struct representation.
+
+Correct approach:
+
+`Guid.to_string()`
+
+After fixing this, the CineCamera binding GUID and Camera Cut binding GUID matched.
+
+Evidence classification:
+
+`CAMERA BINDING VERIFIED`
+
+Lesson:
+
+Never diagnose a UE GUID mismatch using Python `str(Guid)`.
+
+### 3.4 MRQ render pass was verified
+
+A diagnostic confirmed:
+
+- Deferred rendering pass enabled;
+- PNG output enabled;
+- output setting enabled.
+
+Classification:
+
+`CWS_MRQ_RENDER_PASS_DIAG_PASS=True`
+
+Therefore black output was not explained by accidentally having no MRQ image pass.
+
+### 3.5 Anti-aliasing was not the proven black-output cause
+
+A diagnostic showed:
+
+- AA override was false;
+- project/default path used TSR;
+- it was not the known FXAA + PNG configuration suspected earlier.
+
+Classification:
+
+`CWS_AA_DIAG_PASS=True`
+
+Lesson:
+
+Do not keep changing AA after this evidence unless new runtime evidence points back to it.
+
+## 4. PhongNguRender6 A-to-Z P1 evidence
+
+P1 script:
+
+`CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P1.ps1`
+
+Its design:
+
+1. discover exactly one `PhongNguRender6*.blend`;
+2. open Blender headless with `--disable-autoexec`;
+3. never overwrite/save customer original;
+4. export `scene.glb`;
+5. write Blender scene manifest;
+6. find existing FFmpeg;
+7. UE5 Interchange import into a fresh level;
+8. validate mesh references;
+9. validate/fix camera cut binding;
+10. create fresh MRQ config;
+11. render full sequence to PNG;
+12. validate PNG count;
+13. FFmpeg assemble PNG frames to MP4;
+14. retain PNGs.
+
+Observed P1 runtime on Render6:
+
+`CWS_FIRST_PNG_SECONDS=20.325`
+`CWS_PNG_VALIDATION_PASS=True`
+`CWS_RENDERED_FRAMES=60`
+`CWS_EXPECTED_FRAMES=60`
+`CWS_FRAME_COUNT_MATCH=True`
+`CWS_FFMPEG_EXIT_CODE=0`
+`CWS_VIDEO_VALIDATION_PASS=True`
+`CWS_FINAL_CLASSIFICATION=PASS_VIDEO_AND_FRAMES_COMPLETE`
+`CWS_A_TO_Z_DONE`
+
+This proves transport/execution/frame-count/encode completion.
+
+It does NOT prove:
+
+- visual parity with Blender;
+- correct lighting/materials;
+- correct camera direction;
+- correct animation semantics;
+- customer-acceptable output;
+- Golden E2E.
+
+The generated MP4 was only about 6.8 KB in one observed run, which is suspiciously small for 1920x1080 animation and supports checking visual output rather than trusting file existence alone.
+
+## 5. Black-video evidence
+
+A video uploaded into the ChatGPT conversation was programmatically inspected:
+
+- 60 decoded frames;
+- 24 fps;
+- 1920x1080;
+- 2.5 seconds;
+- sampled and decoded frame pixels were all zero;
+- mean/min/max pixel values were all 0.
+
+Classification:
+
+`FACT: that uploaded MP4 is fully black.`
+
+But it is `UNKNOWN` whether that uploaded MP4 was exactly the same local P1 artifact the Founder was visually discussing at the time.
+
+Important lesson:
+
+`PNG_COUNT_MATCH + FFMPEG_EXIT_0 + MP4_EXISTS != VISUAL_RENDER_PASS`
+
+Future pipeline validation must include visual/non-black checks where appropriate.
+
+## 6. Animation appears reversed
+
+Founder observation for local Render6 result:
+
+The animation/video appeared to run backward compared with the original Blender animation.
+
+Official behavior researched:
+
+- UE Sequencer supports reverse playback.
+- Negative play rate reverses a sequence.
+- animation sections can expose Reverse / Play Rate behavior.
+- FFmpeg concat demuxer reads `file` directives in listed order and does not spontaneously reverse the list.
+
+P1 FFmpeg behavior:
+
+- PNG files are sorted by name ascending;
+- `frames.ffconcat` is created from that ascending list;
+- P1 does not use FFmpeg `reverse`.
+
+Inference:
+
+If `frames.ffconcat` first/last entries match ascending PNG order, the likely reverse is already present in UE-rendered temporal content or imported LevelSequence semantics, not created by FFmpeg.
+
+Do NOT blindly apply an FFmpeg reverse filter to hide an upstream timeline bug.
+
+### Current P2 workaround
+
+P2 script:
+
+`CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1`
+
+P2 currently defaults:
+
+`ReverseImportedAnimation = True`
+
+and mirrors scriptable LevelSequence key times around the observed key range.
+
+This is a controlled workaround driven by the Founder's observed reverse output.
+
+Classification:
+
+- `FACT`: P2 contains the workaround.
+- `UNKNOWN`: whether UE Interchange is the true root cause of reversal.
+- `NOT YET RUNTIME VERIFIED`: P2 has not yet been proven on MAY083 at the time this knowledge file was created.
+
+If P2 visually fixes direction, record that as experimental evidence, not proof of the root cause.
+
+## 7. Frame-count bug and FFmpeg lesson
+
+Earlier experiments produced extra encoded frames:
+
+- one run produced 43 frames when 42 were expected;
+- another earlier run produced 53 vs 42.
+
+One cause was logic that repeated/appended the final PNG during FFmpeg assembly.
+
+P1 removed duplicate-last behavior.
+
+P1 later achieved:
+
+`60 rendered == 60 expected`
+
+Lesson:
+
+Do not append/repeat the last frame unless the requested duration contract explicitly requires it.
+
+FFmpeg must assemble the validated sequence exactly once in deterministic order.
+
+## 8. Major Unreal Python/API mistakes that must NOT be repeated
+
+### 8.1 Wrong current-level API
+
+Wrong:
+
+`world.get_current_level()`
+
+This API does not exist for this use in UE 5.8 Python.
+
+Use:
+
+`unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()`
+
+### 8.2 Wrong Interchange synchronous API assumption
+
+Wrong:
+
+`ImportAssetParameters.run_synchronous`
+
+This does not exist.
+
+Use the actual UE Interchange manager scene import interface, such as:
+
+`InterchangeManager.import_scene(...)`
+
+with the intended import parameters and level.
+
+Do not invent Python APIs from memory.
+
+### 8.3 Wrong GUID string conversion
+
+Wrong:
+
+`str(Guid)`
+
+Correct:
+
+`Guid.to_string()`
+
+### 8.4 Deprecated bound-object API
+
+`SequencerTools.get_bound_objects`
+
+is deprecated in UE 5.8.
+
+Do not build new diagnostics around deprecated SequencerTools behavior when direct binding APIs are available.
+
+Prefer current LevelSequence binding APIs and verify with actual GUID values.
+
+### 8.5 Wrong light component attribute access
+
+Direct assumptions such as:
+
+`actor.directional_light_component`
+
+or similar failed in UE 5.8 Python.
+
+Use:
+
+`actor.get_component_by_class(unreal.DirectionalLightComponent)`
+
+or:
+
+`actor.get_component_by_class(unreal.PointLightComponent)`
+
+as applicable.
+
+### 8.6 Headless asset spawning trap
+
+`spawn_actor_from_object(cube_asset)`
+
+returned `None` in the headless control test.
+
+Working approach:
+
+1. spawn `unreal.StaticMeshActor`;
+2. get its StaticMeshComponent;
+3. set the desired StaticMesh asset explicitly.
+
+Lesson:
+
+For deterministic headless tests, prefer explicit actor class + component assignment over convenience spawning helpers that are not proven in command-line editor mode.
+
+## 9. Diagnostics that produced misleading conclusions
+
+### 9.1 False "no renderable actors" conclusion
+
+One diagnostic used bounds-related results that were zero/error-prone and concluded there were no renderable actors.
+
+This was not trustworthy.
+
+Later evidence showed the map contained many actors/components and native control geometry could render in the same environment.
+
+Lesson:
+
+A diagnostic is not truth merely because it prints `PASS/FAIL`.
+
+Validate that the diagnostic itself is using the correct UE API and measuring the intended property.
+
+### 9.2 False static/skeletal asset absence
+
+Another diagnostic reported roughly:
+
+`STATIC_ASSET_PRESENT=0`
+`STATIC_ASSET_MISSING=138`
+`SKELETAL_ASSET_PRESENT=0`
+
+This was suspected to be caused by incorrect asset accessor usage.
+
+Do not reuse these numbers as current scene truth.
+
+Current fail-closed validation should prefer:
+
+Static mesh:
+`component.get_editor_property('static_mesh')`
+
+with an optional proven getter if exposed.
+
+Skeletal mesh:
+`component.get_skeletal_mesh_asset()`
+
+with a property fallback only when verified.
+
+## 10. Blender -> glTF transfer limitations
+
+Render5 Blender source evidence included:
+
+- 2 AREA lights;
+- 1 POINT light;
+- World nodes enabled.
+
+glTF does not preserve all Blender lighting/shading semantics.
+
+Especially important:
+
+- Blender World lighting is not equivalent to a UE world/sky setup.
+- Blender Area lights may not transfer with equivalent appearance.
+- Cycles materials and procedural nodes may not translate 1:1.
+
+Therefore:
+
+`GLB IMPORT SUCCESS != LIGHTING PARITY`
+
+Current UE preparation may add a clearly marked diagnostic fallback light when no effective light is present.
+
+Any fallback light must be recorded in the manifest/report, because it changes scene semantics.
+
+## 11. World Partition crash in project P6
+
+The Founder manually rendered/imported in project:
+
+`C:\Users\Administrator\Downloads\P6\P6.uproject`
+
+UE5 then showed Crash Reporter.
+
+Crash evidence was collected from:
+
+`C:\Users\Administrator\Downloads\P6\Saved\Crashes\UECC-Windows-49B9803441732B6A1E259E8D0167BEE3_0000`
+
+Confirmed:
+
+- Unreal Engine 5.8.1;
+- crash type: Assert;
+- project: `UE-P6`;
+- minidump exists.
+
+Exact assertion:
+
+`Assertion failed: !EditorBounds.IsValid || OldLevel == HashLevels.Num() - 1`
+
+Source:
+
+`Engine\Source\Runtime\Engine\Private\WorldPartition\WorldPartitionEditorSpatialHash.cpp`
+
+Line:
+
+`83`
+
+This is a World Partition editor spatial hash invariant failure.
+
+### What V4 established
+
+Immediately before crash, UE ran content validation for:
+
+`324 assets (365 associated objects such as actors)`
+
+The WorldPartitionChangelistValidator count was:
+
+`0`
+
+Then roughly 0.05 seconds later the WorldPartitionEditorSpatialHash assertion fired.
+
+V4 did NOT find convincing numeric:
+
+- NaN bounds;
+- invalid bounds;
+- numeric INF bounds.
+
+The apparent `INF` text matches were false positives caused by asset names such as `FullGrain`.
+
+Therefore:
+
+- `FACT`: crash boundary is WorldPartitionEditorSpatialHash.
+- `UNKNOWN`: which actor, if any, caused the invalid hash state.
+- `NOT PROVEN`: GPU OOM.
+- `NOT PROVEN`: a specific imported mesh has NaN/INF bounds.
+- `NOT PROVEN`: FFmpeg or MRQ caused the assert.
+
+### Current architecture decision for this experiment
+
+For a small bedroom/archviz render experiment, do not keep fighting P6 World Partition without evidence that World Partition is required.
+
+Use a fresh non-partitioned level:
+
+`LevelEditorSubsystem.new_level(map_path, False)`
+
+This matches the earlier successful headless pipeline and avoids unnecessary large-world spatial hashing for a small room scene.
+
+This is an experimental UE render-path decision. It does not change canonical CWS Worker architecture.
+
+## 12. Crash-collector lessons
+
+Crash collector V1 only checked the CWS UE sandbox project and missed the actual P6 crash.
+
+V2 added common `%LOCALAPPDATA%` locations but still did not initially discover the true project-specific P6 path.
+
+CrashReportClient log finally exposed:
+
+`C:\Users\Administrator\Downloads\P6\Saved\Crashes\...`
+
+V3 targeted P6 directly and obtained:
+
+- `CrashContext.runtime-xml`;
+- `P6.log`;
+- `UEMinidump.dmp`.
+
+Lesson:
+
+When Crash Reporter launches, read CrashReportClient's own log and use the path it reports. Do not assume the crashed project is the project you were debugging earlier.
+
+## 13. PowerShell and remote-control reliability lessons
+
+The Founder often operates MAY083 through remote desktop from a phone.
+
+Do NOT send enormous fragile one-line PowerShell commands.
+
+Prefer:
+
+1. create a `.ps1`;
+2. put it on Desktop;
+3. give one short execution line.
+
+Example:
+
+`powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Desktop\<SCRIPT>.ps1"`
+
+Prompts and commands should be ASCII-oriented and transport-safe.
+
+Do not confuse clipboard corruption with malware or system behavior without evidence.
+
+## 14. Source-file immutability
+
+Customer Blender original must remain immutable.
+
+Headless Blender preparation uses:
+
+`--background --disable-autoexec`
+
+and exports to a job-scoped working artifact.
+
+Do NOT call Blender save/save-as on the customer original during diagnostic conversion.
+
+Safe model:
+
+`customer original -> read-only/open -> export working GLB -> UE experiment`
+
+not:
+
+`customer original -> mutate/save -> test`
+
+## 15. Current P2 design
+
+Current continuation artifact:
+
+`CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1`
+
+Key P2 changes:
+
+1. still discovers `PhongNguRender6*.blend`;
+2. Blender headless export to job-scoped `scene.glb`;
+3. copies a human-visible copy to:
+   `C:\Users\Administrator\Downloads\PhongNguRender6_UE.glb`
+4. uses UE sandbox project:
+   `CWS_UE_LIGHT_TEST.uproject`
+5. creates a fresh level with:
+   `new_level(map_path, False)`
+6. checks World Partition when the exposed API permits it;
+7. imports with Interchange;
+8. fail-closed validates renderable mesh references;
+9. selects/repairs camera binding;
+10. applies current experimental LevelSequence key-time reversal when:
+    `ReverseImportedAnimation=True`
+11. creates fresh MRQ config;
+12. renders full PNG sequence;
+13. validates frame count/non-zero files;
+14. FFmpeg assembles validated PNGs in ascending order;
+15. retains PNGs;
+16. copies final MP4 to Desktop;
+17. writes a P2 report.
+
+Expected visible artifacts include:
+
+`C:\Users\Administrator\Downloads\PhongNguRender6_UE.glb`
+
+`C:\Users\Administrator\Desktop\CWS_PHONGNGU6_FIRST_FRAME.png`
+
+`C:\Users\Administrator\Desktop\CWS_PHONGNGU6_P2.mp4`
+
+At the time of this document:
+
+`P2 STATIC/EMBEDDED PYTHON CHECKS = PASS`
+
+but:
+
+`P2 UE5 RUNTIME ON MAY083 = NOT YET VERIFIED`
+
+Do not upgrade that claim without fresh runtime output.
+
+## 16. Next smallest safe action
+
+Run P2 on MAY083.
+
+Command:
+
+`powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Desktop\CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1"`
+
+Then verify in this order:
+
+1. Blender export completes.
+2. `PhongNguRender6_UE.glb` exists.
+3. UE preparation confirms non-partition intent.
+4. Interchange mesh validation passes.
+5. camera binding passes.
+6. animation reversal reports key/channel counts.
+7. MRQ produces expected PNG count.
+8. inspect FIRST and LAST PNG visually.
+9. inspect final MP4 visually.
+10. only then classify direction/black-output result.
+
+If failure occurs:
+
+- save exact PowerShell output;
+- save generated report/log;
+- read runtime evidence first;
+- do not stack speculative patches.
+
+## 17. If P2 still renders black
+
+Do not immediately change lighting, AA, FFmpeg and camera at the same time.
+
+Use one-variable falsification.
+
+Preferred next test:
+
+1. Blender headless renders or captures source reference at frame_start and frame_end.
+2. UE P2 keeps first and last PNG.
+3. Compare source start/end camera composition with UE first/last.
+4. Determine separately:
+   - geometry visible?
+   - camera points at scene?
+   - lighting visible?
+   - temporal direction correct?
+
+If UE first/last are both black while native UE control cube remains visible:
+
+Focus on imported GLB scene content, transforms, materials/lights and camera relationship.
+
+If UE first corresponds to Blender end and UE last corresponds to Blender start:
+
+Focus on LevelSequence/imported animation temporal mapping.
+
+If UE first/last order is correct but MP4 appears reversed:
+
+Inspect `frames.ffconcat` and FFmpeg input order before touching UE.
+
+## 18. If P2 crashes
+
+First classify the project and crash path.
+
+Do not assume another World Partition crash.
+
+Collect:
+
+- exact project path;
+- `Saved\Logs`;
+- `Saved\Crashes`;
+- CrashReportClient log;
+- `CrashContext.runtime-xml`;
+- minidump path;
+- assertion/fatal error;
+- 100-300 lines before crash.
+
+If the same `WorldPartitionEditorSpatialHash.cpp:83` assertion appears despite `new_level(..., False)`, the non-partition assumption has failed and must be verified from runtime instead of trusted from code.
+
+## 19. What NOT to do
+
+Do not:
+
+- claim syntax PASS means UE runtime PASS;
+- claim MP4 existence means visual render PASS;
+- claim frame-count match means customer-quality PASS;
+- use `str(Guid)` for camera-binding diagnosis;
+- reuse deprecated Sequencer bound-object APIs without need;
+- invent UE Python methods from memory;
+- treat a diagnostic script as authoritative when its API assumptions are unverified;
+- reverse the final MP4 in FFmpeg merely to hide a suspected upstream timeline issue;
+- keep World Partition for a small room just because a template created it;
+- overwrite the customer `.blend`;
+- change multiple variables during one diagnostic test;
+- silently replace CWS canonical Track A Blender/Cycles with this UE5 experiment.
+
+## 20. Durable engineering method learned from this session
+
+The most useful technique in this entire UE5 investigation was a control scene.
+
+When customer output was black, instead of continuing to tweak customer assets indefinitely:
+
+`same UE binary + same command-line mode + same MRQ + native cube + known camera + known light`
+
+produced a visible PNG.
+
+That single control test cut the problem space sharply.
+
+Use this general pattern:
+
+`SYSTEM CONTROL -> COMPONENT A/B -> CUSTOMER INPUT`
+
+not:
+
+`CUSTOMER INPUT -> RANDOM PATCH -> RANDOM PATCH -> RANDOM PATCH`
+
+When three similar attempts fail:
+
+`STOP -> RE-GROUND -> WIDEN SEARCH -> RECLASSIFY -> PIVOT`
+
+## 21. External references used during this investigation
+
+Official Epic:
+
+- Crash Reporting:
+  `https://dev.epicgames.com/documentation/unreal-engine/crash-reporting-in-unreal-engine`
+- World Partition:
+  `https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine`
+- UWorldPartitionEditorSpatialHash:
+  `https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UWorldPartitionEditorSpatialHash`
+- LevelEditorSubsystem NewLevel:
+  `https://dev.epicgames.com/documentation/unreal-engine/API/Editor/LevelEditor/ULevelEditorSubsystem/NewLevel`
+- Interchange import:
+  `https://dev.epicgames.com/documentation/unreal-engine/importing-assets-using-interchange-in-unreal-engine`
+- glTF import:
+  `https://dev.epicgames.com/documentation/unreal-engine/importing-gltf-files-into-unreal-engine`
+- Sequencer Set Play Rate:
+  `https://dev.epicgames.com/documentation/unreal-engine/BlueprintAPI/Sequencer/Player/SetPlayRate`
+- Cinematic Animation Track:
+  `https://dev.epicgames.com/documentation/unreal-engine/cinematic-animation-track-in-unreal-engine`
+
+Official Blender / Khronos:
+
+- Blender glTF 2.0 exporter documentation:
+  `https://docs.blender.org/manual/en/latest/addons/import_export/scene_gltf2.html`
+- glTF-Blender-IO:
+  `https://github.com/KhronosGroup/glTF-Blender-IO`
+- animation/export issue #2610:
+  `https://github.com/KhronosGroup/glTF-Blender-IO/issues/2610`
+- animation/NLA issue #2519:
+  `https://github.com/KhronosGroup/glTF-Blender-IO/issues/2519`
+- historical camera path issue #1666:
+  `https://github.com/KhronosGroup/glTF-Blender-IO/issues/1666`
+
+FFmpeg:
+
+- FFmpeg documentation / concat demuxer:
+  `https://ffmpeg.org/ffmpeg-all.html`
+
+Community evidence is supporting evidence only. It does not override runtime evidence or official version-specific behavior.
+
+## 22. NEW CHAT BOOTSTRAP PROMPT
+
+Copy the block below into a new ChatGPT/Codex chat.
+
+```text
+You are continuing my CWS project and the current UE5 render experiment.
+
+CANONICAL REPOSITORY
+trankhanhduy1508-maker/cws-portal
+
+PHASE 1 - GROUND
+
+Before making any technical claim or modifying anything:
+
+1. Ground the current canonical GitHub repository.
+2. Read CWS_SESSION_BOOTSTRAP.md completely and follow it.
+3. Read CWS_KNOWLEDGE_ROUTER.yaml.
+4. Read CURRENT_STATUS.md.
+5. Classify this task under Worker/rendering.
+6. Read CWS_WORKER_TRACKS.md and DECISIONS.md.
+7. Read FOUNDER_RULES.md, especially the rule:
+   RUNTIME EVIDENCE -> OFFICIAL DOCS -> RELEVANT COMMUNITY CASES -> COMPARE -> FALSIFIABLE HYPOTHESIS -> MINIMAL TEST -> FIX -> VERIFY
+8. Read:
+   knowledge/render/ue5/CWS_UE5_RENDER_KNOWLEDGE_V1.md
+9. GitHub + current runtime evidence are source of truth. This prompt is handoff context only.
+10. Report current state before the first mutation.
+
+IMPORTANT ARCHITECTURE BOUNDARY
+
+Current canonical CWS Track A render core remains:
+cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> validated output -> B2
+
+UE5 is currently an experimental alternate/acceleration render path.
+Do not silently replace Track A with UE5.
+UE5 experimental success is not Golden Production E2E.
+
+CURRENT UE5 GOAL
+
+Test this end-to-end experimental path:
+
+PhongNguRender6.blend
+-> Blender 5.2 headless
+-> scene.glb
+-> Unreal Engine 5.8 Interchange
+-> fresh NON-WORLD-PARTITION level
+-> LevelSequence / camera
+-> Movie Render Queue
+-> PNG frames
+-> FFmpeg
+-> MP4
+
+CURRENT MACHINE
+
+Host:
+MAY083
+
+Blender:
+C:\Program Files\Blender Foundation\Blender 5.2\blender.exe
+
+UnrealEditor-Cmd:
+C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe
+
+UE sandbox project:
+C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\CWS_UE_LIGHT_TEST.uproject
+
+Source:
+C:\Users\Administrator\Downloads\PhongNguRender6.blend
+
+FFmpeg exists under:
+C:\Users\Administrator\Downloads\CWS_UE_TOOLS\ffmpeg\extracted\ffmpeg-9.0.1-essentials_build\bin\
+
+CURRENT CONTINUATION ARTIFACT
+
+CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1
+
+P2 intent:
+
+- immutable Blender source
+- --background --disable-autoexec
+- export GLB
+- copy visible GLB to:
+  C:\Users\Administrator\Downloads\PhongNguRender6_UE.glb
+- use non-partition level:
+  new_level(map_path, False)
+- Interchange scene import
+- fail-closed mesh reference validation
+- correct Guid.to_string() binding checks
+- fresh camera cut
+- current experimental key-time reversal because Founder observed P1 animation running backward
+- fresh MRQ
+- exact PNG-count validation
+- FFmpeg concat in ascending PNG order
+- retain PNGs
+- final MP4
+
+P2 static/embedded Python checks passed.
+P2 has NOT yet been runtime verified on MAY083.
+
+KNOWN VERIFIED LESSONS
+
+- Native UE cube + camera + light + MRQ rendered a visible PNG on MAY083.
+- Same customer-derived environment with a native control cube also rendered.
+- Therefore UnrealEditor-Cmd/MRQ base stack works.
+- str(unreal.Guid) is misleading. Use Guid.to_string().
+- world.get_current_level() was wrong. Use LevelEditorSubsystem.get_current_level().
+- ImportAssetParameters.run_synchronous does not exist.
+- SequencerTools.get_bound_objects is deprecated in UE 5.8.
+- Use actor.get_component_by_class(...) for light components.
+- spawn_actor_from_object(static_mesh_asset) returned None headlessly. Spawn StaticMeshActor and set its mesh component explicitly.
+- Previous static/skeletal asset absence diagnostics were unreliable because of wrong accessors.
+- MRQ Deferred + PNG passes were verified.
+- AA was not proven to be the black-output cause.
+- GLB does not guarantee Blender lighting/material parity.
+- FFmpeg concat does not intentionally reverse the sequence in P1.
+- P1 achieved 60/60 PNG frames and FFmpeg exit 0, but file existence does not prove visual correctness.
+- A video uploaded to the old chat was fully black, but it is unknown whether it was exactly the same local P1 artifact.
+- Founder visually reported local P1 animation appeared reversed.
+- Do not hide upstream reversal by blindly reversing final MP4 in FFmpeg.
+
+WORLD PARTITION CRASH LESSON
+
+Manual project:
+C:\Users\Administrator\Downloads\P6\P6.uproject
+
+Confirmed UE 5.8.1 assert:
+
+Assertion failed:
+!EditorBounds.IsValid || OldLevel == HashLevels.Num() - 1
+
+File:
+WorldPartitionEditorSpatialHash.cpp
+Line 83
+
+Crash evidence was in:
+C:\Users\Administrator\Downloads\P6\Saved\Crashes\UECC-Windows-49B9803441732B6A1E259E8D0167BEE3_0000
+
+V4 showed UE validated 324 assets / 365 associated objects, WorldPartitionChangelistValidator reported 0, then the spatial-hash assertion fired shortly after.
+No convincing NaN/invalid numeric bounds were found.
+The apparent INF matches were false positives from names such as FullGrain.
+
+For the bedroom experiment, use a fresh non-World-Partition level instead of trying to repair P6 World Partition unless new evidence proves World Partition is required.
+
+NEXT ACTION
+
+First inspect current GitHub state and the UE5 knowledge file.
+
+Then, if no newer runtime evidence supersedes this handoff, the next smallest test is to run P2 on MAY083:
+
+powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Desktop\CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1"
+
+After the run, classify exact evidence:
+
+FACT
+INFERENCE
+HYPOTHESIS
+UNKNOWN
+
+Check:
+
+1. GLB created.
+2. Non-partition intent/verification.
+3. Interchange validation.
+4. camera binding.
+5. reversed key/channel count.
+6. PNG count.
+7. first PNG visually.
+8. last PNG visually.
+9. final MP4 visually.
+10. exact logs/report.
+
+Do not say runtime PASS based only on code syntax/static checks.
+
+If something fails, do not guess. Read runtime evidence, research official UE5.8/Blender docs and relevant community cases, form one falsifiable hypothesis, run one minimal test, then fix.
+
+When reporting back to me, use Vietnamese and keep the next PowerShell action short and directly executable.
+```
