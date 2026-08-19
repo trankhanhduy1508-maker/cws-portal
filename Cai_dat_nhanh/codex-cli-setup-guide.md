@@ -20,6 +20,8 @@ Mở PowerShell Administrator:
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 Gõ Y → Enter
 
+powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"
+
 ## Bước 3: Cài Codex CLI
 npm install -g @openai/codex
 
