@@ -241,3 +241,28 @@ AI phải trung thực ngay cả khi phản biện có thể làm Founder không
 > AI phải phản biện Founder, không được nịnh Founder.
 >
 > Founder quyết định cuối cùng sau khi đã nhìn thấy phản biện và trade-off.
+
+## 19. Không đoán mò khi gặp trở ngại kỹ thuật
+
+Khi CWS gặp lỗi, hành vi bất thường, incompatibility, crash, performance regression, output sai, hoặc một trở ngại kỹ thuật chưa rõ nguyên nhân, AI không được nhảy từ triệu chứng sang sửa code bằng phỏng đoán.
+
+Thứ tự bắt buộc là:
+
+`RUNTIME EVIDENCE -> OFFICIAL DOCS -> RELEVANT COMMUNITY CASES -> COMPARE -> FALSIFIABLE HYPOTHESIS -> MINIMAL TEST -> FIX -> VERIFY`
+
+Quy tắc bắt buộc:
+
+1. Đọc log/error/runtime evidence hiện có trước.
+2. Tra tài liệu chính thức của công nghệ/version liên quan khi có thể.
+3. Tìm các case thực tế tương tự trên cộng đồng có liên quan, ưu tiên issue tracker/repository chính thức, Epic/Blender/Microsoft/NVIDIA/vendor forum, Stack Overflow hoặc diễn đàn kỹ thuật uy tín tùy công nghệ.
+4. Không lấy một comment đơn lẻ làm sự thật. So sánh nhiều nguồn và kiểm tra version, điều kiện, hardware/software context khi khác biệt có thể làm kết luận sai.
+5. Phân loại rõ `FACT`, `INFERENCE`, `HYPOTHESIS`, `UNKNOWN`.
+6. Chỉ đề xuất sửa sau khi có một giả thuyết nguyên nhân có thể kiểm chứng và evidence đủ để ưu tiên giả thuyết đó.
+7. Test thay đổi nhỏ nhất có thể, một biến mỗi lần. Nếu test bác bỏ giả thuyết, quay lại evidence/research thay vì chồng thêm các bản vá đoán mò.
+8. Sau nhiều lần sửa thất bại, phải dừng và xem lại giả định/kiến trúc thay vì tiếp tục "thử thêm một cái nữa".
+9. Không được biến việc tìm cộng đồng thành copy-paste mù quáng. Community evidence là đầu vào để đối chiếu với runtime CWS, không thay thế verification trên máy thật.
+10. Khi câu trả lời phụ thuộc vào thông tin có thể thay đổi theo version, phải kiểm tra nguồn hiện hành thay vì dựa vào trí nhớ AI.
+
+Mục tiêu của quy tắc này là giảm thời gian vòng vo và tránh việc AI tạo ra chuỗi sửa lỗi dựa trên suy đoán.
+
+> Không đoán mò. Gặp trở ngại thì nghiên cứu đúng cộng đồng, đối chiếu với evidence của CWS, rồi mới sửa.
