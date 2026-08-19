@@ -45,6 +45,43 @@ Target flow:
 - Prefer configurable routing/policy tables or adapters when routing is implemented in code.
 - Model routing must optimize both quality and cost; token/context reduction should happen before model escalation where practical.
 
+## Lightweight Codex launcher — Founder decision 2026-08-20
+
+Canonical repository launcher:
+
+`CWS_CODEX_LIGHT.cmd`
+
+Typical Founder convenience copy on a local Windows host:
+
+`%USERPROFILE%\Desktop\CWS_CODEX_LIGHT.cmd`
+
+Purpose:
+
+- start Codex CLI without opening VS Code;
+- enter the canonical local CWS repository first;
+- reduce IDE/UI overhead when the task does not need IDE-only context;
+- avoid repeated manual PowerShell/terminal friction where the existing Codex approval reviewer can safely auto-review routine low-risk actions;
+- keep long-running render/UE5/diagnostic work on the physical host without making VS Code a production or runtime dependency.
+
+Mandatory AI behavior:
+
+1. At the start of Founder-controlled local Windows work, explicitly choose the appropriate surface:
+   - `CWS_CODEX_LIGHT / CODEX CLI`, or
+   - `VS CODE + CODEX EXTENSION`.
+2. For long-running Blender/UE5/render/runtime diagnostics, resource-sensitive work, or when the Founder complains about repeated Yes/Yes-to-All approval friction, **remind the Founder that `CWS_CODEX_LIGHT.cmd` exists before proposing another editor, auto-clicker, or new wrapper**.
+3. Prefer `CWS_CODEX_LIGHT.cmd` when IDE-only capabilities are not needed. Use VS Code when open-editor state, Problems, Testing UI, inline diffs, Integrated Browser, or other IDE-only context materially improves the task.
+4. This rule supersedes any older blanket assumption that VS Code must always be the primary local surface. The correct surface is task-dependent.
+5. The repository copy is a sanitized launcher/template. Machine-local Codex configuration, approval reviewer, sandbox policy, credentials, tokens, and private settings remain outside GitHub.
+6. Safe auto-review is allowed only with sandbox/approval protections preserved. Do not use blind keyboard automation, auto-clickers, universal approval, or `--dangerously-bypass-approvals-and-sandbox` merely to remove prompts.
+7. Never commit secrets or machine-private values into the launcher.
+8. If the Desktop copy is missing, stale, or broken, compare it with the canonical repository launcher and repair/copy it using the smallest safe change. Do not silently overwrite a working machine-local launcher without checking its differences first.
+9. Do not claim the CLI uses less RAM than VS Code unless measured on the relevant machine/workload. The primary verified value of this launcher is simpler low-overhead operation and reduced IDE dependence, not an assumed RAM number.
+10. `CWS_CODEX_LIGHT.cmd` is development/operator tooling only. CWS production Worker behavior must remain functional with Codex/AI/VS Code offline.
+
+Founder reminder pattern for a new AI session when relevant:
+
+`LOCAL CWS REMINDER — CWS_CODEX_LIGHT.cmd exists. For this task, use it instead of VS Code if IDE-only context is unnecessary.`
+
 ## Codex Telegram Completion Notification
 
 For local Founder/Codex work, Telegram is an operator convenience only. It is not part of CWS production runtime and must never become a Customer/Worker/Scheduler/payment/storage/auth dependency.
