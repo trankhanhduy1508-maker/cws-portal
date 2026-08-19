@@ -313,7 +313,9 @@ Classification:
 
 - `FACT`: P2 contains the workaround.
 - `UNKNOWN`: whether UE Interchange is the true root cause of reversal.
-- `NOT YET RUNTIME VERIFIED`: P2 has not yet been proven on MAY083 at the time this knowledge file was created.
+- `P2 RUNTIME EXECUTION PASS`: P2 completed on MAY083 in job `JOB_20260819_214145`.
+- `P2 VISUAL FAIL`: all 60 retained UE PNGs are exactly black; decoded MP4 representative frames are also exactly black.
+- `P2 TEMPORAL DIRECTION UNKNOWN`: black frames do not establish Blender-to-UE temporal direction.
 
 If P2 visually fixes direction, record that as experimental evidence, not proof of the root cause.
 
@@ -657,36 +659,50 @@ Expected visible artifacts include:
 
 `C:\Users\Administrator\Desktop\CWS_PHONGNGU6_P2.mp4`
 
-At the time of this document:
+Runtime evidence now exists for job `JOB_20260819_214145`:
 
-`P2 STATIC/EMBEDDED PYTHON CHECKS = PASS`
+- `P2 RUNTIME EXECUTION PASS`: first PNG 13.268 s, 60/60 PNGs, FFmpeg exit 0, video validation completed.
+- `P2 VISUAL FAIL`: `CWS_000432.png`, `CWS_000461.png`, and `CWS_000491.png` are 1920x1080 with mean RGB/luminance 0, min 0, max 0, non-zero ratio 0, completely black.
+- `P2 TEMPORAL DIRECTION UNKNOWN`: the UE PNGs contain no visual signal for start/end comparison.
+- Render-time UE logs contain 296 dependent-package `LoadErrors` (148 unique dependencies: 134 static-mesh and 14 skeletal-mesh paths), despite the earlier preparation-time reference counts passing.
 
-but:
+Load-only map-reload diagnostic on MAY083 then reproduced the persistence boundary without import or render:
 
-`P2 UE5 RUNTIME ON MAY083 = NOT YET VERIFIED`
+- Saved map: `/Game/CWS_AUTO/JOB_20260819_214145/Scene`
+- UE project: `C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\CWS_UE_LIGHT_TEST.uproject`
+- Diagnostic script: `C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\Saved\CWS_P2_LOAD_ONLY_DIAGNOSTIC.py`
+- Diagnostic report: `C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\Saved\CWS_P2_LOAD_ONLY_DIAGNOSTIC.json`
+- UE load log: `C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\Saved\Logs\CWS_UE_LIGHT_TEST.log`
+- Reload enumerated 228 actors, 139 StaticMeshComponents and 14 SkeletalMeshComponents.
+- After reload: Static references present/missing `0/139`; Skeletal references present/missing `0/14`.
+- Because every component reference was missing, component-level `asset_loadable` and `asset_unloadable` were both `0`; direct package-load evidence is the authoritative failure classification here.
+- Direct UE log parsing: `296` LoadErrors, `148` unique failed packages: `134` `/StaticMeshes/` and `14` `/SkeletalMeshes/`.
+- All 148 failed packages are under `/Game/CWS_AUTO/JOB_20260819_214145/Imported/scene/` and had no corresponding `.uasset`/`.umap` or directory under `C:\Users\Administrator\Downloads\CWS_UE_LIGHT_TEST\Content`.
+- UE's `FPackageName` explanation states that the mount point is valid but each package does not exist on disk or in iostore.
 
-Do not upgrade that claim without fresh runtime output.
+Classification:
+
+- `FACT`: the saved map reload reproduces missing mesh references and direct missing-package LoadErrors.
+- `INFERENCE`: the 134 static and 14 skeletal dependency failures materially correspond to the imported GLB mesh package set; the five-component static-count difference is consistent with repeated component references, but an exact component-to-package mapping is unavailable after references become null.
+- `HYPOTHESIS SUPPORTED`: the saved P2 map does not preserve or resolve imported mesh dependencies across a fresh UE process/map reload.
+- `UNKNOWN`: whether the first cause is an unsaved import package, cleanup/deletion, package staging, or another pre-reload persistence step. The first proven failing boundary is package availability during map reload, not camera, animation, FFmpeg, or MRQ.
+
+Evidence report:
+
+`C:\Users\Administrator\Downloads\CWS_UE_JOBS\JOB_20260819_214145\CWS_UE_PHONGNGU6_REPORT_P2.json`
+
+Do not report this as visual success or Golden Production E2E.
 
 ## 16. Next smallest safe action
 
-Run P2 on MAY083.
+Do not rerun P2 before diagnosing the completed job. First verify the existing artifacts in this order:
 
-Command:
-
-`powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Desktop\CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1"`
-
-Then verify in this order:
-
-1. Blender export completes.
-2. `PhongNguRender6_UE.glb` exists.
-3. UE preparation confirms non-partition intent.
-4. Interchange mesh validation passes.
-5. camera binding passes.
-6. animation reversal reports key/channel counts.
-7. MRQ produces expected PNG count.
-8. inspect FIRST and LAST PNG visually.
-9. inspect final MP4 visually.
-10. only then classify direction/black-output result.
+1. GLB/report and preparation evidence.
+2. render-time UE load errors after map reload.
+3. FIRST/MIDDLE/LAST PNG pixel values.
+4. MP4 decoded representative pixel values.
+5. `frames.ffconcat` order.
+6. only then classify direction/black-output result.
 
 If failure occurs:
 
@@ -695,7 +711,7 @@ If failure occurs:
 - read runtime evidence first;
 - do not stack speculative patches.
 
-## 17. If P2 still renders black
+## 17. If a completed P2 job renders black
 
 Do not immediately change lighting, AA, FFmpeg and camera at the same time.
 
@@ -921,7 +937,7 @@ P2 intent:
 - final MP4
 
 P2 static/embedded Python checks passed.
-P2 has NOT yet been runtime verified on MAY083.
+P2 runtime execution completed on MAY083 in job `JOB_20260819_214145`, but visual output failed: all retained PNGs and decoded MP4 samples are exactly black. Temporal direction remains unknown.
 
 KNOWN VERIFIED LESSONS
 
@@ -971,11 +987,9 @@ NEXT ACTION
 
 First inspect current GitHub state and the UE5 knowledge file.
 
-Then, if no newer runtime evidence supersedes this handoff, the next smallest test is to run P2 on MAY083:
+Then, if no newer runtime evidence supersedes this handoff, inspect the completed P2 artifacts before any rerun:
 
-powershell -ExecutionPolicy Bypass -File "C:\Users\Administrator\Desktop\CWS_UE_RENDER_PHONGNGU6_A_TO_Z_P2.ps1"
-
-After the run, classify exact evidence:
+Do not rerun Blender or UE5 before classifying the existing job. Classify the exact evidence already collected:
 
 FACT
 INFERENCE
@@ -1001,3 +1015,4 @@ If something fails, do not guess. Read runtime evidence, research official UE5.8
 
 When reporting back to me, use Vietnamese and keep the next PowerShell action short and directly executable.
 ```
+
