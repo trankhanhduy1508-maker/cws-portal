@@ -51,15 +51,15 @@ function Set-TopLevelTomlKey {
     }
 
     $pattern = '^\s*' + [regex]::Escape($Key) + '\s*='
-    $matches = New-Object System.Collections.Generic.List[int]
+    $matchIndexes = New-Object System.Collections.Generic.List[int]
     for ($i = 0; $i -lt $sectionIndex; $i++) {
         if ($lines[$i] -match $pattern) {
-            $matches.Add($i)
+            $matchIndexes.Add($i)
         }
     }
 
     $canonicalLine = "$Key = $ValueLiteral"
-    if ($matches.Count -eq 0) {
+    if ($matchIndexes.Count -eq 0) {
         if ($sectionIndex -gt 0 -and $lines[$sectionIndex - 1].Trim().Length -ne 0) {
             $lines.Insert($sectionIndex, '')
             $sectionIndex++
@@ -68,11 +68,11 @@ function Set-TopLevelTomlKey {
         return
     }
 
-    $firstIndex = $matches[0]
+    $firstIndex = $matchIndexes[0]
     $lines[$firstIndex] = $canonicalLine
 
-    for ($m = $matches.Count - 1; $m -ge 1; $m--) {
-        $lines.RemoveAt($matches[$m])
+    for ($m = $matchIndexes.Count - 1; $m -ge 1; $m--) {
+        $lines.RemoveAt($matchIndexes[$m])
     }
 }
 
