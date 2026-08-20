@@ -82,6 +82,40 @@ Founder reminder pattern for a new AI session when relevant:
 
 `LOCAL CWS REMINDER — CWS_CODEX_LIGHT.cmd exists. For this task, use it instead of VS Code if IDE-only context is unnecessary.`
 
+## Absolute AI power-state prohibition — Founder decision 2026-08-20
+
+Canonical detailed rule:
+
+`CWS_AI_POWER_STATE_INVARIANT.md`
+
+Hard rule:
+
+**Codex/AI MUST NEVER initiate, schedule, auto-confirm, delegate, or indirectly cause shutdown/power-off, restart/reboot, logoff/sign-out, sleep/suspend, or hibernate.**
+
+This prohibition still applies when:
+
+- Codex is running as Administrator;
+- auto-review/auto-approval is enabled;
+- an installer/update/driver/firmware flow requests or recommends restart;
+- a troubleshooting guide recommends rebooting;
+- another agent/tool asks for the action.
+
+Forbidden bypasses include helper scripts, scheduled tasks, installer auto-restart flags, child processes, sub-agent delegation, delayed commands, and keyboard/mouse automation.
+
+If a reboot or other power/session transition appears necessary:
+
+1. STOP before execution.
+2. Preserve evidence/state when practical.
+3. Report `BLOCKED_BY_POWER_STATE_INVARIANT`.
+4. Explain why the tool/system says the transition is needed and provide a non-reboot alternative if available.
+5. Leave the physical/manual power decision to the Founder/operator outside AI execution.
+
+`AUTO APPROVAL != POWER-STATE AUTHORITY`
+
+AI may diagnose or explain a reboot requirement. AI may not execute it.
+
+This is an AI/operator boundary. It does not silently redesign deterministic production Worker power-management behavior; any product-level power-management capability requires a separate explicit Founder architecture decision.
+
 ## Codex Telegram Completion Notification
 
 For local Founder/Codex work, Telegram is an operator convenience only. It is not part of CWS production runtime and must never become a Customer/Worker/Scheduler/payment/storage/auth dependency.
