@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 function Set-TopLevelTomlKey {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [System.Collections.Generic.List[string]]$Lines,
         [Parameter(Mandatory = $true)]
         [string]$Key,
@@ -77,6 +78,7 @@ foreach ($line in $rawLines) {
 # - on-request: sandboxed routine work does not ask by default
 # - auto_review: eligible escalations are reviewed automatically
 # - workspace-write: preserve filesystem sandbox protection
+# Empty/missing config.toml is valid and will be initialized from an empty collection.
 Set-TopLevelTomlKey -Lines $lines -Key 'approval_policy' -ValueLiteral '"on-request"'
 Set-TopLevelTomlKey -Lines $lines -Key 'approvals_reviewer' -ValueLiteral '"auto_review"'
 Set-TopLevelTomlKey -Lines $lines -Key 'sandbox_mode' -ValueLiteral '"workspace-write"'
