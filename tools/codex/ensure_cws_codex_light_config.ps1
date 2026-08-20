@@ -5,51 +5,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Set-TopLevelTomlKey {
-    param(
-        [Parameter(Mandatory = $true)]
-        [AllowEmptyCollection()]
-        [System.Collections.Generic.List[string]]$Lines,
-        [Parameter(Mandatory = $true)]
-        [string]$Key,
-        [Parameter(Mandatory = $true)]
-        [string]$ValueLiteral
-    )
-
-    $sectionIndex = $Lines.Count
-    for ($i = 0; $i -lt $Lines.Count; $i++) {
-        if ($Lines[$i] -match '^\s*\[') {
-            $sectionIndex = $i
-            break
-        }
-    }
-
-    $pattern = '^\s*' + [regex]::Escape($Key) + '\s*='
-    $matches = New-Object System.Collections.Generic.List[int]
-    for ($i = 0; $i -lt $sectionIndex; $i++) {
-        if ($Lines[$i] -match $pattern) {
-            $matches.Add($i)
-        }
-    }
-
-    $canonicalLine = "$Key = $ValueLiteral"
-    if ($matches.Count -eq 0) {
-        if ($sectionIndex -gt 0 -and $Lines[$sectionIndex - 1].Trim().Length -ne 0) {
-            $Lines.Insert($sectionIndex, '')
-            $sectionIndex++
-        }
-        $Lines.Insert($sectionIndex, $canonicalLine)
-        return
-    }
-
-    $firstIndex = $matches[0]
-    $Lines[$firstIndex] = $canonicalLine
-
-    for ($m = $matches.Count - 1; $m -ge 1; $m--) {
-        $Lines.RemoveAt($matches[$m])
-    }
-}
-
 $configDirectory = Split-Path -Parent $ConfigPath
 if (-not (Test-Path -LiteralPath $configDirectory)) {
     New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
@@ -74,14 +29,60 @@ foreach ($line in $rawLines) {
     $lines.Add([string]$line)
 }
 
+function Set-TopLevelTomlKey {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        [Parameter(Mandatory = $true)]
+        [string]$ValueLiteral
+    )
+
+    # Intentionally use the script-scope $lines collection directly.
+    # Windows PowerShell 5.1 can reject an empty List[string] passed through a
+    # mandatory function parameter as EmptyStringNotAllowed, even when the
+    # caller is representing an empty config. Keeping the collection out of
+    # parameter binding removes that failure mode entirely.
+    $sectionIndex = $lines.Count
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*\[') {
+            $sectionIndex = $i
+            break
+        }
+    }
+
+    $pattern = '^\s*' + [regex]::Escape($Key) + '\s*='
+    $matches = New-Object System.Collections.Generic.List[int]
+    for ($i = 0; $i -lt $sectionIndex; $i++) {
+        if ($lines[$i] -match $pattern) {
+            $matches.Add($i)
+        }
+    }
+
+    $canonicalLine = "$Key = $ValueLiteral"
+    if ($matches.Count -eq 0) {
+        if ($sectionIndex -gt 0 -and $lines[$sectionIndex - 1].Trim().Length -ne 0) {
+            $lines.Insert($sectionIndex, '')
+            $sectionIndex++
+        }
+        $lines.Insert($sectionIndex, $canonicalLine)
+        return
+    }
+
+    $firstIndex = $matches[0]
+    $lines[$firstIndex] = $canonicalLine
+
+    for ($m = $matches.Count - 1; $m -ge 1; $m--) {
+        $lines.RemoveAt($matches[$m])
+    }
+}
+
 # Balanced local-autonomy posture:
 # - on-request: sandboxed routine work does not ask by default
 # - auto_review: eligible escalations are reviewed automatically
 # - workspace-write: preserve filesystem sandbox protection
-# Empty/missing config.toml is valid and will be initialized from an empty collection.
-Set-TopLevelTomlKey -Lines $lines -Key 'approval_policy' -ValueLiteral '"on-request"'
-Set-TopLevelTomlKey -Lines $lines -Key 'approvals_reviewer' -ValueLiteral '"auto_review"'
-Set-TopLevelTomlKey -Lines $lines -Key 'sandbox_mode' -ValueLiteral '"workspace-write"'
+Set-TopLevelTomlKey -Key 'approval_policy' -ValueLiteral '"on-request"'
+Set-TopLevelTomlKey -Key 'approvals_reviewer' -ValueLiteral '"auto_review"'
+Set-TopLevelTomlKey -Key 'sandbox_mode' -ValueLiteral '"workspace-write"'
 
 $newText = ($lines -join "`r`n").TrimEnd() + "`r`n"
 if ($newText -eq ($originalText -replace "(?<!`r)`n", "`r`n")) {
