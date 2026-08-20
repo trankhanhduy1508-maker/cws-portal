@@ -1,4 +1,4 @@
-version: 2
+version: 3
 status: ACTIVE
 purpose: >-
   Route each CWS task to the smallest correct set of authoritative sources.
@@ -12,6 +12,8 @@ principles:
   - COLD_MEMORY_IS_SEARCH_ONLY_BY_DEFAULT
   - RUNTIME_EVIDENCE_OUTRANKS_PROSE_FOR_RUNTIME_CLAIMS
   - UNKNOWN_IS_NOT_FACT
+  - APPROVED_GOAL -> AI_OWNS_TECHNICAL_PATH_WITHIN_HARD_BOUNDARIES
+  - ROUTINE_BLOCKER -> AI_SELF_DIAGNOSES_RESEARCHES_FIXES_VERIFIES_BEFORE_ESCALATION
 
 always_read:
   - CWS_SESSION_BOOTSTRAP.md
@@ -21,6 +23,7 @@ always_apply_without_full_read_unless_task_requires_detail:
   - AGENTS.md
   - AGENTS02.md
   - FOUNDER_RULES.md
+  - CWS_AI_GOAL_OWNERSHIP_POLICY.md
   - CWS_AI_ENGINEERING_HARNESS_V1.md
   - CWS_AI_REASONING_DISCIPLINE_V1.md
   - CWS_GROUNDING_POLICY.md
@@ -116,6 +119,7 @@ routes:
       - FOUNDER_RULES.md
       - AGENTS.md
       - AGENTS02.md
+      - CWS_AI_GOAL_OWNERSHIP_POLICY.md
       - CWS_AI_ENGINEERING_HARNESS_V1.md
       - CWS_AI_REASONING_DISCIPLINE_V1.md
       - CWS_GROUNDING_POLICY.md
@@ -325,6 +329,7 @@ routes:
     read:
       - AGENTS.md
       - AGENTS02.md
+      - CWS_AI_GOAL_OWNERSHIP_POLICY.md
       - CWS_AI_ENGINEERING_HARNESS_V1.md
       - CWS_AI_REASONING_DISCIPLINE_V1.md
     then_search:
