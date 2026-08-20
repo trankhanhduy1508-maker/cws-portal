@@ -1,10 +1,11 @@
 @echo off
-setlocal
-title CWS Codex Light
+setlocal EnableExtensions
+title CWS Codex Light V2
 
 rem Canonical lightweight Codex launcher for Founder-controlled local Windows work.
-rem Safe policy (approval reviewer / sandbox) is owned by the machine-local Codex config.
+rem V2 reduces routine approval friction while preserving Codex sandbox protections.
 rem Never put secrets, tokens, API keys, or machine-private credentials in this file.
+rem HARD RULE: this launcher must never initiate or auto-confirm host power/session transitions.
 
 if defined CWS_REPO_ROOT (
   set "CWS_REPO=%CWS_REPO_ROOT%"
@@ -34,6 +35,36 @@ if not defined CODEX_EXE (
   exit /b 1
 )
 
+set "CWS_RUNTIME_TOOLS=%CWS_REPO%\.runtime-tools"
+if not exist "%CWS_RUNTIME_TOOLS%" (
+  mkdir "%CWS_RUNTIME_TOOLS%" >nul 2>nul
+  if errorlevel 1 (
+    echo [CWS] Failed to create repo-local runtime tools directory:
+    echo       %CWS_RUNTIME_TOOLS%
+    pause
+    exit /b 1
+  )
+)
+
+set "CWS_CODEX_CONFIG_HELPER=%CWS_REPO%\tools\codex\ensure_cws_codex_light_config.ps1"
+if not exist "%CWS_CODEX_CONFIG_HELPER%" (
+  echo [CWS] Missing canonical Codex config helper:
+  echo       %CWS_CODEX_CONFIG_HELPER%
+  echo [CWS] Update the canonical repository before using CWS Codex Light V2.
+  pause
+  exit /b 1
+)
+
+set "CODEX_CONFIG=%USERPROFILE%\.codex\config.toml"
+powershell.exe -NoLogo -NoProfile -File "%CWS_CODEX_CONFIG_HELPER%" -ConfigPath "%CODEX_CONFIG%"
+set "CWS_CONFIG_EXIT=%ERRORLEVEL%"
+if not "%CWS_CONFIG_EXIT%"=="0" (
+  echo [CWS] Failed to prepare the machine-local Codex configuration.
+  echo [CWS] Existing config was not intentionally discarded; inspect the helper output above.
+  pause
+  exit /b %CWS_CONFIG_EXIT%
+)
+
 cd /d "%CWS_REPO%"
 if errorlevel 1 (
   echo [CWS] Failed to enter canonical repo.
@@ -41,10 +72,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [CWS] Starting lightweight Codex CLI.
+set "CWS_CODEX_LIGHT=2"
+
+echo [CWS] Starting lightweight Codex CLI V2.
 echo [CWS] Repo: %CD%
-echo [CWS] Approval and sandbox policy come from the machine-local Codex configuration.
-echo [CWS] Do not use dangerous universal approval or sandbox bypass modes.
+echo [CWS] Runtime tools: %CWS_RUNTIME_TOOLS%
+echo [CWS] Approval posture: on-request + auto_review.
+echo [CWS] Sandbox posture: workspace-write. No universal bypass/full-access mode is enabled.
+echo [CWS] POWER-STATE HARD RULE: Codex/AI must never shutdown, reboot, restart,
+echo       log off, sleep, hibernate, or auto-confirm any equivalent host action.
+echo [CWS] If a host power/session transition is required: STOP and report
+echo       BLOCKED_BY_POWER_STATE_INVARIANT.
 echo.
 
 "%CODEX_EXE%"
