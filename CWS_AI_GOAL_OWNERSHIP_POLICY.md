@@ -157,6 +157,32 @@ Desired operating model:
 
 When a safe, reversible technical choice can be made from evidence inside approved scope, AI should make it and continue.
 
+### Founder interruption minimization — mandatory
+
+The Founder must not become a screenshot courier or manual relay between Codex, ChatGPT, terminals, logs, tests, GitHub, or other tools.
+
+For an approved autonomous goal, the agent should work for the longest safe uninterrupted interval practical and should batch its own investigation, fixes, retries, reviews, tests, commits, pushes, and re-verification.
+
+Do **not** stop merely to ask the Founder to:
+
+- screenshot an intermediate result;
+- copy a routine error into another AI;
+- paste back a proposed command;
+- confirm ordinary technical progress;
+- approve each safe test/fix/retry separately;
+- relay logs that the agent can inspect directly;
+- ask another AI what to do with a routine engineering defect.
+
+Preferred pattern:
+
+`GOAL -> LONG AUTONOMOUS WORK SESSION -> TRUE HUMAN BOUNDARY OR VERIFIED GOAL RESULT -> ONE CONCISE REPORT`
+
+Intermediate status reports are allowed when useful, but they must not require Founder action unless a true hard boundary has been reached.
+
+When the agent can access the relevant repository, logs, browser, terminal, test runner, GitHub state, or runtime evidence itself, it must inspect that evidence directly rather than asking the Founder to photograph or manually relay it.
+
+If a human-only boundary is eventually reached, prepare everything possible before stopping and request the **smallest single human action** needed to resume autonomous execution.
+
 ## 8. Completion behavior
 
 Do not stop merely because one step succeeded. Continue until the **goal-level success condition** is actually met.
@@ -190,5 +216,9 @@ If another instruction says to stop on every routine technical failure, this pol
 `GIVE AI THE GOAL, NOT EVERY NEXT COMMAND.`
 
 `ROUTINE BLOCKER -> AI INVESTIGATES AND CONTINUES.`
+
+`NO SCREENSHOT RELAY FOR ROUTINE ENGINEERING.`
+
+`WORK LONG, BATCH FIXES, INTERRUPT FOUNDER ONLY AT TRUE HUMAN BOUNDARIES.`
 
 `HUMAN AUTH / MONEY / POWER STATE / DESTRUCTIVE ACTION / MATERIAL FOUNDER DECISION / UNAUTHORIZED PRODUCTION ACTION -> STOP AND ESCALATE.`
