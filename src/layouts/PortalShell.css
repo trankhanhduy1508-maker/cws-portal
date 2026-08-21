@@ -2,98 +2,99 @@
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(180deg, rgba(255,255,255,0.018), transparent 280px), #0b0d12;
 }
 
 .portal-shell__header {
-  padding: 22px 24px;
+  width: 100%;
+  padding: 20px 24px;
+  border-bottom: 1px solid #20242c;
+}
+
+.portal-shell__header-inner {
+  width: min(1180px, 100%);
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
 }
 
-.portal-shell__history-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
+.portal-shell__brand,
+.portal-shell__logo,
+.portal-shell__actions,
+.portal-shell__nav-btn,
+.portal-shell__icon-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #8e9ab0;
-  transition: background 0.18s ease, color 0.18s ease;
 }
 
-.portal-shell__history-btn:hover {
-  background: rgba(255,255,255,0.08);
-  color: #f4f7fb;
-}
+.portal-shell__brand { gap: 18px; }
 
 .portal-shell__logo {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #f4f7fb;
-  letter-spacing: 0.16em;
+  color: #f3f5f8;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
 }
 
 .portal-shell__logo-mark {
-  width: 25px;
-  height: 25px;
-  border: 1px solid rgba(151, 181, 255, 0.62);
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #3e78c9;
   border-radius: 8px;
-  position: relative;
-  transform: perspective(90px) rotateX(12deg) rotateZ(-18deg);
-  box-shadow: 0 0 22px rgba(73, 113, 255, 0.32), inset 0 0 14px rgba(130, 164, 255, 0.18);
-  animation: cws-logo-float 5s ease-in-out infinite;
+  color: #9fc5ff;
+  font-size: 12px;
+  letter-spacing: 0;
+  background: #111b2a;
 }
 
-.portal-shell__logo-mark::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(194, 211, 255, 0.72);
-  border-radius: 4px;
-  transform: translateZ(6px);
+.portal-shell__section-label {
+  padding-left: 18px;
+  border-left: 1px solid #303640;
+  color: #8f98a8;
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
-.portal-shell__logo-plane {
-  position: absolute;
-  width: 13px;
-  height: 2px;
-  left: 5px;
-  background: linear-gradient(90deg, transparent, #b5caff, transparent);
-  box-shadow: 0 0 8px rgba(142, 177, 255, 0.9);
+.portal-shell__actions { gap: 8px; }
+
+.portal-shell__nav-btn,
+.portal-shell__icon-btn {
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #aab2bf;
+  gap: 8px;
+  padding: 8px 10px;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
-.portal-shell__logo-plane--one { top: 8px; transform: rotate(38deg); }
-.portal-shell__logo-plane--two { top: 14px; transform: rotate(-38deg); }
+.portal-shell__nav-btn { font-size: 12px; }
+.portal-shell__icon-btn { width: 36px; justify-content: center; }
 
-.portal-shell__logo-word {
-  transform: translateY(1px);
-}
-
-@keyframes cws-logo-float {
-  0%, 100% { transform: perspective(90px) rotateX(12deg) rotateZ(-18deg) translateY(0); }
-  50% { transform: perspective(90px) rotateX(18deg) rotateZ(-14deg) translateY(-2px); }
+.portal-shell__nav-btn:hover,
+.portal-shell__icon-btn:hover {
+  border-color: #303845;
+  background: #161a22;
+  color: #f3f5f8;
 }
 
 .portal-shell__main {
+  width: min(1180px, 100%);
   flex: 1;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 20px 48px;
+  padding: 56px 24px 80px;
 }
 
-@media (min-width: 768px) {
-  .portal-shell__header {
-    padding: 28px 40px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .portal-shell__logo-mark { animation: none; }
+@media (max-width: 640px) {
+  .portal-shell__header { padding: 16px; }
+  .portal-shell__section-label { display: none; }
+  .portal-shell__main { padding: 32px 16px 56px; }
+  .portal-shell__nav-btn span { display: none; }
 }
