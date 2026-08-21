@@ -76,6 +76,26 @@ Official guidance used for this direction: [UE5 TSR](https://dev.epicgames.com/d
 
 Full evidence: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
 
+### Sharpness refinement handoff (2026-08-22)
+
+**FACT — LOCAL RUNTIME:** direct inspection of the retained B4 images confirms that the fast plate route preserves composition and subject but is visibly brighter and softer than the Blender reference around hair, glasses/eyes, skin edges and clothing seams. Existing baseline metrics remain RGB MAE `73.2551`, RMSE `79.3891`, and mean RGB `[164.9052, 128.2543, 127.5059]`.
+
+**FACT — CONTROLLED NEGATIVE:** a temporary Pillow unsharp probe increased edge energy from `382.9710` to `456.0160` at the lightest setting, but RMSE worsened from `79.3891` to `79.4242`; stronger settings worsened further. Generic post-sharpening is therefore not a sufficient fix and was not promoted.
+
+**FACT — RUNTIME BLOCKER:** a derived texture-policy probe was prepared to change only plate import quality (`NeverStream=true`, `LOD Bias=0`, `TMGS_NoMipmaps`, `TC_EditorIcon`) while preserving source pixels, sRGB, gain, camera and MRQ. UE 5.8.1 stopped/crashed before the Python report or probe PNG was written. A documented `-LocalDataCachePath` override made the workspace DDC explicitly writable, but the process still failed at engine shader/bootstrap and CrashReportClient/ShaderCompileWorker evidence was observed. The texture policy is not runtime verified and is not promoted.
+
+Durable evidence: `reports/evidence/CWS_UE5_FAST_SHARPNESS_PROBE_2026-08-22.md`.
+
+### Quality-gated UE5 video artifact (2026-08-22)
+
+The next bounded experiments were completed without replacing the fast route. An explicit per-frame inverse-LUT candidate rendered successfully through UE5.8.1 direct-child MRQ for all 60 frames after the raster actors were restored to `HiddenInGame=false`. A fail-closed gate accepted only candidates that were at least 98% non-black and strictly improved both RGB MAE and RGB RMSE; it selected 3 candidate frames and 57 baseline frames. The selected sequence mean was MAE `73.1649`, RMSE `79.1026`, versus baseline MAE `73.1745`, RMSE `79.2269`. This is a small safe improvement, not parity.
+
+The global LUT was rejected because it overfit the representative frame and regressed the opening frame. The earlier pixel-only gate was invalid because black frames can produce misleading error scores. Every future automated promotion must include non-black coverage and representative visual inspection.
+
+The playable final artifact is `C:\Users\Administrator\Desktop\CWS_B4_UE5_HighQuality_QualityGated.mp4`, encoded from UE5-rendered PNGs with local FFmpeg `libx264`, CRF 16, native 640x360, 24 fps. FFprobe verified H.264, 60 decoded frames and 2.5 seconds; extracted frames 0, 29 and 59 were non-black and compositionally valid. Desktop SHA-256 is `3C883539321FFD569B8A0A2DD6A7D71DE92415FDF7615CF1E552C624F2A5C5CD`.
+
+The current practical boundary remains a fast UE5 plate reconstruction plus video encoding, not a proven editable 3D Blender semantic transfer with equivalent shading. Preserve this working baseline and the ~8.5-second UE5 frame render evidence while pursuing future color/texture fidelity work one representative frame at a time. Full details: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
+
 The current representative source is:
 
 `C:\Users\Administrator\Downloads\PhongNguRender6.blend`
