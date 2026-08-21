@@ -154,6 +154,7 @@ REM =====================================================================
 
 :check_update
 REM ----- Kiem tra ban moi nhat tren Supabase, so sanh voi ban dang co -----
+set "INSTALLED_BUNDLE_INVALID=0"
 if not exist "%VERSION_FILE%" echo 0.0.0 > "%VERSION_FILE%"
 set /p CURRENT_VERSION=<"%VERSION_FILE%"
 
@@ -186,6 +187,7 @@ if "%LATEST_VERSION%"=="%CURRENT_VERSION%" (
         goto :launch_python
     )
     echo [update] Ban %CURRENT_VERSION% thieu/sai Guard manifest; tai lai bundle dong bo.
+    set "INSTALLED_BUNDLE_INVALID=1"
 )
 
 :download_update
@@ -206,6 +208,7 @@ for /f "usebackq delims=" %%v in (`powershell -NoProfile -Command ^
 
 if "%B2_TOKEN%"=="" (
     echo [update] Khong xin duoc quyen truy cap B2 ^(co the mat mang^), tam dung ban hien co.
+    if "%INSTALLED_BUNDLE_INVALID%"=="1" goto :update_retry
     goto :launch_python
 )
 
@@ -220,6 +223,7 @@ curl -f -sS -o "%UPDATE_BUNDLE%" ^
 
 if not exist "%UPDATE_BUNDLE%" (
     echo [update] Tai bundle moi that bai, tam dung ban hien co %CURRENT_VERSION%.
+    if "%INSTALLED_BUNDLE_INVALID%"=="1" goto :update_retry
     goto :launch_python
 )
 
@@ -231,6 +235,7 @@ if not errorlevel 1 (
     echo [update] Da cap nhat dong bo Worker + Guard len ban %LATEST_VERSION%.
 ) else (
     echo [update] Bundle khong hop le hoac thay file that bai; da giu/khoi phuc ban %CURRENT_VERSION%.
+    if "%INSTALLED_BUNDLE_INVALID%"=="1" goto :update_retry
 )
 
 :launch_python

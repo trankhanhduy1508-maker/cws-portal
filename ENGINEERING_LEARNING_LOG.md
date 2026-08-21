@@ -231,3 +231,24 @@
   ZIP integrity pass in Cloud. Windows PowerShell/B2/physical process behavior
   remains explicitly unverified pending the controlled host procedure in
   `reports/worker/RENTED_MACHINE_GUARD_V1.md`.
+
+## 2026-08-16 — Known-invalid Worker bundles must not use availability fallback
+
+- **Symptom:** after a same-version manifest/SHA-256 mismatch, B2 authorization
+  or download failure could still send the launcher to `:launch_python`.
+- **Root cause:** the launcher had one availability fallback for all update
+  failures and did not retain the fact that installed integrity had already
+  failed.
+- **Fix:** track `INSTALLED_BUNDLE_INVALID` for each update-check cycle and
+  route authorization, download and replacement failures to retry once that
+  state is known, while preserving the existing offline launch policy before
+  any integrity failure.
+- **Verification:** focused and full Worker tests pass, including a BAT
+  control-flow simulation for the required availability, failure, repair and
+  version-advance cases. Native Windows BAT/PowerShell runtime remains
+  unverified in Cloud.
+- **New rule / lesson:** unknown update availability and known-invalid local
+  integrity are different states; availability fallback must never erase a
+  proven integrity failure.
+- **Remaining risk:** run the report's controlled physical Windows procedure
+  before promoting the launcher beyond code/contract/simulated evidence.

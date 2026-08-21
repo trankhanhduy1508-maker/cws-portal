@@ -64,6 +64,12 @@ Worker version and SHA-256 of every required runtime file. The launcher:
    or mismatched; and
 7. refuses to start the Worker when either Guard companion is absent.
 
+The launcher also keeps an integrity failure distinct from an unavailable
+update check. A network/update failure may preserve availability only until
+the installed same-version bundle has failed manifest/SHA-256 validation.
+After that failure, authorization, download or replacement failure returns to
+the update retry loop; the known-invalid bundle cannot reach Worker launch.
+
 `tools/package_track_a_worker.py` is the canonical small release-packaging
 command. It derives `WORKER_VERSION` from the Worker source and emits the
 required paths plus integrity manifest without embedding credentials.
@@ -73,6 +79,9 @@ required paths plus integrity manifest without embedding credentials.
 - Guard contract and bundle/manifest contract tests: `CODE VERIFIED`.
 - Python compilation and generated ZIP integrity: `CODE VERIFIED`.
 - Existing relevant Track A Worker tests: `CODE VERIFIED`.
+- Launcher update decision model: `CONTRACT VERIFIED; SIMULATED VERIFIED` for
+  unavailable update checks, known-invalid repair failures, valid repair and
+  version advancement only after synchronized replacement.
 - PowerShell transaction on Windows: `NEEDS PHYSICAL WINDOWS VERIFICATION`
   because this Cloud container has neither Windows nor PowerShell.
 - Real popup, process termination, Blender protection, RELEASE restoration,
