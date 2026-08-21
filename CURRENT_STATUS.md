@@ -154,6 +154,22 @@ Components include:
 
 Code/test evidence exists, but physical production runtime remains unverified. This is preserved for future research and no longer blocks Track A.
 
+### UE5 Blender-fidelity research — EXPERIMENTAL SECONDARY
+
+Founder outcome: `customer Blender file -> automatic conversion/translation -> UE5 render -> visual quality equivalent to or better than the original Blender render`.
+
+Current direction is a fidelity-gated CWS UE Fidelity Gateway: classify the Blender scene, try native/baked UE5 transfer only for eligible scenes, use a UE5 visual-lock plate when final-image preservation is the practical fallback, and fail closed to Blender/Cycles when the representative-frame gate fails. The current GLB pipeline is not the default contract.
+
+Latest evidence: B4 native USD/MaterialX, Deferred and Path Tracer transfer did not meet the representative-frame gate; the evaluated-static exporter exceeded eight minutes without an artifact; a one-frame UE5 plate preserved composition but measured RGB MAE `71.04` / RMSE `77.91` against the Blender reference because color handling is not yet matched. Details: `reports/evidence/CWS_UE5_RENDER_REROUTE_2026-08-21.md` and `knowledge/render/ue5/CWS_UE5_RENDER_KNOWLEDGE_V1.md`.
+
+The Founder-provided Blender For Unreal Engine `4.4.8` plugin was then installed in an isolated Blender 5.2 environment and tested on `PhongNguRender6.blend`. It exported/imported a native whole-scene FBX and command-line MRQ produced non-black native UE frames, but the representative frames remained materially unlike Blender. UE estimated `7953.7 MiB` for the giant mesh build, Nanite was disabled at 81 material sections, and BFUE's generated Sequencer metadata had `cameras: []` while its export log reported `0 Camera(s)`. Current BFUE direction is therefore split-by-root-collection FBX + explicit camera/shot metadata + simple UE PBR materials + representative-frame gate; the giant whole-scene FBX is not the default. Evidence: `reports/evidence/CWS_UE5_RENDER_B4_PHONGNGU6_2026-08-21.md`.
+
+Founder milestone: the current UE5 path is reported to render a video in approximately five minutes versus approximately seven machine-hours in Blender, with an overall visual assessment of approximately 80%. Preserve this fast baseline. Local B4 runtime evidence records the exact UE 5.8.1 direct-child route, MRQ/TSR settings, DDC workaround and sub-minute bounded render timings in `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
+
+The first controlled quality probe changed only plate gain on one representative frame. It did not improve the gate: RGB MAE changed `73.2551 -> 73.1048` while RMSE worsened `79.3891 -> 81.8974`; the map/material was restored. Current quality work is therefore focused on matching Blender AgX/OCIO/output transfer before changing renderer or full-render settings. No full render is authorized until a representative frame improves.
+
+This research does not change the canonical Track A Blender/Cycles architecture and does not qualify as Golden Production E2E.
+
 ## Current Active Specs
 
 - `specs/008-customer-standard-workflow/` — canonical automated Customer workflow.

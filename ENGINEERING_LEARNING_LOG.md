@@ -231,3 +231,11 @@
   ZIP integrity pass in Cloud. Windows PowerShell/B2/physical process behavior
   remains explicitly unverified pending the controlled host procedure in
   `reports/worker/RENTED_MACHINE_GUARD_V1.md`.
+
+# 2026-08-21 — UE5 fast baseline preserved; scalar gain probe rejected
+
+- **Founder milestone:** the current UE5 route is reported at approximately five minutes for a video that previously required approximately seven machine-hours in Blender, with an overall visual assessment of approximately 80%. Preserve this baseline and do not replace it with the failed GLB/USD solution family.
+- **Local runtime evidence:** UE 5.8.1 direct-child MRQ completed the local 60-frame raster/plate fixture in `00:00:09.876` for PNG and `00:00:10.354` for NVENC H.264 MP4. The exact command, map, sequence, cvars, DDC workaround and logs are recorded in `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
+- **Failed approach:** changing only the UE plate material scalar `PlateGain` from `0.52` to `0.26` on one representative frame did not improve quality. MAE improved by only about 0.2%, RMSE worsened, and the result remained too bright compared with Blender.
+- **Reusable rule:** when the error is a tone curve/display transform, scalar exposure is not a substitute for color-management matching. Test Blender AgX/OCIO/output transfer explicitly, one variable at a time, and require a representative-frame visual+metric improvement before full rendering.
+- **State:** the temporary material/map mutation was restored with `restored: true` and `errors: []`; no Track A architecture was changed and no power/session transition was executed.

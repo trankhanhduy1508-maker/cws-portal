@@ -204,6 +204,30 @@ Track B code/spec/tests/evidence remain preserved, but its provisioning/heartbea
 
 The detailed boundary is owned by `CWS_WORKER_TRACKS.md`.
 
+### [ACTIVE EXPERIMENTAL — 2026-08-21] Blender-to-UE5 research is fidelity-gated
+
+The approved UE5 research outcome is visual preservation:
+
+`customer Blender file -> automatic conversion/translation -> UE5 render -> visual quality equivalent to or better than the original Blender render`
+
+UE5 research therefore uses a fidelity-gated CWS UE Fidelity Gateway. The gateway may classify a scene, try an eligible native/baked transfer, or use a visual-lock UE5 plate backed by Blender/Cycles beauty frames. Native/baked routes may render the full sequence only after representative-frame comparison passes. If the gate fails, Blender/Cycles remains authoritative.
+
+This is an experimental secondary path. It does not change Track A’s canonical `cws_worker.bat -> cws_worker_full.py -> Blender/Cycles -> validated output -> B2` architecture, does not promote GLB as the default fidelity contract, and does not qualify as Golden Production E2E. The current B4 evidence identifies semantic transfer and bake cost—rigs, evaluated geometry, Blender shader graphs and color management—as the limiting boundary, not a lack of UE5 render modes.
+
+### [ACTIVE EXPERIMENTAL — 2026-08-21] BFUE 4.4.8 is the preferred bounded FBX experiment
+
+The Founder-provided Blender For Unreal Engine `4.4.8` extension is the preferred experimental FBX/export family for future CWS tests. Runtime evidence proves native FBX import/build and command-line MRQ output, but not visual parity. The tested one-piece collection export estimated `7953.7 MiB`, disabled Nanite at 81 material sections, and generated Sequencer metadata with `cameras: []` / export log `0 Camera(s)`. Future BFUE work must use split asset/collection export, explicit camera/shot metadata, simple UE PBR material conversion, and the representative-frame gate. The giant whole-scene FBX is not a default and no full render is authorized after a failed gate.
+
+See `reports/evidence/CWS_UE5_RENDER_REROUTE_2026-08-21.md`, `reports/evidence/CWS_UE5_RENDER_BFUE_4_4_8_2026-08-21.md`, and `knowledge/render/ue5/CWS_UE5_RENDER_KNOWLEDGE_V1.md`.
+
+### [ACTIVE EXPERIMENTAL — 2026-08-21] Preserve the fast UE5 baseline; quality work is representative-frame gated
+
+The Founder reports a verified milestone: approximately seven machine-hours for the Blender video versus approximately five minutes through the current UE5 path, with current overall visual quality assessed at approximately 80%. Preserve the working fast pipeline and its exact runtime evidence; do not replace it with the failed GLB/USD family or a renderer swap.
+
+The first controlled local quality probe changed only a temporary plate gain on one representative frame and did not improve the gate. The current bounded optimization direction is Blender 5.2 AgX/OCIO/output-transfer matching, followed by sharpness/AA, texture/material richness, lighting/shadow and exposure/color checks. Every change requires a representative-frame visual and metric improvement before a full sequence render. Track A Blender/Cycles remains unchanged.
+
+See `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
+
 ### [ACTIVE — 2026-08-14] Track A operational safety floor
 Founder-controlled operation permits simpler/manual orchestration, but security is not disabled.
 

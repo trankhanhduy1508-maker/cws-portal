@@ -1,8 +1,8 @@
 # CWS UE5 RENDER KNOWLEDGE V1
 
 > Status: CURRENT_SUPPORTING / EXPERIMENTAL
-> Date: 2026-08-19
-> Scope: Blender -> GLB -> Unreal Engine 5.8 -> Movie Render Queue -> PNG -> FFmpeg
+> Date: 2026-08-21
+> Scope: Blender -> fidelity-gated UE5 transfer/plate -> Movie Render Queue -> PNG -> FFmpeg/MP4
 > Canonical repository: `trankhanhduy1508-maker/cws-portal`
 > Current physical test host: `MAY083`
 > Purpose: preserve verified UE5 render lessons, failed approaches, API/version traps, crash evidence, and the exact continuation point so future AI sessions do not repeat the same mistakes.
@@ -44,19 +44,47 @@ Always distinguish:
 
 The Founder is testing whether Unreal Engine 5 can become a much faster render path for suitable Blender/archviz jobs.
 
-Current experimental pipeline:
+Historical GLB baseline (bounded/diagnostic, not the default fidelity route):
 
 `customer .blend -> Blender headless export -> scene.glb -> UE5 Interchange scene import -> non-World-Partition level -> LevelSequence/camera -> MRQ -> PNG frames -> FFmpeg -> MP4`
+
+### BFUE 4.4.8 evidence and current direction (2026-08-21)
+
+The Founder-provided `Blender_For_Unreal_Engine_v4.4.8.zip` was installed as an isolated Blender 5.2 extension and exercised against `PhongNguRender6.blend`. Its practical path is:
+
+`customer .blend -> Blender For Unreal Engine 4.4.8 -> FBX/static mesh + JSON/scripts -> UE5 Interchange -> native level -> command-line MRQ -> PNG/MP4`
+
+This is now the preferred experimental FBX family for future bounded tests; GLB/glTF and USD remain fallback/diagnostic families, not the CWS fidelity contract. The plugin manifest requires Blender `>=5.0.0`, exports a valid 118 MB whole-scene FBX and import scripts, and UE5 successfully builds a native StaticMesh from it. The generated whole-scene mesh is not a practical default on this host: UE estimates `7953.7 MiB` to build it, reports `81` material sections (Nanite disabled), and the native representative frames remain materially unlike Blender after plugin-authored and full-basis camera tests.
+
+The plugin's own `ImportSequencerData.json` recorded `spawnable_camera: true` but `cameras: []`; the corresponding export log reported `0 Camera(s)`. Camera/shot export must therefore be treated as an explicit separate contract and must not be assumed to accompany a collection FBX export. A future BFUE implementation should split by root collection/asset, use bounded camera/shot metadata, convert materials to a simple UE PBR subset, and pass the representative-frame gate before full rendering. Do not repeat the one giant FBX as the default.
+
+### Fast UE5 baseline and quality direction (2026-08-21)
+
+**FACT — FOUNDER-PROVIDED:** the current UE5 path rendered a video in approximately five minutes that previously required approximately seven machine-hours in Blender. The Founder’s current overall visual assessment is approximately 80% of the Blender reference. The exact five-minute artifact/settings bundle is not yet linked in the local runtime evidence, so this is preserved as a Founder milestone rather than a universal runtime guarantee.
+
+**FACT — LOCAL RUNTIME:** the reproducible local fast baseline is the raster/plate route:
+
+`Blender/Cycles beauty PNG sequence -> /Game/CWSRaster/B4_Raster_Reconstruction_v4 -> /Game/CWSRaster/B4_Raster_Sequence_v4 -> direct-child UE5 MRQ -> PNG/MP4`
+
+It uses UE `5.8.1` (`56057345+++UE5+Release-5.8`), 60 frames at 24 fps and 640x360 in the current B4 fixture. The local baseline direct-child executor durations are `00:00:09.876` for PNG and `00:00:10.354` for H.264/NVENC MP4. `-DDC-ForceMemoryCache` is required because the Installed DDC graph has no writable node. The observed quality/scalability settings and TSR defaults are recorded in `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
+
+**FACT — CONTROLLED NEGATIVE:** a one-frame temporary `PlateGain` change from `0.52` to `0.26` did not improve the representative gate. MAE changed `73.2551 -> 73.1048` while RMSE changed `79.3891 -> 81.8974`; the baseline material/map was restored with `errors: []` and `restored: true`.
+
+**INFERENCE:** the largest current raster gap is color-management/transfer handling between Blender 5.2 AgX/OCIO/output semantics and the UE texture/material/output path. Scalar exposure cannot reproduce the tone curve. The next bounded experiment is explicit color-space/OCIO or LUT/transfer matching, then sharpness/AA, texture/material richness, lighting/shadows and exposure/color. Preserve the fast baseline and do not full-render until a representative frame improves both visually and by metric.
+
+Official guidance used for this direction: [UE5 TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [UE5 Movie Render Queue quality](https://dev.epicgames.com/documentation/en-us/unreal-engine/rendering-high-quality-frames-with-movie-render-queue-in-unreal-engine), [UE5 cinematic image quality settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-rendering-image-quality-settings-in-unreal-engine?lang=en-US), [UE5.8 MaterialEditingLibrary](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/MaterialEditingLibrary), and the [Blender 5.2 color-management manual](https://docs.blender.org/manual/en/5.2/render/color_management/index.html).
+
+Full evidence: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
 
 The current representative source is:
 
 `C:\Users\Administrator\Downloads\PhongNguRender6.blend`
 
-The current intermediate format is:
+The historical intermediate format for the original B4 test was:
 
 `GLB / glTF Binary`
 
-Reason for GLB:
+Reason it was initially tested:
 
 - carries scene geometry;
 - materials/textures to the extent supported by glTF;
@@ -879,18 +907,21 @@ UE5 experimental success is not Golden Production E2E.
 
 CURRENT UE5 GOAL
 
-Test this end-to-end experimental path:
+Reroute research around the actual outcome:
 
-PhongNguRender6.blend
--> Blender 5.2 headless
--> scene.glb
--> Unreal Engine 5.8 Interchange
--> fresh NON-WORLD-PARTITION level
--> LevelSequence / camera
--> Movie Render Queue
--> PNG frames
--> FFmpeg
--> MP4
+`customer Blender file -> automatic conversion/translation -> UE5 render -> visual quality equivalent to or better than the original Blender render`
+
+The acceptance unit is a representative rendered frame/shot compared with the Blender source. Import success, actor count, PNG count, FFmpeg exit code, or a non-black image cannot promote a route.
+
+The current candidate architecture is the CWS UE Fidelity Gateway:
+
+1. Analyze/classify the Blender scene and create an immutable transfer manifest.
+2. Try a fidelity-gated native route: FBX for ordinary static/skeletal data, Alembic Geometry Cache for acceptable evaluated vertex animation, explicit camera/shot/material-map metadata, and a fresh non-World-Partition UE level.
+3. Try a bounded baked-scene route only when evaluated geometry/material baking completes within budget.
+4. Otherwise use a visual-lock UE5 plate route: Blender/Cycles beauty frames -> image-sequence/EXR-or-PNG bundle -> UE5 unlit MediaTexture/plate -> MRQ. This preserves final-image intent but does not accelerate the Blender render or create editable 3D geometry.
+5. Fail closed to Blender/Cycles when the representative-frame gate fails.
+
+GLB/glTF is now an optional narrow route, not the default fidelity contract. USD is optional/experimental for level reconstruction. Do not repeat interchange-format or renderer swaps for the B4 scene without a materially different pre-baked implementation and bounded cost.
 
 CURRENT MACHINE
 
@@ -983,7 +1014,54 @@ The apparent INF matches were false positives from names such as FullGrain.
 
 For the bedroom experiment, use a fresh non-World-Partition level instead of trying to repair P6 World Partition unless new evidence proves World Partition is required.
 
-NEXT ACTION
+## VERIFIED CWS B4 EVIDENCE — 2026-08-21
+
+Source and host:
+
+- `PhongNguRender6.blend` was kept immutable and read with Blender 5.2.0 background `--disable-autoexec`; SHA-256 was `5C20076506CC787BBE2C26360B02111AAB31767B0545BA1185FA76E66D3DB70C`.
+- MAY083 provisioning evidence confirms an RTX 2060 SUPER 8 GB and a working Blender 5.2.0 installation, but P1 remains partial because production B2 credentials were absent. Provisioning status is not a visual-render pass.
+
+DDC:
+
+- UE 5.8.1 fails when the `Installed` DDC graph has no writable node. `-DDC-ForceMemoryCache` is verified to bypass startup and permit a bounded commandlet/MRQ run. It does not repair the Installed graph and must remain documented as a workaround.
+
+Transfer evidence:
+
+- Blender source truth at frame 450: Cycles, AgX/None/0/1, dark constant World, active `ZNT_Camera`, a rigged character, and warm/white/blue light metadata.
+- USD + MaterialX imported into a fresh non-World-Partition UE level but emitted armature and MaterialX diagnostics. Three materially similar observations remained poor after bounded camera convention checks: wall-only, visible-but-misframed, and broken character/material output.
+- Deferred and Path Tracer each produced one PNG and both were far from the Blender reference. Path Tracer was not close, so the problem is not only a Deferred realtime-renderer gap.
+- A repeatable evaluated-static hybrid exporter (FBX plus JSON metadata) was attempted without saving the source. It ran over eight minutes without producing an artifact and was stopped at its exact diagnostic process. This is evidence of impractical conversion cost for the current scene, not a claim that every possible exporter is impossible.
+
+Classification:
+
+- FACT: source hash, Blender scene metadata, DDC fatal/workaround, UE version, fresh non-World-Partition level, two renderer PNGs, import diagnostics, and no full-sequence render are recorded in `reports/evidence/CWS_UE5_RENDER_B4_PHONGNGU6_2026-08-21.md`.
+- INFERENCE: USD/MaterialX does not preserve this scene's rigged character and shader semantics sufficiently on the tested UE 5.8.1 stack; renderer switching cannot correct the observed geometry/material loss.
+- HYPOTHESIS: a fully baked evaluated geometry/PBR/metadata bundle might work, but the first bounded evaluated export did not show practical completion cost.
+- UNKNOWN: exact V25 pixel baseline, whether a separately engineered bake/export tool would be fast enough, and whether OCIO AgX matching would improve any residual color difference after geometry/material transfer.
+
+Decision: the B4 representative-frame gate was not met. Do not full-render this UE conversion. For this scene and current hardware/toolchain, preserve Blender/Cycles as the fidelity authority unless a new, materially different and pre-baked transfer implementation is supplied.
+
+## VERIFIED FIDELITY REROUTE — 2026-08-21
+
+The durable decision and external source links are recorded in:
+
+`reports/evidence/CWS_UE5_RENDER_REROUTE_2026-08-21.md`
+
+Controlled plate evidence:
+
+- `B4_Plate_Frame450_v3` imported the Blender reference image, created a non-World-Partition map and LevelSequence, and produced a visible UE5 `640x360` PNG at `.cws_tmp/B4_JOB/RenderPlateV3/B4_Plate_Frame450_Sequence_v3.0000.png` with the same composition and subject.
+- Source mean RGB `(80.17, 56.73, 57.20)` versus UE output `(159.58, 122.50, 124.75)`; sampled RGB MAE `71.04`, RMSE `77.91`. Treat this as plate-stage proof, not visual parity.
+- A color-handling probe created the `sRGB=False` texture/material/map successfully. Its headless NewProcess MRQ run reported `QUEUE_STARTED` but produced no output directory, so that executor path is not yet a validated automation contract.
+
+Current boundary:
+
+- A generic editable 3D Blender/Cycles-to-UE5 conversion with equivalent visual quality is not demonstrated and is not a practical default for arbitrary scenes on this host/toolchain.
+- The limiting boundary is semantic transfer and bake cost (rigs, evaluated geometry, Blender shader graphs, and color management), not the UE5 renderer or FFmpeg.
+- Native/baked UE5 acceleration is allowed only for scenes that pass representative-frame comparison. A visual-lock plate can preserve the final image, but the source Blender render remains the quality authority and the route does not claim 3D conversion.
+
+Do not change canonical Track A Blender/Cycles architecture as part of this research.
+
+SUPERSEDED HISTORICAL NEXT ACTION
 
 First inspect current GitHub state and the UE5 knowledge file.
 

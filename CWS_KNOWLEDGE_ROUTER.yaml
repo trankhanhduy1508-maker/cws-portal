@@ -183,6 +183,36 @@ routes:
       - DO_NOT_SILENTLY_IMPORT_THE_FULL_NODE_AGENT_WORKER_ENGINE_ARCHITECTURE
       - TRACK_A_REAL_RENDER_PASS_IS_NOT_TRACK_B_GOLDEN_E2E
 
+  BLENDER_UE5_FIDELITY:
+    status: EXPERIMENTAL_SECONDARY
+    authority_note: >-
+      Route UE5 research by the visual-fidelity outcome, not by interchange-file
+      success. This route is subordinate to Track A and must never silently
+      replace Blender/Cycles production rendering.
+    read:
+      - CURRENT_STATUS.md
+      - CWS_WORKER_TRACKS.md
+      - DECISIONS.md
+      - knowledge/render/ue5/CWS_UE5_RENDER_KNOWLEDGE_V1.md
+    then_search:
+      - reports/evidence/CWS_UE5_RENDER_REROUTE_*.md
+      - reports/evidence/CWS_UE5_RENDER_B4_*.md
+      - reports/evidence/CWS_UE5_RENDER_BFUE_*.md
+      - reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_*.md
+      - .cws_tmp/
+      - knowledge/render/ue5/
+    constraints:
+      - BLENDER_CYCLES_TRACK_A_IS_UNCHANGED
+      - REPRESENTATIVE_FRAME_FIDELITY_GATE_BEFORE_FULL_SEQUENCE
+      - NATIVE_OR_BAKED_UE5_ROUTE_MUST_FAIL_CLOSED_ON_GATE_FAILURE
+      - GLB_IS_OPTIONAL_NOT_DEFAULT_FIDELITY_CONTRACT
+      - BFUE_4_4_8_IS_PREFERRED_EXPERIMENTAL_FBX_FAMILY
+      - WHOLE_SCENE_FBX_IS_NOT_DEFAULT_USE_SPLIT_ASSET_EXPORT
+      - CAMERA_SHOT_METADATA_MUST_BE_EXPLICITLY_VERIFIED
+      - USD_LEVEL_IMPORT_REMAINS_EXPERIMENTAL
+      - PLATE_ROUTE_PRESERVES_IMAGE_NOT_EDITABLE_3D_SCENE
+      - DO_NOT_REPEAT_FAILED_INTERCHANGE_OR_RENDERER_SWAPS_WITHOUT_MATERIALLY_DIFFERENT_IMPLEMENTATION
+
   AUTO_E2E_RESEARCH:
     status: SANDBOX_RESEARCH_SECONDARY
     read:
