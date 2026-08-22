@@ -118,6 +118,14 @@ Frames 0, 29 and 59 were visually inspected; composition remained stable and hai
 
 Durable evidence: `reports/evidence/CWS_UE5_FAST_SHARPNESS_PROBE_2026-08-22.md`. Official API references: [UE Texture2D](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/Texture2D?application_version=5.1), [UE TextureFilter](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/TextureFilter?lang=en-US), and [UE TextureSample SamplerSource](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/Materials/UMaterialExpressionTextureSample/SamplerSource?application_version=5.5).
 
+### 2K delivery upscale (2026-08-22)
+
+The 640x360 full candidate was delivered as a separate 2K MP4 after checking official Epic and FFmpeg guidance. Epic's TSR and screen-percentage documentation support high-resolution temporal/spatial upscaling, while FFmpeg's official scaler documentation identifies Lanczos as a high-quality windowed-sinc resampler. Since the source plate is 640x360, this improves delivery resolution and encoding quality but cannot recover native 2K scene detail.
+
+The local FFmpeg runtime used `scale=2560:1440:flags=lanczos`, `lanczos+accurate_rnd+full_chroma_int`, H.264 `libx264`, CRF 16, yuv420p, 24 fps. FFprobe verified H.264, `2560x1440`, 60 frames and 2.5 seconds. Artifact: `.cws_tmp/B4_JOB/CWS_B4_UE5_NearestAll640_Upscaled2K.mp4`. This UE5 image-render delivery has no audio track.
+
+References: [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [Epic screen percentage](https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-percentage-with-temporal-upscale-in-unreal-engine?lang=en-US), [Epic cinematic render settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-render-settings-and-formats-in-unreal-engine), [FFmpeg scaler](https://ffmpeg.org/ffmpeg-scaler.html).
+
 ### Quality-gated UE5 video artifact (2026-08-22)
 
 The next bounded experiments were completed without replacing the fast route. An explicit per-frame inverse-LUT candidate rendered successfully through UE5.8.1 direct-child MRQ for all 60 frames after the raster actors were restored to `HiddenInGame=false`. A fail-closed gate accepted only candidates that were at least 98% non-black and strictly improved both RGB MAE and RGB RMSE; it selected 3 candidate frames and 57 baseline frames. The selected sequence mean was MAE `73.1649`, RMSE `79.1026`, versus baseline MAE `73.1745`, RMSE `79.2269`. This is a small safe improvement, not parity.
