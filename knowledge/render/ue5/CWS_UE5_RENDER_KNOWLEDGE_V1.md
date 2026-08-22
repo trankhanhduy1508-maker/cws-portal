@@ -1232,3 +1232,13 @@ Three bounded MRQ gates then failed as a usable visual route: the first was full
 
 Evidence: `.cws_tmp/B4_JOB/DirectFBX/character_import_gate_report_v3.json`, `character_material_map_inspection_v1.json`, `CharacterMaterialsRenderV2/Character_Materials_Gate_V3_Sequence.0000.png`, and `CharacterMaterialsRenderV2/Character_Materials_Gate_V4_Sequence.0000.png`.
 
+## MAY083 FULL HD / UNDER-15-MINUTE GATE — 2026-08-22
+
+The real source remains 1920x1080, 24 fps, frames 432–491. The retained MP4 was independently checked with ffprobe and decoded start/middle/end hashes: it contains 60 frames and real pose changes, not a held character.
+
+Native Blender Eevee preserved the source camera, evaluated rig, animation and materials far better than semantic UE transfer, but measured 82.632s for one native 1920x1080 representative frame. At 640x360, three same-process frames took 145.517s total; a lower-quality ray-tracing/fast-GI/TAA profile took 155.371s for one frame. Workbench was 47.895s for one 1920x1080 frame and visibly failed the lighting/material fidelity gate. These routes cannot render 60 frames under 15 minutes on this host.
+
+The usable Full HD artifact is `.cws_tmp/B4_JOB/CWS_B4_UE5_FastSharp_NoAA_FullHD_1920x1080.mp4`, H.264, 1920x1080, 24 fps, 60 frames, 2.5s, SHA-256 `8B60C9959C9DB317140B9B4E1C52BA1EB3B969F1DF08E53927B5853F3F089D4C`. It is encoded from the previously rendered UE5 plate frames in 4.04s; the honest source-to-MP4 lower bound remains approximately 21 minutes because the Blender plate stage alone was ≥20m39s. Do not call this under-15-minute production success or confuse its internal 640x360 plate input with the project/source resolution.
+
+Decision: do not report GOAL ACHIEVED. A faster GPU-native renderer or an explicitly accepted cached/plate boundary is required for a verified under-15-minute route with this quality target.
+
