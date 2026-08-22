@@ -86,6 +86,38 @@ Full evidence: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-2
 
 Durable evidence: `reports/evidence/CWS_UE5_FAST_SHARPNESS_PROBE_2026-08-22.md`.
 
+**FACT — SOURCE RESOLUTION IS NOT THE MISMATCH:** the B4 source plate `image_0030.png` is `640x360` and pixel-identical to the matched Blender reference `frame_0462.png`. The retained UE baseline is also `640x360`, but edge energy is `6.6120` versus `9.0082` for the source/reference. The visible softness is therefore introduced at or after the UE plate sampling/render boundary, not by selecting the wrong Blender frame.
+
+**FACT — NATIVE OUTPUT PROBE BLOCKED:** a new probe kept the baseline map, sequence, textures, material and MRQ settings unchanged while requesting native `640x360` parent/output resolution to test the documented screen-percentage/upscale hypothesis. UE 5.8.1 did not reach Python/MRQ: it stopped at missing `WorldGridMaterial` `PCD3D_SM6` shader maps, launched ShaderCompileWorker/CrashReportClient, and wrote no report or PNG. A follow-up with `r.ShaderCompiler.JobCache=1` and one requested shader worker reached the same boundary and still launched five workers.
+
+**DECISION:** do not promote native-resolution, texture import policy, mip/filter, or shader-setting changes without a successful real UE5 representative frame. The next quality probe requires a repaired/version-matched DDC/shader bootstrap or a human-approved alternate UE runtime. Preserve the current fast baseline and Blender/Cycles as authority; do not repeat the same bootstrap retries or render the full sequence.
+
+### Shader bootstrap isolation and first sharpness improvement (2026-08-22)
+
+The exact UE 5.8.1 logs establish that `-DDC-ForceMemoryCache` was present in the failed SM6 probes. It only supplied an in-memory fallback after the Installed graph had no writable node; it did not provide the missing engine shader map. The read-only engine `Compressed.ddp` was a seed, while `WorldGridMaterial`, `DefaultDeferredDecalMaterial`, `DefaultLightFunctionMaterial`, and `DefaultPostProcessMaterial` still needed compilation for `PCD3D_SM6`. The first failure is therefore an installed-runtime SM6 shader/DDC bootstrap failure, not an omitted workaround flag and not evidence that MRQ itself is broken.
+
+A materially different `-dx11 -sm5` route with real paths, `-DDC-ForceMemoryCache`, and unchanged JobCache/worker settings reached the Python/MRQ boundary and rendered all 60 native 640x360 PNGs. This proves the fast plate route can proceed through an alternate supported rendering path on this UE 5.8.1 installation. The SM5 control frame did not materially improve quality, so SM5 is a bootstrap/runtime fallback, not the quality fix.
+
+The first valid quality improvement is an explicit plate-texture sampling policy. For a representative frame, a temporary material sampled the pixel-identical 640x360 source with `Texture2D.filter=TF_NEAREST`, `NeverStream=true`, `LOD Bias=0`, `TMGS_NO_MIPMAPS`, `SamplerSource=SSM_FROM_TEXTURE_ASSET`, and `automatic_view_mip_bias=false`. It rendered through SM5 direct-child MRQ and improved frame 0030 against the Blender reference:
+
+- RGB MAE: `73.2551 -> 73.1226`;
+- RGB RMSE: `79.3891 -> 79.2566`;
+- edge energy: `382.9710 -> 410.6342` (`+7.2%`);
+- edge mean absolute: `6.6120 -> 7.0109`.
+
+Visual inspection confirms a crisper result around hair, glasses and clothing edges while composition remains aligned. This is now the preferred next plate-material policy, but it must be applied and re-verified on the full plate before replacing the retained baseline artifact. The original map was restored with `restored: true` and `errors: []`; baseline assets remain the rollback authority. A separate no-AA/temporal-upsampling probe produced no output and was rejected.
+
+The policy was then applied to all 60 existing plate textures/materials and a separate full candidate was rendered to `.cws_tmp/B4_JOB/RenderUE5NearestAll640`. It produced 60/60 PNGs and passed the no-black gate. Mean comparison to the matching Blender/Cycles frames was:
+
+- RGB MAE: `73.1745 -> 73.0047`;
+- RGB RMSE: `79.2269 -> 79.1068`;
+- edge energy: `460.4020 -> 629.6338`;
+- mean non-black coverage: `0.9998 -> 0.9998`.
+
+Frames 0, 29 and 59 were visually inspected; composition remained stable and hair, glasses, hand/clothing boundaries and wall texture were crisper. The original policy was restored for all 60 textures/materials with `errors: 0`, so `RenderUE5RasterFixed` remains the rollback authority. The full candidate is now the best verified local UE5 quality result, but it is retained as a separate artifact until its MP4 is independently encoded and validated.
+
+Durable evidence: `reports/evidence/CWS_UE5_FAST_SHARPNESS_PROBE_2026-08-22.md`. Official API references: [UE Texture2D](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/Texture2D?application_version=5.1), [UE TextureFilter](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/TextureFilter?lang=en-US), and [UE TextureSample SamplerSource](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/Materials/UMaterialExpressionTextureSample/SamplerSource?application_version=5.5).
+
 ### Quality-gated UE5 video artifact (2026-08-22)
 
 The next bounded experiments were completed without replacing the fast route. An explicit per-frame inverse-LUT candidate rendered successfully through UE5.8.1 direct-child MRQ for all 60 frames after the raster actors were restored to `HiddenInGame=false`. A fail-closed gate accepted only candidates that were at least 98% non-black and strictly improved both RGB MAE and RGB RMSE; it selected 3 candidate frames and 57 baseline frames. The selected sequence mean was MAE `73.1649`, RMSE `79.1026`, versus baseline MAE `73.1745`, RMSE `79.2269`. This is a small safe improvement, not parity.
