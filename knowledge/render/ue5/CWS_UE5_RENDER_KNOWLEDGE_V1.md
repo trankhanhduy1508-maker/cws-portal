@@ -1153,6 +1153,14 @@ Current boundary:
 
 Do not change canonical Track A Blender/Cycles architecture as part of this research.
 
+## FAST-PATH BOUNDARY CORRECTION — 2026-08-22
+
+The full Blender/Cycles native-2K sequence experiment was stopped because it violated the strategic speed goal: the current scene took roughly two or more minutes per native 2K frame, so 60 frames approached or exceeded one hour before UE5/MRQ/encode. Native 2K representative output remains proven, but it must not become a prerequisite for the fast UE5 path.
+
+Use the existing beauty plate as input, keep UE5 SM5 direct-child MRQ, and prefer the verified no-AA/no-temporal-upsample policy for this speed-bounded route. The no-AA 60-frame candidate rendered in `00:00:17.434`; the existing 2K delivery encode took approximately `5.37s`. It improved representative RGB MAE/RMSE from `73.2551/79.3891` to `72.7127/78.9129` and edge energy from `382.9710` to `1206.9361`. Frame-difference checks confirm actual motion, not held frames.
+
+This produces a practical sharp fast artifact at `2560x1440` by delivery upscale from the UE5 `640x360` output. It must be labeled as delivery 2K, not native scene-detail recovery. Full evidence: `reports/evidence/CWS_UE5_FAST_PATH_RUNTIME_BOUNDARY_2026-08-22.md`.
+
 SUPERSEDED HISTORICAL NEXT ACTION
 
 First inspect current GitHub state and the UE5 knowledge file.
