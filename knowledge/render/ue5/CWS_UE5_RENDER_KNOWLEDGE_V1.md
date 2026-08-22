@@ -1202,3 +1202,25 @@ If something fails, do not guess. Read runtime evidence, research official UE5.8
 When reporting back to me, use Vietnamese and keep the next PowerShell action short and directly executable.
 ```
 
+## MAY083 CURRENT SESSION RE-GROUND — 2026-08-22
+
+The local runtime identity reported by the current session is `MAY084` / `may084\\administrator`, while the retained CWS render evidence names the intended host `MAY083`. Preserve this mismatch as evidence; do not claim the physical host identity was independently reverified.
+
+### FACT
+
+- The real source is preserved at `.cws_tmp/PhongNguRender6.blend`; the source hash recorded by prior evidence is `5C20076506CC787BBE2C26360B02111AAB31767B0545BA1185FA76E66D3DB70C`.
+- The best retained practical artifact is `C:\\Users\\Administrator\\Desktop\\CWS_B4_UE5_FastSharp_NoAA_2K.mp4`: H.264, 2560x1440 delivery upscale, 24 fps, 60 frames, 2.5 seconds, video-only. It is decoded from the verified UE5 SM5 direct-child MRQ 640x360 sequence and preserves motion, subject and composition.
+- Representative before/after evidence is preserved at `.cws_tmp/B4_JOB/BlenderPlateFrames/frame_0462.png` and `.cws_tmp/B4_JOB/RenderUE5NoAA640/B4_Raster_NoAA640.0030.png`.
+- The scoped DirectFBX/Alembic character experiment rendered only partial visible elements (hair/glasses silhouettes) with a fallback material; it is rejected and must not be used as a quality pass. Evidence: `.cws_tmp/B4_JOB/DirectFBX/CharacterRenderV11/Character_Gate_V11_Sequence.0000.png` and `character_scene_gate_report.json`.
+
+### INFERENCE
+
+- The no-AA fast route is the best practical retained visual result on this host, but its brighter color/exposure and plate dependency prevent a 90–95% semantic Blender-to-UE5 claim.
+- The largest remaining direct-transfer loss is still complete character/material semantics, followed by camera/lighting/color convention transfer. UE5 renderer choice is not the primary blocker.
+
+### DECISION
+
+- Do not promote the DirectFBX/Alembic character family, repeat GLB/USD/whole-scene FBX, or launch another full direct-transfer sequence without a materially different baked-texture and complete-character implementation.
+- Keep the no-AA artifact as the best practical deliverable/benchmark only, explicitly labeled as a UE5 delivery-upscaled plate result rather than a production `.blend -> UE5` semantic solution.
+- Preserve Blender/Cycles as fidelity authority and retain all before/after artifacts and timing boundaries.
+
