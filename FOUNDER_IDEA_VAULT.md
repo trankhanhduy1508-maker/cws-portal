@@ -13,6 +13,12 @@ AI/Codex must never promote an idea from `DORMANT` directly to `ACTIVE`.
 
 Trigger conditions require grounded evidence. A simulation, unit test, local harness, or optimistic estimate does not satisfy a real-world trigger unless the trigger explicitly says simulation is enough.
 
+Reminder/revisit behavior is governed by `CWS_FOUNDER_CHALLENGE_REMINDER_RULE.md`.
+
+A reminder is not approval and must not silently change `CWS_ACTIVE_GOAL.md` or project-level priority.
+
+`REMINDER != APPROVAL != ACTIVE PRIORITY`
+
 ---
 
 ## IDEA-001 — Code Factory / Upwork Software Factory
@@ -80,5 +86,56 @@ Add another `IDEA-###` entry with:
 - what evidence proves the gate;
 - what is allowed before activation;
 - what requires Founder approval.
+
+When useful, also include reminder metadata:
+
+- `CREATED`
+- `WHY_IT_MATTERS`
+- `ACTIVATION_TRIGGER`
+- `REVISIT_AFTER`
+- `LAST_REVIEWED`
+- `LAST_REMINDER`
+- `REMINDER_REASON`
+- `SNOOZE_UNTIL`
+- `EVIDENCE_NEEDED`
+- `WHY_NOT_NOW`
+
+Not every old entry must be rewritten to contain every field. Add metadata when it improves future recall or trigger-based review.
+
+### Recommended future idea template
+
+```text
+## IDEA-### - <name>
+
+State: DORMANT
+Created: YYYY-MM-DD
+
+Intent:
+<what the idea is>
+
+Why it matters:
+<why it might be valuable>
+
+Why not now:
+<why it must not distract the active goal>
+
+Activation trigger:
+<measurable event/evidence that makes review worthwhile>
+
+Evidence needed:
+<what proves the trigger>
+
+Revisit after:
+<date or NONE>
+
+Last reviewed:
+<date or NONE>
+
+Last reminder:
+<date or NONE>
+
+Snooze until:
+<date or NONE>
+```
 
 This file is a memory/gating registry, **not an active roadmap**. `CWS_ROADMAP.md` remains the only active CWS roadmap.
