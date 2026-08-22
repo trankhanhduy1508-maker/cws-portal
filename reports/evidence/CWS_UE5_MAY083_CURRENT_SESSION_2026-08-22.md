@@ -27,3 +27,15 @@ It is a valid H.264 MP4 at 2560x1440, 24 fps, 60 frames and 2.5 seconds. It pres
 ## Decision
 
 Do not report the requested 90–95% `.blend -> UE5` fidelity target as achieved. Keep the retained MP4 as the best practical artifact and preserve Blender/Cycles as the fidelity authority. Do not repeat the failed solution families without a materially different, bounded complete-character bake.
+
+## Additional direct skeletal material gate — 2026-08-22
+
+The v4 FBX skeletal import was re-grounded from runtime evidence. It contains a skeletal mesh, animation asset, and five imported UE material instances with no import errors. A saved-map inspection confirmed the skeletal actor was visible, had non-zero bounds, and retained all five component material bindings.
+
+Representative MRQ results:
+
+- `CharacterMaterialsRenderV1`: fully black.
+- `CharacterMaterialsRenderV2/Character_Materials_Gate_V3_Sequence.0000.png`: only edge fragments after bounds-centered framing and point lights.
+- `CharacterMaterialsRenderV2/Character_Materials_Gate_V4_Sequence.0000.png`: fully black using the known-good direct-FBX camera pose.
+
+This is three materially similar direct skeletal gates without a usable frame. The direct skeletal solution family is stopped. The result does not alter the retained artifact or its classification: `CWS_B4_UE5_FastSharp_NoAA_2K.mp4` remains valid and visually inspectable, but remains a plate-dependent benchmark rather than an accepted production `.blend -> UE5` solution.

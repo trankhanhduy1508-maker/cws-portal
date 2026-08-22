@@ -1224,3 +1224,11 @@ The local runtime identity reported by the current session is `MAY084` / `may084
 - Keep the no-AA artifact as the best practical deliverable/benchmark only, explicitly labeled as a UE5 delivery-upscaled plate result rather than a production `.blend -> UE5` semantic solution.
 - Preserve Blender/Cycles as fidelity authority and retain all before/after artifacts and timing boundaries.
 
+## MAY083 DIRECT SKELETAL MATERIAL GATE — 2026-08-22
+
+Official UE5 FBX documentation was consistent with the observed pipeline: skeletal FBX can import a skeletal mesh, animation and basic material/texture assets, but it does not preserve arbitrary Blender shader semantics. A fresh v4 skeletal import did produce five real UE material instances (`Ao_Khuy_VC_VT_Dep`, `Body`, `Yem_001`, `Mat_Kinh_LM`, `Toc`) with no import errors, and the actor was visible with those bindings in the saved map.
+
+Three bounded MRQ gates then failed as a usable visual route: the first was fully black; a bounds-centered camera/point-light variant showed only edge fragments; a known-good direct-FBX camera pose was fully black. The failure is therefore not evidence that material assets were absent, but the direct skeletal scene still has unresolved orientation/render-state/semantic issues. Per the three-similar-attempt rule, stop this direct skeletal solution family. Do not promote it or launch a full sequence without a materially different complete-character bake and explicit camera/light validation.
+
+Evidence: `.cws_tmp/B4_JOB/DirectFBX/character_import_gate_report_v3.json`, `character_material_map_inspection_v1.json`, `CharacterMaterialsRenderV2/Character_Materials_Gate_V3_Sequence.0000.png`, and `CharacterMaterialsRenderV2/Character_Materials_Gate_V4_Sequence.0000.png`.
+
