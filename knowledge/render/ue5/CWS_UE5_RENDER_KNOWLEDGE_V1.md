@@ -1242,3 +1242,11 @@ The usable Full HD artifact is `.cws_tmp/B4_JOB/CWS_B4_UE5_FastSharp_NoAA_FullHD
 
 Decision: do not report GOAL ACHIEVED. A faster GPU-native renderer or an explicitly accepted cached/plate boundary is required for a verified under-15-minute route with this quality target.
 
+## MAY083 NATIVE CYCLES OPTIX FULL HD — 2026-08-22
+
+A materially different route was validated: direct Blender 5.2 Cycles from the real `.blend`, using the RTX 2060 SUPER OptiX backend, CPU disabled, 8 samples, adaptive sampling and denoising. Device discovery proved both CUDA and OptiX devices; the prior slow Cycles evidence had not proven GPU use.
+
+The complete native sequence rendered 60/60 frames at 1920x1080, source frames 432–491, in `2054.410s` (`34m14.410s`). Encode took `4.853s`. Final artifact: `.cws_tmp/B4_JOB/CWS_B4_CyclesOptix_FullHD.mp4`, H.264 1920x1080, 24 fps, 60 frames, 2.5s, SHA-256 `21000577C00C460676B45A22E15E79E0B106F5702EE2BE5F8EF5A73586087DF0`.
+
+Decoded frame 0/30/59 inspection confirms real temporal motion and correct direction. Native Cycles preserves camera, evaluated rig, character geometry, eyes, hair, glasses, clothing, textures and lighting far better than the rejected UE semantic-transfer families. Qualitatively this is the practical 90–95% target range, with residual 8-sample denoising/detail differences versus the higher-sample Blender reference. The Founder temporarily accepted the ~36-minute runtime; retain the earlier under-15-minute evidence as a separate speed gate, not as a reason to downgrade this native quality result.
+
