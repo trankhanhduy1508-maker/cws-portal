@@ -33,13 +33,49 @@ Do not create helper scripts, scheduled tasks, installer flags, keyboard automat
 
 `AUTO APPROVAL != POWER-STATE AUTHORITY`
 
+## MANDATORY ACTIVE-GOAL RECOVERY
+
+Every new CWS AI/Codex session MUST read `CWS_ACTIVE_GOAL.md` after `CURRENT_STATUS.md`.
+
+If the current Founder request is to continue/resume/finish/debug/verify the active execution goal, the agent MUST read the referenced Goal Contract completely before choosing the technical path.
+
+Goal Contracts are governed by:
+
+`CWS_GOAL_CONTRACT_LIFECYCLE.md`
+
+Core model:
+
+`FOUNDER = WHAT / WHY / DONE / HARD BOUNDARIES`
+
+`AI/CODEX = TECHNICAL PATH / RESEARCH / DIAGNOSIS / IMPLEMENTATION / VERIFICATION`
+
+An active execution goal does NOT silently replace project-level priority in `CURRENT_STATUS.md`.
+
+## MANDATORY FOUNDER CHALLENGE + REMINDER
+
+Every AI/Codex/agent working on a material CWS task MUST apply:
+
+`CWS_FOUNDER_CHALLENGE_REMINDER_RULE.md`
+
+Before material execution/decision, check for material Founder risks such as perfectionism, over-engineering, scope creep, sunk cost, confirmation bias, idea distraction, evidence gaps, wrong metrics, customer distance or unproven root cause.
+
+When material, issue `FOUNDER CHECK - <RISK>` with evidence/trade-off and a smaller/better test. Do not flatter or blindly agree with the Founder.
+
+Before material goal-level completion/ship, perform `FOUNDER RECHECK` against the actual Goal Contract so a proxy metric or technically valid artifact cannot silently replace the intended outcome.
+
+Perform the lightweight Founder reminder scan defined by the rule. A reminder may surface a forgotten idea or intent, but:
+
+`REMINDER != APPROVAL != PRIORITY CHANGE`
+
+Never silently change the active goal because an Idea Vault trigger/reminder appears.
+
 ## MANDATORY GSTACK AUTO-ROUTING
 
 Every AI/Codex/agent working on CWS engineering MUST also read and obey:
 
 `CWS_GSTACK_AUTO_ROUTING_RULE.md`
 
-After Ground First and CWS authority routing, automatically select the smallest fitting gstack capability when applicable. The Founder or a handoff prompt does NOT need to repeat `use gstack` on every task.
+After Ground First, active-goal recovery, Founder Check/Reminder scan and CWS authority routing, automatically select the smallest fitting gstack capability when applicable. The Founder or a handoff prompt does NOT need to repeat `use gstack` on every task.
 
 Default mapping:
 
@@ -52,12 +88,12 @@ Default mapping:
 
 Canonical engineering path:
 
-`CWS AUTHORITY -> GSTACK -> IMPLEMENTATION -> TEST/RUNTIME EVIDENCE -> SHIP`
+`GROUND -> ACTIVE GOAL -> FOUNDER CHECK/REMINDER -> CWS AUTHORITY -> GSTACK -> IMPLEMENTATION -> TEST/RUNTIME EVIDENCE -> FOUNDER RECHECK -> SHIP -> LEARN`
 
 Do not mechanically invoke every skill. Use only the capability that fits the task.
 
-CWS authority, Founder boundaries, runtime evidence, the power-state invariant, security/data/secret constraints, and `CWS_AI_GOAL_OWNERSHIP_POLICY.md` remain above gstack.
+CWS authority, Founder boundaries, active Goal Contract, runtime evidence, the power-state invariant, security/data/secret constraints, and `CWS_AI_GOAL_OWNERSHIP_POLICY.md` remain above gstack.
 
 Do not add Superpowers or another generic process framework as a mandatory parallel layer when gstack already covers the task.
 
-This override supplements `AGENTS.md`, `.specify/memory/constitution.md`, `CODEX_GLOBAL_RULES.md`, and all other CWS governance. If an older instruction conflicts with the power-state invariant or this automatic gstack-routing decision, the newer Founder rule supersedes it and the stale instruction must be reported/reconciled.
+This override supplements `AGENTS.md`, `.specify/memory/constitution.md`, `CODEX_GLOBAL_RULES.md`, and all other CWS governance. If an older instruction conflicts with the power-state invariant, active-goal lifecycle, Founder Challenge/Reminder rule, or automatic gstack-routing decision, the newer Founder rule supersedes it and the stale instruction must be reported/reconciled.
