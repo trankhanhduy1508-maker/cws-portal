@@ -164,6 +164,8 @@ Blender 5.2.0 LTS rendered source frames 461–463 at `2560x1440`, 100%, Cycles 
 
 Classification: native 2K pixel output is proven end-to-end for the current fast UE plate architecture. The earlier 640x360 Lanczos MP4 remains a delivery-upscale benchmark only. This gate does not prove editable semantic UE geometry/material reconstruction at native 2K; that remains a separate fidelity track. Full evidence: `reports/evidence/CWS_UE5_NATIVE2K_GATE_2026-08-22.md`.
 
+The initial native short MP4 exposed a duration bug: three source frames at 24 fps produce only `0.125` seconds. The corrected v2 deliverable holds each of the three verified native frames for 20 output frames, yielding 60 frames at 24 fps (`2.5` seconds) while preserving `2560x1440`, no scale filter and no audio. Artifact: `.cws_tmp/B4_JOB/CWS_B4_UE5_Native2K_Short_v2.mp4`; encode report: `.cws_tmp/B4_JOB/encode_native2k_duration_fix_report.json`; SHA-256: `AC182EA8AB9455558C9BAB051FD8944D329A9F27AE39486BE092B1D206BCCE7D`.
+
 The current practical boundary remains a fast UE5 plate reconstruction plus video encoding, not a proven editable 3D Blender semantic transfer with equivalent shading. Preserve this working baseline and the ~8.5-second UE5 frame render evidence while pursuing future color/texture fidelity work one representative frame at a time. Full details: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
 
 The current representative source is:

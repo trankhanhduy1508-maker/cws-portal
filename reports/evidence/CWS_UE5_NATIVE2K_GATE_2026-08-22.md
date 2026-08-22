@@ -65,3 +65,12 @@ The three-frame MP4 was encoded from those UE PNGs with Blender's bundled FFmpeg
 - Size: `502,758` bytes; SHA-256 `89BE139CBC983873BB45B63DC9C1CF92C15284A29D46F2A894A091494E93D5E1`.
 
 Classification: native 2K pixel output is now proven end-to-end for the current fast UE plate architecture. This does not yet prove editable semantic UE geometry/material reconstruction at native 2K; that remains a separate fidelity track.
+
+## Duration correction
+
+The first MP4 contained only the three source frames at 24 fps (`0.125` seconds). The corrected deliverable holds each verified native frame for 20 output frames, producing 60 frames at 24 fps (`2.5` seconds) without scaling or re-rendering a low-resolution source.
+
+- Corrected artifact: `.cws_tmp\B4_JOB\CWS_B4_UE5_Native2K_Short_v2.mp4`.
+- Encode report: `.cws_tmp\B4_JOB\encode_native2k_duration_fix_report.json`.
+- Resolution: `2560x1440`; frame count: `60`; fps: `24`; duration: `2.5` seconds; audio: none.
+- SHA-256: `AC182EA8AB9455558C9BAB051FD8944D329A9F27AE39486BE092B1D206BCCE7D`.
