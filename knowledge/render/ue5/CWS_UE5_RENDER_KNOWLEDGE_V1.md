@@ -126,6 +126,20 @@ The local FFmpeg runtime used `scale=2560:1440:flags=lanczos`, `lanczos+accurate
 
 References: [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [Epic screen percentage](https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-percentage-with-temporal-upscale-in-unreal-engine?lang=en-US), [Epic cinematic render settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-render-settings-and-formats-in-unreal-engine), [FFmpeg scaler](https://ffmpeg.org/ffmpeg-scaler.html).
 
+### Verified temporal-softness reduction and 2K delivery artifact (2026-08-22)
+
+A completed UE 5.8.1 SM5 direct-child MRQ probe used `sg.TextureQuality=4`, `r.TextureStreaming=0`, `r.ForceLOD=0`, `r.ScreenPercentage=100`, `r.AntiAliasingMethod=0`, `r.TemporalAA.Upsampling=0`, and `r.TSR.History.ScreenPercentage=100`. This is a render-time reconstruction change, not post-sharpening. At the matched representative frame, baseline -> no-AA changed RGB MAE `73.2551 -> 72.7127`, RGB RMSE `79.3891 -> 78.9129`, and edge energy `382.9710 -> 1206.9361`; hair, glasses/eyes, face outline, hand and clothing seams were visibly clearer. The existing full run produced 60/60 non-black PNGs and completed through MRQ.
+
+Classification: the practical softness boundary is narrowed to temporal AA/temporal-upsample reconstruction on the exact-size 640x360 plate. The probe changed several CVars together, so do not attribute the entire gain to one CVar without a new isolation test. The source textures are logged as `640x360 x1x1x1`; the large gain is not native texture detail recovery. Epic's 5.8 documentation states that temporal upscalers reconstruct from current/previous frames and that MRQ temporal/spatial sampling must be matched to the AA method. Preserve the no-AA policy as the current fast quality candidate, and preserve the nearest/no-mipmap MP4 as a separate benchmark.
+
+Artifacts:
+
+- `.cws_tmp/B4_JOB/CWS_B4_UE5_NoAA640.mp4` — H.264, 640x360, 24 fps, 60 frames, 2.5 seconds; SHA-256 `2481E76449564950F60A0A6FFB2E3521FF143712C4CAD49D26A97E3887324B2A`.
+- `.cws_tmp/B4_JOB/CWS_B4_UE5_NoAA640_Upscaled2K.mp4` — H.264, 2560x1440 delivery upscale; SHA-256 `57F60EDB5A6E5304C34D9DCB534FA9CCFC48B9F24489C22FE6615AE1D556D22C`.
+- `.cws_tmp/B4_JOB/CWS_B4_UE5_NearestAll640_Upscaled2K.mp4` — preserved benchmark; SHA-256 `CF8A108DAC95DD17E96241571FA87E07F7974F5B7D9BCF56EFC35ABCA9071CE7`.
+
+The 2K outputs are upscales from 640x360 and cannot restore native 2K material detail. These plate MP4s are video-only. References: [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [Epic temporal upscalers](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-upscalers-in-unreal-engine), [Epic MRQ image quality](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-rendering-image-quality-settings-in-unreal-engine), [Epic texture streaming](https://dev.epicgames.com/documentation/en-us/unreal-engine/texture-streaming-configuration), and [Epic TSR feedback](https://forums.unrealengine.com/t/tsr-feedback-thread/883977).
+
 ### Quality-gated UE5 video artifact (2026-08-22)
 
 The next bounded experiments were completed without replacing the fast route. An explicit per-frame inverse-LUT candidate rendered successfully through UE5.8.1 direct-child MRQ for all 60 frames after the raster actors were restored to `HiddenInGame=false`. A fail-closed gate accepted only candidates that were at least 98% non-black and strictly improved both RGB MAE and RGB RMSE; it selected 3 candidate frames and 57 baseline frames. The selected sequence mean was MAE `73.1649`, RMSE `79.1026`, versus baseline MAE `73.1745`, RMSE `79.2269`. This is a small safe improvement, not parity.

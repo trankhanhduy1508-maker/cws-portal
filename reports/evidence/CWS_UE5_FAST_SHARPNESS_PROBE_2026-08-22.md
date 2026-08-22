@@ -145,3 +145,29 @@ The verified full candidate was upscaled with the local FFmpeg runtime using `sc
 References: [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [Epic screen percentage/upscale quality](https://dev.epicgames.com/documentation/en-us/unreal-engine/screen-percentage-with-temporal-upscale-in-unreal-engine?lang=en-US), [Epic MRQ render settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-render-settings-and-formats-in-unreal-engine), [FFmpeg scaler](https://ffmpeg.org/ffmpeg-scaler.html).
 
 Decision: promote the explicit nearest/no-mipmap texture policy as the next bounded quality path for the raster plate, keep the original baseline as the rollback authority, and require a fresh representative comparison after applying it to the whole plate before any full 60-frame output is replaced. Official references used: [Epic UE 5.8 Texture2D filter](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/Texture2D?application_version=5.1), [Epic TextureFilter API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/TextureFilter?lang=en-US), [Epic TextureSample sampler source](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/Materials/UMaterialExpressionTextureSample/SamplerSource?application_version=5.5), and [Epic DDC documentation](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-derived-data-cache-in-unreal-engine).
+
+## Temporal reconstruction softness probe and verified short-sequence artifact (2026-08-22)
+
+The retained baseline, nearest/no-mipmap candidate and a completed no-AA run were compared at the matched frame 0030 / Blender frame 0462. The no-AA run was a real UE 5.8.1 direct-child SM5 MRQ execution, not an offline filter. Its command line recorded the following bounded render policy:
+
+`sg.TextureQuality=4,r.TextureStreaming=0,r.ForceLOD=0,r.ScreenPercentage=100,r.AntiAliasingMethod=0,r.TemporalAA.Upsampling=0,r.TSR.History.ScreenPercentage=100`
+
+The representative metrics were:
+
+| candidate | RGB MAE | RGB RMSE | edge energy |
+|---|---:|---:|---:|
+| UE baseline 640x360 | 73.2551 | 79.3891 | 382.9710 |
+| nearest/no-mipmap 640x360 | 73.1226 | 79.2566 | 410.6342 |
+| no-AA / no-temporal-upsample 640x360 | 72.7127 | 78.9129 | 1206.9361 |
+
+FACT: the no-AA frame is visibly crisper at the hair strands, glasses/eyes, face outline, hand and clothing seams, and is closer to the Blender reference than the retained baseline. FACT: the existing full run produced 60/60 non-black PNG frames in `RenderUE5NoAA640`; the UE log ends with `Movie Pipeline completed` and exit status 0. The source texture log reports `640x360 x1x1x1`, so this large improvement is not explained by recovering a hidden higher-resolution mip.
+
+ROOT-CAUSE CLASSIFICATION: the current practical softness boundary is the temporal AA/temporal-upsample reconstruction applied to an exact-size 640x360 plate. The successful probe disabled that reconstruction and set the cinematic texture-quality ceiling. Because the probe changed several console variables together, the individual contribution of `r.AntiAliasingMethod=0` versus the texture-streaming/quality ceiling is not separately isolated; do not claim a single-CVar proof. The evidence does reject generic post-sharpening and Lanczos as the primary solution family. Epic's UE 5.8 documentation explains that TSR and temporal upscalers reconstruct from current/previous frames and that MRQ temporal/spatial sampling must be matched to the AA method; the Epic TSR feedback thread provides supporting reports of softness when temporal reconstruction is active.
+
+The no-AA PNG sequence was encoded separately, preserving all earlier artifacts:
+
+- `CWS_B4_UE5_NoAA640.mp4`: H.264, 640x360, 24 fps, 60 frames, 2.5 seconds, SHA-256 `2481E76449564950F60A0A6FFB2E3521FF143712C4CAD49D26A97E3887324B2A`.
+- `CWS_B4_UE5_NoAA640_Upscaled2K.mp4`: H.264, 2560x1440, 24 fps, 60 frames, 2.5 seconds, SHA-256 `57F60EDB5A6E5304C34D9DCB534FA9CCFC48B9F24489C22FE6615AE1D556D22C`.
+- Existing Lanczos benchmark preserved unchanged: `CWS_B4_UE5_NearestAll640_Upscaled2K.mp4`, SHA-256 `CF8A108DAC95DD17E96241571FA87E07F7974F5B7D9BCF56EFC35ABCA9071CE7`.
+
+The 2560x1440 no-AA file remains a delivery upscale from a 640x360 UE render; it is not native 2K detail recovery. Both new MP4s are video-only and contain no audio track. Official references: [Epic TSR](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine), [Epic temporal upscalers](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-upscalers-in-unreal-engine), [Epic MRQ image quality](https://dev.epicgames.com/documentation/en-us/unreal-engine/cinematic-rendering-image-quality-settings-in-unreal-engine), [Epic texture streaming configuration](https://dev.epicgames.com/documentation/en-us/unreal-engine/texture-streaming-configuration), and supporting [Epic TSR feedback](https://forums.unrealengine.com/t/tsr-feedback-thread/883977).
