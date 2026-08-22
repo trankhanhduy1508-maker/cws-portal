@@ -156,6 +156,14 @@ The global LUT was rejected because it overfit the representative frame and regr
 
 The playable final artifact is `C:\Users\Administrator\Desktop\CWS_B4_UE5_HighQuality_QualityGated.mp4`, encoded from UE5-rendered PNGs with local FFmpeg `libx264`, CRF 16, native 640x360, 24 fps. FFprobe verified H.264, 60 decoded frames and 2.5 seconds; extracted frames 0, 29 and 59 were non-black and compositionally valid. Desktop SHA-256 is `3C883539321FFD569B8A0A2DD6A7D71DE92415FDF7615CF1E552C624F2A5C5CD`.
 
+### Native 2K gate completed — fresh bindings and short UE sequence (2026-08-22)
+
+The duplicate-map failure was isolated from the native-resolution question. A fresh disposable UE map and Level Sequence were authored together, with new plane/camera possessable bindings; the map was loaded as the startup map and no duplicate-map `load_level()` transition was used. This produced a real UE MRQ representative PNG at `2560x1440`, `Format32bppArgb`, center alpha `255`, with visible image content. The native UE preview retained the native Blender detail in the baby face, eyes, glasses, hair, clothing and wall texture. The UE image is brighter than Blender because of the output color/exposure path; that is a separate color-pipeline difference.
+
+Blender 5.2.0 LTS rendered source frames 461–463 at `2560x1440`, 100%, Cycles 16 samples from the unchanged `.blend`. UE imported those native PNGs into a new three-plane/one-camera sequence and MRQ rendered three native PNGs, each validated as `2560x1440` with center alpha `255`. Blender's bundled FFmpeg then encoded those UE PNGs to `.cws_tmp/B4_JOB/CWS_B4_UE5_Native2K_Short_v1.mp4` at `2560x1440`, 24 fps, with no scale filter and no audio. Encode report: `.cws_tmp/B4_JOB/encode_native2k_short_report.json`; MP4 SHA-256: `89BE139CBC983873BB45B63DC9C1CF92C15284A29D46F2A894A091494E93D5E1`.
+
+Classification: native 2K pixel output is proven end-to-end for the current fast UE plate architecture. The earlier 640x360 Lanczos MP4 remains a delivery-upscale benchmark only. This gate does not prove editable semantic UE geometry/material reconstruction at native 2K; that remains a separate fidelity track. Full evidence: `reports/evidence/CWS_UE5_NATIVE2K_GATE_2026-08-22.md`.
+
 The current practical boundary remains a fast UE5 plate reconstruction plus video encoding, not a proven editable 3D Blender semantic transfer with equivalent shading. Preserve this working baseline and the ~8.5-second UE5 frame render evidence while pursuing future color/texture fidelity work one representative frame at a time. Full details: `reports/evidence/CWS_UE5_FAST_BASELINE_AND_COLOR_PROBE_2026-08-21.md`.
 
 The current representative source is:

@@ -39,9 +39,29 @@ FACT: the script then duplicated the baseline map and called `LevelEditorSubsyst
 
 The v2 attempt removed the Python duplicate return reference, but the same duplicate-then-load transition still produced the same UE 5.8.1 world cleanup failure. Therefore this is a script/UE editor world-transition boundary, not evidence that native 2K output is impossible.
 
-UNKNOWN: no UE native 2K PNG has passed MRQ yet. No native 2K MP4 may be called complete.
+This first duplicate-map attempt is historical failure evidence only. It is not the final native-2K result.
 
 ## Decision and next safe action
 
-Keep all existing 640 outputs and the 2560x1440 Lanczos benchmark unchanged. Do not delete the failed logs. The next minimal test must avoid duplicate-map loading in the same editor process: use a fresh process with a pre-authored disposable map, or load the duplicate as the startup map and do not call `load_level()` on it. Only after a real UE PNG passes `2560x1440` validation should a short native 2K sequence and MP4 be encoded.
+Keep all existing 640 outputs and the 2560x1440 Lanczos benchmark unchanged. Do not delete the failed logs. The next minimal test must avoid duplicate-map loading in the same editor process: use a fresh process with a pre-authored disposable map, or load the duplicate as the startup map and do not call `load_level()` on it.
 
+## Verified native 2K UE5 path
+
+The blocker was bypassed with a materially different disposable path: a fresh UE map and Level Sequence were authored together, so the plane/camera possessable bindings were valid. The map was loaded as the startup map; no duplicate-map `load_level()` transition was used.
+
+- Prep report: `.cws_tmp\B4_JOB\prepare_native2k_single_report.json`.
+- Representative UE PNG: `.cws_tmp\B4_JOB\RenderUE5Native2KSingleProbe_v1\B4_Raster_Native2K_Single.0000.png`.
+- Representative validation: `2560x1440`, `Format32bppArgb`, center alpha `255`, file size `7,060,683` bytes; SHA-256 `256AE6CC4E722323FF7A710DEC64B0BE40251A227E24B8917FCE05ADF5574057`.
+- Visual comparison against the native Blender frame showed the same composition and retained native face, eyes, glasses, hair, clothing and wall-texture detail. UE is brighter/less dark than Blender because of the output color/exposure path; this is a color-pipeline difference, not an upscale artifact.
+
+## Verified native 2K short sequence and MP4
+
+Blender 5.2.0 LTS rendered native source frames 461–463 from the unchanged `.blend` at `2560x1440`, `100%`, Cycles, 16 samples. UE imported those three native PNGs into a new map/sequence with fresh visibility and camera bindings, then MRQ rendered three native PNGs. All three decoded as `2560x1440` with center alpha `255`; sizes were `7,080,785`, `6,923,140`, and `6,643,474` bytes.
+
+The three-frame MP4 was encoded from those UE PNGs with Blender's bundled FFmpeg H.264 MPEG-4 output at `2560x1440`, 24 fps, no scale filter and no audio:
+
+- Artifact: `.cws_tmp\B4_JOB\CWS_B4_UE5_Native2K_Short_v1.mp4`.
+- Encode report: `.cws_tmp\B4_JOB\encode_native2k_short_report.json`.
+- Size: `502,758` bytes; SHA-256 `89BE139CBC983873BB45B63DC9C1CF92C15284A29D46F2A894A091494E93D5E1`.
+
+Classification: native 2K pixel output is now proven end-to-end for the current fast UE plate architecture. This does not yet prove editable semantic UE geometry/material reconstruction at native 2K; that remains a separate fidelity track.
