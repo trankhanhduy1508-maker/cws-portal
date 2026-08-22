@@ -1,7 +1,7 @@
 # CWS AGENTS OVERRIDE
 
 > Status: ACTIVE / HIGH-PRIORITY CWS AGENT INSTRUCTIONS
-> Founder decision: 2026-08-20
+> Founder decisions: 2026-08-20, 2026-08-22
 
 ## ABSOLUTE POWER-STATE PROHIBITION
 
@@ -33,4 +33,31 @@ Do not create helper scripts, scheduled tasks, installer flags, keyboard automat
 
 `AUTO APPROVAL != POWER-STATE AUTHORITY`
 
-This override supplements `AGENTS.md`, `.specify/memory/constitution.md`, `CODEX_GLOBAL_RULES.md`, and all other CWS governance. If an older instruction appears to permit an AI-triggered power-state action, this newer Founder hard invariant supersedes it and the stale instruction must be reported/reconciled.
+## MANDATORY GSTACK AUTO-ROUTING
+
+Every AI/Codex/agent working on CWS engineering MUST also read and obey:
+
+`CWS_GSTACK_AUTO_ROUTING_RULE.md`
+
+After Ground First and CWS authority routing, automatically select the smallest fitting gstack capability when applicable. The Founder or a handoff prompt does NOT need to repeat `use gstack` on every task.
+
+Default mapping:
+
+- bug / runtime failure / root cause -> `investigate`
+- code or PR review -> `review`
+- QA / acceptance / runtime verification -> `qa`
+- security review -> `cso`
+- release / completion / shipping -> `ship`
+- retrospective / durable learning -> `retro` + `learn`
+
+Canonical engineering path:
+
+`CWS AUTHORITY -> GSTACK -> IMPLEMENTATION -> TEST/RUNTIME EVIDENCE -> SHIP`
+
+Do not mechanically invoke every skill. Use only the capability that fits the task.
+
+CWS authority, Founder boundaries, runtime evidence, the power-state invariant, security/data/secret constraints, and `CWS_AI_GOAL_OWNERSHIP_POLICY.md` remain above gstack.
+
+Do not add Superpowers or another generic process framework as a mandatory parallel layer when gstack already covers the task.
+
+This override supplements `AGENTS.md`, `.specify/memory/constitution.md`, `CODEX_GLOBAL_RULES.md`, and all other CWS governance. If an older instruction conflicts with the power-state invariant or this automatic gstack-routing decision, the newer Founder rule supersedes it and the stale instruction must be reported/reconciled.
