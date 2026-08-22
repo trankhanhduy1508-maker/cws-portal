@@ -1159,7 +1159,7 @@ The full Blender/Cycles native-2K sequence experiment was stopped because it vio
 
 Use the existing beauty plate as input, keep UE5 SM5 direct-child MRQ, and prefer the verified no-AA/no-temporal-upsample policy for this speed-bounded route. The no-AA 60-frame candidate rendered in `00:00:17.434`; the existing 2K delivery encode took approximately `5.37s`. It improved representative RGB MAE/RMSE from `73.2551/79.3891` to `72.7127/78.9129` and edge energy from `382.9710` to `1206.9361`. Frame-difference checks confirm actual motion, not held frames.
 
-This produces a practical sharp fast artifact at `2560x1440` by delivery upscale from the UE5 `640x360` output. It must be labeled as delivery 2K, not native scene-detail recovery. Full evidence: `reports/evidence/CWS_UE5_FAST_PATH_RUNTIME_BOUNDARY_2026-08-22.md`.
+This produces a practical sharp fast artifact at `2560x1440` by delivery upscale from the UE5 `640x360` output. It must be labeled as delivery 2K, not native scene-detail recovery. Full evidence: `reports/evidence/CWS_B4_FULLHD_UNDER_15M_2026-08-22.md` and `reports/evidence/CWS_UE5_FAST_SHARPNESS_PROBE_2026-08-22.md`.
 
 ## END-TO-END BENCHMARK CORRECTION — 2026-08-22
 
@@ -1168,6 +1168,19 @@ The fast downstream numbers must not be presented as `.blend -> UE5` end-to-end 
 Therefore the beauty-plate route remains a fast UE5 downstream benchmark, not the production `.blend -> UE5` solution. The existing direct BFUE route starts from `.blend` but failed the representative visual gate: export `14.642s`, UE import/build about `5m22s`, MRQ about `3m55s`, with wrong camera/composition/character/material result. Full correction and edge-energy evidence: `reports/evidence/CWS_UE5_END_TO_END_BENCHMARK_2026-08-22.md`.
 
 The no-AA edge-energy increase is not automatically useful detail: PIL `FIND_EDGES` mean was reference `9.0082`, baseline `6.6120`, no-AA `15.6393`. No-AA improves MAE/RMSE and visible local edges but likely includes some aliasing, so it is not promoted as 90–95% fidelity proof.
+
+## CANONICAL SPEED / QUALITY COMPARISON — 2026-08-22
+
+Keep these two materially different experiences because they answer different engineering questions:
+
+| Route | What is proven | Measured time | Quality / boundary | Decision |
+|---|---|---:|---|---|
+| Fast UE5 downstream baseline | UE5 SM5 direct-child MRQ plus H.264 from an existing 640x360 Blender/Cycles plate | UE5+encode about 25s; true source-to-MP4 lower bound about 21m02s because the plate already cost at least 20m39s | Real animation and fast playback, but the 640x360 plate is not native Full HD detail and is not a valid direct `.blend -> MP4` production claim | Retain as speed benchmark and downstream regression fixture; never call it native 1920x1080 |
+| Native Blender Cycles OptiX | Real `.blend` rendered directly at native 1920x1080 on RTX 2060 SUPER, then H.264 | 34m14.410s render + 4.853s encode = about 34m19s | Best tested semantic fidelity; 8-sample denoise leaves some detail/noise gap versus the 400-sample reference | Retain as current quality-first native baseline; Founder temporarily accepted the approximately 36-minute budget |
+
+Do not merge these timings into one “five-minute render” claim. The fast number excludes the already-rendered beauty-plate stage; the native number includes the complete `.blend -> MP4` render path. The source project remains 1920x1080; 640x360 belongs only to the old fast plate fixture.
+
+Cleanup rule: keep the detailed fast baseline, sharpness/failed-probe evidence, end-to-end correction, Full HD gate, and native OptiX report because each records distinct facts or prevents a known regression. The former `CWS_UE5_FAST_PATH_RUNTIME_BOUNDARY` report was duplicate summary material and was removed after its unique decision points were consolidated here.
 
 SUPERSEDED HISTORICAL NEXT ACTION
 
